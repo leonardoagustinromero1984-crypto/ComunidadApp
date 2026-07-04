@@ -1,5 +1,8 @@
 package com.comunidapp.app.ui.screens.publish
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,6 +19,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -35,6 +39,7 @@ import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.viewmodel.PublishViewModel
 
@@ -47,7 +52,12 @@ fun PublishGeneralScreen(
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
     var location by remember { mutableStateOf("") }
+    var imageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     val formState by viewModel.formState.collectAsState()
+
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> imageUri = uri }
 
     LaunchedEffect(formState.isSuccess) {
         if (formState.isSuccess) {
@@ -61,7 +71,7 @@ fun PublishGeneralScreen(
         onNavigateBack = onNavigateBack,
         isLoading = formState.isLoading,
         errorMessage = formState.errorMessage,
-        onSubmit = { viewModel.publishGeneral(title, content, location) }
+        onSubmit = { viewModel.publishGeneral(title, content, location, imageUri) }
     ) {
         OutlinedTextField(
             value = title,
@@ -86,6 +96,28 @@ fun PublishGeneralScreen(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
+        Spacer(modifier = Modifier.height(12.dp))
+        imageUri?.let { uri ->
+            PetImage(
+                imageUrl = uri.toString(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(160.dp),
+                cornerRadius = 8.dp,
+                contentDescription = "Imagen de la publicación"
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        OutlinedButton(
+            onClick = {
+                pickImageLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (imageUri == null) "Agregar imagen (opcional)" else "Cambiar imagen")
+        }
     }
 }
 

@@ -26,5 +26,7 @@ class FirebaseFeedRepository(
         }
     }
 
-    override suspend fun addFeedPost(post: FeedPost): Result<Unit> = dataSource.addPost(post)
+    override suspend fun addFeedPost(post: FeedPost): Result<String> = dataSource.addPost(post)
+
+    override suspend fun updateFeedPost(post: FeedPost): Result<Unit> = dataSource.updatePost(post)
 }

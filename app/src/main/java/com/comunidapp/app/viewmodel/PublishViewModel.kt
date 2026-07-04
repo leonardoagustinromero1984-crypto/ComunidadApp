@@ -1,5 +1,6 @@
 package com.comunidapp.app.viewmodel
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.model.AdoptionPost
@@ -11,14 +12,15 @@ import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.PostType
-import com.comunidapp.app.data.mock.MockData
+import com.comunidapp.app.data.model.User
+import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.data.remote.storage.StoragePaths
 import com.comunidapp.app.data.repository.AdoptionRepository
+import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.FeedRepository
 import com.comunidapp.app.data.repository.LostFoundRepository
-import com.comunidapp.app.data.repository.MockAdoptionRepository
-import com.comunidapp.app.data.repository.MockFeedRepository
-import com.comunidapp.app.data.repository.MockLostFoundRepository
-import kotlinx.coroutines.delay
+import com.comunidapp.app.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,37 +37,42 @@ data class PublishFormState(
 )
 
 class PublishViewModel(
-    private val feedRepository: FeedRepository = MockFeedRepository(),
-    private val adoptionRepository: AdoptionRepository = MockAdoptionRepository(),
-    private val lostFoundRepository: LostFoundRepository = MockLostFoundRepository()
+    private val authRepository: AuthRepository = AuthProvider.repository,
+    private val userRepository: UserRepository = DataProvider.userRepository,
+    private val feedRepository: FeedRepository = DataProvider.feedRepository,
+    private val adoptionRepository: AdoptionRepository = DataProvider.adoptionRepository,
+    private val lostFoundRepository: LostFoundRepository = DataProvider.lostFoundRepository
 ) : ViewModel() {
 
     private val _formState = MutableStateFlow(PublishFormState())
     val formState: StateFlow<PublishFormState> = _formState.asStateFlow()
 
-    fun publishGeneral(title: String, content: String, location: String) {
+    fun publishGeneral(
+        title: String,
+        content: String,
+        location: String,
+        imageUri: Uri? = null
+    ) {
         if (title.isBlank() || content.isBlank()) {
             _formState.update { it.copy(errorMessage = "Título y contenido son requeridos") }
             return
         }
         viewModelScope.launch {
             _formState.update { PublishFormState(isLoading = true) }
-            delay(600)
-            val user = MockData.currentUser
-            feedRepository.addFeedPost(
-                FeedPost(
-                    id = "feed_${System.currentTimeMillis()}",
-                    authorId = user.id,
-                    authorName = user.name,
-                    authorImageUrl = user.profileImageUrl,
-                    type = PostType.GENERAL,
-                    title = title.trim(),
-                    content = content.trim(),
-                    locationText = location.trim().ifBlank { null },
-                    date = "Ahora"
-                )
-            )
-            _formState.update { PublishFormState(isSuccess = true) }
+            resolveAuthor()
+                .onSuccess { author ->
+                    publishFeedPost(
+                        author = author,
+                        type = PostType.GENERAL,
+                        title = title.trim(),
+                        content = content.trim(),
+                        locationText = location.trim().ifBlank { null },
+                        imageUri = imageUri
+                    )
+                }
+                .onFailure { error ->
+                    _formState.update { PublishFormState(errorMessage = error.message) }
+                }
         }
     }
 
@@ -84,34 +91,34 @@ class PublishViewModel(
         }
         viewModelScope.launch {
             _formState.update { PublishFormState(isLoading = true) }
-            delay(600)
-            adoptionRepository.addAdoptionPost(
-                AdoptionPost(
-                    id = "adopt_${System.currentTimeMillis()}",
-                    shelterName = MockData.currentUser.name,
-                    name = name.trim(),
-                    species = species,
-                    sex = sex,
-                    ageYears = ageYears,
-                    size = size,
-                    location = location.trim(),
-                    description = description.trim(),
-                    status = AdoptionStatus.AVAILABLE
-                )
-            )
-            feedRepository.addFeedPost(
-                FeedPost(
-                    id = "feed_${System.currentTimeMillis()}",
-                    authorId = MockData.currentUser.id,
-                    authorName = MockData.currentUser.name,
-                    type = PostType.ADOPTION,
-                    title = "$name busca familia",
-                    content = description.trim(),
-                    locationText = location.trim(),
-                    date = "Ahora"
-                )
-            )
-            _formState.update { PublishFormState(isSuccess = true) }
+            resolveAuthor()
+                .onSuccess { author ->
+                    adoptionRepository.addAdoptionPost(
+                        AdoptionPost(
+                            id = "adopt_${System.currentTimeMillis()}",
+                            shelterName = author.name,
+                            name = name.trim(),
+                            species = species,
+                            sex = sex,
+                            ageYears = ageYears,
+                            size = size,
+                            location = location.trim(),
+                            description = description.trim(),
+                            status = AdoptionStatus.AVAILABLE
+                        )
+                    )
+                    publishFeedPost(
+                        author = author,
+                        type = PostType.ADOPTION,
+                        title = "$name busca familia",
+                        content = description.trim(),
+                        locationText = location.trim(),
+                        imageUri = null
+                    )
+                }
+                .onFailure { error ->
+                    _formState.update { PublishFormState(errorMessage = error.message) }
+                }
         }
     }
 
@@ -129,40 +136,98 @@ class PublishViewModel(
         }
         viewModelScope.launch {
             _formState.update { PublishFormState(isLoading = true) }
-            delay(600)
-            val user = MockData.currentUser
-            val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-            lostFoundRepository.addLostFoundPost(
-                LostFoundPost(
-                    id = "lf_${System.currentTimeMillis()}",
-                    authorId = user.id,
-                    authorName = user.name,
-                    type = type,
-                    petName = petName.trim().ifBlank { null },
-                    species = species,
-                    location = location.trim(),
-                    description = description.trim(),
-                    contactInfo = contactInfo.trim(),
-                    date = date
-                )
-            )
-            feedRepository.addFeedPost(
-                FeedPost(
-                    id = "feed_${System.currentTimeMillis()}",
-                    authorId = user.id,
-                    authorName = user.name,
-                    type = PostType.LOST_FOUND,
-                    title = if (type == LostFoundType.LOST) "Mascota perdida" else "Mascota encontrada",
-                    content = description.trim(),
-                    locationText = location.trim(),
-                    date = "Ahora"
-                )
-            )
-            _formState.update { PublishFormState(isSuccess = true) }
+            resolveAuthor()
+                .onSuccess { author ->
+                    val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                    lostFoundRepository.addLostFoundPost(
+                        LostFoundPost(
+                            id = "lf_${System.currentTimeMillis()}",
+                            authorId = author.id,
+                            authorName = author.name,
+                            type = type,
+                            petName = petName.trim().ifBlank { null },
+                            species = species,
+                            location = location.trim(),
+                            description = description.trim(),
+                            contactInfo = contactInfo.trim(),
+                            date = date
+                        )
+                    )
+                    publishFeedPost(
+                        author = author,
+                        type = PostType.LOST_FOUND,
+                        title = if (type == LostFoundType.LOST) "Mascota perdida" else "Mascota encontrada",
+                        content = description.trim(),
+                        locationText = location.trim(),
+                        imageUri = null
+                    )
+                }
+                .onFailure { error ->
+                    _formState.update { PublishFormState(errorMessage = error.message) }
+                }
         }
     }
 
     fun resetFormState() {
         _formState.value = PublishFormState()
+    }
+
+    private suspend fun resolveAuthor(): Result<User> {
+        val authUser = authRepository.getCurrentUser()
+            ?: return Result.failure(IllegalArgumentException("Debés iniciar sesión para publicar"))
+        return Result.success(userRepository.getUser(authUser.id) ?: authUser)
+    }
+
+    private suspend fun publishFeedPost(
+        author: User,
+        type: PostType,
+        title: String,
+        content: String,
+        locationText: String?,
+        imageUri: Uri?
+    ) {
+        val now = System.currentTimeMillis()
+        val post = FeedPost(
+            id = "",
+            authorId = author.id,
+            authorName = author.name,
+            authorImageUrl = author.profileImageUrl,
+            type = type,
+            title = title,
+            content = content,
+            locationText = locationText,
+            createdAt = now,
+            updatedAt = now
+        )
+
+        feedRepository.addFeedPost(post)
+            .onSuccess { postId ->
+                var finalPost = post.copy(id = postId)
+                if (imageUri != null) {
+                    val storage = DataProvider.storageService
+                    if (storage != null) {
+                        storage.uploadImage(StoragePaths.postImage(postId), imageUri)
+                            .onSuccess { url ->
+                                finalPost = finalPost.copy(imageUrl = url)
+                                feedRepository.updateFeedPost(finalPost)
+                            }
+                            .onFailure { error ->
+                                _formState.update {
+                                    PublishFormState(errorMessage = error.message ?: "Error al subir imagen")
+                                }
+                                return
+                            }
+                    } else {
+                        finalPost = finalPost.copy(imageUrl = imageUri.toString())
+                        feedRepository.updateFeedPost(finalPost)
+                    }
+                }
+                _formState.update { PublishFormState(isSuccess = true) }
+            }
+            .onFailure { error ->
+                _formState.update {
+                    PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                }
+            }
     }
 }

@@ -25,6 +25,8 @@ import com.comunidapp.app.ui.screens.login.ForgotPasswordScreen
 import com.comunidapp.app.ui.screens.login.LoginScreen
 import com.comunidapp.app.ui.screens.login.RegisterScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundScreen
+import com.comunidapp.app.ui.screens.pets.AddPetScreen
+import com.comunidapp.app.ui.screens.pets.EditPetScreen
 import com.comunidapp.app.ui.screens.pets.MyPetsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
 import com.comunidapp.app.ui.screens.profile.EditProfileScreen
@@ -144,7 +146,11 @@ private fun MainScreen() {
             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) {
             composable(NavRoutes.HOME) {
-                HomeScreen()
+                HomeScreen(
+                    onAuthorClick = { userId ->
+                        navController.navigate(NavRoutes.userProfile(userId))
+                    }
+                )
             }
             composable(NavRoutes.ADOPTIONS) {
                 AdoptionsScreen(
@@ -188,13 +194,36 @@ private fun MainScreen() {
                 val userId = backStackEntry.arguments?.getString(NavRoutes.ARG_USER_ID) ?: ""
                 UserPublicProfileScreen(
                     userId = userId,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
                 )
             }
             composable(NavRoutes.MY_PETS) {
                 MyPetsScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
+                    onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) },
+                    onAddPet = { navController.navigate(NavRoutes.ADD_PET) }
+                )
+            }
+            composable(NavRoutes.ADD_PET) {
+                AddPetScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaveSuccess = {
+                        navController.popBackStack()
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.EDIT_PET,
+                arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
+            ) {
+                EditPetScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaveSuccess = { navController.popBackStack() },
+                    onDeleteSuccess = {
+                        navController.popBackStack()
+                        navController.popBackStack()
+                    }
                 )
             }
             composable(NavRoutes.LOST_FOUND) {
@@ -219,7 +248,11 @@ private fun MainScreen() {
                 route = NavRoutes.PET_DETAIL,
                 arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
             ) {
-                PetDetailScreen(onNavigateBack = { navController.popBackStack() })
+                PetDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToEdit = { id -> navController.navigate(NavRoutes.editPet(id)) },
+                    onDeleteSuccess = { navController.popBackStack() }
+                )
             }
             composable(NavRoutes.PUBLISH_GENERAL) {
                 PublishGeneralScreen(

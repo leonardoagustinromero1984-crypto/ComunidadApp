@@ -41,7 +41,7 @@ class PostFirestoreDataSource(
         awaitClose { listener.remove() }
     }
 
-    suspend fun addPost(post: FeedPost): Result<Unit> {
+    suspend fun addPost(post: FeedPost): Result<String> {
         return try {
             val docRef = if (post.id.isBlank()) {
                 firestore.collection(FirestoreCollections.POSTS).document()
@@ -50,6 +50,18 @@ class PostFirestoreDataSource(
             }
             val postToSave = post.copy(id = docRef.id)
             docRef.set(postToSave.toFirestoreMap()).await()
+            Result.success(docRef.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updatePost(post: FeedPost): Result<Unit> {
+        return try {
+            firestore.collection(FirestoreCollections.POSTS)
+                .document(post.id)
+                .set(post.toFirestoreMap())
+                .await()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

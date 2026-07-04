@@ -4,9 +4,8 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import com.comunidapp.app.data.model.AdoptionPost
 import com.comunidapp.app.data.model.Shelter
+import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AdoptionRepository
-import com.comunidapp.app.data.repository.MockAdoptionRepository
-import com.comunidapp.app.data.repository.MockShelterRepository
 import com.comunidapp.app.data.repository.ShelterRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -14,8 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 
 class ShelterDetailViewModel(
     savedStateHandle: SavedStateHandle,
-    private val shelterRepository: ShelterRepository = MockShelterRepository(),
-    private val adoptionRepository: AdoptionRepository = MockAdoptionRepository()
+    private val shelterRepository: ShelterRepository = DataProvider.shelterRepository,
+    private val adoptionRepository: AdoptionRepository = DataProvider.adoptionRepository
 ) : ViewModel() {
 
     private val shelterId: String = savedStateHandle["shelterId"] ?: ""

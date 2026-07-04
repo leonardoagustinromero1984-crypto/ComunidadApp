@@ -22,6 +22,9 @@ object NavRoutes {
     const val EDIT_PROFILE = "edit_profile"
     const val USER_PROFILE = "user_profile/{userId}"
 
+    const val ADD_PET = "add_pet"
+    const val EDIT_PET = "edit_pet/{petId}"
+
     const val PUBLISH_GENERAL = "publish_general"
     const val PUBLISH_ADOPTION = "publish_adoption"
     const val PUBLISH_LOST_FOUND = "publish_lost_found"
@@ -36,5 +39,6 @@ object NavRoutes {
     fun shelterDetail(shelterId: String) = "shelter_detail/$shelterId"
     fun petDetail(petId: String) = "pet_detail/$petId"
     fun emailVerification(email: String) = "email_verification/$email"
+    fun editPet(petId: String) = "edit_pet/$petId"
     fun userProfile(userId: String) = "user_profile/$userId"
 }

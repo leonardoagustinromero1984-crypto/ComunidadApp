@@ -6,8 +6,8 @@ import com.comunidapp.app.data.model.AdoptionPost
 import com.comunidapp.app.data.model.AdoptionStatus
 import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
+import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AdoptionRepository
-import com.comunidapp.app.data.repository.MockAdoptionRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -24,7 +24,7 @@ data class AdoptionFilters(
 )
 
 class AdoptionsViewModel(
-    private val adoptionRepository: AdoptionRepository = MockAdoptionRepository()
+    private val adoptionRepository: AdoptionRepository = DataProvider.adoptionRepository
 ) : ViewModel() {
 
     private val _filters = MutableStateFlow(AdoptionFilters())

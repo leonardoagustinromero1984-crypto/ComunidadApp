@@ -48,6 +48,39 @@ object InMemoryDataStore {
     fun getPetById(id: String): Pet? =
         _pets.value.find { it.id == id }
 
+    fun addPet(pet: Pet): Result<String> {
+        val id = pet.id.ifBlank { "pet_${System.currentTimeMillis()}" }
+        val saved = pet.copy(id = id)
+        _pets.update { listOf(saved) + it }
+        return Result.success(id)
+    }
+
+    fun updatePet(pet: Pet): Result<Unit> {
+        _pets.update { list ->
+            if (list.none { it.id == pet.id }) {
+                return Result.failure(IllegalArgumentException("Mascota no encontrada"))
+            }
+            list.map { if (it.id == pet.id) pet else it }
+        }
+        return Result.success(Unit)
+    }
+
+    fun deletePet(petId: String): Result<Unit> {
+        _pets.update { list ->
+            if (list.none { it.id == petId }) {
+                return Result.failure(IllegalArgumentException("Mascota no encontrada"))
+            }
+            list.filterNot { it.id == petId }
+        }
+        return Result.success(Unit)
+    }
+
+    fun updateFeedPost(post: FeedPost) {
+        _feedPosts.update { list ->
+            list.map { if (it.id == post.id) post else it }
+        }
+    }
+
     fun getAdoptionsByShelter(shelterId: String): List<AdoptionPost> =
         _adoptionPosts.value.filter { it.shelterId == shelterId }
 }

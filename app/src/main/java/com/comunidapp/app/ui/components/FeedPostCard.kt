@@ -1,6 +1,7 @@
 package com.comunidapp.app.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,12 +32,17 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.PostType
+import com.comunidapp.app.ui.util.displayDate
 import com.comunidapp.app.ui.theme.OrangeContainer
 import com.comunidapp.app.ui.theme.UrgentContainer
 import com.comunidapp.app.ui.theme.UrgentRed
 
 @Composable
-fun FeedPostCard(post: FeedPost, modifier: Modifier = Modifier) {
+fun FeedPostCard(
+    post: FeedPost,
+    modifier: Modifier = Modifier,
+    onAuthorClick: ((String) -> Unit)? = null
+) {
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -62,10 +68,15 @@ fun FeedPostCard(post: FeedPost, modifier: Modifier = Modifier) {
                     Text(
                         text = post.authorName,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = if (onAuthorClick != null) {
+                            Modifier.clickable { onAuthorClick(post.authorId) }
+                        } else {
+                            Modifier
+                        }
                     )
                     Text(
-                        text = post.date,
+                        text = post.displayDate(),
                         style = MaterialTheme.typography.labelMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

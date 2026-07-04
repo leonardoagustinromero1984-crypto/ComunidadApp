@@ -11,6 +11,12 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,6 +36,7 @@ import com.comunidapp.app.viewmodel.MyPetsViewModel
 fun MyPetsScreen(
     onNavigateBack: () -> Unit,
     onPetClick: (String) -> Unit,
+    onAddPet: () -> Unit = {},
     viewModel: MyPetsViewModel = viewModel()
 ) {
     val pets by viewModel.pets.collectAsState()
@@ -43,19 +50,42 @@ fun MyPetsScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = padding.calculateBottomPadding() + 8.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(pets, key = { it.id }) { pet ->
-                PetCard(pet = pet, onClick = { onPetClick(pet.id) })
-                PetHealthCard(pet = pet)
+        Box(modifier = Modifier.fillMaxSize()) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = padding.calculateTopPadding() + 8.dp,
+                    bottom = padding.calculateBottomPadding() + 72.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                if (pets.isEmpty()) {
+                    item {
+                        Text(
+                            text = "Todavía no tenés mascotas registradas. Tocá + para agregar la primera.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(vertical = 24.dp)
+                        )
+                    }
+                }
+                items(pets, key = { it.id }) { pet ->
+                    PetCard(pet = pet, onClick = { onPetClick(pet.id) })
+                    PetHealthCard(pet = pet)
+                }
+            }
+            FloatingActionButton(
+                onClick = onAddPet,
+                modifier = Modifier
+                    .align(androidx.compose.ui.Alignment.BottomEnd)
+                    .padding(
+                        end = 16.dp,
+                        bottom = padding.calculateBottomPadding() + 16.dp
+                    )
+            ) {
+                Icon(Icons.Default.Add, contentDescription = "Agregar mascota")
             }
         }
     }

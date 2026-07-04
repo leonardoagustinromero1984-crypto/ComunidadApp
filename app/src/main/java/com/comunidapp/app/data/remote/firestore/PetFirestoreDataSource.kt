@@ -42,6 +42,7 @@ class PetFirestoreDataSource(
     fun observePets(): Flow<List<Pet>> = callbackFlow {
         val listener = firestore.collection(FirestoreCollections.PETS)
             .orderBy("createdAt", Query.Direction.DESCENDING)
+            .limit(100)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
@@ -49,6 +50,19 @@ class PetFirestoreDataSource(
                 }
                 val pets = snapshot?.documents?.mapNotNull { it.toPet() } ?: emptyList()
                 trySend(pets)
+            }
+        awaitClose { listener.remove() }
+    }
+
+    fun observePet(petId: String): Flow<Pet?> = callbackFlow {
+        val listener = firestore.collection(FirestoreCollections.PETS)
+            .document(petId)
+            .addSnapshotListener { snapshot, error ->
+                if (error != null) {
+                    trySend(null)
+                    return@addSnapshotListener
+                }
+                trySend(snapshot?.toPet())
             }
         awaitClose { listener.remove() }
     }

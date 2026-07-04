@@ -17,7 +17,10 @@ import com.comunidapp.app.ui.components.FeedPostCard
 import com.comunidapp.app.viewmodel.HomeViewModel
 
 @Composable
-fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
+fun HomeScreen(
+    onAuthorClick: (String) -> Unit = {},
+    viewModel: HomeViewModel = viewModel()
+) {
     val posts by viewModel.posts.collectAsState()
 
     Scaffold(
@@ -34,7 +37,7 @@ fun HomeScreen(viewModel: HomeViewModel = viewModel()) {
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(posts, key = { it.id }) { post ->
-                FeedPostCard(post = post)
+                FeedPostCard(post = post, onAuthorClick = onAuthorClick)
             }
         }
     }
