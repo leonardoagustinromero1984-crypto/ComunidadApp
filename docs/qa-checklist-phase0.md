@@ -51,7 +51,7 @@ Marcar cada ítem antes de cerrar la fase. Probar en **modo mock** y, si es posi
 
 - [ ] App compila y arranca sin `google-services.json`
 - [ ] App compila y arranca con `google-services.json`
-- [ ] `DataProvider` conmuta repositorios según `BuildConfig.FIREBASE_ENABLED`
+- [ ] `DataProvider` conmuta repositorios según `BuildConfig.SUPABASE_ENABLED`
 
 ## Documentación
 

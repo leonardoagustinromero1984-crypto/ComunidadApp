@@ -47,7 +47,7 @@ fun ForgotPasswordScreen(
     viewModel: ForgotPasswordViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isFirebase = AuthProvider.isFirebaseEnabled
+    val isFirebase = AuthProvider.isRemoteBackendEnabled
 
     LaunchedEffect(uiState.resetSuccess) {
         if (uiState.resetSuccess) onResetSuccess()
@@ -184,7 +184,7 @@ fun EmailVerificationScreen(
     viewModel: EmailVerificationViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isFirebase = AuthProvider.isFirebaseEnabled
+    val isFirebase = AuthProvider.isRemoteBackendEnabled
 
     LaunchedEffect(email) {
         viewModel.checkVerification(email)

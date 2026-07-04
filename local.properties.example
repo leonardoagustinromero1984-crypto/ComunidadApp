@@ -1,0 +1,6 @@
+# Copiá este archivo como local.properties (está en .gitignore) y completá tus credenciales.
+sdk.dir=C\:\\Users\\TU_USUARIO\\AppData\\Local\\Android\\Sdk
+
+# Supabase → Project Settings → API
+SUPABASE_URL=https://TU_PROJECT_REF.supabase.co
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...

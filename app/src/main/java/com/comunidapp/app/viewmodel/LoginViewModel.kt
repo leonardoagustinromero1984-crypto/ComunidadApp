@@ -178,7 +178,7 @@ class ForgotPasswordViewModel(
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
             authRepository.sendPasswordResetEmail(_uiState.value.email)
                 .onSuccess {
-                    val mockToken = if (!AuthProvider.isFirebaseEnabled) {
+                    val mockToken = if (!AuthProvider.isRemoteBackendEnabled) {
                         MockAuthDatabase.findByEmail(_uiState.value.email)?.resetToken
                     } else null
                     _uiState.update {
