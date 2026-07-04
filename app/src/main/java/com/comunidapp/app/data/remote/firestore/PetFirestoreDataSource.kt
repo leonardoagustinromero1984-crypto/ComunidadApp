@@ -67,16 +67,20 @@ class PetFirestoreDataSource(
         awaitClose { listener.remove() }
     }
 
-    fun observePetsByOwner(ownerId: String): Flow<List<Pet>> = callbackFlow {
+    fun observePetsByOwner(ownerId: String): Flow<List<Pet>> = observePetsForOwner(ownerId)
+
+    fun observePetsForOwner(ownerId: String): Flow<List<Pet>> = callbackFlow {
         val listener = firestore.collection(FirestoreCollections.PETS)
             .whereEqualTo("ownerId", ownerId)
-            .orderBy("createdAt", Query.Direction.DESCENDING)
             .addSnapshotListener { snapshot, error ->
                 if (error != null) {
                     trySend(emptyList())
                     return@addSnapshotListener
                 }
-                val pets = snapshot?.documents?.mapNotNull { it.toPet() } ?: emptyList()
+                val pets = snapshot?.documents
+                    ?.mapNotNull { it.toPet() }
+                    ?.sortedByDescending { it.createdAt ?: 0L }
+                    ?: emptyList()
                 trySend(pets)
             }
         awaitClose { listener.remove() }

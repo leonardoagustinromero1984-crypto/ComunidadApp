@@ -38,6 +38,7 @@ import com.comunidapp.app.ui.screens.publish.PublishLostFoundScreen
 import com.comunidapp.app.ui.screens.publish.PublishScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterDetailScreen
 import com.comunidapp.app.ui.screens.shelters.SheltersScreen
+import com.comunidapp.app.viewmodel.PetFormViewModel
 import com.comunidapp.app.viewmodel.SessionState
 import com.comunidapp.app.viewmodel.SessionViewModel
 
@@ -206,24 +207,33 @@ private fun MainScreen() {
                 )
             }
             composable(NavRoutes.ADD_PET) {
+                val addPetViewModel: PetFormViewModel = viewModel(
+                    key = NavRoutes.ADD_PET,
+                    factory = PetFormViewModel.factory(editPetId = null)
+                )
                 AddPetScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onSaveSuccess = {
-                        navController.popBackStack()
-                    }
+                    onSaveSuccess = { navController.popBackStack() },
+                    viewModel = addPetViewModel
                 )
             }
             composable(
                 route = NavRoutes.EDIT_PET,
                 arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
-            ) {
+            ) { backStackEntry ->
+                val petId = backStackEntry.arguments?.getString(NavRoutes.ARG_PET_ID)
+                val editPetViewModel: PetFormViewModel = viewModel(
+                    key = "edit_pet_$petId",
+                    factory = PetFormViewModel.factory(editPetId = petId)
+                )
                 EditPetScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onSaveSuccess = { navController.popBackStack() },
                     onDeleteSuccess = {
                         navController.popBackStack()
                         navController.popBackStack()
-                    }
+                    },
+                    viewModel = editPetViewModel
                 )
             }
             composable(NavRoutes.LOST_FOUND) {

@@ -8,9 +8,11 @@ import kotlinx.coroutines.flow.map
 
 interface PetRepository {
     fun observePets(): StateFlow<List<Pet>>
+    fun observePetsForOwner(ownerId: String): Flow<List<Pet>>
     fun observePet(petId: String): Flow<Pet?>
     fun getPetsByOwner(ownerId: String): List<Pet>
     fun getPetById(petId: String): Pet?
+    suspend fun fetchPetById(petId: String): Pet?
     suspend fun createPet(pet: Pet): Result<String>
     suspend fun updatePet(pet: Pet): Result<Unit>
     suspend fun deletePet(petId: String): Result<Unit>
@@ -19,6 +21,9 @@ interface PetRepository {
 class MockPetRepository : PetRepository {
     override fun observePets(): StateFlow<List<Pet>> = InMemoryDataStore.pets
 
+    override fun observePetsForOwner(ownerId: String): Flow<List<Pet>> =
+        InMemoryDataStore.pets.map { pets -> pets.filter { it.ownerId == ownerId } }
+
     override fun observePet(petId: String): Flow<Pet?> =
         InMemoryDataStore.pets.map { pets -> pets.find { it.id == petId } }
 
@@ -26,6 +31,8 @@ class MockPetRepository : PetRepository {
         InMemoryDataStore.pets.value.filter { it.ownerId == ownerId }
 
     override fun getPetById(petId: String): Pet? = InMemoryDataStore.getPetById(petId)
+
+    override suspend fun fetchPetById(petId: String): Pet? = getPetById(petId)
 
     override suspend fun createPet(pet: Pet): Result<String> =
         InMemoryDataStore.addPet(pet)

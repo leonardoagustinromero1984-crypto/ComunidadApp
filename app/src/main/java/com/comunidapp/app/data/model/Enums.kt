@@ -18,7 +18,37 @@ enum class AccountType {
 enum class PetSpecies {
     DOG,
     CAT,
-    OTHER
+    HORSE,
+    COW,
+    SHEEP,
+    GOAT,
+    PIG,
+    RABBIT,
+    HAMSTER,
+    GUINEA_PIG,
+    BIRD,
+    FISH,
+    REPTILE,
+    CHICKEN,
+    DUCK,
+    DONKEY,
+    OTHER;
+
+    companion object {
+        fun fromString(value: String?): PetSpecies =
+            entries.find { it.name == value } ?: OTHER
+    }
+}
+
+enum class SterilizationStatus {
+    YES,
+    NO,
+    UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): SterilizationStatus? =
+            value?.let { v -> entries.find { it.name == v } }
+    }
 }
 
 enum class PetSex {

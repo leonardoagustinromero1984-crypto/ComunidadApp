@@ -8,6 +8,7 @@ import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.PostType
+import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.model.VaccinationRecord
 import com.google.firebase.Timestamp
@@ -135,7 +136,13 @@ fun parsePet(id: String, data: Map<String, Any?>): Pet? {
         description = data["description"] as? String ?: "",
         vaccinations = parseVaccinations(data["vaccinations"]),
         lastDeworming = data["lastDeworming"] as? String,
+        dewormingProduct = data["dewormingProduct"] as? String,
         lastFleaTreatment = data["lastFleaTreatment"] as? String,
+        fleaTreatmentProduct = data["fleaTreatmentProduct"] as? String,
+        sterilized = SterilizationStatus.fromString(data["sterilized"] as? String),
+        microchipId = data["microchipId"] as? String,
+        lastVetVisit = data["lastVetVisit"] as? String,
+        healthNotes = data["healthNotes"] as? String,
         reminders = parseReminders(data["reminders"]),
         createdAt = (data["createdAt"] as? Timestamp)?.toDate()?.time,
         updatedAt = (data["updatedAt"] as? Timestamp)?.toDate()?.time
@@ -165,7 +172,13 @@ fun Pet.toFirestoreMap(): Map<String, Any?> {
     )
     photoUrl?.let { map["photoUrl"] = it }
     lastDeworming?.let { map["lastDeworming"] = it }
+    dewormingProduct?.let { map["dewormingProduct"] = it }
     lastFleaTreatment?.let { map["lastFleaTreatment"] = it }
+    fleaTreatmentProduct?.let { map["fleaTreatmentProduct"] = it }
+    sterilized?.let { map["sterilized"] = it.name }
+    microchipId?.let { map["microchipId"] = it }
+    lastVetVisit?.let { map["lastVetVisit"] = it }
+    healthNotes?.let { map["healthNotes"] = it }
     if (vaccinations.isNotEmpty()) {
         map["vaccinations"] = vaccinations.map {
             mapOf(

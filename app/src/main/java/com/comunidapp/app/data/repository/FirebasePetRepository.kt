@@ -27,6 +27,9 @@ class FirebasePetRepository(
         }
     }
 
+    override fun observePetsForOwner(ownerId: String): Flow<List<Pet>> =
+        dataSource.observePetsForOwner(ownerId)
+
     override fun observePet(petId: String): Flow<Pet?> = dataSource.observePet(petId)
 
     override fun getPetsByOwner(ownerId: String): List<Pet> =
@@ -34,6 +37,9 @@ class FirebasePetRepository(
 
     override fun getPetById(petId: String): Pet? =
         _pets.value.find { it.id == petId }
+
+    override suspend fun fetchPetById(petId: String): Pet? =
+        dataSource.getPet(petId) ?: getPetById(petId)
 
     override suspend fun createPet(pet: Pet): Result<String> = dataSource.createPet(pet)
 
