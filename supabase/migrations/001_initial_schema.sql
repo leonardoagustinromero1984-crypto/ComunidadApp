@@ -32,7 +32,13 @@ create table if not exists public.pets (
     description text not null,
     vaccinations jsonb not null default '[]'::jsonb,
     last_deworming text,
+    deworming_product text,
     last_flea_treatment text,
+    flea_treatment_product text,
+    sterilized text,
+    microchip_id text,
+    last_vet_visit text,
+    health_notes text,
     reminders jsonb not null default '[]'::jsonb,
     created_at timestamptz not null default timezone('utc', now()),
     updated_at timestamptz not null default timezone('utc', now())

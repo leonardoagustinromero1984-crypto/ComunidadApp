@@ -38,14 +38,14 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.R
 import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
-import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.PetHealthFormSection
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.SpeciesDropdown
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.viewmodel.PetFormViewModel
 
@@ -53,7 +53,7 @@ import com.comunidapp.app.viewmodel.PetFormViewModel
 fun AddPetScreen(
     onNavigateBack: () -> Unit,
     onSaveSuccess: () -> Unit,
-    viewModel: PetFormViewModel = viewModel()
+    viewModel: PetFormViewModel
 ) {
     PetFormScreen(
         title = "Agregar mascota",
@@ -69,7 +69,7 @@ fun EditPetScreen(
     onNavigateBack: () -> Unit,
     onSaveSuccess: () -> Unit,
     onDeleteSuccess: () -> Unit,
-    viewModel: PetFormViewModel = viewModel()
+    viewModel: PetFormViewModel
 ) {
     PetFormScreen(
         title = "Editar mascota",
@@ -174,7 +174,11 @@ private fun PetFormScreen(
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                EnumChipRowSpecies(uiState.species, viewModel::onSpeciesChange)
+                SpeciesDropdown(
+                    selected = uiState.species,
+                    onSelected = viewModel::onSpeciesChange,
+                    enabled = !uiState.isSaving && !uiState.isDeleting
+                )
                 Spacer(modifier = Modifier.height(8.dp))
                 EnumChipRowSex(uiState.sex, viewModel::onSexChange)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -206,53 +210,34 @@ private fun PetFormScreen(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Salud",
-                    style = MaterialTheme.typography.titleSmall,
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                if (uiState.existingVaccinations.isNotEmpty()) {
-                    uiState.existingVaccinations.forEach { vac ->
-                        Text(
-                            text = "💉 ${vac.name}: ${vac.date}",
-                            style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(bottom = 4.dp)
-                        )
-                    }
-                }
-                OutlinedTextField(
-                    value = uiState.vaccinationName,
-                    onValueChange = viewModel::onVaccinationNameChange,
-                    label = { Text("Nueva vacuna") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = uiState.vaccinationDate,
-                    onValueChange = viewModel::onVaccinationDateChange,
-                    label = { Text("Fecha vacuna") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = uiState.lastDeworming,
-                    onValueChange = viewModel::onLastDewormingChange,
-                    label = { Text("Desparasitación") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                OutlinedTextField(
-                    value = uiState.lastFleaTreatment,
-                    onValueChange = viewModel::onLastFleaTreatmentChange,
-                    label = { Text("Antipulgas") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
+                PetHealthFormSection(
+                    species = uiState.species,
+                    sterilized = uiState.sterilized,
+                    microchipId = uiState.microchipId,
+                    lastVetVisit = uiState.lastVetVisit,
+                    vaccinations = uiState.vaccinations,
+                    pendingVaccineName = uiState.pendingVaccineName,
+                    pendingVaccineDate = uiState.pendingVaccineDate,
+                    pendingVaccineNextDate = uiState.pendingVaccineNextDate,
+                    dewormingProduct = uiState.dewormingProduct,
+                    lastDeworming = uiState.lastDeworming,
+                    fleaTreatmentProduct = uiState.fleaTreatmentProduct,
+                    lastFleaTreatment = uiState.lastFleaTreatment,
+                    healthNotes = uiState.healthNotes,
+                    enabled = !uiState.isSaving && !uiState.isDeleting,
+                    onSterilizedChange = viewModel::onSterilizedChange,
+                    onMicrochipChange = viewModel::onMicrochipChange,
+                    onLastVetVisitChange = viewModel::onLastVetVisitChange,
+                    onPendingVaccineNameChange = viewModel::onPendingVaccineNameChange,
+                    onPendingVaccineDateChange = viewModel::onPendingVaccineDateChange,
+                    onPendingVaccineNextDateChange = viewModel::onPendingVaccineNextDateChange,
+                    onAddVaccination = viewModel::addPendingVaccination,
+                    onRemoveVaccination = viewModel::removeVaccination,
+                    onDewormingProductChange = viewModel::onDewormingProductChange,
+                    onLastDewormingChange = viewModel::onLastDewormingChange,
+                    onFleaProductChange = viewModel::onFleaProductChange,
+                    onLastFleaTreatmentChange = viewModel::onLastFleaTreatmentChange,
+                    onHealthNotesChange = viewModel::onHealthNotesChange
                 )
 
                 uiState.errorMessage?.let { error ->
@@ -285,23 +270,6 @@ private fun PetFormScreen(
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }
-        }
-    }
-}
-
-@Composable
-private fun EnumChipRowSpecies(selected: PetSpecies, onSelect: (PetSpecies) -> Unit) {
-    Text(text = "Especie", style = MaterialTheme.typography.labelLarge, modifier = Modifier.fillMaxWidth())
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        PetSpecies.entries.forEach { entry ->
-            FilterChip(
-                selected = selected == entry,
-                onClick = { onSelect(entry) },
-                label = { Text(entry.toDisplayName()) }
-            )
         }
     }
 }

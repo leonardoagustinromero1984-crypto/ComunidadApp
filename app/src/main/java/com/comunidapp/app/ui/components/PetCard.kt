@@ -151,6 +151,20 @@ fun AdoptionStatusBadge(status: AdoptionStatus) {
 fun PetSpecies.toDisplayName(): String = when (this) {
     PetSpecies.DOG -> "Perro"
     PetSpecies.CAT -> "Gato"
+    PetSpecies.HORSE -> "Caballo"
+    PetSpecies.COW -> "Vaca"
+    PetSpecies.SHEEP -> "Oveja"
+    PetSpecies.GOAT -> "Cabra"
+    PetSpecies.PIG -> "Cerdo"
+    PetSpecies.RABBIT -> "Conejo"
+    PetSpecies.HAMSTER -> "Hámster"
+    PetSpecies.GUINEA_PIG -> "Cobayo / conejillo de indias"
+    PetSpecies.BIRD -> "Ave"
+    PetSpecies.FISH -> "Pez"
+    PetSpecies.REPTILE -> "Reptil"
+    PetSpecies.CHICKEN -> "Gallina / pollo"
+    PetSpecies.DUCK -> "Pato"
+    PetSpecies.DONKEY -> "Burro / asno"
     PetSpecies.OTHER -> "Otro"
 }
 

@@ -5,7 +5,7 @@
 
     <style name="Theme.Comunidapp.Splash" parent="Theme.SplashScreen">
         <item name="windowSplashScreenBackground">@color/leover_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@mipmap/ic_launcher</item>
+        <item name="windowSplashScreenAnimatedIcon">@drawable/logo_leover</item>
         <item name="postSplashScreenTheme">@style/Theme.Comunidapp</item>
     </style>
 </resources>

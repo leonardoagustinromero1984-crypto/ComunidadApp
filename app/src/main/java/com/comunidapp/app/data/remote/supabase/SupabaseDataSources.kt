@@ -101,6 +101,23 @@ class PetSupabaseDataSource {
 
     fun observePet(petId: String): Flow<Pet?> = pollingFlow { getPet(petId) }
 
+    suspend fun fetchPetsByOwner(ownerId: String): List<Pet> {
+        return try {
+            supabase.from(SupabaseTables.PETS)
+                .select {
+                    filter { eq("owner_id", ownerId) }
+                    order("created_at", Order.DESCENDING)
+                }
+                .decodeList<PetRow>()
+                .map(::parsePet)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun observePetsForOwner(ownerId: String): Flow<List<Pet>> =
+        pollingFlow { fetchPetsByOwner(ownerId) }
+
     suspend fun createPet(pet: Pet): Result<String> {
         return try {
             val row = if (pet.id.isBlank()) {

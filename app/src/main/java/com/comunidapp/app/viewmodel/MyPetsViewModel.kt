@@ -12,7 +12,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -26,8 +25,7 @@ class MyPetsViewModel(
             if (authUser == null) {
                 flowOf(emptyList())
             } else {
-                petRepository.observePets()
-                    .map { all -> all.filter { it.ownerId == authUser.id } }
+                petRepository.observePetsForOwner(authUser.id)
             }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())

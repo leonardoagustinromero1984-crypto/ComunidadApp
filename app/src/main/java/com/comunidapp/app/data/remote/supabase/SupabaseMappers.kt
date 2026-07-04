@@ -8,6 +8,7 @@ import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.PostType
+import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.model.VaccinationRecord
 import kotlinx.serialization.Serializable
@@ -59,7 +60,13 @@ data class PetRow(
     val description: String,
     val vaccinations: List<VaccinationRecordDto> = emptyList(),
     val lastDeworming: String? = null,
+    val dewormingProduct: String? = null,
     val lastFleaTreatment: String? = null,
+    val fleaTreatmentProduct: String? = null,
+    val sterilized: String? = null,
+    val microchipId: String? = null,
+    val lastVetVisit: String? = null,
+    val healthNotes: String? = null,
     val reminders: List<PetReminderDto> = emptyList(),
     val createdAt: String? = null,
     val updatedAt: String? = null
@@ -130,7 +137,13 @@ fun parsePet(row: PetRow): Pet = Pet(
     description = row.description,
     vaccinations = row.vaccinations.map { VaccinationRecord(it.name, it.date, it.nextDueDate) },
     lastDeworming = row.lastDeworming,
+    dewormingProduct = row.dewormingProduct,
     lastFleaTreatment = row.lastFleaTreatment,
+    fleaTreatmentProduct = row.fleaTreatmentProduct,
+    sterilized = SterilizationStatus.fromString(row.sterilized),
+    microchipId = row.microchipId,
+    lastVetVisit = row.lastVetVisit,
+    healthNotes = row.healthNotes,
     reminders = row.reminders.map { PetReminder(it.id, it.title, it.date, it.type) },
     createdAt = row.createdAt.toEpochMillis(),
     updatedAt = row.updatedAt.toEpochMillis()
@@ -149,7 +162,13 @@ fun Pet.toPetRow(now: Instant = Instant.now()): PetRow = PetRow(
     description = description,
     vaccinations = vaccinations.map { VaccinationRecordDto(it.name, it.date, it.nextDueDate) },
     lastDeworming = lastDeworming,
+    dewormingProduct = dewormingProduct,
     lastFleaTreatment = lastFleaTreatment,
+    fleaTreatmentProduct = fleaTreatmentProduct,
+    sterilized = sterilized?.name,
+    microchipId = microchipId,
+    lastVetVisit = lastVetVisit,
+    healthNotes = healthNotes,
     reminders = reminders.map { PetReminderDto(it.id, it.title, it.date, it.type) },
     createdAt = (createdAt?.let { Instant.ofEpochMilli(it) } ?: now).toString(),
     updatedAt = now.toString()

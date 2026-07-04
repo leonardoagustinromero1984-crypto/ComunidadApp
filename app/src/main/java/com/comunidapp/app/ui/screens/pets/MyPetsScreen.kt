@@ -27,9 +27,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.Pet
+import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.PetCard
-import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.util.formatDisplayDate
 import com.comunidapp.app.viewmodel.MyPetsViewModel
 
 @Composable
@@ -103,23 +104,58 @@ private fun PetHealthCard(pet: Pet) {
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
-            pet.vaccinations.forEach { vac ->
+            pet.sterilized?.let {
                 Text(
-                    text = "💉 ${vac.name}: ${vac.date}${vac.nextDueDate?.let { " (próx: $it)" } ?: ""}",
+                    text = "Castración: ${when (it) {
+                        SterilizationStatus.YES -> "Sí"
+                        SterilizationStatus.NO -> "No"
+                        SterilizationStatus.UNKNOWN -> "No especificado"
+                    }}",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            pet.microchipId?.let {
+                Text(
+                    text = "Microchip: $it",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            pet.lastVetVisit?.let {
+                Text(
+                    text = "Última consulta: ${formatDisplayDate(it)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            pet.vaccinations.forEach { vac ->
+                val next = vac.nextDueDate?.takeIf { d -> d.isNotBlank() }?.let { " · Próx: ${formatDisplayDate(it)}" }.orEmpty()
+                Text(
+                    text = "💉 ${vac.name}: ${formatDisplayDate(vac.date)}$next",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
             pet.lastDeworming?.let {
+                val product = pet.dewormingProduct?.let { p -> " ($p)" }.orEmpty()
                 Text(
-                    text = "🪱 Desparasitación: $it",
+                    text = "🪱 Desparasitación: ${formatDisplayDate(it)}$product",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
             pet.lastFleaTreatment?.let {
+                val product = pet.fleaTreatmentProduct?.let { p -> " ($p)" }.orEmpty()
                 Text(
-                    text = "🐾 Antipulgas: $it",
+                    text = "🐾 Antiparasitarios: ${formatDisplayDate(it)}$product",
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            pet.healthNotes?.let {
+                Text(
+                    text = "Notas: $it",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp)
                 )

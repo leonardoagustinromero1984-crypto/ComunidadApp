@@ -31,11 +31,13 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.Pet
+import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.ageDisplay
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.util.formatDisplayDate
 import com.comunidapp.app.viewmodel.PetDetailViewModel
 
 @Composable
@@ -174,18 +176,71 @@ private fun PetHealthSection(pet: Pet) {
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            pet.vaccinations.forEach { vac ->
+            pet.sterilized?.let {
                 Text(
-                    text = "💉 ${vac.name}: ${vac.date}${vac.nextDueDate?.let { " (próx: $it)" } ?: ""}",
+                    text = "Castración: ${when (it) {
+                        SterilizationStatus.YES -> "Sí"
+                        SterilizationStatus.NO -> "No"
+                        SterilizationStatus.UNKNOWN -> "No especificado"
+                    }}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            pet.microchipId?.let {
+                Text(
+                    text = "Microchip: $it",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            pet.lastVetVisit?.let {
+                Text(
+                    text = "Última consulta: ${formatDisplayDate(it)}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            pet.vaccinations.forEach { vac ->
+                val next = vac.nextDueDate?.takeIf { d -> d.isNotBlank() }?.let { " · Próx: ${formatDisplayDate(it)}" }.orEmpty()
+                Text(
+                    text = "💉 ${vac.name}: ${formatDisplayDate(vac.date)}$next",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
             pet.lastDeworming?.let {
-                Text("🪱 Desparasitación: $it", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 8.dp))
+                val product = pet.dewormingProduct?.let { p -> " ($p)" }.orEmpty()
+                Text(
+                    text = "🪱 Desparasitación: ${formatDisplayDate(it)}$product",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
             pet.lastFleaTreatment?.let {
-                Text("🐾 Antipulgas: $it", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(top = 4.dp))
+                val product = pet.fleaTreatmentProduct?.let { p -> " ($p)" }.orEmpty()
+                Text(
+                    text = "🐾 Antiparasitarios: ${formatDisplayDate(it)}$product",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            pet.healthNotes?.let {
+                Text(
+                    text = "Notas: $it",
+                    style = MaterialTheme.typography.bodyMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
+            if (pet.vaccinations.isEmpty() && pet.lastDeworming == null && pet.lastFleaTreatment == null &&
+                pet.sterilized == null && pet.microchipId == null && pet.lastVetVisit == null && pet.healthNotes == null
+            ) {
+                Text(
+                    text = "Sin datos de salud registrados.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
             if (pet.reminders.isNotEmpty()) {
                 Text(

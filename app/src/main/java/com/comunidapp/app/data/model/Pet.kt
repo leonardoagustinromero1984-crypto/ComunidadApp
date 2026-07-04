@@ -26,7 +26,13 @@ data class Pet(
     val description: String,
     val vaccinations: List<VaccinationRecord> = emptyList(),
     val lastDeworming: String? = null,
+    val dewormingProduct: String? = null,
     val lastFleaTreatment: String? = null,
+    val fleaTreatmentProduct: String? = null,
+    val sterilized: SterilizationStatus? = null,
+    val microchipId: String? = null,
+    val lastVetVisit: String? = null,
+    val healthNotes: String? = null,
     val reminders: List<PetReminder> = emptyList(),
     val createdAt: Long? = null,
     val updatedAt: Long? = null
