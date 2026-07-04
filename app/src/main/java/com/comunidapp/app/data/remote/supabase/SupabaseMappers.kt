@@ -11,6 +11,7 @@ import com.comunidapp.app.data.model.PostType
 import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.model.VaccinationRecord
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.Instant
 
@@ -18,7 +19,7 @@ import java.time.Instant
 data class VaccinationRecordDto(
     val name: String,
     val date: String,
-    val nextDueDate: String? = null
+    @SerialName("next_due_date") val nextDueDate: String? = null
 )
 
 @Serializable
@@ -34,59 +35,78 @@ data class UserRow(
     val id: String,
     val email: String,
     val name: String,
-    val accountType: String = AccountType.PERSON.name,
-    val profileImageUrl: String? = null,
+    @SerialName("account_type") val accountType: String = AccountType.PERSON.name,
+    @SerialName("profile_image_url") val profileImageUrl: String? = null,
     val bio: String? = null,
-    val locationText: String? = null,
+    @SerialName("location_text") val locationText: String? = null,
     val phone: String? = null,
-    val phonePublic: Boolean = false,
-    val emailVerified: Boolean = false,
-    val fosterHomeActive: Boolean = false,
-    val createdAt: String? = null,
-    val updatedAt: String? = null
+    @SerialName("phone_public") val phonePublic: Boolean = false,
+    @SerialName("email_verified") val emailVerified: Boolean = false,
+    @SerialName("foster_home_active") val fosterHomeActive: Boolean = false,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable
 data class PetRow(
     val id: String,
-    val ownerId: String,
+    @SerialName("owner_id") val ownerId: String,
     val name: String,
-    val photoUrl: String? = null,
+    @SerialName("photo_url") val photoUrl: String? = null,
     val species: String,
     val sex: String,
-    val ageYears: Int = 0,
-    val ageMonths: Int = 0,
+    @SerialName("age_years") val ageYears: Int = 0,
+    @SerialName("age_months") val ageMonths: Int = 0,
     val size: String,
     val description: String,
     val vaccinations: List<VaccinationRecordDto> = emptyList(),
-    val lastDeworming: String? = null,
-    val dewormingProduct: String? = null,
-    val lastFleaTreatment: String? = null,
-    val fleaTreatmentProduct: String? = null,
+    @SerialName("last_deworming") val lastDeworming: String? = null,
+    @SerialName("deworming_product") val dewormingProduct: String? = null,
+    @SerialName("last_flea_treatment") val lastFleaTreatment: String? = null,
+    @SerialName("flea_treatment_product") val fleaTreatmentProduct: String? = null,
     val sterilized: String? = null,
-    val microchipId: String? = null,
-    val lastVetVisit: String? = null,
-    val healthNotes: String? = null,
+    @SerialName("microchip_id") val microchipId: String? = null,
+    @SerialName("last_vet_visit") val lastVetVisit: String? = null,
+    @SerialName("health_notes") val healthNotes: String? = null,
     val reminders: List<PetReminderDto> = emptyList(),
-    val createdAt: String? = null,
-    val updatedAt: String? = null
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
 )
 
 @Serializable
 data class PostRow(
     val id: String,
-    val authorId: String,
-    val authorName: String,
-    val authorImageUrl: String? = null,
+    @SerialName("author_id") val authorId: String,
+    @SerialName("author_name") val authorName: String,
+    @SerialName("author_image_url") val authorImageUrl: String? = null,
     val type: String,
     val title: String,
     val content: String,
-    val imageUrl: String? = null,
-    val locationText: String? = null,
-    val likeCount: Int = 0,
-    val commentCount: Int = 0,
-    val createdAt: String? = null,
-    val updatedAt: String? = null
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("location_text") val locationText: String? = null,
+    @SerialName("like_count") val likeCount: Int = 0,
+    @SerialName("comment_count") val commentCount: Int = 0,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
+@Serializable
+data class UserUpdateRow(
+    val name: String,
+    @SerialName("account_type") val accountType: String,
+    @SerialName("profile_image_url") val profileImageUrl: String? = null,
+    val bio: String? = null,
+    @SerialName("location_text") val locationText: String? = null,
+    val phone: String? = null,
+    @SerialName("phone_public") val phonePublic: Boolean = false,
+    @SerialName("foster_home_active") val fosterHomeActive: Boolean = false,
+    @SerialName("updated_at") val updatedAt: String
+)
+
+@Serializable
+data class UserEmailVerifiedUpdateRow(
+    @SerialName("email_verified") val emailVerified: Boolean,
+    @SerialName("updated_at") val updatedAt: String
 )
 
 @Serializable
@@ -106,6 +126,18 @@ fun parseUser(row: UserRow): User = User(
     fosterHomeActive = row.fosterHomeActive,
     createdAt = row.createdAt.toEpochMillis(),
     updatedAt = row.updatedAt.toEpochMillis()
+)
+
+fun User.toUserUpdateRow(now: Instant = Instant.now()): UserUpdateRow = UserUpdateRow(
+    name = name,
+    accountType = accountType.name,
+    profileImageUrl = profileImageUrl,
+    bio = bio,
+    locationText = locationText,
+    phone = phone,
+    phonePublic = phonePublic,
+    fosterHomeActive = fosterHomeActive,
+    updatedAt = now.toString()
 )
 
 fun User.toUserRow(now: Instant = Instant.now()): UserRow = UserRow(

@@ -27,7 +27,7 @@ object SupabaseClientProvider {
                 host = SupabaseAuthConfig.HOST
             }
             install(Postgrest) {
-                propertyConversionMethod = PropertyConversionMethod.CAMEL_CASE_TO_SNAKE_CASE
+                propertyConversionMethod = PropertyConversionMethod.SERIAL_NAME
             }
             install(Storage)
             install(Realtime)

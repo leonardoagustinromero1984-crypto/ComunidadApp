@@ -133,6 +133,7 @@ Si **no** configurás `SUPABASE_URL` y `SUPABASE_ANON_KEY` en `local.properties`
 | Proyecto pausado (Free) | Dashboard → **Restore project** (inactividad 7 días) |
 | Error al registrarse pero llega el mail | Ejecutar `004_auth_user_profile_trigger.sql` y configurar Site URL (no localhost) |
 | Link del mail va a localhost | Site URL = `com.comunidapp.app://login-callback` en Auth → URL Configuration |
+| **`email rate limit exceeded`** | Supabase Free limita ~3–4 emails/hora. Esperá 30–60 min, probá otro email, o desactivá **Confirm email** en Auth → Providers → Email mientras desarrollás |
 | RLS permission denied | Verificar que estás logueado y las policies están aplicadas |
 
 ---

@@ -104,19 +104,26 @@ class EditProfileViewModel(
             var imageUrl = state.profileImageUrl
             state.pendingImageUri?.let { uri ->
                 val storage = DataProvider.storageService
-                if (storage != null) {
-                    storage.uploadImage(StoragePaths.userAvatar(state.userId), uri)
-                        .onSuccess { imageUrl = it }
-                        .onFailure { error ->
-                            _uiState.update {
-                                it.copy(
-                                    isSaving = false,
-                                    errorMessage = error.message ?: "No se pudo subir la foto"
-                                )
-                            }
-                            return@launch
-                        }
+                if (storage == null) {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            errorMessage = "No se pudo subir la foto. Storage no disponible."
+                        )
+                    }
+                    return@launch
                 }
+                storage.uploadImage(StoragePaths.userAvatar(state.userId), uri)
+                    .onSuccess { imageUrl = it }
+                    .onFailure { error ->
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                errorMessage = error.message ?: "No se pudo subir la foto"
+                            )
+                        }
+                        return@launch
+                    }
             }
 
             val updatedUser = baseUser.copy(

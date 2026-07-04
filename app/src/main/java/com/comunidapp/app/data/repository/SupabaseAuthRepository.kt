@@ -217,16 +217,24 @@ class SupabaseAuthRepository(
         emailConfirmedAt != null
 
     private fun mapSupabaseException(e: Exception): Exception {
+        val raw = e.message.orEmpty()
         val message = when {
-            e.message?.contains("Invalid login credentials", ignoreCase = true) == true ->
+            raw.contains("rate limit", ignoreCase = true) ||
+                raw.contains("over_email_send_rate_limit", ignoreCase = true) ||
+                raw.contains("email rate limit exceeded", ignoreCase = true) ->
+                "Supabase limitó el envío de emails (demasiados intentos de registro o reenvío). " +
+                    "Esperá 30–60 minutos, usá otro email, o desactivá temporalmente " +
+                    "'Confirm email' en Supabase → Authentication → Providers → Email."
+            raw.contains("Invalid login credentials", ignoreCase = true) ->
                 "Email o contraseña incorrectos"
-            e.message?.contains("User already registered", ignoreCase = true) == true ->
-                "Ya existe una cuenta con ese email"
-            e.message?.contains("Password should be at least", ignoreCase = true) == true ->
+            raw.contains("User already registered", ignoreCase = true) ||
+                raw.contains("already been registered", ignoreCase = true) ->
+                "Ya existe una cuenta con ese email. Revisá tu bandeja o iniciá sesión."
+            raw.contains("Password should be at least", ignoreCase = true) ->
                 "La contraseña debe tener al menos 6 caracteres"
-            e.message?.contains("Unable to validate email", ignoreCase = true) == true ->
+            raw.contains("Unable to validate email", ignoreCase = true) ->
                 "No encontramos una cuenta con ese email"
-            else -> e.message ?: "Ocurrió un error. Intentá de nuevo."
+            else -> raw.ifBlank { "Ocurrió un error. Intentá de nuevo." }
         }
         return IllegalArgumentException(message)
     }

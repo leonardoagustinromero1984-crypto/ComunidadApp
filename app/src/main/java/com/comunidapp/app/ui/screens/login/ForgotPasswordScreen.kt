@@ -261,9 +261,15 @@ fun EmailVerificationScreen(
             OutlinedButton(
                 onClick = { viewModel.resendVerification(email) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading
+                enabled = !uiState.isLoading && uiState.resendCooldownSeconds == 0
             ) {
-                Text("Reenviar email")
+                Text(
+                    if (uiState.resendCooldownSeconds > 0) {
+                        "Reenviar en ${uiState.resendCooldownSeconds}s"
+                    } else {
+                        "Reenviar email"
+                    }
+                )
             }
 
             uiState.successMessage?.let { msg ->

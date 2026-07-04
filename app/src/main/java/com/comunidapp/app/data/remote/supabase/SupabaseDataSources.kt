@@ -37,8 +37,7 @@ class UserSupabaseDataSource {
 
     suspend fun updateUser(user: User): Result<Unit> {
         return try {
-            val row = user.toUserRow()
-            supabase.from(SupabaseTables.USERS).update(row) {
+            supabase.from(SupabaseTables.USERS).update(user.toUserUpdateRow()) {
                 filter { eq("id", user.id) }
             }
             Result.success(Unit)
@@ -50,9 +49,9 @@ class UserSupabaseDataSource {
     suspend fun updateEmailVerified(userId: String, verified: Boolean): Result<Unit> {
         return try {
             supabase.from(SupabaseTables.USERS).update(
-                mapOf(
-                    "email_verified" to verified,
-                    "updated_at" to nowIso()
+                UserEmailVerifiedUpdateRow(
+                    emailVerified = verified,
+                    updatedAt = nowIso()
                 )
             ) {
                 filter { eq("id", userId) }
