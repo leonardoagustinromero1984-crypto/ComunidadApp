@@ -1,0 +1,48 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuth() {
+      return request.auth != null;
+    }
+    function isOwner(userId) {
+      return isAuth() && request.auth.uid == userId;
+    }
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+    function isUnder5MB() {
+      return request.resource.size < 5 * 1024 * 1024;
+    }
+
+    match /users/{userId}/{allPaths=**} {
+      allow read: if isAuth();
+      allow write: if isOwner(userId) && isImage() && isUnder5MB();
+    }
+
+    match /posts/{postId}/{allPaths=**} {
+      allow read: if isAuth();
+      allow write: if isAuth() && isImage() && isUnder5MB();
+    }
+
+    match /adoptions/{adoptionId}/{allPaths=**} {
+      allow read: if isAuth();
+      allow write: if isAuth() && isImage() && isUnder5MB();
+    }
+
+    match /lost_found/{postId}/{allPaths=**} {
+      allow read: if isAuth();
+      allow write: if isAuth() && isImage() && isUnder5MB();
+    }
+
+    match /organizations/{orgId}/{allPaths=**} {
+      allow read: if isAuth();
+      allow write: if isAuth() && isImage() && isUnder5MB();
+    }
+
+    match /events/{eventId}/{allPaths=**} {
+      allow read: if isAuth();
+      allow write: if isAuth() && isImage() && isUnder5MB();
+    }
+  }
+}

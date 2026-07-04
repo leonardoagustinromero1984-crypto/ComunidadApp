@@ -2,6 +2,7 @@ package com.comunidapp.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.mock.MockAuthDatabase
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
@@ -78,6 +79,7 @@ data class RegisterUiState(
     val email: String = "",
     val password: String = "",
     val confirmPassword: String = "",
+    val accountType: AccountType = AccountType.PERSON,
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
     val registeredEmail: String? = null
@@ -106,6 +108,10 @@ class RegisterViewModel(
         _uiState.update { it.copy(confirmPassword = confirmPassword, errorMessage = null) }
     }
 
+    fun onAccountTypeChange(accountType: AccountType) {
+        _uiState.update { it.copy(accountType = accountType, errorMessage = null) }
+    }
+
     fun register() {
         val state = _uiState.value
         if (state.password != state.confirmPassword) {
@@ -114,7 +120,7 @@ class RegisterViewModel(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            authRepository.register(state.name, state.email, state.password)
+            authRepository.register(state.name, state.email, state.password, state.accountType)
                 .onSuccess {
                     _uiState.update { s ->
                         s.copy(

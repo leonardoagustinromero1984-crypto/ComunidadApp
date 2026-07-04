@@ -99,7 +99,7 @@ fun FeedPostCard(post: FeedPost, modifier: Modifier = Modifier) {
                 )
             }
 
-            post.location?.let { location ->
+            post.locationText?.let { location ->
                 Spacer(modifier = Modifier.height(8.dp))
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
@@ -129,7 +129,7 @@ fun FeedPostCard(post: FeedPost, modifier: Modifier = Modifier) {
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${post.likes}",
+                        text = "${post.likeCount}",
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
@@ -142,7 +142,7 @@ fun FeedPostCard(post: FeedPost, modifier: Modifier = Modifier) {
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
-                        text = "${post.comments}",
+                        text = "${post.commentCount}",
                         style = MaterialTheme.typography.labelMedium
                     )
                 }

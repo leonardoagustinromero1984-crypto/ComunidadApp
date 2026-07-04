@@ -27,5 +27,7 @@ data class Pet(
     val vaccinations: List<VaccinationRecord> = emptyList(),
     val lastDeworming: String? = null,
     val lastFleaTreatment: String? = null,
-    val reminders: List<PetReminder> = emptyList()
+    val reminders: List<PetReminder> = emptyList(),
+    val createdAt: Long? = null,
+    val updatedAt: Long? = null
 )

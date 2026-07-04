@@ -3,8 +3,11 @@ package com.comunidapp.app.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -12,6 +15,7 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.comunidapp.app.ui.components.ComunidappBottomBar
+import com.comunidapp.app.ui.components.SessionLoadingScreen
 import com.comunidapp.app.ui.components.bottomNavItems
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionsScreen
@@ -23,21 +27,44 @@ import com.comunidapp.app.ui.screens.login.RegisterScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundScreen
 import com.comunidapp.app.ui.screens.pets.MyPetsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
+import com.comunidapp.app.ui.screens.profile.EditProfileScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
+import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
 import com.comunidapp.app.ui.screens.publish.PublishAdoptionScreen
 import com.comunidapp.app.ui.screens.publish.PublishGeneralScreen
 import com.comunidapp.app.ui.screens.publish.PublishLostFoundScreen
 import com.comunidapp.app.ui.screens.publish.PublishScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterDetailScreen
 import com.comunidapp.app.ui.screens.shelters.SheltersScreen
+import com.comunidapp.app.viewmodel.SessionState
+import com.comunidapp.app.viewmodel.SessionViewModel
 
 @Composable
-fun ComunidappNavGraph() {
+fun ComunidappNavGraph(
+    sessionViewModel: SessionViewModel = viewModel()
+) {
+    val sessionState by sessionViewModel.sessionState.collectAsState()
+
+    when (sessionState) {
+        SessionState.Loading -> SessionLoadingScreen()
+        SessionState.LoggedOut, SessionState.LoggedIn -> {
+            key(sessionState) {
+                RootNavHost(
+                    isLoggedIn = sessionState == SessionState.LoggedIn
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RootNavHost(isLoggedIn: Boolean) {
     val rootNavController = rememberNavController()
+    val startDestination = if (isLoggedIn) NavRoutes.MAIN else NavRoutes.LOGIN
 
     NavHost(
         navController = rootNavController,
-        startDestination = NavRoutes.LOGIN
+        startDestination = startDestination
     ) {
         composable(NavRoutes.LOGIN) {
             LoginScreen(
@@ -142,9 +169,26 @@ private fun MainScreen() {
             }
             composable(NavRoutes.PROFILE) {
                 ProfileScreen(
+                    onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                     onNavigateToMyPets = { navController.navigate(NavRoutes.MY_PETS) },
                     onNavigateToLostFound = { navController.navigate(NavRoutes.LOST_FOUND) },
                     onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
+                )
+            }
+            composable(NavRoutes.EDIT_PROFILE) {
+                EditProfileScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaveSuccess = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.USER_PROFILE,
+                arguments = listOf(navArgument(NavRoutes.ARG_USER_ID) { type = NavType.StringType })
+            ) { backStackEntry ->
+                val userId = backStackEntry.arguments?.getString(NavRoutes.ARG_USER_ID) ?: ""
+                UserPublicProfileScreen(
+                    userId = userId,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(NavRoutes.MY_PETS) {

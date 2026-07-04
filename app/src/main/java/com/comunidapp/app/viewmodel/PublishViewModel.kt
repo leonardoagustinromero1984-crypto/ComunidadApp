@@ -61,7 +61,7 @@ class PublishViewModel(
                     type = PostType.GENERAL,
                     title = title.trim(),
                     content = content.trim(),
-                    location = location.trim().ifBlank { null },
+                    locationText = location.trim().ifBlank { null },
                     date = "Ahora"
                 )
             )
@@ -107,7 +107,7 @@ class PublishViewModel(
                     type = PostType.ADOPTION,
                     title = "$name busca familia",
                     content = description.trim(),
-                    location = location.trim(),
+                    locationText = location.trim(),
                     date = "Ahora"
                 )
             )
@@ -154,7 +154,7 @@ class PublishViewModel(
                     type = PostType.LOST_FOUND,
                     title = if (type == LostFoundType.LOST) "Mascota perdida" else "Mascota encontrada",
                     content = description.trim(),
-                    location = location.trim(),
+                    locationText = location.trim(),
                     date = "Ahora"
                 )
             )

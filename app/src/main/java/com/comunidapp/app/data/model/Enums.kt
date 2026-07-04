@@ -1,5 +1,20 @@
 package com.comunidapp.app.data.model
 
+enum class AccountType {
+    PERSON,
+    SHELTER,
+    VET,
+    TRAINER,
+    WALKER,
+    SHOP,
+    FOSTER_HOME;
+
+    companion object {
+        fun fromString(value: String?): AccountType =
+            entries.find { it.name == value } ?: PERSON
+    }
+}
+
 enum class PetSpecies {
     DOG,
     CAT,
@@ -33,5 +48,10 @@ enum class PostType {
     GENERAL,
     ADOPTION,
     LOST_FOUND,
-    URGENT
+    URGENT;
+
+    companion object {
+        fun fromString(value: String?): PostType =
+            entries.find { it.name == value } ?: GENERAL
+    }
 }

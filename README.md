@@ -1,6 +1,6 @@
-# ComunidadApp
+# Leover
 
-Red social móvil para la comunidad de mascotas: adopciones, refugios, avisos de perdidos/encontrados y publicaciones.
+Plataforma móvil para la comunidad animal: adopciones, refugios, avisos de perdidos/encontrados y publicaciones. Conecta personas, mascotas, refugios y organizaciones en un único ecosistema.
 
 ## Stack
 
@@ -28,6 +28,8 @@ Red social móvil para la comunidad de mascotas: adopciones, refugios, avisos de
 - Contraseña: `123456`
 
 Con Firebase habilitado, registrate con un email real y verificá la cuenta desde el enlace que llega al correo.
+
+La app recuerda la sesión: si ya iniciaste sesión, al reabrir entrás directo al inicio. Podés cerrar sesión desde **Mi perfil**.
 
 ## Estructura
 

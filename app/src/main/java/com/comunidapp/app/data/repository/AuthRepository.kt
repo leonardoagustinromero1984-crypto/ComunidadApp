@@ -1,17 +1,28 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.AuthAccount
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.mock.MockAuthDatabase
 import com.comunidapp.app.data.mock.MockData
+import com.comunidapp.app.data.mock.MockUserStore
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 
 class EmailNotVerifiedException(email: String) :
     Exception("Debés confirmar tu email ($email) antes de iniciar sesión.")
 
 interface AuthRepository {
     suspend fun login(email: String, password: String): Result<User>
-    suspend fun register(name: String, email: String, password: String): Result<User>
+    suspend fun register(
+        name: String,
+        email: String,
+        password: String,
+        accountType: AccountType = AccountType.PERSON
+    ): Result<User>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
     suspend fun resetPassword(email: String, token: String, newPassword: String): Result<Unit>
     suspend fun sendEmailVerification(email: String): Result<Unit>
@@ -19,11 +30,22 @@ interface AuthRepository {
     suspend fun isEmailVerified(email: String): Boolean
     fun getCurrentUser(): User?
     fun logout()
+    fun observeAuthState(): Flow<User?>
 }
 
 class MockAuthRepository : AuthRepository {
 
-    private var loggedInUser: User? = null
+    private val _authState = MutableStateFlow<User?>(null)
+
+    override fun observeAuthState(): Flow<User?> = _authState.map { user ->
+        if (user == null) return@map null
+        val account = MockAuthDatabase.findByEmail(user.email)
+        if (account != null && !account.emailVerified) null else user
+    }
+
+    private fun setLoggedInUser(user: User?) {
+        _authState.value = user
+    }
 
     override suspend fun login(email: String, password: String): Result<User> {
         delay(800)
@@ -40,21 +62,30 @@ class MockAuthRepository : AuthRepository {
                 !account.emailVerified ->
                     Result.failure(EmailNotVerifiedException(normalizedEmail))
                 else -> {
-                    loggedInUser = User(
-                        id = "user_${normalizedEmail.hashCode()}",
+                    val userId = resolveMockUserId(normalizedEmail)
+                    val stored = MockUserStore.get(userId)
+                    val user = stored ?: User(
+                        id = userId,
                         name = account.name,
                         email = account.email
                     )
-                    Result.success(loggedInUser!!)
+                    setLoggedInUser(user)
+                    Result.success(user)
                 }
             }
         } else {
-            loggedInUser = MockData.currentUser.copy(email = normalizedEmail)
-            Result.success(loggedInUser!!)
+            val user = MockData.currentUser.copy(email = normalizedEmail)
+            setLoggedInUser(user)
+            Result.success(user)
         }
     }
 
-    override suspend fun register(name: String, email: String, password: String): Result<User> {
+    override suspend fun register(
+        name: String,
+        email: String,
+        password: String,
+        accountType: AccountType
+    ): Result<User> {
         delay(800)
         val normalizedEmail = email.trim().lowercase()
         if (name.isBlank() || normalizedEmail.isBlank() || password.isBlank()) {
@@ -77,9 +108,24 @@ class MockAuthRepository : AuthRepository {
         )
         sendEmailVerification(normalizedEmail)
 
-        val user = User(id = "user_new", name = name.trim(), email = normalizedEmail)
-        loggedInUser = user
+        val userId = resolveMockUserId(normalizedEmail)
+        val user = User(
+            id = userId,
+            name = name.trim(),
+            email = normalizedEmail,
+            accountType = accountType
+        )
+        MockUserStore.upsert(user)
+        setLoggedInUser(user)
         return Result.success(user)
+    }
+
+    private fun resolveMockUserId(email: String): String {
+        return if (email == MockData.currentUser.email.lowercase()) {
+            MockData.currentUser.id
+        } else {
+            "user_${email.hashCode()}"
+        }
     }
 
     override suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
@@ -133,9 +179,9 @@ class MockAuthRepository : AuthRepository {
         return MockAuthDatabase.findByEmail(email.trim().lowercase())?.emailVerified == true
     }
 
-    override fun getCurrentUser(): User? = loggedInUser
+    override fun getCurrentUser(): User? = _authState.value
 
     override fun logout() {
-        loggedInUser = null
+        setLoggedInUser(null)
     }
 }

@@ -1,6 +1,10 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.User
+import com.comunidapp.app.data.remote.firestore.FirestoreCollections
+import com.comunidapp.app.data.remote.firestore.toFirestoreMap
+import com.comunidapp.app.data.remote.firestore.toUser
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseAuthInvalidCredentialsException
 import com.google.firebase.auth.FirebaseAuthInvalidUserException
@@ -9,6 +13,9 @@ import com.google.firebase.auth.FirebaseAuthWeakPasswordException
 import com.google.firebase.auth.UserProfileChangeRequest
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.SetOptions
+import kotlinx.coroutines.channels.awaitClose
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 import kotlinx.coroutines.tasks.await
 
 class FirebaseAuthRepository : AuthRepository {
@@ -42,7 +49,12 @@ class FirebaseAuthRepository : AuthRepository {
         }
     }
 
-    override suspend fun register(name: String, email: String, password: String): Result<User> {
+    override suspend fun register(
+        name: String,
+        email: String,
+        password: String,
+        accountType: AccountType
+    ): Result<User> {
         val normalizedEmail = email.trim().lowercase()
         if (name.isBlank() || normalizedEmail.isBlank() || password.isBlank()) {
             return Result.failure(IllegalArgumentException("Todos los campos son requeridos"))
@@ -59,7 +71,8 @@ class FirebaseAuthRepository : AuthRepository {
             val user = User(
                 id = firebaseUser.uid,
                 name = name.trim(),
-                email = normalizedEmail
+                email = normalizedEmail,
+                accountType = accountType
             )
             saveUserToFirestore(user)
             firebaseUser.sendEmailVerification().await()
@@ -119,7 +132,7 @@ class FirebaseAuthRepository : AuthRepository {
             }
             user.reload().await()
             if (user.isEmailVerified) {
-                firestore.collection(USERS_COLLECTION).document(user.uid)
+                firestore.collection(FirestoreCollections.USERS).document(user.uid)
                     .update("emailVerified", true)
                     .await()
                 auth.signOut()
@@ -154,33 +167,56 @@ class FirebaseAuthRepository : AuthRepository {
         auth.signOut()
     }
 
+    override fun observeAuthState(): Flow<User?> = callbackFlow {
+        val listener = FirebaseAuth.AuthStateListener { firebaseAuth ->
+            val firebaseUser = firebaseAuth.currentUser
+            val user = if (firebaseUser != null && firebaseUser.isEmailVerified) {
+                firebaseUser.toUser()
+            } else {
+                null
+            }
+            trySend(user)
+        }
+        auth.addAuthStateListener(listener)
+        awaitClose { auth.removeAuthStateListener(listener) }
+    }
+
+    private fun com.google.firebase.auth.FirebaseUser.toUser(): User = User(
+        id = uid,
+        name = displayName ?: "",
+        email = email ?: ""
+    )
+
     private suspend fun saveUserToFirestore(user: User) {
-        firestore.collection(USERS_COLLECTION).document(user.id).set(
-            mapOf(
-                "id" to user.id,
-                "name" to user.name,
-                "email" to user.email,
-                "emailVerified" to false,
-                "createdAt" to com.google.firebase.Timestamp.now()
-            ),
+        val now = com.google.firebase.Timestamp.now()
+        val userDoc = user.copy(
+            accountType = user.accountType,
+            emailVerified = false,
+            createdAt = user.createdAt ?: now.toDate().time,
+            updatedAt = now.toDate().time
+        )
+        firestore.collection(FirestoreCollections.USERS).document(user.id).set(
+            userDoc.toFirestoreMap(),
             SetOptions.merge()
         ).await()
     }
 
     private suspend fun fetchUserProfile(uid: String, email: String, displayName: String?): User {
         return try {
-            val doc = firestore.collection(USERS_COLLECTION).document(uid).get().await()
-            if (doc.exists()) {
-                User(
-                    id = uid,
-                    name = doc.getString("name") ?: displayName ?: "",
-                    email = doc.getString("email") ?: email
-                )
-            } else {
-                User(id = uid, name = displayName ?: "", email = email)
-            }
+            val doc = firestore.collection(FirestoreCollections.USERS).document(uid).get().await()
+            doc.toUser() ?: User(
+                id = uid,
+                name = displayName ?: "",
+                email = email,
+                accountType = AccountType.PERSON
+            )
         } catch (_: Exception) {
-            User(id = uid, name = displayName ?: "", email = email)
+            User(
+                id = uid,
+                name = displayName ?: "",
+                email = email,
+                accountType = AccountType.PERSON
+            )
         }
     }
 
@@ -193,9 +229,5 @@ class FirebaseAuthRepository : AuthRepository {
             else -> e.localizedMessage ?: "Ocurrió un error. Intentá de nuevo."
         }
         return IllegalArgumentException(message)
-    }
-
-    companion object {
-        private const val USERS_COLLECTION = "users"
     }
 }

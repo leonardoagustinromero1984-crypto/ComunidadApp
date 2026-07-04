@@ -9,8 +9,10 @@ data class FeedPost(
     val title: String,
     val content: String,
     val imageUrl: String? = null,
-    val location: String? = null,
-    val date: String,
-    val likes: Int = 0,
-    val comments: Int = 0
+    val locationText: String? = null,
+    val likeCount: Int = 0,
+    val commentCount: Int = 0,
+    val createdAt: Long? = null,
+    val updatedAt: Long? = null,
+    val date: String = ""
 )

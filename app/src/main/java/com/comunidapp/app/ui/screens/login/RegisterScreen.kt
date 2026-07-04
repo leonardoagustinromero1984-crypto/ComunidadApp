@@ -1,5 +1,7 @@
 package com.comunidapp.app.ui.screens.login
 
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -21,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.components.AccountTypeDropdown
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.PasswordTextField
 import com.comunidapp.app.viewmodel.RegisterViewModel
@@ -51,6 +54,7 @@ fun RegisterScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .padding(horizontal = 32.dp, vertical = 24.dp)
+                .verticalScroll(rememberScrollState())
         ) {
             OutlinedTextField(
                 value = uiState.name,
@@ -79,6 +83,14 @@ fun RegisterScreen(
                 value = uiState.confirmPassword,
                 onValueChange = viewModel::onConfirmPasswordChange,
                 label = "Confirmar contraseña"
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+            AccountTypeDropdown(
+                selected = uiState.accountType,
+                onSelected = viewModel::onAccountTypeChange,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading
             )
 
             uiState.errorMessage?.let { error ->

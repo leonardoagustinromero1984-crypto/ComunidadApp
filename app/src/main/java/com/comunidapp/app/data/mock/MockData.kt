@@ -41,7 +41,7 @@ object MockData {
         email = "maria@email.com",
         profileImageUrl = Images.USER,
         bio = "Amante de los animales. Adopté a Luna hace 2 años 🐾",
-        location = "Buenos Aires, Argentina",
+        locationText = "Buenos Aires, Argentina",
         petIds = listOf("pet_1", "pet_2")
     )
 
@@ -52,14 +52,14 @@ object MockData {
             name = "Refugio Patitas",
             email = "contacto@patitas.org",
             bio = "Refugio sin fines de lucro. Rescatamos y damos en adopción.",
-            location = "CABA, Argentina"
+            locationText = "CABA, Argentina"
         ),
         User(
             id = "user_3",
             name = "Carlos Ruiz",
             email = "carlos@email.com",
             bio = "Rescatista voluntario",
-            location = "La Plata, Argentina"
+            locationText = "La Plata, Argentina"
         )
     )
 
@@ -115,10 +115,10 @@ object MockData {
             title = "🚨 Urgente: necesitamos traslado",
             content = "Tenemos 5 cachorros que necesitan traslado urgente a un hogar temporal este fin de semana.",
             imageUrl = Images.FEED_1,
-            location = "CABA",
+            locationText = "CABA",
             date = "Hace 2 horas",
-            likes = 45,
-            comments = 12
+            likeCount = 45,
+            commentCount = 12
         ),
         FeedPost(
             id = "feed_2",
@@ -128,10 +128,10 @@ object MockData {
             title = "Día de parque con Luna",
             content = "Hoy Luna conoció a muchos amigos en el parque. ¡Qué feliz estaba!",
             imageUrl = Images.FEED_2,
-            location = "Palermo, CABA",
+            locationText = "Palermo, CABA",
             date = "Hace 5 horas",
-            likes = 23,
-            comments = 5
+            likeCount = 23,
+            commentCount = 5
         ),
         FeedPost(
             id = "feed_3",
@@ -141,10 +141,10 @@ object MockData {
             title = "Perro encontrado en La Plata",
             content = "Encontré un golden retriever cerca de la estación. Tiene collar rojo sin placa.",
             imageUrl = Images.FEED_3,
-            location = "La Plata",
+            locationText = "La Plata",
             date = "Ayer",
-            likes = 67,
-            comments = 18
+            likeCount = 67,
+            commentCount = 18
         ),
         FeedPost(
             id = "feed_4",
@@ -153,10 +153,10 @@ object MockData {
             type = PostType.ADOPTION,
             title = "Rocky busca familia",
             content = "Rocky es un labrador de 2 años, super sociable. Ideal para familias con niños.",
-            location = "CABA",
+            locationText = "CABA",
             date = "Hace 1 día",
-            likes = 89,
-            comments = 24
+            likeCount = 89,
+            commentCount = 24
         ),
         FeedPost(
             id = "feed_5",
@@ -165,10 +165,10 @@ object MockData {
             type = PostType.GENERAL,
             title = "Jornada de castraciones gratuitas",
             content = "Este sábado realizamos castraciones gratuitas. Inscribite enviando un mensaje.",
-            location = "Villa Crespo, CABA",
+            locationText = "Villa Crespo, CABA",
             date = "Hace 2 días",
-            likes = 112,
-            comments = 31
+            likeCount = 112,
+            commentCount = 31
         )
     )
 

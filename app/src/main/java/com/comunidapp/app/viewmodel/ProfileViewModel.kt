@@ -3,53 +3,65 @@ package com.comunidapp.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.model.FeedPost
-import com.comunidapp.app.data.model.LostFoundPost
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.User
-import com.comunidapp.app.data.mock.MockData
+import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.FeedRepository
-import com.comunidapp.app.data.repository.LostFoundRepository
-import com.comunidapp.app.data.repository.MockFeedRepository
-import com.comunidapp.app.data.repository.MockLostFoundRepository
-import com.comunidapp.app.data.repository.MockPetRepository
 import com.comunidapp.app.data.repository.PetRepository
-import kotlinx.coroutines.flow.MutableStateFlow
+import com.comunidapp.app.data.repository.UserRepository
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 
+data class ProfileUiState(
+    val isLoading: Boolean = true,
+    val user: User? = null,
+    val pets: List<Pet> = emptyList(),
+    val posts: List<FeedPost> = emptyList(),
+    val errorMessage: String? = null
+)
+
+@OptIn(ExperimentalCoroutinesApi::class)
 class ProfileViewModel(
-    petRepository: PetRepository = MockPetRepository(),
-    feedRepository: FeedRepository = MockFeedRepository()
+    private val authRepository: AuthRepository = AuthProvider.repository,
+    private val userRepository: UserRepository = DataProvider.userRepository,
+    private val petRepository: PetRepository = DataProvider.petRepository,
+    private val feedRepository: FeedRepository = DataProvider.feedRepository
 ) : ViewModel() {
 
-    private val _user = MutableStateFlow(MockData.currentUser)
-    val user: StateFlow<User> = _user.asStateFlow()
+    val uiState: StateFlow<ProfileUiState> = authRepository.observeAuthState()
+        .flatMapLatest { authUser ->
+            if (authUser == null) {
+                flowOf(ProfileUiState(isLoading = false, user = null))
+            } else {
+                combine(
+                    userRepository.observeUser(authUser.id),
+                    petRepository.observePets(),
+                    feedRepository.observeFeedPosts()
+                ) { profile, pets, posts ->
+                    val user = profile ?: authUser
+                    ProfileUiState(
+                        isLoading = false,
+                        user = user,
+                        pets = pets.filter { it.ownerId == authUser.id },
+                        posts = posts.filter { it.authorId == authUser.id }
+                    )
+                }
+            }
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = ProfileUiState()
+        )
 
-    val pets: StateFlow<List<Pet>> = petRepository.observePets()
-        .map { all -> all.filter { it.ownerId == MockData.currentUser.id } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-
-    val posts: StateFlow<List<FeedPost>> = feedRepository.observeFeedPosts()
-        .map { all -> all.filter { it.authorId == MockData.currentUser.id } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-}
-
-class MyPetsViewModel(
-    petRepository: PetRepository = MockPetRepository()
-) : ViewModel() {
-
-    val pets: StateFlow<List<Pet>> = petRepository.observePets()
-        .map { all -> all.filter { it.ownerId == MockData.currentUser.id } }
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
-}
-
-class LostFoundViewModel(
-    lostFoundRepository: LostFoundRepository = MockLostFoundRepository()
-) : ViewModel() {
-
-    val posts: StateFlow<List<LostFoundPost>> = lostFoundRepository.observeLostFoundPosts()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+    fun logout() {
+        authRepository.logout()
+    }
 }
