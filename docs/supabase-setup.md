@@ -8,6 +8,7 @@ Marca cada paso cuando lo completes:
 
 - [ ] **1.** Crear proyecto en [supabase.com](https://supabase.com)
 - [ ] **2.** Ejecutar SQL de tablas (`001_initial_schema.sql`)
+- [ ] **2b.** Ejecutar trigger de registro (`004_auth_user_profile_trigger.sql`)
 - [ ] **3.** Crear bucket Storage `leover` (público)
 - [ ] **4.** Ejecutar SQL de storage (`002_storage.sql`)
 - [ ] **5.** Configurar Auth (email + confirmación)
@@ -64,9 +65,14 @@ Esto crea las tablas `users`, `pets`, `posts` con Row Level Security.
 
 1. **Authentication** → **Providers** → **Email**
 2. Activá **Email** provider
-3. **Authentication** → **Settings** (o URL Configuration):
-   - **Confirm email**: recomendado ON (como Firebase)
-   - Site URL: `com.comunidapp.app://login-callback` (opcional para deep links futuros)
+3. **Authentication** → **URL Configuration**:
+   - **Site URL**: `com.comunidapp.app://login-callback`
+   - **Redirect URLs** (Additional): agregá también `com.comunidapp.app://login-callback`
+   - **Confirm email**: recomendado ON
+
+> **Importante:** si Site URL queda en `http://localhost:3000`, el link del mail de verificación no abrirá la app.
+
+4. **SQL Editor** → ejecutá también `004_auth_user_profile_trigger.sql` (crea el perfil en `public.users` al registrarse)
 
 Para pruebas rápidas podés desactivar "Confirm email" temporalmente; la app funciona igual pero sin verificación.
 
@@ -125,6 +131,8 @@ Si **no** configurás `SUPABASE_URL` y `SUPABASE_ANON_KEY` en `local.properties`
 | Error al subir imagen | Bucket `leover` público + `002_storage.sql` |
 | `Email not confirmed` | Revisá spam o desactivá confirmación en Auth settings |
 | Proyecto pausado (Free) | Dashboard → **Restore project** (inactividad 7 días) |
+| Error al registrarse pero llega el mail | Ejecutar `004_auth_user_profile_trigger.sql` y configurar Site URL (no localhost) |
+| Link del mail va a localhost | Site URL = `com.comunidapp.app://login-callback` en Auth → URL Configuration |
 | RLS permission denied | Verificar que estás logueado y las policies están aplicadas |
 
 ---

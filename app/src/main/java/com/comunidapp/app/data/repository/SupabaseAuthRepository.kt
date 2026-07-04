@@ -2,6 +2,7 @@ package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.User
+import com.comunidapp.app.data.remote.supabase.SupabaseAuthConfig
 import com.comunidapp.app.data.remote.supabase.UserSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.supabase
 import io.github.jan.supabase.auth.OtpType
@@ -12,6 +13,8 @@ import io.github.jan.supabase.auth.user.UserInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 
 class SupabaseAuthRepository(
     private val userDataSource: UserSupabaseDataSource = UserSupabaseDataSource()
@@ -53,24 +56,35 @@ class SupabaseAuthRepository(
             return Result.failure(IllegalArgumentException("Todos los campos son requeridos"))
         }
         return try {
-            supabase.auth.signUpWith(Email) {
+            val trimmedName = name.trim()
+            val signedUpUser = supabase.auth.signUpWith(
+                Email,
+                redirectUrl = SupabaseAuthConfig.REDIRECT_URL
+            ) {
                 this.email = normalizedEmail
                 this.password = password
+                data = buildJsonObject {
+                    put("name", trimmedName)
+                    put("account_type", accountType.name)
+                }
             }
 
-            val authUser = supabase.auth.currentUserOrNull()
+            val authUser = signedUpUser ?: supabase.auth.currentUserOrNull()
                 ?: return Result.failure(IllegalArgumentException("Error al crear la cuenta"))
 
             val user = User(
                 id = authUser.id,
-                name = name.trim(),
+                name = trimmedName,
                 email = normalizedEmail,
                 accountType = accountType
             )
-            userDataSource.createUser(user)
+
+            if (supabase.auth.currentUserOrNull() != null) {
+                userDataSource.createUser(user).onFailure { /* trigger may have created profile */ }
+            }
+
             Result.success(user)
         } catch (e: Exception) {
-            supabase.auth.signOut()
             Result.failure(mapSupabaseException(e))
         }
     }
@@ -81,7 +95,10 @@ class SupabaseAuthRepository(
             return Result.failure(IllegalArgumentException("Ingresá tu email"))
         }
         return try {
-            supabase.auth.resetPasswordForEmail(normalizedEmail)
+            supabase.auth.resetPasswordForEmail(
+                normalizedEmail,
+                redirectUrl = SupabaseAuthConfig.REDIRECT_URL
+            )
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(mapSupabaseException(e))
@@ -99,13 +116,17 @@ class SupabaseAuthRepository(
     }
 
     override suspend fun sendEmailVerification(email: String): Result<Unit> {
+        val normalizedEmail = email.trim().lowercase()
         return try {
-            val user = supabase.auth.currentUserOrNull()
-                ?: return Result.failure(IllegalArgumentException("No hay sesión activa para reenviar el email"))
-            if (!user.email.equals(email.trim(), ignoreCase = true)) {
-                return Result.failure(IllegalArgumentException("El email no coincide con la sesión activa"))
+            val sessionUser = supabase.auth.currentUserOrNull()
+            if (sessionUser != null) {
+                if (!sessionUser.email.equals(normalizedEmail, ignoreCase = true)) {
+                    return Result.failure(IllegalArgumentException("El email no coincide con la sesión activa"))
+                }
+                supabase.auth.resendEmail(OtpType.Email.SIGNUP, sessionUser.email ?: normalizedEmail)
+            } else {
+                supabase.auth.resendEmail(OtpType.Email.SIGNUP, normalizedEmail)
             }
-            supabase.auth.resendEmail(OtpType.Email.SIGNUP, user.email ?: email.trim())
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(mapSupabaseException(e))
@@ -113,12 +134,17 @@ class SupabaseAuthRepository(
     }
 
     override suspend fun confirmEmailVerification(email: String): Result<Unit> {
+        val normalizedEmail = email.trim().lowercase()
         return try {
-            val user = supabase.auth.currentUserOrNull()
-                ?: return Result.failure(
-                    IllegalArgumentException("Iniciá sesión con tu email y contraseña para verificar.")
+            val sessionUser = supabase.auth.currentUserOrNull()
+            if (sessionUser == null) {
+                return Result.failure(
+                    IllegalArgumentException(
+                        "Abrí el link del email para confirmar tu cuenta, o iniciá sesión y tocá \"Verificar ahora\"."
+                    )
                 )
-            if (!user.email.equals(email.trim(), ignoreCase = true)) {
+            }
+            if (!sessionUser.email.equals(normalizedEmail, ignoreCase = true)) {
                 return Result.failure(IllegalArgumentException("El email no coincide con la sesión activa"))
             }
             supabase.auth.refreshCurrentSession()
@@ -129,7 +155,9 @@ class SupabaseAuthRepository(
                 Result.success(Unit)
             } else {
                 Result.failure(
-                    IllegalArgumentException("Tu email aún no está confirmado. Revisá tu bandeja de entrada y spam.")
+                    IllegalArgumentException(
+                        "Tu email aún no está confirmado. Abrí el link del email o revisá spam."
+                    )
                 )
             }
         } catch (e: Exception) {

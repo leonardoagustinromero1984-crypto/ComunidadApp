@@ -22,7 +22,10 @@ object SupabaseClientProvider {
             supabaseUrl = BuildConfig.SUPABASE_URL,
             supabaseKey = BuildConfig.SUPABASE_ANON_KEY
         ) {
-            install(Auth)
+            install(Auth) {
+                scheme = SupabaseAuthConfig.SCHEME
+                host = SupabaseAuthConfig.HOST
+            }
             install(Postgrest) {
                 propertyConversionMethod = PropertyConversionMethod.CAMEL_CASE_TO_SNAKE_CASE
             }

@@ -1,5 +1,6 @@
 package com.comunidapp.app
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,10 +9,12 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.navigation.ComunidappNavGraph
 import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.viewmodel.SessionState
 import com.comunidapp.app.viewmodel.SessionViewModel
+import io.github.jan.supabase.auth.handleDeeplinks
 
 class MainActivity : ComponentActivity() {
 
@@ -20,6 +23,9 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen().setKeepOnScreenCondition { keepSplashScreen }
         super.onCreate(savedInstanceState)
+        if (BuildConfig.SUPABASE_ENABLED) {
+            supabase.handleDeeplinks(intent)
+        }
         enableEdgeToEdge()
         setContent {
             ComunidappTheme {
@@ -28,6 +34,13 @@ class MainActivity : ComponentActivity() {
                 keepSplashScreen = sessionState == SessionState.Loading
                 ComunidappNavGraph(sessionViewModel = sessionViewModel)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (BuildConfig.SUPABASE_ENABLED) {
+            supabase.handleDeeplinks(intent)
         }
     }
 }

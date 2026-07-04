@@ -47,7 +47,7 @@ fun ForgotPasswordScreen(
     viewModel: ForgotPasswordViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isFirebase = AuthProvider.isRemoteBackendEnabled
+    val isRemoteBackend = AuthProvider.isRemoteBackendEnabled
 
     LaunchedEffect(uiState.resetSuccess) {
         if (uiState.resetSuccess) onResetSuccess()
@@ -80,7 +80,7 @@ fun ForgotPasswordScreen(
             Text(
                 text = if (!uiState.emailSent) {
                     "Ingresá tu email y te enviaremos instrucciones para restablecer tu contraseña."
-                } else if (isFirebase) {
+                } else if (isRemoteBackend) {
                     "Te enviamos un email con un link para crear una nueva contraseña. Revisá tu bandeja de entrada y spam."
                 } else {
                     "Ingresá el código que recibiste con tu nueva contraseña."
@@ -97,7 +97,7 @@ fun ForgotPasswordScreen(
                 label = { Text("Email") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
-                enabled = !uiState.emailSent || !isFirebase,
+                enabled = !uiState.emailSent || !isRemoteBackend,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
 
@@ -111,10 +111,10 @@ fun ForgotPasswordScreen(
                     if (uiState.isLoading) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                     } else {
-                        Text(if (isFirebase) "Enviar link por email" else "Enviar código")
+                        Text(if (isRemoteBackend) "Enviar link por email" else "Enviar código")
                     }
                 }
-            } else if (isFirebase) {
+            } else if (isRemoteBackend) {
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) {
                     Text("Volver al login")
@@ -184,7 +184,7 @@ fun EmailVerificationScreen(
     viewModel: EmailVerificationViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isFirebase = AuthProvider.isRemoteBackendEnabled
+    val isRemoteBackend = AuthProvider.isRemoteBackendEnabled
 
     LaunchedEffect(email) {
         viewModel.checkVerification(email)
@@ -234,8 +234,9 @@ fun EmailVerificationScreen(
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
-                text = if (isFirebase) {
-                    "Abrí el email, tocá el link de confirmación y luego volvé acá y tocá \"Verificar ahora\"."
+                text = if (isRemoteBackend) {
+                    "Abrí el email y tocá el link de confirmación. Se abrirá la app automáticamente. " +
+                        "Si ya confirmaste, iniciá sesión con tu email y contraseña."
                 } else {
                     "Modo demo: tocá \"Verificar ahora\" para simular la confirmación."
                 },
