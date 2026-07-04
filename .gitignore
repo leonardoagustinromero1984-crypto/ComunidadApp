@@ -1,0 +1,31 @@
+# Android / Gradle
+*.iml
+.gradle/
+/build/
+**/build/
+/captures/
+.externalNativeBuild/
+.cxx/
+local.properties
+
+# IDE
+.idea/
+*.ipr
+*.iws
+.DS_Store
+
+# Kotlin
+.kotlin/
+
+# APK / firmas (nunca subir keystores)
+*.apk
+*.aab
+*.jks
+*.keystore
+
+# Logs
+*.log
+
+# Firebase / secretos locales (google-services.json SÍ se sube en repo privado)
+# Si el repo es público, descomentá la línea siguiente:
+# app/google-services.json
