@@ -174,11 +174,7 @@ class SupabaseAuthRepository(
 
     override fun getCurrentUser(): User? {
         val authUser = supabase.auth.currentUserOrNull() ?: return null
-        return User(
-            id = authUser.id,
-            name = authUser.userMetadata?.get("name")?.toString()?.trim('"').orEmpty(),
-            email = authUser.email.orEmpty()
-        )
+        return authUser.toUser()
     }
 
     override fun logout() {
@@ -210,6 +206,9 @@ class SupabaseAuthRepository(
         id = id,
         name = userMetadata?.get("name")?.toString()?.trim('"').orEmpty(),
         email = email.orEmpty(),
+        accountType = AccountType.fromString(
+            userMetadata?.get("account_type")?.toString()?.trim('"')
+        ),
         emailVerified = isEmailConfirmed()
     )
 

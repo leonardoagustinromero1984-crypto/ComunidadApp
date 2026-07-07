@@ -76,6 +76,8 @@ enum class LostFoundType {
 
 enum class PostType {
     GENERAL,
+    QUESTION,
+    PROMO,
     ADOPTION,
     LOST_FOUND,
     URGENT;

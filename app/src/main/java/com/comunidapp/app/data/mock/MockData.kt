@@ -1,8 +1,13 @@
 package com.comunidapp.app.data.mock
 
+import com.comunidapp.app.data.model.AccountType
+import com.comunidapp.app.data.model.AdoptionEvent
 import com.comunidapp.app.data.model.AdoptionPost
 import com.comunidapp.app.data.model.AdoptionStatus
+import com.comunidapp.app.data.model.CommunityCategory
+import com.comunidapp.app.data.model.CommunityListing
 import com.comunidapp.app.data.model.FeedPost
+import com.comunidapp.app.data.model.FosterHomeListing
 import com.comunidapp.app.data.model.LostFoundPost
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.Pet
@@ -33,6 +38,13 @@ object MockData {
         const val FEED_1 = "https://placedog.net/400/300?id=10"
         const val FEED_2 = "https://placedog.net/400/300?id=11"
         const val FEED_3 = "https://placedog.net/400/300?id=12"
+        const val VET_1 = "https://picsum.photos/seed/vet1/400/300"
+        const val TRAINER_1 = "https://picsum.photos/seed/trainer1/400/300"
+        const val WALKER_1 = "https://picsum.photos/seed/walker1/400/300"
+        const val SHOP_1 = "https://picsum.photos/seed/shop1/400/300"
+        const val EVENT_1 = "https://picsum.photos/seed/event1/400/300"
+        const val FOSTER_1 = "https://i.pravatar.cc/300?u=ana"
+        const val FOSTER_2 = "https://i.pravatar.cc/300?u=luis"
     }
 
     val currentUser = User(
@@ -60,6 +72,15 @@ object MockData {
             email = "carlos@email.com",
             bio = "Rescatista voluntario",
             locationText = "La Plata, Argentina"
+        ),
+        User(
+            id = "user_4",
+            name = "PetLovers Boutique",
+            email = "hola@petlovers.ba",
+            accountType = AccountType.SHOP,
+            profileImageUrl = Images.SHOP_1,
+            bio = "Alimentos premium y accesorios. Envíos en CABA.",
+            locationText = "Recoleta, CABA"
         )
     )
 
@@ -159,6 +180,31 @@ object MockData {
             commentCount = 24
         ),
         FeedPost(
+            id = "feed_6",
+            authorId = "user_1",
+            authorName = "María González",
+            type = PostType.QUESTION,
+            title = "¿Qué alimento recomiendan para gato adulto?",
+            content = "Michi tiene 2 años y quiero cambiar de marca. ¿Cuál usan ustedes?",
+            locationText = "Palermo, CABA",
+            date = "Hace 3 horas",
+            likeCount = 8,
+            commentCount = 14
+        ),
+        FeedPost(
+            id = "feed_7",
+            authorId = "user_4",
+            authorName = "PetLovers Boutique",
+            type = PostType.PROMO,
+            title = "20% off en alimento premium",
+            content = "Esta semana 20% de descuento en línea Natural Dog. Solo en local de Recoleta.",
+            imageUrl = Images.SHOP_1,
+            locationText = "Recoleta, CABA",
+            date = "Hace 1 hora",
+            likeCount = 34,
+            commentCount = 6
+        ),
+        FeedPost(
             id = "feed_5",
             authorId = "user_2",
             authorName = "Refugio Patitas",
@@ -243,6 +289,169 @@ object MockData {
             location = "CABA",
             description = "Cachorro mestizo lleno de energía. Necesita paciencia y entrenamiento.",
             status = AdoptionStatus.AVAILABLE
+        )
+    )
+
+    val fosterHomes = listOf(
+        FosterHomeListing(
+            id = "foster_1",
+            hostName = "Ana Martínez",
+            photoUrl = Images.FOSTER_1,
+            location = "Caballito, CABA",
+            capacity = 2,
+            acceptedSpecies = listOf(PetSpecies.DOG, PetSpecies.CAT),
+            notes = "Tengo patio chico. Experiencia con cachorros y gatitos.",
+            available = true,
+            contactInfo = "ana@email.com"
+        ),
+        FosterHomeListing(
+            id = "foster_2",
+            hostName = "Luis Fernández",
+            photoUrl = Images.FOSTER_2,
+            location = "San Isidro, GBA",
+            capacity = 1,
+            acceptedSpecies = listOf(PetSpecies.DOG),
+            notes = "Acepto perros medianos en recuperación post cirugía.",
+            available = true,
+            contactInfo = "luis@email.com / 11-5555-1234"
+        ),
+        FosterHomeListing(
+            id = "foster_3",
+            hostName = "Familia Pérez",
+            location = "Quilmes, GBA",
+            capacity = 3,
+            acceptedSpecies = listOf(PetSpecies.CAT),
+            notes = "Solo gatos. No convive con perros en la zona.",
+            available = false,
+            contactInfo = "contacto@familiaperez.org"
+        )
+    )
+
+    val adoptionEvents = listOf(
+        AdoptionEvent(
+            id = "event_1",
+            title = "Feria de adopción en Plaza Armenia",
+            photoUrl = Images.EVENT_1,
+            location = "Palermo, CABA",
+            date = "Sábado 12/07 · 10 a 18 hs",
+            organizerName = "Refugio Patitas",
+            description = "Más de 30 perros y gatos buscando familia. Habrá veterinarios voluntarios y food trucks pet friendly.",
+            contactInfo = "contacto@patitas.org"
+        ),
+        AdoptionEvent(
+            id = "event_2",
+            title = "Jornada Adopta un Amigo",
+            location = "Paseo del Bosque, La Plata",
+            date = "Domingo 20/07 · 11 a 17 hs",
+            organizerName = "Huellitas Felices",
+            description = "Adopciones responsables con entrevista previa. Traé DNI y compromiso de castración.",
+            contactInfo = "info@huellitas.org"
+        ),
+        AdoptionEvent(
+            id = "event_3",
+            title = "Encuentro de familias adoptivas",
+            location = "Villa Crespo, CABA",
+            date = "Sábado 26/07 · 15 a 19 hs",
+            organizerName = "Rescate Animal BA",
+            description = "Charla sobre tenencia responsable + stands de refugios locales.",
+            contactInfo = "+54 11 9876-5432"
+        )
+    )
+
+    val communityListings = listOf(
+        CommunityListing(
+            id = "comm_vet_1",
+            category = CommunityCategory.VET,
+            name = "Clínica Veterinaria San Roque",
+            photoUrl = Images.VET_1,
+            location = "Almagro, CABA",
+            description = "Atención 24 hs, cirugías, internación y vacunación.",
+            contactInfo = "11-4444-5678",
+            tags = listOf("Urgencias", "Castraciones")
+        ),
+        CommunityListing(
+            id = "comm_vet_2",
+            category = CommunityCategory.VET,
+            name = "Dr. Pablo Sosa — Veterinario a domicilio",
+            location = "Zona Norte GBA",
+            description = "Consultas a domicilio para perros y gatos. Control anual y vacunas.",
+            contactInfo = "pablo.vet@email.com",
+            tags = listOf("A domicilio")
+        ),
+        CommunityListing(
+            id = "comm_trainer_1",
+            category = CommunityCategory.TRAINER,
+            name = "K9 Educación Canina",
+            photoUrl = Images.TRAINER_1,
+            location = "Belgrano, CABA",
+            description = "Adiestramiento positivo, paseos educativos y modificación de conducta.",
+            contactInfo = "hola@k9edu.com",
+            tags = listOf("Cachorros", "Ansiedad")
+        ),
+        CommunityListing(
+            id = "comm_trainer_2",
+            category = CommunityCategory.TRAINER,
+            name = "Laura Gatti — Etología felina",
+            location = "CABA y online",
+            description = "Consultas de comportamiento para gatos en hogar.",
+            contactInfo = "laura@felinos.com",
+            tags = listOf("Gatos", "Online")
+        ),
+        CommunityListing(
+            id = "comm_walker_1",
+            category = CommunityCategory.WALKER,
+            name = "Paseos Palermo",
+            photoUrl = Images.WALKER_1,
+            location = "Palermo y Colegiales",
+            description = "Paseos individuales y grupales. Cobertura con GPS en cada salida.",
+            contactInfo = "paseos@palermo.pet",
+            tags = listOf("GPS", "Grupos reducidos")
+        ),
+        CommunityListing(
+            id = "comm_walker_2",
+            category = CommunityCategory.WALKER,
+            name = "Maxi — Paseador certificado",
+            location = "Villa Urquiza, CABA",
+            description = "Paseos de 45 y 60 min. Experiencia con perros reactivos.",
+            contactInfo = "11-2222-3333",
+            tags = listOf("Reactivos")
+        ),
+        CommunityListing(
+            id = "comm_shop_1",
+            category = CommunityCategory.SHOP,
+            name = "PetLovers Boutique",
+            photoUrl = Images.SHOP_1,
+            location = "Recoleta, CABA",
+            description = "Alimentos premium, accesorios y productos sustentables.",
+            contactInfo = "@petlovers.ba",
+            tags = listOf("Delivery", "Natural")
+        ),
+        CommunityListing(
+            id = "comm_shop_2",
+            category = CommunityCategory.SHOP,
+            name = "Cocina de Max — Comida casera para perros",
+            location = "CABA",
+            description = "Viandas cocinadas por nutricionista veterinaria. Planes semanales.",
+            contactInfo = "pedidos@cocinademax.com",
+            tags = listOf("Casero", "Por encargo")
+        ),
+        CommunityListing(
+            id = "comm_donation_1",
+            category = CommunityCategory.DONATION,
+            name = "Campaña: 500 kg de alimento",
+            location = "CABA y GBA",
+            description = "Refugio Patitas necesita alimento para invierno. Punto de entrega en Villa Crespo.",
+            contactInfo = "contacto@patitas.org",
+            tags = listOf("Alimento", "Urgente")
+        ),
+        CommunityListing(
+            id = "comm_donation_2",
+            category = CommunityCategory.DONATION,
+            name = "Voluntarios para traslados",
+            location = "La Plata",
+            description = "Huellitas Felices busca choferes los fines de semana para llevar mascotas al vet.",
+            contactInfo = "info@huellitas.org",
+            tags = listOf("Voluntariado", "Traslados")
         )
     )
 

@@ -14,6 +14,7 @@ import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.PostType
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.domain.RolePermissions
 import com.comunidapp.app.data.remote.storage.StoragePaths
 import com.comunidapp.app.data.repository.AdoptionRepository
 import com.comunidapp.app.data.repository.AuthProvider
@@ -52,6 +53,28 @@ class PublishViewModel(
         content: String,
         location: String,
         imageUri: Uri? = null
+    ) = publishFeed(title, content, location, imageUri, PostType.GENERAL)
+
+    fun publishQuestion(
+        title: String,
+        content: String,
+        location: String,
+        imageUri: Uri? = null
+    ) = publishFeed(title, content, location, imageUri, PostType.QUESTION)
+
+    fun publishPromo(
+        title: String,
+        content: String,
+        location: String,
+        imageUri: Uri? = null
+    ) = publishFeed(title, content, location, imageUri, PostType.PROMO)
+
+    private fun publishFeed(
+        title: String,
+        content: String,
+        location: String,
+        imageUri: Uri?,
+        type: PostType
     ) {
         if (title.isBlank() || content.isBlank()) {
             _formState.update { it.copy(errorMessage = "Título y contenido son requeridos") }
@@ -61,9 +84,15 @@ class PublishViewModel(
             _formState.update { PublishFormState(isLoading = true) }
             resolveAuthor()
                 .onSuccess { author ->
+                    if (type == PostType.PROMO && !RolePermissions.canPublishPromo(author.accountType)) {
+                        _formState.update {
+                            PublishFormState(errorMessage = "Tu tipo de cuenta no puede publicar promociones")
+                        }
+                        return@launch
+                    }
                     publishFeedPost(
                         author = author,
-                        type = PostType.GENERAL,
+                        type = type,
                         title = title.trim(),
                         content = content.trim(),
                         locationText = location.trim().ifBlank { null },
@@ -93,6 +122,12 @@ class PublishViewModel(
             _formState.update { PublishFormState(isLoading = true) }
             resolveAuthor()
                 .onSuccess { author ->
+                    if (!RolePermissions.canPublishAdoption(author.accountType)) {
+                        _formState.update {
+                            PublishFormState(errorMessage = "Solo refugios pueden publicar adopciones")
+                        }
+                        return@launch
+                    }
                     adoptionRepository.addAdoptionPost(
                         AdoptionPost(
                             id = "adopt_${System.currentTimeMillis()}",
@@ -138,6 +173,12 @@ class PublishViewModel(
             _formState.update { PublishFormState(isLoading = true) }
             resolveAuthor()
                 .onSuccess { author ->
+                    if (!RolePermissions.canPublishLostFound(author.accountType)) {
+                        _formState.update {
+                            PublishFormState(errorMessage = "Tu cuenta no puede publicar perdidos/encontrados")
+                        }
+                        return@launch
+                    }
                     val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
                     lostFoundRepository.addLostFoundPost(
                         LostFoundPost(

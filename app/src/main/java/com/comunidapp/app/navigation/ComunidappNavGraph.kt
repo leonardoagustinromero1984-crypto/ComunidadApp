@@ -16,9 +16,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.comunidapp.app.ui.components.ComunidappBottomBar
 import com.comunidapp.app.ui.components.SessionLoadingScreen
-import com.comunidapp.app.ui.components.bottomNavItems
+import com.comunidapp.app.ui.components.bottomNavItemsFor
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
-import com.comunidapp.app.ui.screens.adoptions.AdoptionsScreen
+import com.comunidapp.app.ui.screens.business.MiNegocioScreen
+import com.comunidapp.app.ui.screens.comunidad.ComunidadScreen
 import com.comunidapp.app.ui.screens.home.HomeScreen
 import com.comunidapp.app.ui.screens.login.EmailVerificationScreen
 import com.comunidapp.app.ui.screens.login.ForgotPasswordScreen
@@ -35,9 +36,12 @@ import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
 import com.comunidapp.app.ui.screens.publish.PublishAdoptionScreen
 import com.comunidapp.app.ui.screens.publish.PublishGeneralScreen
 import com.comunidapp.app.ui.screens.publish.PublishLostFoundScreen
+import com.comunidapp.app.ui.screens.publish.PublishPromoScreen
+import com.comunidapp.app.ui.screens.publish.PublishQuestionScreen
 import com.comunidapp.app.ui.screens.publish.PublishScreen
+import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.ui.screens.shelters.ShelterDetailScreen
-import com.comunidapp.app.ui.screens.shelters.SheltersScreen
+import com.comunidapp.app.ui.screens.sumate.SumateScreen
 import com.comunidapp.app.viewmodel.PetFormViewModel
 import com.comunidapp.app.viewmodel.SessionState
 import com.comunidapp.app.viewmodel.SessionViewModel
@@ -47,13 +51,15 @@ fun ComunidappNavGraph(
     sessionViewModel: SessionViewModel = viewModel()
 ) {
     val sessionState by sessionViewModel.sessionState.collectAsState()
+    val currentUser by sessionViewModel.currentUser.collectAsState()
 
     when (sessionState) {
         SessionState.Loading -> SessionLoadingScreen()
         SessionState.LoggedOut, SessionState.LoggedIn -> {
             key(sessionState) {
                 RootNavHost(
-                    isLoggedIn = sessionState == SessionState.LoggedIn
+                    isLoggedIn = sessionState == SessionState.LoggedIn,
+                    accountType = currentUser?.accountType ?: AccountType.PERSON
                 )
             }
         }
@@ -61,7 +67,10 @@ fun ComunidappNavGraph(
 }
 
 @Composable
-private fun RootNavHost(isLoggedIn: Boolean) {
+private fun RootNavHost(
+    isLoggedIn: Boolean,
+    accountType: AccountType
+) {
     val rootNavController = rememberNavController()
     val startDestination = if (isLoggedIn) NavRoutes.MAIN else NavRoutes.LOGIN
 
@@ -121,23 +130,26 @@ private fun RootNavHost(isLoggedIn: Boolean) {
             )
         }
         composable(NavRoutes.MAIN) {
-            MainScreen()
+            MainScreen(accountType = accountType)
         }
     }
 }
 
 @Composable
-private fun MainScreen() {
+private fun MainScreen(accountType: AccountType) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val bottomNavRoutes = bottomNavItems.map { it.route }
+    val bottomNavRoutes = bottomNavItemsFor(accountType).map { it.route }
     val showBottomBar = currentRoute in bottomNavRoutes
 
     Scaffold(
         bottomBar = {
             if (showBottomBar) {
-                ComunidappBottomBar(navController = navController)
+                ComunidappBottomBar(
+                    navController = navController,
+                    accountType = accountType
+                )
             }
         }
     ) { innerPadding ->
@@ -153,32 +165,38 @@ private fun MainScreen() {
                     }
                 )
             }
-            composable(NavRoutes.ADOPTIONS) {
-                AdoptionsScreen(
+            composable(NavRoutes.SUMATE) {
+                SumateScreen(
                     onAdoptionClick = { id ->
                         navController.navigate(NavRoutes.adoptionDetail(id))
+                    },
+                    onShelterClick = { id ->
+                        navController.navigate(NavRoutes.shelterDetail(id))
                     }
                 )
             }
             composable(NavRoutes.PUBLISH) {
                 PublishScreen(
+                    accountType = accountType,
                     onNavigateToGeneral = { navController.navigate(NavRoutes.PUBLISH_GENERAL) },
+                    onNavigateToQuestion = { navController.navigate(NavRoutes.PUBLISH_QUESTION) },
+                    onNavigateToPromo = { navController.navigate(NavRoutes.PUBLISH_PROMO) },
                     onNavigateToAdoption = { navController.navigate(NavRoutes.PUBLISH_ADOPTION) },
                     onNavigateToLostFound = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) }
                 )
             }
-            composable(NavRoutes.SHELTERS) {
-                SheltersScreen(
-                    onShelterClick = { id ->
-                        navController.navigate(NavRoutes.shelterDetail(id))
-                    }
+            composable(NavRoutes.COMUNIDAD) {
+                ComunidadScreen()
+            }
+            composable(NavRoutes.MY_BUSINESS) {
+                MiNegocioScreen(
+                    onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) }
                 )
             }
             composable(NavRoutes.PROFILE) {
                 ProfileScreen(
                     onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                     onNavigateToMyPets = { navController.navigate(NavRoutes.MY_PETS) },
-                    onNavigateToLostFound = { navController.navigate(NavRoutes.LOST_FOUND) },
                     onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
                 )
             }
@@ -273,12 +291,30 @@ private fun MainScreen() {
                     }
                 )
             }
+            composable(NavRoutes.PUBLISH_QUESTION) {
+                PublishQuestionScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onPublishSuccess = {
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.HOME)
+                    }
+                )
+            }
+            composable(NavRoutes.PUBLISH_PROMO) {
+                PublishPromoScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onPublishSuccess = {
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.HOME)
+                    }
+                )
+            }
             composable(NavRoutes.PUBLISH_ADOPTION) {
                 PublishAdoptionScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onPublishSuccess = {
                         navController.popBackStack()
-                        navController.navigate(NavRoutes.ADOPTIONS)
+                        navController.navigate(NavRoutes.SUMATE)
                     }
                 )
             }
@@ -287,7 +323,7 @@ private fun MainScreen() {
                     onNavigateBack = { navController.popBackStack() },
                     onPublishSuccess = {
                         navController.popBackStack()
-                        navController.navigate(NavRoutes.LOST_FOUND)
+                        navController.navigate(NavRoutes.SUMATE)
                     }
                 )
             }

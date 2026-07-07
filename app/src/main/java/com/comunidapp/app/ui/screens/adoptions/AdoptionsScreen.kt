@@ -19,6 +19,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.AdoptionStatus
@@ -34,90 +35,105 @@ fun AdoptionsScreen(
     onAdoptionClick: (String) -> Unit,
     viewModel: AdoptionsViewModel = viewModel()
 ) {
-    val posts by viewModel.posts.collectAsState()
-    val filters by viewModel.filters.collectAsState()
-
     Scaffold(
         topBar = { ComunidappTopBar(title = "Adopciones") }
     ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(top = padding.calculateTopPadding())
-        ) {
-            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                OutlinedTextField(
-                    value = filters.location,
-                    onValueChange = viewModel::onLocationChange,
-                    label = { Text("Filtrar por zona") },
-                    modifier = Modifier.fillMaxWidth(),
-                    singleLine = true
-                )
+        AdoptionsContent(
+            onAdoptionClick = onAdoptionClick,
+            topPadding = padding.calculateTopPadding(),
+            bottomPadding = padding.calculateBottomPadding(),
+            viewModel = viewModel
+        )
+    }
+}
 
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .horizontalScroll(rememberScrollState())
-                        .padding(vertical = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
+@Composable
+fun AdoptionsContent(
+    onAdoptionClick: (String) -> Unit,
+    topPadding: Dp = 0.dp,
+    bottomPadding: Dp = 0.dp,
+    viewModel: AdoptionsViewModel = viewModel()
+) {
+    val posts by viewModel.posts.collectAsState()
+    val filters by viewModel.filters.collectAsState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = topPadding)
+    ) {
+        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            OutlinedTextField(
+                value = filters.location,
+                onValueChange = viewModel::onLocationChange,
+                label = { Text("Filtrar por zona") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                FilterChip(
+                    selected = filters.status == AdoptionStatus.AVAILABLE,
+                    onClick = {
+                        viewModel.onStatusFilterChange(
+                            if (filters.status == AdoptionStatus.AVAILABLE) null
+                            else AdoptionStatus.AVAILABLE
+                        )
+                    },
+                    label = { Text("Disponible") }
+                )
+                FilterChip(
+                    selected = filters.status == AdoptionStatus.IN_PROCESS,
+                    onClick = {
+                        viewModel.onStatusFilterChange(
+                            if (filters.status == AdoptionStatus.IN_PROCESS) null
+                            else AdoptionStatus.IN_PROCESS
+                        )
+                    },
+                    label = { Text("En proceso") }
+                )
+                PetSex.entries.forEach { sex ->
                     FilterChip(
-                        selected = filters.status == AdoptionStatus.AVAILABLE,
+                        selected = filters.sex == sex,
                         onClick = {
-                            viewModel.onStatusFilterChange(
-                                if (filters.status == AdoptionStatus.AVAILABLE) null
-                                else AdoptionStatus.AVAILABLE
+                            viewModel.onSexFilterChange(
+                                if (filters.sex == sex) null else sex
                             )
                         },
-                        label = { Text("Disponible") }
+                        label = { Text(sex.toDisplayName()) }
                     )
+                }
+                PetSize.entries.forEach { size ->
                     FilterChip(
-                        selected = filters.status == AdoptionStatus.IN_PROCESS,
+                        selected = filters.size == size,
                         onClick = {
-                            viewModel.onStatusFilterChange(
-                                if (filters.status == AdoptionStatus.IN_PROCESS) null
-                                else AdoptionStatus.IN_PROCESS
+                            viewModel.onSizeFilterChange(
+                                if (filters.size == size) null else size
                             )
                         },
-                        label = { Text("En proceso") }
+                        label = { Text(size.toDisplayName()) }
                     )
-                    PetSex.entries.forEach { sex ->
-                        FilterChip(
-                            selected = filters.sex == sex,
-                            onClick = {
-                                viewModel.onSexFilterChange(
-                                    if (filters.sex == sex) null else sex
-                                )
-                            },
-                            label = { Text(sex.toDisplayName()) }
-                        )
-                    }
-                    PetSize.entries.forEach { size ->
-                        FilterChip(
-                            selected = filters.size == size,
-                            onClick = {
-                                viewModel.onSizeFilterChange(
-                                    if (filters.size == size) null else size
-                                )
-                            },
-                            label = { Text(size.toDisplayName()) }
-                        )
-                    }
                 }
             }
+        }
 
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    bottom = padding.calculateBottomPadding() + 8.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(posts, key = { it.id }) { post ->
-                    AdoptionCard(post = post, onClick = { onAdoptionClick(post.id) })
-                }
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                bottom = bottomPadding + 8.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(posts, key = { it.id }) { post ->
+                AdoptionCard(post = post, onClick = { onAdoptionClick(post.id) })
             }
         }
     }

@@ -48,6 +48,47 @@ fun PublishGeneralScreen(
     onNavigateBack: () -> Unit,
     onPublishSuccess: () -> Unit,
     viewModel: PublishViewModel = viewModel()
+) = PublishFeedTypeScreen(
+    screenTitle = "Publicación general",
+    onNavigateBack = onNavigateBack,
+    onPublishSuccess = onPublishSuccess,
+    onSubmit = viewModel::publishGeneral,
+    viewModel = viewModel
+)
+
+@Composable
+fun PublishQuestionScreen(
+    onNavigateBack: () -> Unit,
+    onPublishSuccess: () -> Unit,
+    viewModel: PublishViewModel = viewModel()
+) = PublishFeedTypeScreen(
+    screenTitle = "Pregunta a la comunidad",
+    onNavigateBack = onNavigateBack,
+    onPublishSuccess = onPublishSuccess,
+    onSubmit = viewModel::publishQuestion,
+    viewModel = viewModel
+)
+
+@Composable
+fun PublishPromoScreen(
+    onNavigateBack: () -> Unit,
+    onPublishSuccess: () -> Unit,
+    viewModel: PublishViewModel = viewModel()
+) = PublishFeedTypeScreen(
+    screenTitle = "Publicidad / promo",
+    onNavigateBack = onNavigateBack,
+    onPublishSuccess = onPublishSuccess,
+    onSubmit = viewModel::publishPromo,
+    viewModel = viewModel
+)
+
+@Composable
+private fun PublishFeedTypeScreen(
+    screenTitle: String,
+    onNavigateBack: () -> Unit,
+    onPublishSuccess: () -> Unit,
+    onSubmit: (String, String, String, android.net.Uri?) -> Unit,
+    viewModel: PublishViewModel
 ) {
     var title by remember { mutableStateOf("") }
     var content by remember { mutableStateOf("") }
@@ -67,11 +108,11 @@ fun PublishGeneralScreen(
     }
 
     PublishFormScaffold(
-        title = "Publicación general",
+        title = screenTitle,
         onNavigateBack = onNavigateBack,
         isLoading = formState.isLoading,
         errorMessage = formState.errorMessage,
-        onSubmit = { viewModel.publishGeneral(title, content, location, imageUri) }
+        onSubmit = { onSubmit(title, content, location, imageUri) }
     ) {
         OutlinedTextField(
             value = title,

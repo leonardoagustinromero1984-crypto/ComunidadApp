@@ -8,10 +8,13 @@ object NavRoutes {
     const val EMAIL_VERIFICATION = "email_verification/{email}"
 
     const val HOME = "home"
-    const val ADOPTIONS = "adoptions"
+    const val SUMATE = "sumate"
+    const val COMUNIDAD = "comunidad"
+    const val MY_BUSINESS = "my_business"
     const val PUBLISH = "publish"
-    const val SHELTERS = "shelters"
     const val PROFILE = "profile"
+    const val ADOPTIONS = "adoptions"
+    const val SHELTERS = "shelters"
     const val MY_PETS = "my_pets"
     const val LOST_FOUND = "lost_found"
 
@@ -26,6 +29,8 @@ object NavRoutes {
     const val EDIT_PET = "edit_pet/{petId}"
 
     const val PUBLISH_GENERAL = "publish_general"
+    const val PUBLISH_QUESTION = "publish_question"
+    const val PUBLISH_PROMO = "publish_promo"
     const val PUBLISH_ADOPTION = "publish_adoption"
     const val PUBLISH_LOST_FOUND = "publish_lost_found"
 

@@ -57,6 +57,11 @@ fun SheltersScreen(
 
 @Composable
 private fun ShelterCard(shelter: Shelter, onClick: () -> Unit) {
+    ShelterListCard(shelter = shelter, onClick = onClick)
+}
+
+@Composable
+fun ShelterListCard(shelter: Shelter, onClick: () -> Unit) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),

@@ -87,7 +87,7 @@ fun FeedPostCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = post.title,
+                text = post.title.ifBlank { "Sin título" },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.Bold
             )
@@ -168,7 +168,9 @@ private fun PostTypeBadge(type: PostType) {
         PostType.URGENT -> "Urgente" to UrgentContainer
         PostType.ADOPTION -> "Adopción" to MaterialTheme.colorScheme.primaryContainer
         PostType.LOST_FOUND -> "Perdido/Encontrado" to OrangeContainer
-        PostType.GENERAL -> "General" to MaterialTheme.colorScheme.secondaryContainer
+        PostType.QUESTION -> "Pregunta" to MaterialTheme.colorScheme.tertiaryContainer
+        PostType.PROMO -> "Publicidad" to MaterialTheme.colorScheme.secondaryContainer
+        PostType.GENERAL -> "General" to MaterialTheme.colorScheme.surfaceVariant
     }
     val textColor = if (type == PostType.URGENT) UrgentRed else MaterialTheme.colorScheme.onSurface
 

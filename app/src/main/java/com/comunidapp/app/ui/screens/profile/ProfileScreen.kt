@@ -22,7 +22,6 @@ import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,6 +38,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.R
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.EditTopBarAction
+import com.comunidapp.app.domain.RolePermissions
 import com.comunidapp.app.ui.components.FeedPostCard
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetCard
@@ -50,7 +50,6 @@ import com.comunidapp.app.viewmodel.ProfileViewModel
 fun ProfileScreen(
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToMyPets: () -> Unit = {},
-    onNavigateToLostFound: () -> Unit = {},
     onPetClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
@@ -85,6 +84,7 @@ fun ProfileScreen(
             }
             else -> {
                 val user = uiState.user!!
+                val showPets = RolePermissions.canManagePets(user.accountType)
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
@@ -161,15 +161,16 @@ fun ProfileScreen(
                         }
                     }
 
-                    item {
-                        RowButtons(onNavigateToMyPets, onNavigateToLostFound)
-                    }
-
-                    item {
-                        SectionTitle("Mis mascotas (${uiState.pets.size})")
-                    }
-                    items(uiState.pets, key = { it.id }) { pet ->
-                        PetCard(pet = pet, onClick = { onPetClick(pet.id) })
+                    if (showPets) {
+                        item {
+                            MyPetsButton(onNavigateToMyPets)
+                        }
+                        item {
+                            SectionTitle("Mis mascotas (${uiState.pets.size})")
+                        }
+                        items(uiState.pets, key = { it.id }) { pet ->
+                            PetCard(pet = pet, onClick = { onPetClick(pet.id) })
+                        }
                     }
 
                     item {
@@ -199,27 +200,13 @@ fun ProfileScreen(
 }
 
 @Composable
-private fun RowButtons(
-    onNavigateToMyPets: () -> Unit,
-    onNavigateToLostFound: () -> Unit
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+private fun MyPetsButton(onNavigateToMyPets: () -> Unit) {
+    Button(
+        onClick = onNavigateToMyPets,
+        modifier = Modifier.fillMaxWidth()
     ) {
-        Button(
-            onClick = onNavigateToMyPets,
-            modifier = Modifier.weight(1f)
-        ) {
-            Icon(Icons.Default.Pets, contentDescription = null, modifier = Modifier.size(18.dp))
-            Text(" Mis mascotas", modifier = Modifier.padding(start = 4.dp))
-        }
-        OutlinedButton(
-            onClick = onNavigateToLostFound,
-            modifier = Modifier.weight(1f)
-        ) {
-            Text("Perdidos")
-        }
+        Icon(Icons.Default.Pets, contentDescription = null, modifier = Modifier.size(18.dp))
+        Text(" Mis mascotas", modifier = Modifier.padding(start = 4.dp))
     }
 }
 

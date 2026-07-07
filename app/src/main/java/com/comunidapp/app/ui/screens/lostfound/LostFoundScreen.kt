@@ -18,6 +18,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.LostFoundPost
@@ -31,8 +32,6 @@ fun LostFoundScreen(
     onNavigateBack: () -> Unit,
     viewModel: LostFoundViewModel = viewModel()
 ) {
-    val posts by viewModel.posts.collectAsState()
-
     Scaffold(
         topBar = {
             ComunidappTopBar(
@@ -42,25 +41,41 @@ fun LostFoundScreen(
             )
         }
     ) { padding ->
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = padding.calculateBottomPadding() + 8.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(posts, key = { it.id }) { post ->
-                LostFoundCard(post = post)
-            }
+        LostFoundContent(
+            topPadding = padding.calculateTopPadding(),
+            bottomPadding = padding.calculateBottomPadding(),
+            viewModel = viewModel
+        )
+    }
+}
+
+@Composable
+fun LostFoundContent(
+    topPadding: Dp = 0.dp,
+    bottomPadding: Dp = 0.dp,
+    viewModel: LostFoundViewModel = viewModel()
+) {
+    val posts by viewModel.posts.collectAsState()
+
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(top = topPadding),
+        contentPadding = PaddingValues(
+            start = 16.dp,
+            end = 16.dp,
+            bottom = bottomPadding + 8.dp
+        ),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        items(posts, key = { it.id }) { post ->
+            LostFoundCard(post = post)
         }
     }
 }
 
 @Composable
-private fun LostFoundCard(post: LostFoundPost) {
+fun LostFoundCard(post: LostFoundPost) {
     val badgeText = if (post.type == LostFoundType.LOST) "PERDIDO" else "ENCONTRADO"
 
     Card(
@@ -77,8 +92,7 @@ private fun LostFoundCard(post: LostFoundPost) {
                 } else {
                     MaterialTheme.colorScheme.tertiary
                 },
-                modifier = Modifier
-                    .padding(bottom = 8.dp)
+                modifier = Modifier.padding(bottom = 8.dp)
             )
             Text(
                 text = post.petName ?: "${post.species.toDisplayName()} sin nombre",
