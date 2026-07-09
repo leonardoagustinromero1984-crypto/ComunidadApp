@@ -16,6 +16,8 @@ object MockUserStore {
 
     fun observe(userId: String): Flow<User?> = users.map { it[userId] }
 
+    fun observeAll(): Flow<List<User>> = users.map { it.values.toList() }
+
     fun get(userId: String): User? = users.value[userId]
 
     fun upsert(user: User) {

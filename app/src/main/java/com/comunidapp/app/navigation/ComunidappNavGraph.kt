@@ -18,6 +18,11 @@ import com.comunidapp.app.ui.components.ComunidappBottomBar
 import com.comunidapp.app.ui.components.SessionLoadingScreen
 import com.comunidapp.app.ui.components.bottomNavItemsFor
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
+import com.comunidapp.app.ui.screens.adoptions.MyAdoptionsScreen
+import com.comunidapp.app.ui.screens.search.SearchScreen
+import com.comunidapp.app.ui.screens.chat.ChatListScreen
+import com.comunidapp.app.ui.screens.chat.ChatStartScreen
+import com.comunidapp.app.ui.screens.chat.ChatThreadScreen
 import com.comunidapp.app.ui.screens.business.MiNegocioScreen
 import com.comunidapp.app.ui.screens.comunidad.ComunidadScreen
 import com.comunidapp.app.ui.screens.home.HomeScreen
@@ -25,19 +30,28 @@ import com.comunidapp.app.ui.screens.login.EmailVerificationScreen
 import com.comunidapp.app.ui.screens.login.ForgotPasswordScreen
 import com.comunidapp.app.ui.screens.login.LoginScreen
 import com.comunidapp.app.ui.screens.login.RegisterScreen
+import com.comunidapp.app.ui.screens.lostfound.LostFoundMapScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundScreen
 import com.comunidapp.app.ui.screens.pets.AddPetScreen
 import com.comunidapp.app.ui.screens.pets.EditPetScreen
 import com.comunidapp.app.ui.screens.pets.MyPetsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
 import com.comunidapp.app.ui.screens.profile.EditProfileScreen
+import com.comunidapp.app.ui.screens.profile.FriendRequestsScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
 import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
+import com.comunidapp.app.viewmodel.UserPublicProfileViewModel
+import com.comunidapp.app.viewmodel.ChatStartViewModel
+import com.comunidapp.app.viewmodel.ChatThreadViewModel
 import com.comunidapp.app.ui.screens.publish.PublishAdoptionScreen
 import com.comunidapp.app.ui.screens.publish.PublishGeneralScreen
 import com.comunidapp.app.ui.screens.publish.PublishLostFoundScreen
 import com.comunidapp.app.ui.screens.publish.PublishPromoScreen
 import com.comunidapp.app.ui.screens.publish.PublishQuestionScreen
+import com.comunidapp.app.ui.screens.publish.PublishUrgentScreen
+import com.comunidapp.app.ui.screens.publish.PublishDonationScreen
+import com.comunidapp.app.ui.screens.publish.PublishEventScreen
+import com.comunidapp.app.ui.screens.publish.PublishFosterScreen
 import com.comunidapp.app.ui.screens.publish.PublishScreen
 import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.ui.screens.shelters.ShelterDetailScreen
@@ -162,7 +176,8 @@ private fun MainScreen(accountType: AccountType) {
                 HomeScreen(
                     onAuthorClick = { userId ->
                         navController.navigate(NavRoutes.userProfile(userId))
-                    }
+                    },
+                    onNavigateToSearch = { navController.navigate(NavRoutes.SEARCH) }
                 )
             }
             composable(NavRoutes.SUMATE) {
@@ -172,7 +187,8 @@ private fun MainScreen(accountType: AccountType) {
                     },
                     onShelterClick = { id ->
                         navController.navigate(NavRoutes.shelterDetail(id))
-                    }
+                    },
+                    onNavigateToMap = { navController.navigate(NavRoutes.LOST_FOUND_MAP) }
                 )
             }
             composable(NavRoutes.PUBLISH) {
@@ -182,7 +198,11 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToQuestion = { navController.navigate(NavRoutes.PUBLISH_QUESTION) },
                     onNavigateToPromo = { navController.navigate(NavRoutes.PUBLISH_PROMO) },
                     onNavigateToAdoption = { navController.navigate(NavRoutes.PUBLISH_ADOPTION) },
-                    onNavigateToLostFound = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) }
+                    onNavigateToLostFound = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
+                    onNavigateToUrgent = { navController.navigate(NavRoutes.PUBLISH_URGENT) },
+                    onNavigateToFoster = { navController.navigate(NavRoutes.PUBLISH_FOSTER) },
+                    onNavigateToEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) },
+                    onNavigateToDonation = { navController.navigate(NavRoutes.PUBLISH_DONATION) }
                 )
             }
             composable(NavRoutes.COMUNIDAD) {
@@ -197,6 +217,9 @@ private fun MainScreen(accountType: AccountType) {
                 ProfileScreen(
                     onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                     onNavigateToMyPets = { navController.navigate(NavRoutes.MY_PETS) },
+                    onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
+                    onNavigateToChat = { navController.navigate(NavRoutes.CHAT) },
+                    onNavigateToFriendRequests = { navController.navigate(NavRoutes.FRIEND_REQUESTS) },
                     onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
                 )
             }
@@ -210,11 +233,22 @@ private fun MainScreen(accountType: AccountType) {
                 route = NavRoutes.USER_PROFILE,
                 arguments = listOf(navArgument(NavRoutes.ARG_USER_ID) { type = NavType.StringType })
             ) { backStackEntry ->
-                val userId = backStackEntry.arguments?.getString(NavRoutes.ARG_USER_ID) ?: ""
+                val userId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_USER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
                 UserPublicProfileScreen(
                     userId = userId,
                     onNavigateBack = { navController.popBackStack() },
-                    onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
+                    onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) },
+                    onMessageClick = { id, name ->
+                        navController.navigate(NavRoutes.chatStart(id, name))
+                    },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "user_profile_$userId",
+                        factory = UserPublicProfileViewModel.factory(userId)
+                    )
                 )
             }
             composable(NavRoutes.MY_PETS) {
@@ -254,14 +288,39 @@ private fun MainScreen(accountType: AccountType) {
                     viewModel = editPetViewModel
                 )
             }
+            composable(NavRoutes.SEARCH) {
+                SearchScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAuthorClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
+                    onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) },
+                    onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) }
+                )
+            }
+            composable(NavRoutes.MY_ADOPTIONS) {
+                MyAdoptionsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) }
+                )
+            }
+            composable(NavRoutes.LOST_FOUND_MAP) {
+                LostFoundMapScreen(onNavigateBack = { navController.popBackStack() })
+            }
             composable(NavRoutes.LOST_FOUND) {
-                LostFoundScreen(onNavigateBack = { navController.popBackStack() })
+                LostFoundScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToMap = { navController.navigate(NavRoutes.LOST_FOUND_MAP) }
+                )
             }
             composable(
                 route = NavRoutes.ADOPTION_DETAIL,
                 arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
             ) {
-                AdoptionDetailScreen(onNavigateBack = { navController.popBackStack() })
+                AdoptionDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onMessagePublisher = { publisherId, publisherName ->
+                        navController.navigate(NavRoutes.chatStart(publisherId, publisherName))
+                    }
+                )
             }
             composable(
                 route = NavRoutes.SHELTER_DETAIL,
@@ -318,6 +377,15 @@ private fun MainScreen(accountType: AccountType) {
                     }
                 )
             }
+            composable(NavRoutes.PUBLISH_URGENT) {
+                PublishUrgentScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onPublishSuccess = {
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.HOME)
+                    }
+                )
+            }
             composable(NavRoutes.PUBLISH_LOST_FOUND) {
                 PublishLostFoundScreen(
                     onNavigateBack = { navController.popBackStack() },
@@ -325,6 +393,101 @@ private fun MainScreen(accountType: AccountType) {
                         navController.popBackStack()
                         navController.navigate(NavRoutes.SUMATE)
                     }
+                )
+            }
+            composable(NavRoutes.PUBLISH_FOSTER) {
+                PublishFosterScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onPublishSuccess = {
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.SUMATE)
+                    }
+                )
+            }
+            composable(NavRoutes.PUBLISH_EVENT) {
+                PublishEventScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onPublishSuccess = {
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.SUMATE)
+                    }
+                )
+            }
+            composable(NavRoutes.PUBLISH_DONATION) {
+                PublishDonationScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onPublishSuccess = {
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.SUMATE)
+                    }
+                )
+            }
+            composable(NavRoutes.CHAT) {
+                ChatListScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onConversationClick = { conversationId, peerName ->
+                        navController.navigate(NavRoutes.chatThread(conversationId, peerName))
+                    }
+                )
+            }
+            composable(NavRoutes.FRIEND_REQUESTS) {
+                FriendRequestsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onUserClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) }
+                )
+            }
+            composable(
+                route = NavRoutes.CHAT_START,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_USER_ID) { type = NavType.StringType },
+                    navArgument(NavRoutes.ARG_PEER_NAME) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val peerUserId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_USER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                val peerName = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_PEER_NAME).orEmpty(),
+                    Charsets.UTF_8.name()
+                ).ifBlank { "Usuario" }
+                ChatStartScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onConversationReady = { conversationId ->
+                        navController.navigate(NavRoutes.chatThread(conversationId, peerName)) {
+                            popUpTo(NavRoutes.CHAT_START) { inclusive = true }
+                        }
+                    },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "chat_start_$peerUserId",
+                        factory = ChatStartViewModel.factory(peerUserId, peerName)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.CHAT_THREAD,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_CONVERSATION_ID) { type = NavType.StringType },
+                    navArgument(NavRoutes.ARG_PEER_NAME) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val conversationId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_CONVERSATION_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                val peerName = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_PEER_NAME).orEmpty(),
+                    Charsets.UTF_8.name()
+                ).ifBlank { "Usuario" }
+                ChatThreadScreen(
+                    peerName = peerName,
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "chat_thread_$conversationId",
+                        factory = ChatThreadViewModel.factory(conversationId)
+                    )
                 )
             }
         }

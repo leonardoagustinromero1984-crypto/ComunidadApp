@@ -27,6 +27,7 @@ interface AuthRepository {
     suspend fun resetPassword(email: String, token: String, newPassword: String): Result<Unit>
     suspend fun sendEmailVerification(email: String): Result<Unit>
     suspend fun confirmEmailVerification(email: String): Result<Unit>
+    suspend fun verifyEmailOtp(email: String, otpCode: String): Result<Unit>
     suspend fun isEmailVerified(email: String): Boolean
     fun getCurrentUser(): User?
     fun logout()
@@ -169,6 +170,19 @@ class MockAuthRepository : AuthRepository {
     override suspend fun confirmEmailVerification(email: String): Result<Unit> {
         delay(400)
         val normalizedEmail = email.trim().lowercase()
+        val account = MockAuthDatabase.findByEmail(normalizedEmail)
+            ?: return Result.failure(IllegalArgumentException("Cuenta no encontrada"))
+        MockAuthDatabase.setEmailVerified(normalizedEmail, true)
+        return Result.success(Unit)
+    }
+
+    override suspend fun verifyEmailOtp(email: String, otpCode: String): Result<Unit> {
+        delay(400)
+        val normalizedEmail = email.trim().lowercase()
+        val code = otpCode.trim()
+        if (code.length < 6) {
+            return Result.failure(IllegalArgumentException("Ingresá el código de 6 dígitos del email"))
+        }
         val account = MockAuthDatabase.findByEmail(normalizedEmail)
             ?: return Result.failure(IllegalArgumentException("Cuenta no encontrada"))
         MockAuthDatabase.setEmailVerified(normalizedEmail, true)

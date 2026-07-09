@@ -19,6 +19,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Pets
+import com.comunidapp.app.data.model.AccountType
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Button
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -43,6 +47,8 @@ import com.comunidapp.app.ui.components.FeedPostCard
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetCard
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.ReputationSection
+import com.comunidapp.app.ui.components.defaultBadgesForScore
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.viewmodel.ProfileViewModel
 
@@ -50,6 +56,9 @@ import com.comunidapp.app.viewmodel.ProfileViewModel
 fun ProfileScreen(
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToMyPets: () -> Unit = {},
+    onNavigateToMyAdoptions: () -> Unit = {},
+    onNavigateToChat: () -> Unit = {},
+    onNavigateToFriendRequests: () -> Unit = {},
     onPetClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
@@ -157,6 +166,53 @@ fun ProfileScreen(
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
+                            }
+                            val badges = user.badges.ifEmpty {
+                                defaultBadgesForScore(user.reputationScore)
+                            }
+                            ReputationSection(
+                                reputationScore = user.reputationScore,
+                                badges = badges,
+                                modifier = Modifier.padding(top = 12.dp)
+                            )
+                        }
+                    }
+
+                    if (RolePermissions.canPublishAdoption(user.accountType)) {
+                        item {
+                            Button(
+                                onClick = onNavigateToMyAdoptions,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Mis adopciones publicadas")
+                            }
+                        }
+                    }
+
+                    item {
+                        OutlinedButton(
+                            onClick = onNavigateToChat,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Mensajes")
+                        }
+                    }
+
+                    item {
+                        BadgedBox(
+                            badge = {
+                                if (uiState.pendingFriendRequests > 0) {
+                                    Badge {
+                                        Text(uiState.pendingFriendRequests.toString())
+                                    }
+                                }
+                            }
+                        ) {
+                            OutlinedButton(
+                                onClick = onNavigateToFriendRequests,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Solicitudes de amistad")
                             }
                         }
                     }

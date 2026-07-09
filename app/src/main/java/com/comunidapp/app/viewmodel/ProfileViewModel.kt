@@ -8,7 +8,9 @@ import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
+import com.comunidapp.app.data.model.FriendConnectionStatus
 import com.comunidapp.app.data.repository.FeedRepository
+import com.comunidapp.app.data.repository.FriendRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.UserRepository
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -24,6 +26,7 @@ data class ProfileUiState(
     val user: User? = null,
     val pets: List<Pet> = emptyList(),
     val posts: List<FeedPost> = emptyList(),
+    val pendingFriendRequests: Int = 0,
     val errorMessage: String? = null
 )
 
@@ -32,7 +35,8 @@ class ProfileViewModel(
     private val authRepository: AuthRepository = AuthProvider.repository,
     private val userRepository: UserRepository = DataProvider.userRepository,
     private val petRepository: PetRepository = DataProvider.petRepository,
-    private val feedRepository: FeedRepository = DataProvider.feedRepository
+    private val feedRepository: FeedRepository = DataProvider.feedRepository,
+    private val friendRepository: FriendRepository = DataProvider.friendRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<ProfileUiState> = authRepository.observeAuthState()
@@ -43,14 +47,20 @@ class ProfileViewModel(
                 combine(
                     userRepository.observeUser(authUser.id),
                     petRepository.observePets(),
-                    feedRepository.observeFeedPosts()
-                ) { profile, pets, posts ->
+                    feedRepository.observeFeedPosts(),
+                    friendRepository.observeConnections(authUser.id)
+                ) { profile, pets, posts, connections ->
                     val user = profile ?: authUser
+                    val pendingFriendRequests = connections.count {
+                        it.status == FriendConnectionStatus.PENDING &&
+                            it.addresseeId == authUser.id
+                    }
                     ProfileUiState(
                         isLoading = false,
                         user = user,
                         pets = pets.filter { it.ownerId == authUser.id },
-                        posts = posts.filter { it.authorId == authUser.id }
+                        posts = posts.filter { it.authorId == authUser.id },
+                        pendingFriendRequests = pendingFriendRequests
                     )
                 }
             }

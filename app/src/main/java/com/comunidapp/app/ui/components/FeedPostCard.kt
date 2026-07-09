@@ -16,6 +16,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Comment
+import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Person
@@ -41,7 +42,10 @@ import com.comunidapp.app.ui.theme.UrgentRed
 fun FeedPostCard(
     post: FeedPost,
     modifier: Modifier = Modifier,
-    onAuthorClick: ((String) -> Unit)? = null
+    isLiked: Boolean = false,
+    onAuthorClick: ((String) -> Unit)? = null,
+    onLikeClick: (() -> Unit)? = null,
+    onCommentClick: (() -> Unit)? = null
 ) {
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -131,12 +135,18 @@ fun FeedPostCard(
             Spacer(modifier = Modifier.height(12.dp))
 
             Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable(enabled = onLikeClick != null) {
+                        onLikeClick?.invoke()
+                    }
+                ) {
                     Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = null,
+                        imageVector = if (isLiked) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = "Me gusta",
                         modifier = Modifier.size(18.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        tint = if (isLiked) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Spacer(modifier = Modifier.width(4.dp))
                     Text(
@@ -144,7 +154,12 @@ fun FeedPostCard(
                         style = MaterialTheme.typography.labelMedium
                     )
                 }
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.clickable(enabled = onCommentClick != null) {
+                        onCommentClick?.invoke()
+                    }
+                ) {
                     Icon(
                         imageVector = Icons.Default.Comment,
                         contentDescription = null,

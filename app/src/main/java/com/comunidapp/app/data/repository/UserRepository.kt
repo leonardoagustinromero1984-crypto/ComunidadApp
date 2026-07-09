@@ -10,6 +10,7 @@ interface UserRepository {
     suspend fun createUser(user: User): Result<Unit>
     suspend fun updateUser(user: User): Result<Unit>
     fun observeUser(userId: String): Flow<User?>
+    fun observeUsers(): Flow<List<User>>
 }
 
 class MockUserRepository : UserRepository {
@@ -28,4 +29,6 @@ class MockUserRepository : UserRepository {
     }
 
     override fun observeUser(userId: String): Flow<User?> = MockUserStore.observe(userId)
+
+    override fun observeUsers(): Flow<List<User>> = MockUserStore.observeAll()
 }

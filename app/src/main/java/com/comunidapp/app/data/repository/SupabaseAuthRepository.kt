@@ -140,7 +140,7 @@ class SupabaseAuthRepository(
             if (sessionUser == null) {
                 return Result.failure(
                     IllegalArgumentException(
-                        "Abrí el link del email para confirmar tu cuenta, o iniciá sesión y tocá \"Verificar ahora\"."
+                        "Abrí el link del email o ingresá el código de 6 dígitos que te enviamos."
                     )
                 )
             }
@@ -156,10 +156,33 @@ class SupabaseAuthRepository(
             } else {
                 Result.failure(
                     IllegalArgumentException(
-                        "Tu email aún no está confirmado. Abrí el link del email o revisá spam."
+                        "Tu email aún no está confirmado. Usá el código de 6 dígitos del email."
                     )
                 )
             }
+        } catch (e: Exception) {
+            Result.failure(mapSupabaseException(e))
+        }
+    }
+
+    override suspend fun verifyEmailOtp(email: String, otpCode: String): Result<Unit> {
+        val normalizedEmail = email.trim().lowercase()
+        val token = otpCode.trim()
+        if (token.length < 6) {
+            return Result.failure(IllegalArgumentException("Ingresá el código de 6 dígitos del email"))
+        }
+        return try {
+            supabase.auth.verifyEmailOtp(
+                type = OtpType.Email.SIGNUP,
+                email = normalizedEmail,
+                token = token
+            )
+            val authUser = supabase.auth.currentUserOrNull()
+            if (authUser != null) {
+                userDataSource.updateEmailVerified(authUser.id, true)
+            }
+            supabase.auth.signOut()
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(mapSupabaseException(e))
         }
@@ -231,8 +254,9 @@ class SupabaseAuthRepository(
                 "Ya existe una cuenta con ese email. Revisá tu bandeja o iniciá sesión."
             raw.contains("Password should be at least", ignoreCase = true) ->
                 "La contraseña debe tener al menos 6 caracteres"
-            raw.contains("Unable to validate email", ignoreCase = true) ->
-                "No encontramos una cuenta con ese email"
+            raw.contains("Email link is invalid or has expired", ignoreCase = true) ||
+                raw.contains("otp_expired", ignoreCase = true) ->
+                "El código o el link expiró. Pedí un email nuevo con \"Reenviar email\"."
             else -> raw.ifBlank { "Ocurrió un error. Intentá de nuevo." }
         }
         return IllegalArgumentException(message)

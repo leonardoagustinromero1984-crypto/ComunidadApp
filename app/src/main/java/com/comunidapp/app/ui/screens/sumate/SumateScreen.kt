@@ -36,7 +36,8 @@ private val sumateTabs = listOf(
 @Composable
 fun SumateScreen(
     onAdoptionClick: (String) -> Unit,
-    onShelterClick: (String) -> Unit
+    onShelterClick: (String) -> Unit,
+    onNavigateToMap: () -> Unit = {}
 ) {
     val pagerState = rememberPagerState(pageCount = { sumateTabs.size })
     val scope = rememberCoroutineScope()
@@ -77,7 +78,7 @@ fun SumateScreen(
         ) { page ->
             when (page) {
                 0 -> AdoptionsContent(onAdoptionClick = onAdoptionClick)
-                1 -> LostFoundContent()
+                1 -> LostFoundContent(onNavigateToMap = onNavigateToMap)
                 2 -> FosterHomesContent()
                 3 -> AdoptionEventsContent()
                 4 -> SheltersContent(onShelterClick = onShelterClick)

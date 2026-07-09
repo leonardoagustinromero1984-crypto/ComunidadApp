@@ -23,9 +23,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen().setKeepOnScreenCondition { keepSplashScreen }
         super.onCreate(savedInstanceState)
-        if (BuildConfig.SUPABASE_ENABLED) {
-            supabase.handleDeeplinks(intent)
-        }
+        handleAuthDeepLink(intent)
         enableEdgeToEdge()
         setContent {
             ComunidappTheme {
@@ -39,7 +37,13 @@ class MainActivity : ComponentActivity() {
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
-        if (BuildConfig.SUPABASE_ENABLED) {
+        setIntent(intent)
+        handleAuthDeepLink(intent)
+    }
+
+    private fun handleAuthDeepLink(intent: Intent?) {
+        if (!BuildConfig.SUPABASE_ENABLED || intent == null) return
+        if (intent.data?.scheme == com.comunidapp.app.data.remote.supabase.SupabaseAuthConfig.SCHEME) {
             supabase.handleDeeplinks(intent)
         }
     }

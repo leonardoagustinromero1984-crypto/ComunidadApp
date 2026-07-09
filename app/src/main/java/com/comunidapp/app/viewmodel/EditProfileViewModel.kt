@@ -25,6 +25,7 @@ data class EditProfileUiState(
     val locationText: String = "",
     val phone: String = "",
     val accountType: AccountType = AccountType.PERSON,
+    val profilePrivate: Boolean = true,
     val profileImageUrl: String? = null,
     val pendingImageUri: Uri? = null,
     val errorMessage: String? = null,
@@ -59,6 +60,7 @@ class EditProfileViewModel(
                     locationText = profile.locationText.orEmpty(),
                     phone = profile.phone.orEmpty(),
                     accountType = profile.accountType,
+                    profilePrivate = profile.profilePrivate,
                     profileImageUrl = profile.profileImageUrl
                 )
             }
@@ -83,6 +85,10 @@ class EditProfileViewModel(
 
     fun onAccountTypeChange(value: AccountType) {
         _uiState.update { it.copy(accountType = value, errorMessage = null) }
+    }
+
+    fun onProfilePrivateChange(value: Boolean) {
+        _uiState.update { it.copy(profilePrivate = value, errorMessage = null) }
     }
 
     fun onImageSelected(uri: Uri?) {
@@ -132,6 +138,7 @@ class EditProfileViewModel(
                 locationText = state.locationText.trim().ifBlank { null },
                 phone = state.phone.trim().ifBlank { null },
                 accountType = state.accountType,
+                profilePrivate = state.profilePrivate,
                 profileImageUrl = imageUrl
             )
 

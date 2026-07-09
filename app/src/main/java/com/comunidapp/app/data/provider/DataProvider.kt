@@ -4,7 +4,18 @@ import com.comunidapp.app.BuildConfig
 import com.comunidapp.app.data.remote.storage.ImageStorageService
 import com.comunidapp.app.data.remote.storage.SupabaseStorageService
 import com.comunidapp.app.data.repository.AdoptionRepository
+import com.comunidapp.app.data.repository.AdoptionRequestRepository
+import com.comunidapp.app.data.repository.ChatRepository
+import com.comunidapp.app.data.repository.CommunityRepository
+import com.comunidapp.app.data.repository.MockAdoptionRequestRepository
+import com.comunidapp.app.data.repository.MockChatRepository
+import com.comunidapp.app.data.repository.MockCommunityRepository
+import com.comunidapp.app.data.repository.SupabaseAdoptionRequestRepository
+import com.comunidapp.app.data.repository.SupabaseChatRepository
 import com.comunidapp.app.data.repository.FeedRepository
+import com.comunidapp.app.data.repository.FriendRepository
+import com.comunidapp.app.data.repository.MockFriendRepository
+import com.comunidapp.app.data.repository.SupabaseFriendRepository
 import com.comunidapp.app.data.repository.LostFoundRepository
 import com.comunidapp.app.data.repository.MockAdoptionRepository
 import com.comunidapp.app.data.repository.MockFeedRepository
@@ -14,8 +25,12 @@ import com.comunidapp.app.data.repository.MockShelterRepository
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.ShelterRepository
+import com.comunidapp.app.data.repository.SupabaseAdoptionRepository
+import com.comunidapp.app.data.repository.SupabaseCommunityRepository
 import com.comunidapp.app.data.repository.SupabaseFeedRepository
+import com.comunidapp.app.data.repository.SupabaseLostFoundRepository
 import com.comunidapp.app.data.repository.SupabasePetRepository
+import com.comunidapp.app.data.repository.SupabaseShelterRepository
 import com.comunidapp.app.data.repository.SupabaseUserRepository
 import com.comunidapp.app.data.repository.UserRepository
 
@@ -36,15 +51,31 @@ object DataProvider {
     }
 
     val adoptionRepository: AdoptionRepository by lazy {
-        MockAdoptionRepository()
+        if (useSupabase) SupabaseAdoptionRepository() else MockAdoptionRepository()
     }
 
     val lostFoundRepository: LostFoundRepository by lazy {
-        MockLostFoundRepository()
+        if (useSupabase) SupabaseLostFoundRepository() else MockLostFoundRepository()
+    }
+
+    val adoptionRequestRepository: AdoptionRequestRepository by lazy {
+        if (useSupabase) SupabaseAdoptionRequestRepository() else MockAdoptionRequestRepository()
+    }
+
+    val chatRepository: ChatRepository by lazy {
+        if (useSupabase) SupabaseChatRepository() else MockChatRepository()
+    }
+
+    val communityRepository: CommunityRepository by lazy {
+        if (useSupabase) SupabaseCommunityRepository() else MockCommunityRepository()
     }
 
     val shelterRepository: ShelterRepository by lazy {
-        MockShelterRepository()
+        if (useSupabase) SupabaseShelterRepository() else MockShelterRepository()
+    }
+
+    val friendRepository: FriendRepository by lazy {
+        if (useSupabase) SupabaseFriendRepository() else MockFriendRepository()
     }
 
     val storageService: ImageStorageService? by lazy {

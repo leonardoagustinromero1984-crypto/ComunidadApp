@@ -55,7 +55,11 @@ fun PublishScreen(
     onNavigateToQuestion: () -> Unit,
     onNavigateToPromo: () -> Unit,
     onNavigateToAdoption: () -> Unit,
-    onNavigateToLostFound: () -> Unit
+    onNavigateToLostFound: () -> Unit,
+    onNavigateToUrgent: () -> Unit,
+    onNavigateToFoster: () -> Unit = {},
+    onNavigateToEvent: () -> Unit = {},
+    onNavigateToDonation: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -70,6 +74,10 @@ fun PublishScreen(
         onNavigateToPromo = onNavigateToPromo,
         onNavigateToAdoption = onNavigateToAdoption,
         onNavigateToLostFound = onNavigateToLostFound,
+        onNavigateToUrgent = onNavigateToUrgent,
+        onNavigateToFoster = onNavigateToFoster,
+        onNavigateToEvent = onNavigateToEvent,
+        onNavigateToDonation = onNavigateToDonation,
         onSoon = showSoon
     )
 
@@ -117,6 +125,10 @@ private fun buildPublishOptions(
     onNavigateToPromo: () -> Unit,
     onNavigateToAdoption: () -> Unit,
     onNavigateToLostFound: () -> Unit,
+    onNavigateToUrgent: () -> Unit,
+    onNavigateToFoster: () -> Unit,
+    onNavigateToEvent: () -> Unit,
+    onNavigateToDonation: () -> Unit,
     onSoon: () -> Unit
 ): List<PublishOption> = buildList {
     add(
@@ -125,6 +137,14 @@ private fun buildPublishOptions(
             title = "Publicación general",
             description = "Foto, historia o novedad para el feed",
             onClick = onNavigateToGeneral
+        )
+    )
+    add(
+        PublishOption(
+            icon = Icons.Default.Search,
+            title = "Aviso urgente",
+            description = "Alerta prioritaria para la comunidad",
+            onClick = onNavigateToUrgent
         )
     )
     if (RolePermissions.canPublishPromo(accountType)) {
@@ -173,7 +193,7 @@ private fun buildPublishOptions(
                 icon = Icons.Default.Home,
                 title = "Ofrecer hogar de tránsito",
                 description = "Indicá que podés recibir mascotas temporalmente",
-                onClick = onSoon
+                onClick = onNavigateToFoster
             )
         )
     }
@@ -183,7 +203,7 @@ private fun buildPublishOptions(
                 icon = Icons.Default.CalendarMonth,
                 title = "Evento de adopción",
                 description = "Feria, jornada o encuentro comunitario",
-                onClick = onSoon
+                onClick = onNavigateToEvent
             )
         )
         add(
@@ -191,7 +211,7 @@ private fun buildPublishOptions(
                 icon = Icons.Default.VolunteerActivism,
                 title = "Donación / voluntariado",
                 description = "Campaña solidaria o llamado a colaborar",
-                onClick = onSoon
+                onClick = onNavigateToDonation
             )
         )
     }

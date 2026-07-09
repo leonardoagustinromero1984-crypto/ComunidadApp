@@ -22,6 +22,7 @@ data class CommunityListing(
 
 data class FosterHomeListing(
     val id: String,
+    val hostId: String = "",
     val hostName: String,
     val photoUrl: String? = null,
     val location: String,
@@ -34,6 +35,7 @@ data class FosterHomeListing(
 
 data class AdoptionEvent(
     val id: String,
+    val organizerId: String = "",
     val title: String,
     val photoUrl: String? = null,
     val location: String,

@@ -33,7 +33,20 @@ object NavRoutes {
     const val PUBLISH_PROMO = "publish_promo"
     const val PUBLISH_ADOPTION = "publish_adoption"
     const val PUBLISH_LOST_FOUND = "publish_lost_found"
+    const val PUBLISH_URGENT = "publish_urgent"
+    const val SEARCH = "search"
+    const val MY_ADOPTIONS = "my_adoptions"
+    const val LOST_FOUND_MAP = "lost_found_map"
+    const val CHAT = "chat"
+    const val FRIEND_REQUESTS = "friend_requests"
+    const val CHAT_THREAD = "chat_thread/{conversationId}/{peerName}"
+    const val CHAT_START = "chat_start/{userId}/{peerName}"
+    const val PUBLISH_FOSTER = "publish_foster"
+    const val PUBLISH_EVENT = "publish_event"
+    const val PUBLISH_DONATION = "publish_donation"
 
+    const val ARG_CONVERSATION_ID = "conversationId"
+    const val ARG_PEER_NAME = "peerName"
     const val ARG_ADOPTION_ID = "adoptionId"
     const val ARG_SHELTER_ID = "shelterId"
     const val ARG_PET_ID = "petId"
@@ -45,5 +58,12 @@ object NavRoutes {
     fun petDetail(petId: String) = "pet_detail/$petId"
     fun emailVerification(email: String) = "email_verification/$email"
     fun editPet(petId: String) = "edit_pet/$petId"
-    fun userProfile(userId: String) = "user_profile/$userId"
+    fun userProfile(userId: String) =
+        "user_profile/${java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())}"
+    fun chatThread(conversationId: String, peerName: String) =
+        "chat_thread/${java.net.URLEncoder.encode(conversationId, Charsets.UTF_8.name())}/" +
+            java.net.URLEncoder.encode(peerName, Charsets.UTF_8.name())
+    fun chatStart(userId: String, peerName: String) =
+        "chat_start/${java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())}/" +
+            java.net.URLEncoder.encode(peerName, Charsets.UTF_8.name())
 }

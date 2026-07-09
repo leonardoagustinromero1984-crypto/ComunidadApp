@@ -16,10 +16,13 @@ interface AdoptionRepository {
         minAge: Int? = null,
         maxAge: Int? = null,
         size: PetSize? = null,
-        status: AdoptionStatus? = null
+        status: AdoptionStatus? = AdoptionStatus.AVAILABLE
     ): List<AdoptionPost>
     fun getAdoptionsByShelter(shelterId: String): List<AdoptionPost>
-    fun addAdoptionPost(post: AdoptionPost)
+    fun observeMyAdoptions(publisherId: String): kotlinx.coroutines.flow.Flow<List<AdoptionPost>>
+    suspend fun addAdoptionPost(post: AdoptionPost): Result<String>
+    suspend fun updateAdoptionPost(post: AdoptionPost): Result<Unit>
+    suspend fun updateAdoptionStatus(id: String, status: AdoptionStatus): Result<Unit>
 }
 
 class MockAdoptionRepository : AdoptionRepository {
@@ -49,7 +52,22 @@ class MockAdoptionRepository : AdoptionRepository {
     override fun getAdoptionsByShelter(shelterId: String): List<AdoptionPost> =
         InMemoryDataStore.getAdoptionsByShelter(shelterId)
 
-    override fun addAdoptionPost(post: AdoptionPost) {
+    override fun observeMyAdoptions(publisherId: String): kotlinx.coroutines.flow.Flow<List<AdoptionPost>> =
+        InMemoryDataStore.observeMyAdoptions(publisherId)
+
+    override suspend fun addAdoptionPost(post: AdoptionPost): Result<String> {
         InMemoryDataStore.addAdoptionPost(post)
+        return Result.success(post.id.ifBlank { "adopt_${System.currentTimeMillis()}" })
+    }
+
+    override suspend fun updateAdoptionPost(post: AdoptionPost): Result<Unit> {
+        InMemoryDataStore.updateAdoptionPost(post)
+        return Result.success(Unit)
+    }
+
+    override suspend fun updateAdoptionStatus(id: String, status: AdoptionStatus): Result<Unit> {
+        val post = getAdoptionPostById(id) ?: return Result.failure(NoSuchElementException())
+        InMemoryDataStore.updateAdoptionPost(post.copy(status = status))
+        return Result.success(Unit)
     }
 }

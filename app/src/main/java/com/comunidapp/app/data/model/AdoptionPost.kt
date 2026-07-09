@@ -2,6 +2,7 @@ package com.comunidapp.app.data.model
 
 data class AdoptionPost(
     val id: String,
+    val publisherId: String? = null,
     val shelterId: String? = null,
     val shelterName: String,
     val name: String,
@@ -13,5 +14,6 @@ data class AdoptionPost(
     val size: PetSize,
     val location: String,
     val description: String,
-    val status: AdoptionStatus = AdoptionStatus.AVAILABLE
+    val status: AdoptionStatus = AdoptionStatus.AVAILABLE,
+    val createdAt: Long? = null
 )

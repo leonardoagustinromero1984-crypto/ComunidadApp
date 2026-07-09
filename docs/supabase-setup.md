@@ -9,6 +9,9 @@ Marca cada paso cuando lo completes:
 - [ ] **1.** Crear proyecto en [supabase.com](https://supabase.com)
 - [ ] **2.** Ejecutar SQL de tablas (`001_initial_schema.sql`)
 - [ ] **2b.** Ejecutar trigger de registro (`004_auth_user_profile_trigger.sql`)
+- [ ] **2c.** Ejecutar módulos Fase 1 (`005_fase1_community.sql`) — adopciones, perdidos, módulos activos
+- [ ] **2d.** Ejecutar Sprints A–D (`006_sprints_abcd.sql`) — likes, comentarios, solicitudes adopción, tránsito, eventos, donaciones, insignias
+- [ ] **2e.** Ejecutar Fase 3 chat (`007_fase3_chat.sql`) — mensajería entre usuarios
 - [ ] **3.** Crear bucket Storage `leover` (público)
 - [ ] **4.** Ejecutar SQL de storage (`002_storage.sql`)
 - [ ] **5.** Configurar Auth (email + confirmación)
@@ -41,6 +44,16 @@ Esperá a que termine de provisionarse (~2 min).
 
 Esto crea las tablas `users`, `pets`, `posts` con Row Level Security.
 
+4. Ejecutá también (en orden):
+
+   - `supabase/migrations/004_auth_user_profile_trigger.sql`
+   - `supabase/migrations/005_fase1_community.sql` — adopciones, perdidos/encontrados, módulos activos
+   - `supabase/migrations/006_sprints_abcd.sql` — likes, comentarios, solicitudes de adopción, refugios, tránsito, eventos, donaciones, reputación
+   - `supabase/migrations/007_fase3_chat.sql` — chat 1:1 (conversaciones, mensajes, función `create_direct_conversation`)
+   - `supabase/migrations/008_friendships.sql` — solicitudes de amistad y privacidad de perfiles persona
+   - `supabase/migrations/009_profile_privacy.sql` — columna `profile_private` configurable por usuario
+   - `supabase/migrations/010_fix_chat_function.sql` — fix función `create_direct_conversation` (error peer_user_id ambiguous)
+
 ---
 
 ## Paso 3 — Crear bucket de imágenes
@@ -72,7 +85,12 @@ Esto crea las tablas `users`, `pets`, `posts` con Row Level Security.
 
 > **Importante:** si Site URL queda en `http://localhost:3000`, el link del mail de verificación no abrirá la app.
 
-4. **SQL Editor** → ejecutá también `004_auth_user_profile_trigger.sql` (crea el perfil en `public.users` al registrarse)
+4. **Personalizá los emails de Leover** (asunto, cuerpo en español, código de 6 dígitos):
+   - Guía: [`docs/supabase-email-templates.md`](supabase-email-templates.md)
+   - Plantillas HTML: carpeta `supabase/email-templates/`
+   - Dashboard → **Authentication** → **Email Templates** → *Confirm sign up*
+
+5. **SQL Editor** → ejecutá también `004_auth_user_profile_trigger.sql` (crea el perfil en `public.users` al registrarse)
 
 Para pruebas rápidas podés desactivar "Confirm email" temporalmente; la app funciona igual pero sin verificación.
 
@@ -133,6 +151,8 @@ Si **no** configurás `SUPABASE_URL` y `SUPABASE_ANON_KEY` en `local.properties`
 | Proyecto pausado (Free) | Dashboard → **Restore project** (inactividad 7 días) |
 | Error al registrarse pero llega el mail | Ejecutar `004_auth_user_profile_trigger.sql` y configurar Site URL (no localhost) |
 | Link del mail va a localhost | Site URL = `com.comunidapp.app://login-callback` en Auth → URL Configuration |
+| Link del mail → página en blanco | Normal en Gmail: usá el **código de 6 dígitos** en la app. Ver [`docs/supabase-email-templates.md`](supabase-email-templates.md) |
+| Remitente dice "Supabase Auth" | Personalizá template (gratis) o configurá **Custom SMTP** con nombre "Leover" |
 | **`email rate limit exceeded`** | Supabase Free limita ~3–4 emails/hora. Esperá 30–60 min, probá otro email, o desactivá **Confirm email** en Auth → Providers → Email mientras desarrollás |
 | RLS permission denied | Verificar que estás logueado y las policies están aplicadas |
 

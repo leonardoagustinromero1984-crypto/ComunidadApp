@@ -7,6 +7,7 @@ data class ShelterNeed(
 
 data class Shelter(
     val id: String,
+    val ownerId: String = "",
     val name: String,
     val photoUrl: String? = null,
     val location: String,

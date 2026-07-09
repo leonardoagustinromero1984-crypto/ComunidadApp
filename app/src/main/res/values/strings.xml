@@ -10,6 +10,8 @@
     <string name="profile_location">Ubicación</string>
     <string name="profile_phone">Teléfono</string>
     <string name="profile_account_type">Tipo de cuenta</string>
+    <string name="profile_private_title">Perfil privado</string>
+    <string name="profile_private_hint">Si está activo, solo tus amigos pueden ver tu contenido e interactuar con vos.</string>
     <string name="change_photo">Cambiar foto</string>
     <string name="public_profile_stub">Perfil público (próximamente)</string>
 </resources>

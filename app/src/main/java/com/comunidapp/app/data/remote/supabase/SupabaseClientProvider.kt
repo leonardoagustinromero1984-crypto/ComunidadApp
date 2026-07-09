@@ -13,6 +13,20 @@ object SupabaseTables {
     const val USERS = "users"
     const val PETS = "pets"
     const val POSTS = "posts"
+    const val ADOPTIONS = "adoptions"
+    const val LOST_FOUND = "lost_found_posts"
+    const val POST_LIKES = "post_likes"
+    const val POST_COMMENTS = "post_comments"
+    const val ADOPTION_REQUESTS = "adoption_requests"
+    const val SHELTERS_TABLE = "shelters"
+    const val FOSTER_HOMES = "foster_homes"
+    const val COMMUNITY_EVENTS = "community_events"
+    const val DONATION_CAMPAIGNS = "donation_campaigns"
+    const val USER_BADGES = "user_badges"
+    const val CONVERSATIONS = "conversations"
+    const val CONVERSATION_PARTICIPANTS = "conversation_participants"
+    const val MESSAGES = "messages"
+    const val FRIEND_CONNECTIONS = "friend_connections"
 }
 
 object SupabaseClientProvider {

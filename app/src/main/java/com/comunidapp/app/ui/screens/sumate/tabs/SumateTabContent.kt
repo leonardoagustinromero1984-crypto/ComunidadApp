@@ -19,21 +19,24 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.comunidapp.app.data.mock.MockData
 import com.comunidapp.app.data.model.AdoptionEvent
-import com.comunidapp.app.data.model.CommunityCategory
+import com.comunidapp.app.data.model.DonationCampaign
 import com.comunidapp.app.data.model.FosterHomeListing
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.toDisplayName
-import com.comunidapp.app.ui.screens.comunidad.CommunityListingCard
 import com.comunidapp.app.ui.screens.shelters.ShelterListCard
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.viewmodel.CommunityViewModel
 import com.comunidapp.app.viewmodel.SheltersViewModel
 
 @Composable
-fun FosterHomesContent(bottomPadding: Dp = 0.dp) {
+fun FosterHomesContent(
+    bottomPadding: Dp = 0.dp,
+    viewModel: CommunityViewModel = viewModel()
+) {
+    val homes by viewModel.fosterHomes.collectAsState()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -44,7 +47,7 @@ fun FosterHomesContent(bottomPadding: Dp = 0.dp) {
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(MockData.fosterHomes, key = { it.id }) { home ->
+        items(homes, key = { it.id }) { home ->
             FosterHomeCard(home = home)
         }
     }
@@ -108,7 +111,11 @@ private fun FosterHomeCard(home: FosterHomeListing) {
 }
 
 @Composable
-fun AdoptionEventsContent(bottomPadding: Dp = 0.dp) {
+fun AdoptionEventsContent(
+    bottomPadding: Dp = 0.dp,
+    viewModel: CommunityViewModel = viewModel()
+) {
+    val events by viewModel.events.collectAsState()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -119,7 +126,7 @@ fun AdoptionEventsContent(bottomPadding: Dp = 0.dp) {
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(MockData.adoptionEvents, key = { it.id }) { event ->
+        items(events, key = { it.id }) { event ->
             AdoptionEventCard(event = event)
         }
     }
@@ -201,8 +208,11 @@ fun SheltersContent(
 }
 
 @Composable
-fun DonationsContent(bottomPadding: Dp = 0.dp) {
-    val listings = MockData.communityListings.filter { it.category == CommunityCategory.DONATION }
+fun DonationsContent(
+    bottomPadding: Dp = 0.dp,
+    viewModel: CommunityViewModel = viewModel()
+) {
+    val campaigns by viewModel.donations.collectAsState()
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(
@@ -213,8 +223,42 @@ fun DonationsContent(bottomPadding: Dp = 0.dp) {
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        items(listings, key = { it.id }) { listing ->
-            CommunityListingCard(listing = listing)
+        items(campaigns, key = { it.id }) { campaign ->
+            DonationCampaignCard(campaign = campaign)
+        }
+    }
+}
+
+@Composable
+private fun DonationCampaignCard(campaign: DonationCampaign) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = campaign.title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.Bold
+            )
+            Text(
+                text = "📍 ${campaign.location}",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            Text(
+                text = campaign.description,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
+            campaign.goalAmount?.let { goal ->
+                Text(
+                    text = "Meta: $$goal",
+                    style = MaterialTheme.typography.labelMedium,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
+            }
         }
     }
 }

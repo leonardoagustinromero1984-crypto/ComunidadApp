@@ -20,7 +20,7 @@ data class AdoptionFilters(
     val location: String = "",
     val sex: PetSex? = null,
     val size: PetSize? = null,
-    val status: AdoptionStatus? = null
+    val status: AdoptionStatus? = AdoptionStatus.AVAILABLE
 )
 
 class AdoptionsViewModel(

@@ -28,6 +28,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
@@ -185,6 +188,7 @@ fun EmailVerificationScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val isRemoteBackend = AuthProvider.isRemoteBackendEnabled
+    var otpCode by remember { mutableStateOf("") }
 
     LaunchedEffect(email) {
         viewModel.checkVerification(email)
@@ -235,27 +239,46 @@ fun EmailVerificationScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = if (isRemoteBackend) {
-                    "Abrí el email y tocá el link de confirmación. Se abrirá la app automáticamente. " +
-                        "Si ya confirmaste, iniciá sesión con tu email y contraseña."
+                    "Ingresá el código de 6 dígitos que te enviamos por email. " +
+                        "Si el link no abre la app, este código es la forma más confiable de confirmar."
                 } else {
-                    "Modo demo: tocá \"Verificar ahora\" para simular la confirmación."
+                    "Modo demo: ingresá cualquier código de 6 dígitos o tocá \"Ya confirmé con el link\"."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            OutlinedTextField(
+                value = otpCode,
+                onValueChange = { value ->
+                    otpCode = value.filter { it.isDigit() }.take(6)
+                },
+                label = { Text("Código de 6 dígitos") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+            Spacer(modifier = Modifier.height(16.dp))
 
             Button(
-                onClick = { viewModel.confirmVerification(email) },
+                onClick = { viewModel.confirmWithOtp(email, otpCode) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading
+                enabled = !uiState.isLoading && otpCode.length >= 6
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
                 } else {
-                    Text("Verificar ahora")
+                    Text("Confirmar con código")
                 }
+            }
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedButton(
+                onClick = { viewModel.confirmVerification(email) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !uiState.isLoading
+            ) {
+                Text("Ya confirmé con el link")
             }
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedButton(

@@ -63,6 +63,8 @@ object MockData {
             id = "user_2",
             name = "Refugio Patitas",
             email = "contacto@patitas.org",
+            accountType = AccountType.SHELTER,
+            profilePrivate = false,
             bio = "Refugio sin fines de lucro. Rescatamos y damos en adopción.",
             locationText = "CABA, Argentina"
         ),

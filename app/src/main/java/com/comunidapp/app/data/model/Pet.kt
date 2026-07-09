@@ -33,6 +33,11 @@ data class Pet(
     val microchipId: String? = null,
     val lastVetVisit: String? = null,
     val healthNotes: String? = null,
+    val weightKg: Float? = null,
+    val color: String? = null,
+    val breed: String? = null,
+    val personality: String? = null,
+    val locationText: String? = null,
     val reminders: List<PetReminder> = emptyList(),
     val createdAt: Long? = null,
     val updatedAt: Long? = null

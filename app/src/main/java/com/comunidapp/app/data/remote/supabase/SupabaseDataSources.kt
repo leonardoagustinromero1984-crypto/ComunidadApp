@@ -1,5 +1,9 @@
 package com.comunidapp.app.data.remote.supabase
 
+import com.comunidapp.app.data.model.AdoptionPost
+import com.comunidapp.app.data.model.LostFoundPost
+import com.comunidapp.app.data.model.LostFoundStatus
+import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.User
 import io.github.jan.supabase.postgrest.from
@@ -65,6 +69,22 @@ class UserSupabaseDataSource {
     fun observeUser(userId: String): Flow<User?> = pollingFlow {
         getUser(userId)
     }
+
+    suspend fun fetchUsers(limit: Int = 100): List<User> {
+        return try {
+            supabase.from(SupabaseTables.USERS)
+                .select {
+                    order("created_at", Order.DESCENDING)
+                    limit(limit.toLong())
+                }
+                .decodeList<UserRow>()
+                .map(::parseUser)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun observeUsers(): Flow<List<User>> = pollingFlow { fetchUsers() }
 }
 
 class PetSupabaseDataSource {
@@ -198,9 +218,128 @@ class PostSupabaseDataSource {
     }
 }
 
+class AdoptionSupabaseDataSource {
+
+    suspend fun fetchAdoptions(): List<AdoptionPost> {
+        return try {
+            supabase.from(SupabaseTables.ADOPTIONS)
+                .select {
+                    order("created_at", Order.DESCENDING)
+                }
+                .decodeList<AdoptionRow>()
+                .map(::parseAdoption)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun observeAdoptions(): Flow<List<AdoptionPost>> = pollingFlow { fetchAdoptions() }
+
+    suspend fun getAdoption(id: String): AdoptionPost? {
+        return try {
+            supabase.from(SupabaseTables.ADOPTIONS)
+                .select {
+                    filter { eq("id", id) }
+                }
+                .decodeSingleOrNull<AdoptionRow>()
+                ?.let(::parseAdoption)
+        } catch (_: Exception) {
+            null
+        }
+    }
+
+    suspend fun addAdoption(post: AdoptionPost): Result<String> {
+        return try {
+            val row = if (post.id.isBlank()) {
+                post.toAdoptionRow().copy(id = java.util.UUID.randomUUID().toString())
+            } else {
+                post.toAdoptionRow()
+            }
+            supabase.from(SupabaseTables.ADOPTIONS).insert(row)
+            Result.success(row.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateAdoption(post: AdoptionPost): Result<Unit> {
+        return try {
+            supabase.from(SupabaseTables.ADOPTIONS).update(post.toAdoptionRow()) {
+                filter { eq("id", post.id) }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+
+class LostFoundSupabaseDataSource {
+
+    suspend fun fetchLostFound(): List<LostFoundPost> {
+        return try {
+            supabase.from(SupabaseTables.LOST_FOUND)
+                .select {
+                    order("created_at", Order.DESCENDING)
+                }
+                .decodeList<LostFoundRow>()
+                .map(::parseLostFound)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    fun observeLostFound(): Flow<List<LostFoundPost>> = pollingFlow { fetchLostFound() }
+
+    suspend fun addLostFound(post: LostFoundPost): Result<String> {
+        return try {
+            val row = if (post.id.isBlank()) {
+                post.toLostFoundRow().copy(id = java.util.UUID.randomUUID().toString())
+            } else {
+                post.toLostFoundRow()
+            }
+            supabase.from(SupabaseTables.LOST_FOUND).insert(row)
+            Result.success(row.id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateLostFound(post: LostFoundPost): Result<Unit> {
+        return try {
+            supabase.from(SupabaseTables.LOST_FOUND).update(post.toLostFoundRow()) {
+                filter { eq("id", post.id) }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateStatus(id: String, status: LostFoundStatus): Result<Unit> {
+        return try {
+            supabase.from(SupabaseTables.LOST_FOUND).update(
+                mapOf(
+                    "status" to status.name,
+                    "updated_at" to nowIso()
+                )
+            ) {
+                filter { eq("id", id) }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+}
+
 private fun <T> pollingFlow(fetch: suspend () -> T): Flow<T> = flow {
     while (coroutineContext.isActive) {
-        emit(fetch())
+        try {
+            emit(fetch())
+        } catch (_: Exception) {
+            // Ignorar errores transitorios de red/Supabase y seguir polling.
+        }
         delay(4_000)
     }
 }

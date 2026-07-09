@@ -74,6 +74,16 @@ enum class LostFoundType {
     FOUND
 }
 
+enum class LostFoundStatus {
+    ACTIVE,
+    RESOLVED;
+
+    companion object {
+        fun fromString(value: String?): LostFoundStatus =
+            entries.find { it.name == value } ?: ACTIVE
+    }
+}
+
 enum class PostType {
     GENERAL,
     QUESTION,

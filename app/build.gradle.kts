@@ -84,3 +84,15 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.test.manifest)
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
+
+val copyDebugApk = tasks.register<Copy>("copyDebugApk") {
+    from(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk"))
+    into(rootProject.layout.projectDirectory.dir("apk"))
+    rename { "Leover-debug.apk" }
+}
+
+afterEvaluate {
+    tasks.named("assembleDebug") {
+        finalizedBy(copyDebugApk)
+    }
+}

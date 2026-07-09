@@ -284,6 +284,29 @@ class EmailVerificationViewModel(
         private const val RESEND_COOLDOWN_SECONDS = 60
     }
 
+    fun confirmWithOtp(email: String, otpCode: String) {
+        if (otpCode.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "Ingresá el código de 6 dígitos") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
+            authRepository.verifyEmailOtp(email, otpCode)
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isVerified = true,
+                            successMessage = "Email confirmado. Ya podés iniciar sesión."
+                        )
+                    }
+                }
+                .onFailure { error ->
+                    _uiState.update { it.copy(isLoading = false, errorMessage = error.message) }
+                }
+        }
+    }
+
     fun confirmVerification(email: String) {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }

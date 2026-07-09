@@ -55,7 +55,9 @@ Sin credenciales en `local.properties`:
 | Documento | Contenido |
 |-----------|-----------|
 | [`docs/supabase-setup.md`](docs/supabase-setup.md) | **Setup Supabase (empezá acá)** |
-| [`docs/leover-requirements.md`](docs/leover-requirements.md) | Requisitos funcionales |
+| [`docs/leover-documento-funcional.md`](docs/leover-documento-funcional.md) | **Documento funcional oficial v1.0** |
+| [`docs/leover-roadmap-implementacion.md`](docs/leover-roadmap-implementacion.md) | Roadmap y estado de implementación |
+| [`docs/leover-requirements.md`](docs/leover-requirements.md) | Requisitos funcionales (historias US-*) |
 | [`docs/qa-checklist-phase0.md`](docs/qa-checklist-phase0.md) | Checklist QA manual |
 
 ## Licencia

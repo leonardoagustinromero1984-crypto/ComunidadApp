@@ -3,7 +3,10 @@ package com.comunidapp.app.viewmodel
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.comunidapp.app.data.model.AdoptionPost
+import com.comunidapp.app.data.model.AdoptionEvent
+import com.comunidapp.app.data.model.DonationCampaign
+import com.comunidapp.app.data.model.DonationType
+import com.comunidapp.app.data.model.FosterHomeListing
 import com.comunidapp.app.data.model.AdoptionStatus
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.LostFoundPost
@@ -16,7 +19,9 @@ import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.domain.RolePermissions
 import com.comunidapp.app.data.remote.storage.StoragePaths
+import com.comunidapp.app.data.model.AdoptionPost
 import com.comunidapp.app.data.repository.AdoptionRepository
+import com.comunidapp.app.data.repository.CommunityRepository
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.FeedRepository
@@ -42,7 +47,8 @@ class PublishViewModel(
     private val userRepository: UserRepository = DataProvider.userRepository,
     private val feedRepository: FeedRepository = DataProvider.feedRepository,
     private val adoptionRepository: AdoptionRepository = DataProvider.adoptionRepository,
-    private val lostFoundRepository: LostFoundRepository = DataProvider.lostFoundRepository
+    private val lostFoundRepository: LostFoundRepository = DataProvider.lostFoundRepository,
+    private val communityRepository: CommunityRepository = DataProvider.communityRepository
 ) : ViewModel() {
 
     private val _formState = MutableStateFlow(PublishFormState())
@@ -105,6 +111,13 @@ class PublishViewModel(
         }
     }
 
+    fun publishUrgent(
+        title: String,
+        content: String,
+        location: String,
+        imageUri: Uri? = null
+    ) = publishFeed(title, content, location, imageUri, PostType.URGENT)
+
     fun publishAdoption(
         name: String,
         species: PetSpecies,
@@ -112,7 +125,8 @@ class PublishViewModel(
         ageYears: Int,
         size: PetSize,
         location: String,
-        description: String
+        description: String,
+        imageUri: Uri? = null
     ) {
         if (name.isBlank() || description.isBlank() || location.isBlank()) {
             _formState.update { it.copy(errorMessage = "Completá los campos obligatorios") }
@@ -122,34 +136,58 @@ class PublishViewModel(
             _formState.update { PublishFormState(isLoading = true) }
             resolveAuthor()
                 .onSuccess { author ->
-                    if (!RolePermissions.canPublishAdoption(author.accountType)) {
+                    if (!RolePermissions.canPublishAdoption(author)) {
                         _formState.update {
-                            PublishFormState(errorMessage = "Solo refugios pueden publicar adopciones")
+                            PublishFormState(
+                                errorMessage = "Tu cuenta no tiene el módulo de adopciones activo"
+                            )
                         }
                         return@launch
                     }
-                    adoptionRepository.addAdoptionPost(
-                        AdoptionPost(
-                            id = "adopt_${System.currentTimeMillis()}",
-                            shelterName = author.name,
-                            name = name.trim(),
-                            species = species,
-                            sex = sex,
-                            ageYears = ageYears,
-                            size = size,
-                            location = location.trim(),
-                            description = description.trim(),
-                            status = AdoptionStatus.AVAILABLE
-                        )
+                    val adoption = AdoptionPost(
+                        id = "",
+                        publisherId = author.id,
+                        shelterId = if (author.accountType == com.comunidapp.app.data.model.AccountType.SHELTER) {
+                            author.id
+                        } else {
+                            null
+                        },
+                        shelterName = author.name,
+                        name = name.trim(),
+                        species = species,
+                        sex = sex,
+                        ageYears = ageYears,
+                        size = size,
+                        location = location.trim(),
+                        description = description.trim(),
+                        status = AdoptionStatus.AVAILABLE
                     )
-                    publishFeedPost(
-                        author = author,
-                        type = PostType.ADOPTION,
-                        title = "$name busca familia",
-                        content = description.trim(),
-                        locationText = location.trim(),
-                        imageUri = null
-                    )
+                    adoptionRepository.addAdoptionPost(adoption)
+                        .onSuccess { adoptionId ->
+                            var finalAdoption = adoption.copy(id = adoptionId)
+                            imageUri?.let { uri ->
+                                DataProvider.storageService?.uploadImage(
+                                    StoragePaths.adoptionImage(adoptionId),
+                                    uri
+                                )?.onSuccess { url ->
+                                    finalAdoption = finalAdoption.copy(photoUrl = url)
+                                    adoptionRepository.updateAdoptionPost(finalAdoption)
+                                }
+                            }
+                            publishFeedPost(
+                                author = author,
+                                type = PostType.ADOPTION,
+                                title = "$name busca familia",
+                                content = description.trim(),
+                                locationText = location.trim(),
+                                imageUri = imageUri
+                            )
+                        }
+                        .onFailure { error ->
+                            _formState.update {
+                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar la adopción")
+                            }
+                        }
                 }
                 .onFailure { error ->
                     _formState.update { PublishFormState(errorMessage = error.message) }
@@ -163,10 +201,15 @@ class PublishViewModel(
         species: PetSpecies,
         location: String,
         description: String,
-        contactInfo: String
+        contactInfo: String,
+        imageUri: Uri?
     ) {
         if (location.isBlank() || description.isBlank() || contactInfo.isBlank()) {
             _formState.update { it.copy(errorMessage = "Completá los campos obligatorios") }
+            return
+        }
+        if (imageUri == null) {
+            _formState.update { it.copy(errorMessage = "La foto es obligatoria para alertas de perdidos/encontrados") }
             return
         }
         viewModelScope.launch {
@@ -180,28 +223,47 @@ class PublishViewModel(
                         return@launch
                     }
                     val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
-                    lostFoundRepository.addLostFoundPost(
-                        LostFoundPost(
-                            id = "lf_${System.currentTimeMillis()}",
-                            authorId = author.id,
-                            authorName = author.name,
-                            type = type,
-                            petName = petName.trim().ifBlank { null },
-                            species = species,
-                            location = location.trim(),
-                            description = description.trim(),
-                            contactInfo = contactInfo.trim(),
-                            date = date
-                        )
+                    val lostPost = LostFoundPost(
+                        id = "",
+                        authorId = author.id,
+                        authorName = author.name,
+                        type = type,
+                        petName = petName.trim().ifBlank { null },
+                        species = species,
+                        location = location.trim(),
+                        description = description.trim(),
+                        contactInfo = contactInfo.trim(),
+                        date = date
                     )
-                    publishFeedPost(
-                        author = author,
-                        type = PostType.LOST_FOUND,
-                        title = if (type == LostFoundType.LOST) "Mascota perdida" else "Mascota encontrada",
-                        content = description.trim(),
-                        locationText = location.trim(),
-                        imageUri = null
-                    )
+                    lostFoundRepository.addLostFoundPost(lostPost)
+                        .onSuccess { lostId ->
+                            val storage = DataProvider.storageService
+                            if (storage != null) {
+                                storage.uploadImage(StoragePaths.lostFoundImage(lostId), imageUri)
+                                    .onSuccess { url ->
+                                        lostFoundRepository.updateLostFoundPost(
+                                            lostPost.copy(id = lostId, photoUrl = url)
+                                        )
+                                    }
+                            } else {
+                                lostFoundRepository.updateLostFoundPost(
+                                    lostPost.copy(id = lostId, photoUrl = imageUri.toString())
+                                )
+                            }
+                            publishFeedPost(
+                                author = author,
+                                type = PostType.LOST_FOUND,
+                                title = if (type == LostFoundType.LOST) "Mascota perdida" else "Mascota encontrada",
+                                content = description.trim(),
+                                locationText = location.trim(),
+                                imageUri = imageUri
+                            )
+                        }
+                        .onFailure { error ->
+                            _formState.update {
+                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar el aviso")
+                            }
+                        }
                 }
                 .onFailure { error ->
                     _formState.update { PublishFormState(errorMessage = error.message) }
@@ -270,5 +332,125 @@ class PublishViewModel(
                     PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
                 }
             }
+    }
+
+    fun publishFosterHome(
+        location: String,
+        capacity: Int,
+        species: List<PetSpecies>,
+        notes: String,
+        contactInfo: String
+    ) {
+        if (location.isBlank() || contactInfo.isBlank()) {
+            _formState.update { it.copy(errorMessage = "Zona y contacto son obligatorios") }
+            return
+        }
+        viewModelScope.launch {
+            _formState.update { PublishFormState(isLoading = true) }
+            resolveAuthor()
+                .onSuccess { host ->
+                    communityRepository.createFosterHome(
+                        host,
+                        FosterHomeListing(
+                            id = "",
+                            hostId = host.id,
+                            hostName = host.name,
+                            location = location.trim(),
+                            capacity = capacity.coerceAtLeast(1),
+                            acceptedSpecies = species.ifEmpty { listOf(PetSpecies.DOG, PetSpecies.CAT) },
+                            notes = notes.trim(),
+                            available = true,
+                            contactInfo = contactInfo.trim()
+                        )
+                    ).onSuccess { _formState.update { PublishFormState(isSuccess = true) } }
+                        .onFailure { error ->
+                            _formState.update {
+                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                            }
+                        }
+                }
+                .onFailure { error ->
+                    _formState.update { PublishFormState(errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun publishEvent(
+        title: String,
+        date: String,
+        location: String,
+        description: String,
+        contactInfo: String
+    ) {
+        if (title.isBlank() || date.isBlank() || location.isBlank()) {
+            _formState.update { it.copy(errorMessage = "Título, fecha y zona son obligatorios") }
+            return
+        }
+        viewModelScope.launch {
+            _formState.update { PublishFormState(isLoading = true) }
+            resolveAuthor()
+                .onSuccess { organizer ->
+                    communityRepository.createEvent(
+                        organizer,
+                        AdoptionEvent(
+                            id = "",
+                            organizerId = organizer.id,
+                            title = title.trim(),
+                            location = location.trim(),
+                            date = date.trim(),
+                            organizerName = organizer.name,
+                            description = description.trim(),
+                            contactInfo = contactInfo.trim()
+                        )
+                    ).onSuccess { _formState.update { PublishFormState(isSuccess = true) } }
+                        .onFailure { error ->
+                            _formState.update {
+                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                            }
+                        }
+                }
+                .onFailure { error ->
+                    _formState.update { PublishFormState(errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun publishDonationCampaign(
+        title: String,
+        description: String,
+        location: String,
+        goalAmount: Double?,
+        donationType: DonationType
+    ) {
+        if (title.isBlank() || description.isBlank() || location.isBlank()) {
+            _formState.update { it.copy(errorMessage = "Completá los campos obligatorios") }
+            return
+        }
+        viewModelScope.launch {
+            _formState.update { PublishFormState(isLoading = true) }
+            resolveAuthor()
+                .onSuccess { organizer ->
+                    communityRepository.createDonationCampaign(
+                        organizer,
+                        DonationCampaign(
+                            id = "",
+                            organizerId = organizer.id,
+                            title = title.trim(),
+                            description = description.trim(),
+                            location = location.trim(),
+                            goalAmount = goalAmount,
+                            donationType = donationType
+                        )
+                    ).onSuccess { _formState.update { PublishFormState(isSuccess = true) } }
+                        .onFailure { error ->
+                            _formState.update {
+                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                            }
+                        }
+                }
+                .onFailure { error ->
+                    _formState.update { PublishFormState(errorMessage = error.message) }
+                }
+        }
     }
 }
