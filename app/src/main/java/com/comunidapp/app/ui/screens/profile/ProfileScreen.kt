@@ -59,6 +59,8 @@ fun ProfileScreen(
     onNavigateToMyAdoptions: () -> Unit = {},
     onNavigateToChat: () -> Unit = {},
     onNavigateToFriendRequests: () -> Unit = {},
+    onNavigateToNotifications: () -> Unit = {},
+    onNavigateToModeration: () -> Unit = {},
     onPetClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
@@ -167,8 +169,8 @@ fun ProfileScreen(
                                     modifier = Modifier.padding(top = 4.dp)
                                 )
                             }
-                            val badges = user.badges.ifEmpty {
-                                defaultBadgesForScore(user.reputationScore)
+                            val badges = uiState.badges.ifEmpty {
+                                user.badges.ifEmpty { defaultBadgesForScore(user.reputationScore) }
                             }
                             ReputationSection(
                                 reputationScore = user.reputationScore,
@@ -195,6 +197,34 @@ fun ProfileScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Mensajes")
+                        }
+                    }
+
+                    item {
+                        BadgedBox(
+                            badge = {
+                                if (uiState.unreadNotifications > 0) {
+                                    Badge {
+                                        Text(uiState.unreadNotifications.toString())
+                                    }
+                                }
+                            }
+                        ) {
+                            OutlinedButton(
+                                onClick = onNavigateToNotifications,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text("Notificaciones")
+                            }
+                        }
+                    }
+
+                    item {
+                        OutlinedButton(
+                            onClick = onNavigateToModeration,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Moderación")
                         }
                     }
 

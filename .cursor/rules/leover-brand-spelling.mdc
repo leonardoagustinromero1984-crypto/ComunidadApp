@@ -1,0 +1,16 @@
+---
+description: Brand spelling — always write LeoVer with capital L and V
+alwaysApply: true
+---
+
+# Brand name: LeoVer
+
+Always write the product/brand name as **LeoVer** (capital **L** and capital **V**).
+
+Never write: Leover, leover, LEOVER, LeoVerApp as "Leover", etc.
+
+Applies to:
+- User-facing copy (UI strings, emails, docs, commit messages when mentioning the brand)
+- Comments and documentation in this repo when referring to the product name
+
+Technical identifiers may keep existing package/module names if already established (e.g. `com.comunidapp.app`), but any human-readable brand mention must be **LeoVer**.

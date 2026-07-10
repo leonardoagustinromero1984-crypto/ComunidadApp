@@ -3,19 +3,20 @@ package com.comunidapp.app.ui.screens.lostfound
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -24,10 +25,17 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -36,6 +44,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.LostFoundPost
+import com.comunidapp.app.data.model.LostFoundSighting
 import com.comunidapp.app.data.model.LostFoundStatus
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.PetSpecies
@@ -50,6 +59,16 @@ fun LostFoundScreen(
     onNavigateToMap: () -> Unit = {},
     viewModel: LostFoundViewModel = viewModel()
 ) {
+    val message by viewModel.message.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(message) {
+        message?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearMessage()
+        }
+    }
+
     Scaffold(
         topBar = {
             ComunidappTopBar(
@@ -57,7 +76,8 @@ fun LostFoundScreen(
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         LostFoundContent(
             topPadding = padding.calculateTopPadding(),
@@ -77,6 +97,59 @@ fun LostFoundContent(
 ) {
     val posts by viewModel.posts.collectAsState()
     val filters by viewModel.filters.collectAsState()
+    val sightingsByPost by viewModel.sightingsByPost.collectAsState()
+    var sightingPostId by remember { mutableStateOf<String?>(null) }
+    var sightingNote by remember { mutableStateOf("") }
+    var sightingLocation by remember { mutableStateOf("") }
+
+    if (sightingPostId != null) {
+        AlertDialog(
+            onDismissRequest = {
+                sightingPostId = null
+                sightingNote = ""
+                sightingLocation = ""
+            },
+            title = { Text("Reportar avistamiento") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = sightingNote,
+                        onValueChange = { sightingNote = it },
+                        label = { Text("Nota") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                    )
+                    OutlinedTextField(
+                        value = sightingLocation,
+                        onValueChange = { sightingLocation = it },
+                        label = { Text("Ubicación") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val id = sightingPostId ?: return@TextButton
+                        viewModel.addSighting(id, sightingNote, sightingLocation)
+                        sightingPostId = null
+                        sightingNote = ""
+                        sightingLocation = ""
+                    }
+                ) { Text("Enviar") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        sightingPostId = null
+                        sightingNote = ""
+                        sightingLocation = ""
+                    }
+                ) { Text("Cancelar") }
+            }
+        )
+    }
 
     Column(
         modifier = Modifier
@@ -148,8 +221,14 @@ fun LostFoundContent(
                 val context = LocalContext.current
                 LostFoundCard(
                     post = post,
+                    sightings = sightingsByPost[post.id].orEmpty(),
                     onMarkResolved = { viewModel.markResolved(post.id) },
-                    onOpenMap = { openInMaps(context, post) }
+                    onOpenMap = { openInMaps(context, post) },
+                    onReportSighting = {
+                        sightingPostId = post.id
+                        sightingNote = ""
+                        sightingLocation = post.location
+                    }
                 )
             }
         }
@@ -159,8 +238,10 @@ fun LostFoundContent(
 @Composable
 fun LostFoundCard(
     post: LostFoundPost,
+    sightings: List<LostFoundSighting> = emptyList(),
     onMarkResolved: (() -> Unit)? = null,
-    onOpenMap: (() -> Unit)? = null
+    onOpenMap: (() -> Unit)? = null,
+    onReportSighting: (() -> Unit)? = null
 ) {
     val badgeText = if (post.type == LostFoundType.LOST) "PERDIDO" else "ENCONTRADO"
 
@@ -233,9 +314,28 @@ fun LostFoundCard(
                     onOpenMap?.let { open ->
                         OutlinedButton(onClick = open) { Text("Abrir en mapa") }
                     }
+                    onReportSighting?.let { report ->
+                        OutlinedButton(onClick = report) { Text("Reportar avistamiento") }
+                    }
                     onMarkResolved?.let { resolve ->
                         Button(onClick = resolve) { Text("Marcar resuelta") }
                     }
+                }
+            }
+            if (sightings.isNotEmpty()) {
+                Text(
+                    text = "Avistamientos (${sightings.size})",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 12.dp)
+                )
+                sightings.take(5).forEach { sighting ->
+                    Text(
+                        text = "• ${sighting.reporterName}: ${sighting.note}" +
+                            (sighting.locationText?.let { " ($it)" }.orEmpty()),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
             }
         }
@@ -249,6 +349,7 @@ fun LostFoundMapScreen(
 ) {
     val posts by viewModel.posts.collectAsState()
     val context = LocalContext.current
+    val withCoords = posts.filter { it.latitude != null && it.longitude != null }
 
     Scaffold(
         topBar = {
@@ -273,12 +374,12 @@ fun LostFoundMapScreen(
                 contentAlignment = Alignment.Center
             ) {
                 Text(
-                    text = "${posts.size} alertas activas en tu zona",
+                    text = "${posts.size} alertas · ${withCoords.size} con GPS",
                     style = MaterialTheme.typography.titleMedium
                 )
             }
             Text(
-                text = "Tocá una alerta para abrirla en Google Maps",
+                text = "Tocá una alerta para abrirla en el mapa (geo:)",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 12.dp)
@@ -286,10 +387,18 @@ fun LostFoundMapScreen(
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(posts, key = { it.id }) { post ->
                     Card(onClick = { openInMaps(context, post) }) {
-                        Text(
-                            text = "${post.petName ?: post.species.toDisplayName()} · ${post.location}",
-                            modifier = Modifier.padding(12.dp)
-                        )
+                        Column(modifier = Modifier.padding(12.dp)) {
+                            Text(
+                                text = "${post.petName ?: post.species.toDisplayName()} · ${post.location}"
+                            )
+                            if (post.latitude != null && post.longitude != null) {
+                                Text(
+                                    text = "${post.latitude}, ${post.longitude}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
                     }
                 }
             }

@@ -2,6 +2,7 @@ package com.comunidapp.app.data.remote.supabase
 
 import com.comunidapp.app.data.model.AdoptionRequest
 import com.comunidapp.app.data.model.AdoptionRequestStatus
+import com.comunidapp.app.data.model.InterviewStatus
 import com.comunidapp.app.data.model.PostComment
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
@@ -37,6 +38,9 @@ data class AdoptionRequestRow(
     val message: String,
     val phone: String? = null,
     val status: String = AdoptionRequestStatus.PENDING.name,
+    @SerialName("interview_at") val interviewAt: String? = null,
+    @SerialName("interview_notes") val interviewNotes: String? = null,
+    @SerialName("interview_status") val interviewStatus: String? = InterviewStatus.NONE.name,
     @SerialName("created_at") val createdAt: String? = null
 )
 
@@ -229,6 +233,25 @@ class SocialSupabaseDataSource {
             Result.failure(e)
         }
     }
+
+    suspend fun scheduleAdoptionInterview(id: String, dateText: String, notes: String): Result<Unit> {
+        return try {
+            val parsedAt = runCatching {
+                java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+                    .parse(dateText.trim())?.time
+            }.getOrNull() ?: System.currentTimeMillis()
+            supabase.from(SupabaseTables.ADOPTION_REQUESTS).update(
+                mapOf(
+                    "interview_at" to java.time.Instant.ofEpochMilli(parsedAt).toString(),
+                    "interview_notes" to notes.trim().ifBlank { null },
+                    "interview_status" to InterviewStatus.SCHEDULED.name
+                )
+            ) { filter { eq("id", id) } }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 fun parseComment(row: PostCommentRow): PostComment = PostComment(
@@ -257,6 +280,9 @@ fun parseAdoptionRequest(row: AdoptionRequestRow): AdoptionRequest = AdoptionReq
     message = row.message,
     phone = row.phone,
     status = AdoptionRequestStatus.fromString(row.status),
+    interviewAt = row.interviewAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() },
+    interviewNotes = row.interviewNotes,
+    interviewStatus = InterviewStatus.fromString(row.interviewStatus),
     createdAt = row.createdAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }
 )
 
@@ -268,5 +294,8 @@ fun AdoptionRequest.toAdoptionRequestRow(): AdoptionRequestRow = AdoptionRequest
     message = message,
     phone = phone,
     status = status.name,
+    interviewAt = interviewAt?.let { java.time.Instant.ofEpochMilli(it).toString() },
+    interviewNotes = interviewNotes,
+    interviewStatus = interviewStatus.name,
     createdAt = createdAt?.let { java.time.Instant.ofEpochMilli(it).toString() }
 )

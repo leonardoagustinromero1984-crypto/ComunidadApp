@@ -16,6 +16,8 @@ import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.PostType
+import com.comunidapp.app.data.model.ServiceCategory
+import com.comunidapp.app.data.model.ServiceProfile
 import com.comunidapp.app.data.model.Shelter
 import com.comunidapp.app.data.model.ShelterNeed
 import com.comunidapp.app.data.model.User
@@ -456,6 +458,29 @@ object MockData {
             tags = listOf("Voluntariado", "Traslados")
         )
     )
+
+    val serviceProfiles: List<ServiceProfile> = communityListings.mapNotNull { listing ->
+        val category = ServiceCategory.fromCommunityCategory(listing.category) ?: return@mapNotNull null
+        ServiceProfile(
+            id = listing.id,
+            ownerId = "mock_${listing.id}",
+            category = category,
+            name = listing.name,
+            location = listing.location,
+            description = listing.description,
+            contactInfo = listing.contactInfo,
+            photoUrl = listing.photoUrl,
+            tags = listing.tags,
+            scheduleText = "Lun a Vie 9–18 hs",
+            priceFrom = when (category) {
+                ServiceCategory.VET -> 15000.0
+                ServiceCategory.TRAINER -> 12000.0
+                ServiceCategory.WALKER -> 5000.0
+                ServiceCategory.SHOP -> null
+            },
+            acceptsBookings = category != ServiceCategory.SHOP
+        )
+    }
 
     val shelters = listOf(
         Shelter(

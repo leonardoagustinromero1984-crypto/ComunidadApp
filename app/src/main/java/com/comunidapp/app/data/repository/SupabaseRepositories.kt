@@ -263,4 +263,7 @@ class SupabaseAdoptionRequestRepository(
         id: String,
         status: com.comunidapp.app.data.model.AdoptionRequestStatus
     ): Result<Unit> = socialDataSource.updateAdoptionRequestStatus(id, status)
+
+    override suspend fun scheduleInterview(id: String, dateText: String, notes: String): Result<Unit> =
+        socialDataSource.scheduleAdoptionInterview(id, dateText, notes)
 }

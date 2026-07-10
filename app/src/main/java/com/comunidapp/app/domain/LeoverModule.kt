@@ -47,7 +47,11 @@ fun AccountType.defaultModules(): Set<LeoverModule> = when (this) {
         LeoverModule.SOCIAL,
         LeoverModule.PET_PROFILE,
         LeoverModule.LOST_FOUND,
-        LeoverModule.EVENTS
+        LeoverModule.EVENTS,
+        LeoverModule.DONATIONS,
+        LeoverModule.FOSTER,
+        LeoverModule.REPUTATION,
+        LeoverModule.BADGES
     )
     AccountType.SHELTER -> setOf(
         LeoverModule.SOCIAL,

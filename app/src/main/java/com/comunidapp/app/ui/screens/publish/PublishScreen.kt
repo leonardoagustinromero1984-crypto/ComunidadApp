@@ -59,7 +59,8 @@ fun PublishScreen(
     onNavigateToUrgent: () -> Unit,
     onNavigateToFoster: () -> Unit = {},
     onNavigateToEvent: () -> Unit = {},
-    onNavigateToDonation: () -> Unit = {}
+    onNavigateToDonation: () -> Unit = {},
+    onNavigateToShelter: () -> Unit = {}
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
@@ -78,6 +79,7 @@ fun PublishScreen(
         onNavigateToFoster = onNavigateToFoster,
         onNavigateToEvent = onNavigateToEvent,
         onNavigateToDonation = onNavigateToDonation,
+        onNavigateToShelter = onNavigateToShelter,
         onSoon = showSoon
     )
 
@@ -129,6 +131,7 @@ private fun buildPublishOptions(
     onNavigateToFoster: () -> Unit,
     onNavigateToEvent: () -> Unit,
     onNavigateToDonation: () -> Unit,
+    onNavigateToShelter: () -> Unit,
     onSoon: () -> Unit
 ): List<PublishOption> = buildList {
     add(
@@ -200,12 +203,24 @@ private fun buildPublishOptions(
     if (RolePermissions.canPublishShelterNeeds(accountType)) {
         add(
             PublishOption(
+                icon = Icons.Default.Home,
+                title = "Perfil de refugio",
+                description = "Publicá tu refugio con necesidades y contacto",
+                onClick = onNavigateToShelter
+            )
+        )
+    }
+    if (RolePermissions.canPublishEvent(accountType)) {
+        add(
+            PublishOption(
                 icon = Icons.Default.CalendarMonth,
                 title = "Evento de adopción",
                 description = "Feria, jornada o encuentro comunitario",
                 onClick = onNavigateToEvent
             )
         )
+    }
+    if (RolePermissions.canPublishDonation(accountType)) {
         add(
             PublishOption(
                 icon = Icons.Default.VolunteerActivism,

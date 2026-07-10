@@ -15,17 +15,27 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.BookmarkBorder
 import androidx.compose.material.icons.filled.Comment
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,10 +53,17 @@ fun FeedPostCard(
     post: FeedPost,
     modifier: Modifier = Modifier,
     isLiked: Boolean = false,
+    isSaved: Boolean = false,
     onAuthorClick: ((String) -> Unit)? = null,
     onLikeClick: (() -> Unit)? = null,
-    onCommentClick: (() -> Unit)? = null
+    onCommentClick: (() -> Unit)? = null,
+    onSaveClick: (() -> Unit)? = null,
+    onReportClick: (() -> Unit)? = null,
+    onBlockClick: (() -> Unit)? = null
 ) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    val showOverflow = onSaveClick != null || onReportClick != null || onBlockClick != null
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(12.dp),
@@ -86,6 +103,60 @@ fun FeedPostCard(
                     )
                 }
                 PostTypeBadge(type = post.type)
+                if (showOverflow) {
+                    Box {
+                        IconButton(onClick = { menuExpanded = true }) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "Más opciones"
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = menuExpanded,
+                            onDismissRequest = { menuExpanded = false }
+                        ) {
+                            onSaveClick?.let { save ->
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(if (isSaved) "Quitar de guardados" else "Guardar")
+                                    },
+                                    onClick = {
+                                        menuExpanded = false
+                                        save()
+                                    },
+                                    leadingIcon = {
+                                        Icon(
+                                            imageVector = if (isSaved) {
+                                                Icons.Default.Bookmark
+                                            } else {
+                                                Icons.Default.BookmarkBorder
+                                            },
+                                            contentDescription = null
+                                        )
+                                    }
+                                )
+                            }
+                            onReportClick?.let { report ->
+                                DropdownMenuItem(
+                                    text = { Text("Reportar") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        report()
+                                    }
+                                )
+                            }
+                            onBlockClick?.let { block ->
+                                DropdownMenuItem(
+                                    text = { Text("Bloquear autor") },
+                                    onClick = {
+                                        menuExpanded = false
+                                        block()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.height(12.dp))

@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.AdoptionRequestStatus
 import com.comunidapp.app.data.model.AdoptionStatus
+import com.comunidapp.app.data.model.InterviewStatus
 import com.comunidapp.app.ui.components.AdoptionCard
 import com.comunidapp.app.ui.components.AdoptionStatusBadge
 import com.comunidapp.app.ui.components.ComunidappTopBar
@@ -209,6 +210,65 @@ fun MyAdoptionsScreen(
 ) {
     val adoptions by viewModel.myAdoptions.collectAsState()
     val requests by viewModel.requests.collectAsState()
+    val matches by viewModel.matches.collectAsState()
+    val message by viewModel.message.collectAsState()
+    var interviewRequestId by remember { mutableStateOf<String?>(null) }
+    var interviewDate by remember { mutableStateOf("") }
+    var interviewNotes by remember { mutableStateOf("") }
+
+    if (interviewRequestId != null) {
+        AlertDialog(
+            onDismissRequest = {
+                interviewRequestId = null
+                interviewDate = ""
+                interviewNotes = ""
+            },
+            title = { Text("Agendar entrevista") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = interviewDate,
+                        onValueChange = { interviewDate = it },
+                        label = { Text("Fecha y hora (dd/MM/yyyy HH:mm)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    OutlinedTextField(
+                        value = interviewNotes,
+                        onValueChange = { interviewNotes = it },
+                        label = { Text("Notas") },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                    )
+                    message?.let {
+                        Text(text = it, color = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val id = interviewRequestId ?: return@TextButton
+                        viewModel.scheduleInterview(id, interviewDate, interviewNotes)
+                        interviewRequestId = null
+                        interviewDate = ""
+                        interviewNotes = ""
+                        viewModel.clearMessage()
+                    }
+                ) { Text("Agendar") }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        interviewRequestId = null
+                        interviewDate = ""
+                        interviewNotes = ""
+                        viewModel.clearMessage()
+                    }
+                ) { Text("Cancelar") }
+            }
+        )
+    }
 
     Scaffold(
         topBar = {
@@ -252,6 +312,34 @@ fun MyAdoptionsScreen(
                     }
                 }
             }
+            if (matches.isNotEmpty()) {
+                item {
+                    Text(
+                        text = "Matching sugerido",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.padding(vertical = 8.dp)
+                    )
+                    Text(
+                        text = "Candidatos sugeridos por LeoVer para tu primera publicación",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                items(matches, key = { it.id }) { match ->
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        Text(
+                            text = "Usuario ${match.userId}",
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Score: ${match.score.toInt()} · ${match.reasons.joinToString(" · ")}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
             if (requests.isNotEmpty()) {
                 item {
                     Text(
@@ -265,7 +353,12 @@ fun MyAdoptionsScreen(
                     CardRequestItem(
                         request = request,
                         onAccept = { viewModel.respondToRequest(request.id, true) },
-                        onReject = { viewModel.respondToRequest(request.id, false) }
+                        onReject = { viewModel.respondToRequest(request.id, false) },
+                        onScheduleInterview = {
+                            interviewRequestId = request.id
+                            interviewDate = ""
+                            interviewNotes = ""
+                        }
                     )
                 }
             }
@@ -277,7 +370,8 @@ fun MyAdoptionsScreen(
 private fun CardRequestItem(
     request: com.comunidapp.app.data.model.AdoptionRequest,
     onAccept: () -> Unit,
-    onReject: () -> Unit
+    onReject: () -> Unit,
+    onScheduleInterview: () -> Unit
 ) {
     Column(modifier = Modifier.padding(vertical = 4.dp)) {
         Text(text = request.applicantName, fontWeight = FontWeight.SemiBold)
@@ -290,11 +384,21 @@ private fun CardRequestItem(
             },
             style = MaterialTheme.typography.labelMedium
         )
+        if (request.interviewStatus == InterviewStatus.SCHEDULED) {
+            Text(
+                text = "Entrevista agendada${request.interviewNotes?.let { ": $it" }.orEmpty()}",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+        }
         if (request.status == AdoptionRequestStatus.PENDING) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 TextButton(onClick = onAccept) { Text("Aceptar") }
                 TextButton(onClick = onReject) { Text("Rechazar") }
             }
+        }
+        if (request.status == AdoptionRequestStatus.ACCEPTED) {
+            TextButton(onClick = onScheduleInterview) { Text("Agendar entrevista") }
         }
     }
 }

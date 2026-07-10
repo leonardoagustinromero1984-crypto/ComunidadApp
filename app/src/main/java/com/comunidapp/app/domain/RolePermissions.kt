@@ -51,6 +51,12 @@ object RolePermissions {
     fun canPublishShelterNeeds(accountType: AccountType): Boolean =
         ModulePermissions.canPublishShelterNeeds(accountType)
 
+    fun canPublishEvent(accountType: AccountType): Boolean =
+        ModulePermissions.canPublishEvent(accountType)
+
+    fun canPublishDonation(accountType: AccountType): Boolean =
+        ModulePermissions.canPublishDonation(accountType)
+
     fun canPublishPromo(accountType: AccountType): Boolean =
         ModulePermissions.canPublishPromo(accountType)
 
@@ -62,6 +68,9 @@ object RolePermissions {
 
     fun canManageMultiplePets(user: User): Boolean =
         ModulePermissions.canManageMultiplePets(user)
+
+    fun canModerateContent(user: User): Boolean =
+        ModulePermissions.canModerateContent(user)
 
     fun businessPanelTitle(accountType: AccountType): String = when (accountType) {
         AccountType.VET -> "Mi consultorio"

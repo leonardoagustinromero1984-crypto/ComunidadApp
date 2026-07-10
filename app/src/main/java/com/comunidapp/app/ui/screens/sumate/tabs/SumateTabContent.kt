@@ -10,24 +10,30 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.AdoptionEvent
 import com.comunidapp.app.data.model.DonationCampaign
 import com.comunidapp.app.data.model.FosterHomeListing
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.ui.screens.shelters.ShelterListCard
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.viewmodel.CommunityViewModel
 import com.comunidapp.app.viewmodel.SheltersViewModel
 
@@ -37,24 +43,46 @@ fun FosterHomesContent(
     viewModel: CommunityViewModel = viewModel()
 ) {
     val homes by viewModel.fosterHomes.collectAsState()
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 8.dp,
-            bottom = bottomPadding + 8.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(homes, key = { it.id }) { home ->
-            FosterHomeCard(home = home)
+    val actionMessage by viewModel.actionMessage.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(actionMessage) {
+        actionMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearActionMessage()
+        }
+    }
+
+    androidx.compose.material3.Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { inner ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(inner),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = bottomPadding + 8.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(homes, key = { it.id }) { home ->
+                FosterHomeCard(
+                    home = home,
+                    onRequest = { viewModel.requestFoster(home) }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun FosterHomeCard(home: FosterHomeListing) {
+private fun FosterHomeCard(
+    home: FosterHomeListing,
+    onRequest: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -105,6 +133,14 @@ private fun FosterHomeCard(home: FosterHomeListing) {
                     style = MaterialTheme.typography.labelMedium,
                     modifier = Modifier.padding(top = 6.dp)
                 )
+                if (home.available) {
+                    Button(
+                        onClick = onRequest,
+                        modifier = Modifier.padding(top = 8.dp)
+                    ) {
+                        Text("Solicitar tránsito")
+                    }
+                }
             }
         }
     }
@@ -116,24 +152,46 @@ fun AdoptionEventsContent(
     viewModel: CommunityViewModel = viewModel()
 ) {
     val events by viewModel.events.collectAsState()
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(
-            start = 16.dp,
-            end = 16.dp,
-            top = 8.dp,
-            bottom = bottomPadding + 8.dp
-        ),
-        verticalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        items(events, key = { it.id }) { event ->
-            AdoptionEventCard(event = event)
+    val actionMessage by viewModel.actionMessage.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(actionMessage) {
+        actionMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearActionMessage()
+        }
+    }
+
+    androidx.compose.material3.Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) }
+    ) { inner ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(inner),
+            contentPadding = PaddingValues(
+                start = 16.dp,
+                end = 16.dp,
+                top = 8.dp,
+                bottom = bottomPadding + 8.dp
+            ),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(events, key = { it.id }) { event ->
+                AdoptionEventCard(
+                    event = event,
+                    onInterest = { viewModel.expressEventInterest(event) }
+                )
+            }
         }
     }
 }
 
 @Composable
-private fun AdoptionEventCard(event: AdoptionEvent) {
+private fun AdoptionEventCard(
+    event: AdoptionEvent,
+    onInterest: () -> Unit
+) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
@@ -180,6 +238,9 @@ private fun AdoptionEventCard(event: AdoptionEvent) {
                 style = MaterialTheme.typography.labelMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )
+            TextButton(onClick = onInterest, modifier = Modifier.padding(top = 4.dp)) {
+                Text("Me interesa")
+            }
         }
     }
 }
@@ -252,11 +313,16 @@ private fun DonationCampaignCard(campaign: DonationCampaign) {
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 8.dp)
             )
+            Text(
+                text = "Tipo: ${campaign.donationType.name}",
+                style = MaterialTheme.typography.labelMedium,
+                modifier = Modifier.padding(top = 8.dp)
+            )
             campaign.goalAmount?.let { goal ->
                 Text(
-                    text = "Meta: $$goal",
+                    text = "Meta: $$goal · Recaudado: $${campaign.raisedAmount}",
                     style = MaterialTheme.typography.labelMedium,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = 4.dp)
                 )
             }
         }

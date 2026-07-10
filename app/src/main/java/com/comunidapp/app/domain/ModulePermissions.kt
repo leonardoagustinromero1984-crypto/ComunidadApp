@@ -77,10 +77,21 @@ object ModulePermissions {
     }
 
     fun canPublishFosterHome(accountType: AccountType): Boolean =
-        LeoverModule.FOSTER in accountType.defaultModules()
+        LeoverModule.FOSTER in accountType.defaultModules() ||
+            accountType == AccountType.PERSON
 
     fun canPublishShelterNeeds(accountType: AccountType): Boolean =
         LeoverModule.SHELTERS in accountType.defaultModules()
+
+    fun canPublishEvent(accountType: AccountType): Boolean =
+        LeoverModule.EVENTS in accountType.defaultModules() ||
+            accountType == AccountType.SHELTER ||
+            accountType == AccountType.PERSON
+
+    fun canPublishDonation(accountType: AccountType): Boolean =
+        LeoverModule.DONATIONS in accountType.defaultModules() ||
+            accountType == AccountType.SHELTER ||
+            accountType == AccountType.PERSON
 
     private fun AccountType.toSyntheticUser(): User = User(
         id = "",

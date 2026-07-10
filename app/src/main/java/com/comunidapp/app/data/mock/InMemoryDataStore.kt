@@ -12,16 +12,37 @@ import com.comunidapp.app.data.model.DonationType
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.FriendConnection
 import com.comunidapp.app.data.model.FriendConnectionStatus
+import com.comunidapp.app.data.model.AppNotification
+import com.comunidapp.app.data.model.BookingStatus
+import com.comunidapp.app.data.model.ContentReport
 import com.comunidapp.app.data.model.FosterHomeListing
+import com.comunidapp.app.data.model.FosterRequest
+import com.comunidapp.app.data.model.InterviewStatus
 import com.comunidapp.app.data.model.LostFoundPost
+import com.comunidapp.app.data.model.LostFoundSighting
+import com.comunidapp.app.data.model.PaymentIntent
+import com.comunidapp.app.data.model.PaymentIntentStatus
+import com.comunidapp.app.data.model.PaymentStatus
 import com.comunidapp.app.data.model.Pet
+import com.comunidapp.app.data.model.PetClinicalRecord
 import com.comunidapp.app.data.model.PostComment
+import com.comunidapp.app.data.model.ReportStatus
+import com.comunidapp.app.data.model.ServiceBooking
+import com.comunidapp.app.data.model.ServiceCategory
+import com.comunidapp.app.data.model.ServiceProfile
+import com.comunidapp.app.data.model.ServiceReview
 import com.comunidapp.app.data.model.Shelter
+import com.comunidapp.app.data.model.ShopProduct
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 
 object InMemoryDataStore {
@@ -69,6 +90,20 @@ object InMemoryDataStore {
     private val _conversations = MutableStateFlow<List<Conversation>>(emptyList())
     private val _messages = MutableStateFlow<Map<String, List<ChatMessage>>>(emptyMap())
     private val _friendConnections = MutableStateFlow<List<FriendConnection>>(emptyList())
+    private val _serviceProfiles = MutableStateFlow(MockData.serviceProfiles)
+    val serviceProfiles: StateFlow<List<ServiceProfile>> = _serviceProfiles.asStateFlow()
+    private val _serviceBookings = MutableStateFlow<List<ServiceBooking>>(emptyList())
+    private val _fosterRequests = MutableStateFlow<List<FosterRequest>>(emptyList())
+    private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
+    private val _savedPosts = MutableStateFlow<Set<String>>(emptySet())
+    private val _blockedUsers = MutableStateFlow<Set<String>>(emptySet())
+    private val _reports = MutableStateFlow<List<ContentReport>>(emptyList())
+    private val _sightings = MutableStateFlow<List<LostFoundSighting>>(emptyList())
+    private val _reviews = MutableStateFlow<List<ServiceReview>>(emptyList())
+    private val _products = MutableStateFlow<List<ShopProduct>>(emptyList())
+    private val _payments = MutableStateFlow<List<PaymentIntent>>(emptyList())
+    private val _clinicalRecords = MutableStateFlow<List<PetClinicalRecord>>(emptyList())
+    private val storeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
 
     fun touchFeed() {
         _feedPosts.update { it.toList() }
@@ -223,6 +258,25 @@ object InMemoryDataStore {
         return Result.success(Unit)
     }
 
+    fun scheduleAdoptionInterview(id: String, dateText: String, notes: String): Result<Unit> {
+        val parsedAt = runCatching {
+            java.text.SimpleDateFormat("dd/MM/yyyy HH:mm", java.util.Locale.getDefault())
+                .parse(dateText.trim())?.time
+        }.getOrNull()
+        _adoptionRequests.update { list ->
+            list.map {
+                if (it.id == id) {
+                    it.copy(
+                        interviewAt = parsedAt ?: System.currentTimeMillis(),
+                        interviewNotes = notes.trim().ifBlank { null },
+                        interviewStatus = InterviewStatus.SCHEDULED
+                    )
+                } else it
+            }
+        }
+        return Result.success(Unit)
+    }
+
     fun addFosterHome(listing: FosterHomeListing): Result<String> {
         val id = listing.id.ifBlank { "foster_${System.currentTimeMillis()}" }
         _fosterHomes.update { listOf(listing.copy(id = id)) + it }
@@ -240,6 +294,87 @@ object InMemoryDataStore {
         _donationCampaigns.update { listOf(campaign.copy(id = id)) + it }
         return Result.success(id)
     }
+
+    fun addShelter(shelter: Shelter): Result<String> {
+        val id = shelter.id.ifBlank { "shelter_${System.currentTimeMillis()}" }
+        _shelters.update { listOf(shelter.copy(id = id)) + it }
+        return Result.success(id)
+    }
+
+    fun updateShelter(shelter: Shelter): Result<Unit> {
+        _shelters.update { list ->
+            if (list.any { it.id == shelter.id }) {
+                list.map { if (it.id == shelter.id) shelter else it }
+            } else {
+                listOf(shelter) + list
+            }
+        }
+        return Result.success(Unit)
+    }
+
+    fun getServiceById(id: String): ServiceProfile? =
+        _serviceProfiles.value.find { it.id == id }
+
+    fun getServiceByOwner(ownerId: String): ServiceProfile? =
+        _serviceProfiles.value.find { it.ownerId == ownerId }
+
+    fun upsertServiceProfile(profile: ServiceProfile): Result<String> {
+        val id = profile.id.ifBlank { "service_${System.currentTimeMillis()}" }
+        val saved = profile.copy(id = id)
+        _serviceProfiles.update { list ->
+            if (list.any { it.id == id || (it.ownerId == saved.ownerId && it.category == saved.category) }) {
+                list.map {
+                    if (it.id == id || (it.ownerId == saved.ownerId && it.category == saved.category)) saved else it
+                }
+            } else {
+                listOf(saved) + list
+            }
+        }
+        return Result.success(id)
+    }
+
+    fun addServiceBooking(booking: ServiceBooking): Result<String> {
+        val id = booking.id.ifBlank { "booking_${System.currentTimeMillis()}" }
+        _serviceBookings.update { listOf(booking.copy(id = id)) + it }
+        return Result.success(id)
+    }
+
+    fun observeProviderBookings(providerId: String): StateFlow<List<ServiceBooking>> =
+        _serviceBookings
+            .map { list -> list.filter { it.providerId == providerId }.sortedBy { it.scheduledAt } }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptyList())
+
+    fun getClientBookings(clientId: String): List<ServiceBooking> =
+        _serviceBookings.value.filter { it.clientId == clientId }.sortedBy { it.scheduledAt }
+
+    fun updateBookingStatus(
+        bookingId: String,
+        status: BookingStatus,
+        paymentStatus: PaymentStatus?
+    ): Result<Unit> {
+        _serviceBookings.update { list ->
+            list.map {
+                if (it.id == bookingId) {
+                    it.copy(
+                        status = status,
+                        paymentStatus = paymentStatus ?: it.paymentStatus
+                    )
+                } else {
+                    it
+                }
+            }
+        }
+        return Result.success(Unit)
+    }
+
+    fun addFosterRequest(request: FosterRequest): Result<String> {
+        val id = request.id.ifBlank { "foster_req_${System.currentTimeMillis()}" }
+        _fosterRequests.update { listOf(request.copy(id = id)) + it }
+        return Result.success(id)
+    }
+
+    fun servicesByCategory(category: ServiceCategory): List<ServiceProfile> =
+        _serviceProfiles.value.filter { it.category == category && it.active }
 
     fun observeConversations(userId: String): Flow<List<Conversation>> =
         _conversations.map { list -> list.sortedByDescending { it.lastMessageAt ?: 0L } }
@@ -380,4 +515,182 @@ object InMemoryDataStore {
         _friendConnections.update { list -> list.filterNot { it.id == connectionId } }
         return Result.success(Unit)
     }
+
+    fun observeNotifications(userId: String): StateFlow<List<AppNotification>> =
+        _notifications
+            .map { list -> list.filter { it.userId == userId }.sortedByDescending { it.createdAt ?: 0L } }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptyList())
+
+    fun markNotificationRead(id: String): Result<Unit> {
+        _notifications.update { list ->
+            list.map {
+                if (it.id == id && it.readAt == null) it.copy(readAt = System.currentTimeMillis()) else it
+            }
+        }
+        return Result.success(Unit)
+    }
+
+    fun markAllNotificationsRead(userId: String): Result<Unit> {
+        val now = System.currentTimeMillis()
+        _notifications.update { list ->
+            list.map {
+                if (it.userId == userId && it.readAt == null) it.copy(readAt = now) else it
+            }
+        }
+        return Result.success(Unit)
+    }
+
+    fun addNotification(notification: AppNotification): Result<String> {
+        val id = notification.id.ifBlank { "notif_${System.currentTimeMillis()}" }
+        _notifications.update {
+            listOf(notification.copy(id = id, createdAt = notification.createdAt ?: System.currentTimeMillis())) + it
+        }
+        return Result.success(id)
+    }
+
+    fun observeSavedPosts(userId: String): StateFlow<Set<String>> =
+        _savedPosts
+            .map { keys -> keys.filter { it.endsWith("_$userId") }.map { it.substringBeforeLast('_') }.toSet() }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptySet())
+
+    fun toggleSavePost(postId: String, userId: String): Result<Boolean> {
+        val key = "${postId}_$userId"
+        var saved = false
+        _savedPosts.update { current ->
+            saved = key !in current
+            if (saved) current + key else current - key
+        }
+        return Result.success(saved)
+    }
+
+    fun blockUser(blockerId: String, blockedId: String): Result<Unit> {
+        if (blockerId == blockedId) {
+            return Result.failure(IllegalArgumentException("No podés bloquearte a vos mismo"))
+        }
+        _blockedUsers.update { it + "${blockerId}_$blockedId" }
+        return Result.success(Unit)
+    }
+
+    fun unblockUser(blockerId: String, blockedId: String): Result<Unit> {
+        _blockedUsers.update { it - "${blockerId}_$blockedId" }
+        return Result.success(Unit)
+    }
+
+    fun observeBlockedUsers(blockerId: String): StateFlow<Set<String>> =
+        _blockedUsers
+            .map { keys ->
+                keys.filter { it.startsWith("${blockerId}_") }
+                    .map { it.removePrefix("${blockerId}_") }
+                    .toSet()
+            }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptySet())
+
+    fun addReport(report: ContentReport): Result<String> {
+        val id = report.id.ifBlank { "report_${System.currentTimeMillis()}" }
+        _reports.update {
+            listOf(report.copy(id = id, createdAt = report.createdAt ?: System.currentTimeMillis())) + it
+        }
+        return Result.success(id)
+    }
+
+    val openReports: StateFlow<List<ContentReport>> =
+        _reports
+            .map { list -> list.filter { it.status == ReportStatus.OPEN }.sortedByDescending { it.createdAt ?: 0L } }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptyList())
+
+    fun updateReportStatus(id: String, status: ReportStatus): Result<Unit> {
+        _reports.update { list ->
+            list.map { if (it.id == id) it.copy(status = status) else it }
+        }
+        return Result.success(Unit)
+    }
+
+    fun addSighting(sighting: LostFoundSighting): Result<String> {
+        val id = sighting.id.ifBlank { "sighting_${System.currentTimeMillis()}" }
+        _sightings.update {
+            listOf(sighting.copy(id = id, createdAt = sighting.createdAt ?: System.currentTimeMillis())) + it
+        }
+        return Result.success(id)
+    }
+
+    fun observeSightings(postId: String): StateFlow<List<LostFoundSighting>> =
+        _sightings
+            .map { list -> list.filter { it.postId == postId }.sortedByDescending { it.createdAt ?: 0L } }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptyList())
+
+    fun addReview(review: ServiceReview): Result<String> {
+        val id = review.id.ifBlank { "review_${System.currentTimeMillis()}" }
+        val saved = review.copy(id = id, createdAt = review.createdAt ?: System.currentTimeMillis())
+        _reviews.update { list ->
+            val withoutExisting = list.filterNot {
+                it.serviceId == saved.serviceId && it.authorId == saved.authorId
+            }
+            listOf(saved) + withoutExisting
+        }
+        return Result.success(id)
+    }
+
+    fun observeReviews(serviceId: String): StateFlow<List<ServiceReview>> =
+        _reviews
+            .map { list -> list.filter { it.serviceId == serviceId }.sortedByDescending { it.createdAt ?: 0L } }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptyList())
+
+    fun upsertProduct(product: ShopProduct): Result<String> {
+        val id = product.id.ifBlank { "product_${System.currentTimeMillis()}" }
+        val saved = product.copy(id = id)
+        _products.update { list ->
+            if (list.any { it.id == id }) {
+                list.map { if (it.id == id) saved else it }
+            } else {
+                listOf(saved) + list
+            }
+        }
+        return Result.success(id)
+    }
+
+    fun observeProducts(ownerId: String?): StateFlow<List<ShopProduct>> =
+        _products
+            .map { list ->
+                list.filter { ownerId == null || it.ownerId == ownerId }
+                    .filter { it.active || ownerId != null }
+            }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptyList())
+
+    fun addPayment(intent: PaymentIntent): Result<String> {
+        val id = intent.id.ifBlank { "pay_${System.currentTimeMillis()}" }
+        _payments.update {
+            listOf(intent.copy(id = id, createdAt = intent.createdAt ?: System.currentTimeMillis())) + it
+        }
+        return Result.success(id)
+    }
+
+    fun markPaymentPaid(id: String): Result<Unit> {
+        _payments.update { list ->
+            list.map {
+                if (it.id == id) it.copy(status = PaymentIntentStatus.PAID) else it
+            }
+        }
+        return Result.success(Unit)
+    }
+
+    fun observePayments(userId: String): StateFlow<List<PaymentIntent>> =
+        _payments
+            .map { list ->
+                list.filter { it.payerId == userId || it.providerId == userId }
+                    .sortedByDescending { it.createdAt ?: 0L }
+            }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptyList())
+
+    fun addClinicalRecord(record: PetClinicalRecord): Result<String> {
+        val id = record.id.ifBlank { "clinical_${System.currentTimeMillis()}" }
+        _clinicalRecords.update {
+            listOf(record.copy(id = id, recordedAt = record.recordedAt ?: System.currentTimeMillis())) + it
+        }
+        return Result.success(id)
+    }
+
+    fun observeClinical(petId: String): StateFlow<List<PetClinicalRecord>> =
+        _clinicalRecords
+            .map { list -> list.filter { it.petId == petId }.sortedByDescending { it.recordedAt ?: 0L } }
+            .stateIn(storeScope, SharingStarted.Eagerly, emptyList())
 }

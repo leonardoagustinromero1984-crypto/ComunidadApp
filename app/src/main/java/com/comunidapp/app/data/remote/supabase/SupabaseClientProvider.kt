@@ -27,6 +27,20 @@ object SupabaseTables {
     const val CONVERSATION_PARTICIPANTS = "conversation_participants"
     const val MESSAGES = "messages"
     const val FRIEND_CONNECTIONS = "friend_connections"
+    const val SERVICE_PROFILES = "service_profiles"
+    const val SERVICE_BOOKINGS = "service_bookings"
+    const val FOSTER_REQUESTS = "foster_requests"
+    const val EVENT_INTERESTS = "event_interests"
+    const val POST_SAVES = "post_saves"
+    const val USER_BLOCKS = "user_blocks"
+    const val CONTENT_REPORTS = "content_reports"
+    const val LOST_FOUND_SIGHTINGS = "lost_found_sightings"
+    const val NOTIFICATIONS = "notifications"
+    const val SERVICE_REVIEWS = "service_reviews"
+    const val SHOP_PRODUCTS = "shop_products"
+    const val PAYMENT_INTENTS = "payment_intents"
+    const val ADOPTION_MATCHES = "adoption_matches"
+    const val PET_CLINICAL_RECORDS = "pet_clinical_records"
 }
 
 object SupabaseClientProvider {

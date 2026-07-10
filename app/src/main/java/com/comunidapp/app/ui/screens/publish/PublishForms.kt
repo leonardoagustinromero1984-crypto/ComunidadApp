@@ -627,3 +627,53 @@ fun PublishDonationScreen(
         OutlinedTextField(value = goal, onValueChange = { goal = it }, label = { Text("Meta ($, opcional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
     }
 }
+
+@Composable
+fun PublishShelterScreen(
+    onNavigateBack: () -> Unit,
+    onPublishSuccess: () -> Unit,
+    viewModel: PublishViewModel = viewModel()
+) {
+    var name by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("") }
+    var description by remember { mutableStateOf("") }
+    var phone by remember { mutableStateOf("") }
+    var email by remember { mutableStateOf("") }
+    var needs by remember { mutableStateOf("") }
+    val formState by viewModel.formState.collectAsState()
+
+    LaunchedEffect(formState.isSuccess) {
+        if (formState.isSuccess) {
+            viewModel.resetFormState()
+            onPublishSuccess()
+        }
+    }
+
+    PublishFormScaffold(
+        title = "Perfil de refugio",
+        onNavigateBack = onNavigateBack,
+        isLoading = formState.isLoading,
+        errorMessage = formState.errorMessage,
+        onSubmit = {
+            viewModel.publishShelter(name, location, description, phone, email, needs)
+        }
+    ) {
+        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre del refugio") }, modifier = Modifier.fillMaxWidth())
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(value = location, onValueChange = { location = it }, label = { Text("Zona") }, modifier = Modifier.fillMaxWidth())
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth())
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(
+            value = needs,
+            onValueChange = { needs = it },
+            label = { Text("Necesidades (una por línea: ítem|cantidad)") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3
+        )
+    }
+}

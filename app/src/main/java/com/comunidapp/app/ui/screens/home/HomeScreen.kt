@@ -23,11 +23,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -50,10 +54,20 @@ fun HomeScreen(
     val posts by viewModel.posts.collectAsState()
     val nearbyUsers by viewModel.nearbyUsers.collectAsState()
     val likedIds by viewModel.likedPostIds.collectAsState()
+    val savedIds by viewModel.savedPostIds.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
     val commentsPostId by viewModel.commentsPostId.collectAsState()
     val comments by viewModel.comments.collectAsState()
     val hasMore by viewModel.hasMore.collectAsState()
+    val actionMessage by viewModel.actionMessage.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+
+    LaunchedEffect(actionMessage) {
+        actionMessage?.let {
+            snackbarHostState.showSnackbar(it)
+            viewModel.clearActionMessage()
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -65,7 +79,8 @@ fun HomeScreen(
                     }
                 }
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         PullToRefreshBox(
             isRefreshing = isRefreshing,
@@ -117,9 +132,13 @@ fun HomeScreen(
                     FeedPostCard(
                         post = post,
                         isLiked = post.id in likedIds,
+                        isSaved = post.id in savedIds,
                         onAuthorClick = onAuthorClick,
                         onLikeClick = { viewModel.toggleLike(post.id) },
-                        onCommentClick = { viewModel.openComments(post.id) }
+                        onCommentClick = { viewModel.openComments(post.id) },
+                        onSaveClick = { viewModel.toggleSave(post.id) },
+                        onReportClick = { viewModel.reportPost(post.id) },
+                        onBlockClick = { viewModel.blockAuthor(post.authorId) }
                     )
                 }
                 if (hasMore) {

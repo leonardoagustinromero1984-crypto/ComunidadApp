@@ -44,6 +44,10 @@ object NavRoutes {
     const val PUBLISH_FOSTER = "publish_foster"
     const val PUBLISH_EVENT = "publish_event"
     const val PUBLISH_DONATION = "publish_donation"
+    const val PUBLISH_SHELTER = "publish_shelter"
+    const val SERVICE_DETAIL = "service_detail/{serviceId}"
+    const val NOTIFICATIONS = "notifications"
+    const val ADMIN_MODERATION = "admin_moderation"
 
     const val ARG_CONVERSATION_ID = "conversationId"
     const val ARG_PEER_NAME = "peerName"
@@ -52,9 +56,12 @@ object NavRoutes {
     const val ARG_PET_ID = "petId"
     const val ARG_EMAIL = "email"
     const val ARG_USER_ID = "userId"
+    const val ARG_SERVICE_ID = "serviceId"
 
     fun adoptionDetail(adoptionId: String) = "adoption_detail/$adoptionId"
     fun shelterDetail(shelterId: String) = "shelter_detail/$shelterId"
+    fun serviceDetail(serviceId: String) =
+        "service_detail/${java.net.URLEncoder.encode(serviceId, Charsets.UTF_8.name())}"
     fun petDetail(petId: String) = "pet_detail/$petId"
     fun emailVerification(email: String) = "email_verification/$email"
     fun editPet(petId: String) = "edit_pet/$petId"

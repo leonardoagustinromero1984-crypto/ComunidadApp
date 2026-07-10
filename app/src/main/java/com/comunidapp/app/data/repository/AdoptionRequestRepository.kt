@@ -11,6 +11,7 @@ interface AdoptionRequestRepository {
     fun observeRequestsForAdoption(adoptionId: String): Flow<List<AdoptionRequest>>
     suspend fun submitRequest(request: AdoptionRequest): Result<String>
     suspend fun updateRequestStatus(id: String, status: AdoptionRequestStatus): Result<Unit>
+    suspend fun scheduleInterview(id: String, dateText: String, notes: String): Result<Unit>
 }
 
 class MockAdoptionRequestRepository : AdoptionRequestRepository {
@@ -25,4 +26,7 @@ class MockAdoptionRequestRepository : AdoptionRequestRepository {
 
     override suspend fun updateRequestStatus(id: String, status: AdoptionRequestStatus): Result<Unit> =
         InMemoryDataStore.updateAdoptionRequestStatus(id, status)
+
+    override suspend fun scheduleInterview(id: String, dateText: String, notes: String): Result<Unit> =
+        InMemoryDataStore.scheduleAdoptionInterview(id, dateText, notes)
 }

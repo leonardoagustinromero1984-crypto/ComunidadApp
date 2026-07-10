@@ -10,7 +10,14 @@ import com.comunidapp.app.data.model.ChatMessage
 import com.comunidapp.app.data.model.Conversation
 import com.comunidapp.app.data.model.DonationCampaign
 import com.comunidapp.app.data.model.DonationType
+import com.comunidapp.app.data.model.BookingStatus
 import com.comunidapp.app.data.model.FosterHomeListing
+import com.comunidapp.app.data.model.FosterRequest
+import com.comunidapp.app.data.model.FosterRequestStatus
+import com.comunidapp.app.data.model.PaymentStatus
+import com.comunidapp.app.data.model.ServiceBooking
+import com.comunidapp.app.data.model.ServiceCategory
+import com.comunidapp.app.data.model.ServiceProfile
 import com.comunidapp.app.data.model.Shelter
 import com.comunidapp.app.data.model.ShelterNeed
 import com.comunidapp.app.data.model.User
@@ -629,6 +636,142 @@ fun parseUserBadge(row: UserBadgeRow): UserBadge? {
         earnedAt = row.earnedAt.toEpochMillis()
     )
 }
+
+@Serializable
+data class ServiceProfileRow(
+    val id: String,
+    @SerialName("owner_id") val ownerId: String,
+    val category: String,
+    val name: String,
+    val location: String,
+    val description: String = "",
+    @SerialName("contact_info") val contactInfo: String? = null,
+    @SerialName("photo_url") val photoUrl: String? = null,
+    val tags: List<String> = emptyList(),
+    @SerialName("schedule_text") val scheduleText: String? = null,
+    @SerialName("price_from") val priceFrom: Double? = null,
+    @SerialName("accepts_bookings") val acceptsBookings: Boolean = true,
+    val active: Boolean = true,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
+@Serializable
+data class ServiceBookingRow(
+    val id: String,
+    @SerialName("service_id") val serviceId: String,
+    @SerialName("provider_id") val providerId: String,
+    @SerialName("client_id") val clientId: String,
+    @SerialName("client_name") val clientName: String,
+    @SerialName("scheduled_at") val scheduledAt: String,
+    val notes: String = "",
+    val status: String = BookingStatus.PENDING.name,
+    @SerialName("payment_status") val paymentStatus: String = PaymentStatus.UNPAID.name,
+    @SerialName("payment_method") val paymentMethod: String? = null,
+    val amount: Double? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
+@Serializable
+data class FosterRequestRow(
+    val id: String,
+    @SerialName("foster_home_id") val fosterHomeId: String,
+    @SerialName("applicant_id") val applicantId: String,
+    @SerialName("applicant_name") val applicantName: String,
+    val message: String,
+    val phone: String? = null,
+    val status: String = FosterRequestStatus.PENDING.name,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+fun parseServiceProfile(row: ServiceProfileRow): ServiceProfile = ServiceProfile(
+    id = row.id,
+    ownerId = row.ownerId,
+    category = ServiceCategory.fromString(row.category),
+    name = row.name,
+    location = row.location,
+    description = row.description,
+    contactInfo = row.contactInfo,
+    photoUrl = row.photoUrl,
+    tags = row.tags,
+    scheduleText = row.scheduleText,
+    priceFrom = row.priceFrom,
+    acceptsBookings = row.acceptsBookings,
+    active = row.active
+)
+
+fun ServiceProfile.toServiceProfileRow(): ServiceProfileRow = ServiceProfileRow(
+    id = id,
+    ownerId = ownerId,
+    category = category.name,
+    name = name,
+    location = location,
+    description = description,
+    contactInfo = contactInfo,
+    photoUrl = photoUrl,
+    tags = tags,
+    scheduleText = scheduleText,
+    priceFrom = priceFrom,
+    acceptsBookings = acceptsBookings,
+    active = active
+)
+
+fun parseServiceBooking(row: ServiceBookingRow): ServiceBooking = ServiceBooking(
+    id = row.id,
+    serviceId = row.serviceId,
+    providerId = row.providerId,
+    clientId = row.clientId,
+    clientName = row.clientName,
+    scheduledAt = row.scheduledAt.toEpochMillis() ?: 0L,
+    notes = row.notes,
+    status = BookingStatus.fromString(row.status),
+    paymentStatus = PaymentStatus.fromString(row.paymentStatus),
+    paymentMethod = row.paymentMethod,
+    amount = row.amount,
+    createdAt = row.createdAt.toEpochMillis()
+)
+
+fun ServiceBooking.toServiceBookingRow(): ServiceBookingRow = ServiceBookingRow(
+    id = id,
+    serviceId = serviceId,
+    providerId = providerId,
+    clientId = clientId,
+    clientName = clientName,
+    scheduledAt = Instant.ofEpochMilli(scheduledAt).toString(),
+    notes = notes,
+    status = status.name,
+    paymentStatus = paymentStatus.name,
+    paymentMethod = paymentMethod,
+    amount = amount
+)
+
+fun parseFosterRequest(row: FosterRequestRow): FosterRequest = FosterRequest(
+    id = row.id,
+    fosterHomeId = row.fosterHomeId,
+    applicantId = row.applicantId,
+    applicantName = row.applicantName,
+    message = row.message,
+    phone = row.phone,
+    status = FosterRequestStatus.fromString(row.status),
+    createdAt = row.createdAt.toEpochMillis()
+)
+
+fun FosterRequest.toFosterRequestRow(): FosterRequestRow = FosterRequestRow(
+    id = id,
+    fosterHomeId = fosterHomeId,
+    applicantId = applicantId,
+    applicantName = applicantName,
+    message = message,
+    phone = phone,
+    status = status.name
+)
+
+@Serializable
+data class EventInterestRow(
+    @SerialName("event_id") val eventId: String,
+    @SerialName("user_id") val userId: String
+)
 
 fun parseConversation(participant: ConversationParticipantRow, row: ConversationRow): Conversation =
     Conversation(

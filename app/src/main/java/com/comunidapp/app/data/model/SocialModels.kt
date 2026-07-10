@@ -28,6 +28,9 @@ data class AdoptionRequest(
     val message: String,
     val phone: String? = null,
     val status: AdoptionRequestStatus = AdoptionRequestStatus.PENDING,
+    val interviewAt: Long? = null,
+    val interviewNotes: String? = null,
+    val interviewStatus: InterviewStatus = InterviewStatus.NONE,
     val createdAt: Long? = null
 )
 

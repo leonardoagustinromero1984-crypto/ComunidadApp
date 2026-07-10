@@ -9,7 +9,7 @@
 
 ## 1. Principio rector
 
-Leover es una **plataforma modular sobre un único perfil**. Cada usuario mantiene una identidad digital y activa módulos según su tipo de cuenta. Los módulos comparten perfil, notificaciones, seguidores, reputación, búsquedas y configuración.
+LeoVer es una **plataforma modular sobre un único perfil**. Cada usuario mantiene una identidad digital y activa módulos según su tipo de cuenta. Los módulos comparten perfil, notificaciones, seguidores, reputación, búsquedas y configuración.
 
 Implementación en código:
 
@@ -32,29 +32,59 @@ Implementación en código:
 | Registro / login | ✅ ~90% | Supabase Auth + verificación email |
 | Perfil de usuario | ✅ ~85% | Edición, avatar, tipos de cuenta |
 | Perfil de mascota | ✅ ~85% | CRUD + salud; campos §7 (peso, raza, color) en modelo/DB |
-| Red social | ⚠️ ~45% | Feed + publicar; faltan likes, comentarios, historias |
-| Chat | ❌ Fase 3 | Fuera de alcance MVP según doc |
-| Adopciones | ⚠️ ~50% | Persistencia Supabase; falta flujo de solicitudes |
-| Mascotas perdidas | ⚠️ ~45% | Persistencia + estado ACTIVE/RESOLVED; falta mapa |
-| Búsquedas | ⚠️ ~30% | Filtros en adopciones/perdidos; falta búsqueda global |
+| Red social | ⚠️ ~60% | Feed, likes, comentarios, búsqueda; faltan historias/reels |
+| Chat | ✅ ~70% | 1:1 con Supabase + amistades |
+| Adopciones | ⚠️ ~70% | Persistencia + solicitudes |
+| Mascotas perdidas | ⚠️ ~55% | Persistencia + mapa básico |
+| Búsquedas | ⚠️ ~50% | Búsqueda global de usuarios/posts |
 
 ### Fase 2 — Comunidad
 
 | Módulo | Estado |
 |--------|--------|
-| Hogares de tránsito | 🔲 UI mock en Sumate |
-| Refugios | 🔲 UI mock |
-| Donaciones | 🔲 UI mock |
-| Eventos | 🔲 UI mock |
-| Reputación / insignias | 🔲 No iniciado |
+| Hogares de tránsito | ✅ Listado + publicar + solicitud |
+| Refugios | ✅ Listado + detalle + publicar ficha |
+| Donaciones | ✅ Campañas listado + publicar |
+| Eventos | ✅ Listado + publicar + “Me interesa” |
+| Reputación / insignias | ✅ Score + badges (RPC + UI perfil) |
 
 ### Fase 3 — Servicios
 
-Veterinarias, educadores, paseadores, tiendas, agenda, reservas, pagos → **pendiente**.
+| Módulo | Estado |
+|--------|--------|
+| Veterinarias / Educadores / Paseadores / Tiendas | ✅ Directorio Comunidad + ficha |
+| Mi negocio | ✅ Publicar ficha + agenda de turnos |
+| Agenda / reservas | ✅ Solicitud + confirmación/cancelación |
+| Pagos | ⚠️ Manual (estados UNPAID/PAID_*, sin pasarela) |
+| Chat | ✅ Integrado desde ficha de servicio |
 
 ### Fase 4 — Plataforma inteligente
 
-IA, matching, historial clínico, API pública → **pendiente**.
+| Módulo | Estado |
+|--------|--------|
+| Notificaciones in-app | ✅ UI + ViewModel (`NotificationsScreen`) |
+| Guardar / reportar / bloquear en feed | ✅ Overflow en `FeedPostCard` + filtro bloqueados |
+| Matching adopciones | ✅ Sección en `MyAdoptionsScreen` |
+| Avistamientos perdidos | ✅ Dialog + lista en `LostFoundScreen` |
+| Reseñas de servicios | ✅ Form + lista en `ServiceDetailScreen` |
+| Catálogo tienda + pagos manuales | ✅ En `MiNegocioScreen` (SHOP) |
+| Moderación de reportes | ✅ `AdminModerationScreen` |
+| Historial clínico mascota | ✅ Sección en `PetDetailScreen` |
+| IA / API pública | ⏳ Pendiente |
+
+Rutas nuevas: `notifications`, `admin_moderation`. Acceso desde Perfil.
+
+---
+
+## Setup migraciones Fase 2/3
+
+Ejecutar en Supabase (después de 001–010):
+
+```
+supabase/migrations/011_fase2_fase3_services.sql
+```
+
+Incluye: `foster_requests`, `event_interests`, `service_profiles`, `service_bookings`, RPC `add_reputation_points`.
 
 ---
 
@@ -80,6 +110,7 @@ IA, matching, historial clínico, API pública → **pendiente**.
 5. **Personas cerca** — filtro por `locationText` real, no mock estático.
 6. **Estado perdidos** — `LostFoundStatus.ACTIVE | RESOLVED` (§15).
 7. **Filtros por defecto** — adopciones `AVAILABLE`, perdidos `ACTIVE`.
+8. **Fase 4 UI** — notificaciones, moderación, feed (guardar/reportar/bloquear), matching, avistamientos, reseñas, catálogo/pagos, historial clínico.
 
 ---
 

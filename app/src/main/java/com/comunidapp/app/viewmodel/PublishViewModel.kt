@@ -20,12 +20,15 @@ import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.domain.RolePermissions
 import com.comunidapp.app.data.remote.storage.StoragePaths
 import com.comunidapp.app.data.model.AdoptionPost
+import com.comunidapp.app.data.model.Shelter
+import com.comunidapp.app.data.model.ShelterNeed
 import com.comunidapp.app.data.repository.AdoptionRepository
 import com.comunidapp.app.data.repository.CommunityRepository
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.FeedRepository
 import com.comunidapp.app.data.repository.LostFoundRepository
+import com.comunidapp.app.data.repository.ShelterRepository
 import com.comunidapp.app.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -48,7 +51,8 @@ class PublishViewModel(
     private val feedRepository: FeedRepository = DataProvider.feedRepository,
     private val adoptionRepository: AdoptionRepository = DataProvider.adoptionRepository,
     private val lostFoundRepository: LostFoundRepository = DataProvider.lostFoundRepository,
-    private val communityRepository: CommunityRepository = DataProvider.communityRepository
+    private val communityRepository: CommunityRepository = DataProvider.communityRepository,
+    private val shelterRepository: ShelterRepository = DataProvider.shelterRepository
 ) : ViewModel() {
 
     private val _formState = MutableStateFlow(PublishFormState())
@@ -440,6 +444,57 @@ class PublishViewModel(
                             location = location.trim(),
                             goalAmount = goalAmount,
                             donationType = donationType
+                        )
+                    ).onSuccess { _formState.update { PublishFormState(isSuccess = true) } }
+                        .onFailure { error ->
+                            _formState.update {
+                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                            }
+                        }
+                }
+                .onFailure { error ->
+                    _formState.update { PublishFormState(errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun publishShelter(
+        name: String,
+        location: String,
+        description: String,
+        contactPhone: String,
+        contactEmail: String,
+        needsText: String
+    ) {
+        if (name.isBlank() || location.isBlank() || description.isBlank()) {
+            _formState.update { it.copy(errorMessage = "Nombre, zona y descripción son obligatorios") }
+            return
+        }
+        viewModelScope.launch {
+            _formState.update { PublishFormState(isLoading = true) }
+            resolveAuthor()
+                .onSuccess { owner ->
+                    val needs = needsText.lines()
+                        .map { it.trim() }
+                        .filter { it.isNotBlank() }
+                        .map { line ->
+                            val parts = line.split("|", limit = 2)
+                            ShelterNeed(
+                                item = parts[0].trim(),
+                                quantity = parts.getOrNull(1)?.trim().orEmpty().ifBlank { "1" }
+                            )
+                        }
+                    shelterRepository.createShelter(
+                        owner,
+                        Shelter(
+                            id = "",
+                            ownerId = owner.id,
+                            name = name.trim(),
+                            location = location.trim(),
+                            description = description.trim(),
+                            contactPhone = contactPhone.trim().ifBlank { null },
+                            contactEmail = contactEmail.trim().ifBlank { null },
+                            needs = needs
                         )
                     ).onSuccess { _formState.update { PublishFormState(isSuccess = true) } }
                         .onFailure { error ->

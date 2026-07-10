@@ -17,6 +17,7 @@ import androidx.navigation.navArgument
 import com.comunidapp.app.ui.components.ComunidappBottomBar
 import com.comunidapp.app.ui.components.SessionLoadingScreen
 import com.comunidapp.app.ui.components.bottomNavItemsFor
+import com.comunidapp.app.ui.screens.admin.AdminModerationScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.MyAdoptionsScreen
 import com.comunidapp.app.ui.screens.search.SearchScreen
@@ -25,6 +26,7 @@ import com.comunidapp.app.ui.screens.chat.ChatStartScreen
 import com.comunidapp.app.ui.screens.chat.ChatThreadScreen
 import com.comunidapp.app.ui.screens.business.MiNegocioScreen
 import com.comunidapp.app.ui.screens.comunidad.ComunidadScreen
+import com.comunidapp.app.ui.screens.comunidad.ServiceDetailScreen
 import com.comunidapp.app.ui.screens.home.HomeScreen
 import com.comunidapp.app.ui.screens.login.EmailVerificationScreen
 import com.comunidapp.app.ui.screens.login.ForgotPasswordScreen
@@ -38,6 +40,7 @@ import com.comunidapp.app.ui.screens.pets.MyPetsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
 import com.comunidapp.app.ui.screens.profile.EditProfileScreen
 import com.comunidapp.app.ui.screens.profile.FriendRequestsScreen
+import com.comunidapp.app.ui.screens.profile.NotificationsScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
 import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
 import com.comunidapp.app.viewmodel.UserPublicProfileViewModel
@@ -52,6 +55,7 @@ import com.comunidapp.app.ui.screens.publish.PublishUrgentScreen
 import com.comunidapp.app.ui.screens.publish.PublishDonationScreen
 import com.comunidapp.app.ui.screens.publish.PublishEventScreen
 import com.comunidapp.app.ui.screens.publish.PublishFosterScreen
+import com.comunidapp.app.ui.screens.publish.PublishShelterScreen
 import com.comunidapp.app.ui.screens.publish.PublishScreen
 import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.ui.screens.shelters.ShelterDetailScreen
@@ -202,11 +206,14 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToUrgent = { navController.navigate(NavRoutes.PUBLISH_URGENT) },
                     onNavigateToFoster = { navController.navigate(NavRoutes.PUBLISH_FOSTER) },
                     onNavigateToEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) },
-                    onNavigateToDonation = { navController.navigate(NavRoutes.PUBLISH_DONATION) }
+                    onNavigateToDonation = { navController.navigate(NavRoutes.PUBLISH_DONATION) },
+                    onNavigateToShelter = { navController.navigate(NavRoutes.PUBLISH_SHELTER) }
                 )
             }
             composable(NavRoutes.COMUNIDAD) {
-                ComunidadScreen()
+                ComunidadScreen(
+                    onServiceClick = { id -> navController.navigate(NavRoutes.serviceDetail(id)) }
+                )
             }
             composable(NavRoutes.MY_BUSINESS) {
                 MiNegocioScreen(
@@ -220,6 +227,8 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
                     onNavigateToChat = { navController.navigate(NavRoutes.CHAT) },
                     onNavigateToFriendRequests = { navController.navigate(NavRoutes.FRIEND_REQUESTS) },
+                    onNavigateToNotifications = { navController.navigate(NavRoutes.NOTIFICATIONS) },
+                    onNavigateToModeration = { navController.navigate(NavRoutes.ADMIN_MODERATION) },
                     onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
                 )
             }
@@ -422,6 +431,29 @@ private fun MainScreen(accountType: AccountType) {
                     }
                 )
             }
+            composable(NavRoutes.PUBLISH_SHELTER) {
+                PublishShelterScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onPublishSuccess = {
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.SUMATE)
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.SERVICE_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_SERVICE_ID) { type = NavType.StringType })
+            ) { entry ->
+                val rawId = entry.arguments?.getString(NavRoutes.ARG_SERVICE_ID).orEmpty()
+                val serviceId = java.net.URLDecoder.decode(rawId, Charsets.UTF_8.name())
+                ServiceDetailScreen(
+                    serviceId = serviceId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onChatClick = { ownerId, name ->
+                        navController.navigate(NavRoutes.chatStart(ownerId, name))
+                    }
+                )
+            }
             composable(NavRoutes.CHAT) {
                 ChatListScreen(
                     onNavigateBack = { navController.popBackStack() },
@@ -435,6 +467,12 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateBack = { navController.popBackStack() },
                     onUserClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) }
                 )
+            }
+            composable(NavRoutes.NOTIFICATIONS) {
+                NotificationsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.ADMIN_MODERATION) {
+                AdminModerationScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(
                 route = NavRoutes.CHAT_START,
