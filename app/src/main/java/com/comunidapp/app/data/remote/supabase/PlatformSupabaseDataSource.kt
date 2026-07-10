@@ -29,6 +29,14 @@ data class PostSaveRow(
 )
 
 @Serializable
+data class DeviceTokenRow(
+    @SerialName("user_id") val userId: String,
+    val token: String,
+    val platform: String = "android",
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
+@Serializable
 data class UserBlockRow(
     @SerialName("blocker_id") val blockerId: String,
     @SerialName("blocked_id") val blockedId: String
@@ -191,6 +199,24 @@ class PlatformSupabaseDataSource {
                 )
             )
             Result.success(id)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun upsertDeviceToken(userId: String, token: String): Result<Unit> {
+        return try {
+            supabase.from(SupabaseTables.DEVICE_TOKENS).upsert(
+                DeviceTokenRow(
+                    userId = userId,
+                    token = token,
+                    platform = "android",
+                    updatedAt = nowIso()
+                )
+            ) {
+                onConflict = "user_id,token"
+            }
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }

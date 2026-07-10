@@ -10,6 +10,8 @@ import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.FriendRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.data.model.NotificationType
+import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -98,7 +100,23 @@ class FriendRequestsViewModel(
             _actionInProgressId.value = connectionId
             _actionMessage.value = null
             friendRepository.respondToRequest(connectionId, accept = true, responderId = userId)
-                .onSuccess { _actionMessage.value = "Solicitud aceptada" }
+                .onSuccess {
+                    _actionMessage.value = "Solicitud aceptada"
+                    val requesterId = uiState.value.incoming
+                        .find { it.connection.id == connectionId }
+                        ?.connection
+                        ?.requesterId
+                    if (!requesterId.isNullOrBlank()) {
+                        NotificationDispatcher.notify(
+                            userId = requesterId,
+                            type = NotificationType.FRIEND_ACCEPTED,
+                            title = "Solicitud aceptada",
+                            body = "Tu solicitud de amistad fue aceptada en LeoVer",
+                            relatedId = userId,
+                            relatedType = "user"
+                        )
+                    }
+                }
                 .onFailure { _actionMessage.value = it.message ?: "No se pudo aceptar" }
             _actionInProgressId.value = null
         }

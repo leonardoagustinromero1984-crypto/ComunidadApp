@@ -36,6 +36,7 @@ object SupabaseTables {
     const val CONTENT_REPORTS = "content_reports"
     const val LOST_FOUND_SIGHTINGS = "lost_found_sightings"
     const val NOTIFICATIONS = "notifications"
+    const val DEVICE_TOKENS = "device_tokens"
     const val SERVICE_REVIEWS = "service_reviews"
     const val SHOP_PRODUCTS = "shop_products"
     const val PAYMENT_INTENTS = "payment_intents"

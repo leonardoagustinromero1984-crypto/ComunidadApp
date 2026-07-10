@@ -18,6 +18,8 @@ import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.ServiceRepository
+import com.comunidapp.app.data.model.NotificationType
+import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -173,6 +175,16 @@ class ServiceDetailViewModel(
                 amount = service.priceFrom
             )
             val result = serviceRepository.createBooking(user, booking)
+            if (result.isSuccess) {
+                NotificationDispatcher.notify(
+                    userId = service.ownerId,
+                    type = NotificationType.BOOKING,
+                    title = "Nuevo turno solicitado",
+                    body = "${user.name} pidió un turno en ${service.name}",
+                    relatedId = result.getOrNull(),
+                    relatedType = "booking"
+                )
+            }
             _uiState.update {
                 it.copy(
                     isSubmitting = false,

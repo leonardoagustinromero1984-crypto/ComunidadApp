@@ -14,6 +14,8 @@ import com.comunidapp.app.data.repository.AdoptionRequestRepository
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.data.model.NotificationType
+import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -72,6 +74,17 @@ class AdoptionDetailViewModel(
                 )
             ).onSuccess {
                 _requestState.value = RequestUiState.Success
+                val publisherId = adoption.publisherId
+                if (!publisherId.isNullOrBlank()) {
+                    NotificationDispatcher.notify(
+                        userId = publisherId,
+                        type = NotificationType.ADOPTION_REQUEST,
+                        title = "Nueva solicitud de adopción",
+                        body = "${user.name} postuló a ${adoption.name}",
+                        relatedId = adoption.id,
+                        relatedType = "adoption"
+                    )
+                }
             }.onFailure { error ->
                 _requestState.value = RequestUiState.Error(error.message ?: "Error al enviar")
             }

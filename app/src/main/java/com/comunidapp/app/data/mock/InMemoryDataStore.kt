@@ -96,6 +96,7 @@ object InMemoryDataStore {
     private val _fosterRequests = MutableStateFlow<List<FosterRequest>>(emptyList())
     private val _notifications = MutableStateFlow<List<AppNotification>>(emptyList())
     private val _savedPosts = MutableStateFlow<Set<String>>(emptySet())
+    private val _deviceTokens = MutableStateFlow<Set<String>>(emptySet())
     private val _blockedUsers = MutableStateFlow<Set<String>>(emptySet())
     private val _reports = MutableStateFlow<List<ContentReport>>(emptyList())
     private val _sightings = MutableStateFlow<List<LostFoundSighting>>(emptyList())
@@ -546,6 +547,14 @@ object InMemoryDataStore {
             listOf(notification.copy(id = id, createdAt = notification.createdAt ?: System.currentTimeMillis())) + it
         }
         return Result.success(id)
+    }
+
+    fun upsertDeviceToken(userId: String, token: String): Result<Unit> {
+        // Mock: keep latest token per user in memory map via notifications side-channel
+        _deviceTokens.update { current ->
+            current.filterNot { it.startsWith("$userId:") }.toSet() + "$userId:$token"
+        }
+        return Result.success(Unit)
     }
 
     fun observeSavedPosts(userId: String): StateFlow<Set<String>> =

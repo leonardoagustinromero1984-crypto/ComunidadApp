@@ -11,6 +11,8 @@ import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.CommunityRepository
 import com.comunidapp.app.data.repository.ServiceRepository
+import com.comunidapp.app.data.model.NotificationType
+import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -54,6 +56,16 @@ class CommunityViewModel(
                     phone = null
                 )
             )
+            if (result.isSuccess && home.hostId.isNotBlank()) {
+                NotificationDispatcher.notify(
+                    userId = home.hostId,
+                    type = NotificationType.FOSTER_REQUEST,
+                    title = "Solicitud de tránsito",
+                    body = "${user.name} quiere un hogar de tránsito",
+                    relatedId = home.id,
+                    relatedType = "foster"
+                )
+            }
             _actionMessage.value = result.fold(
                 onSuccess = { "Solicitud de tránsito enviada" },
                 onFailure = { it.message ?: "No se pudo enviar la solicitud" }

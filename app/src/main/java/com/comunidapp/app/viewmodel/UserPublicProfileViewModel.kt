@@ -16,6 +16,8 @@ import com.comunidapp.app.data.repository.FriendRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.ProfilePrivacy
+import com.comunidapp.app.data.model.NotificationType
+import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -145,7 +147,17 @@ class UserPublicProfileViewModel(
             _actionInProgress.value = true
             _actionMessage.value = null
             friendRepository.sendFriendRequest(viewer.id, userId)
-                .onSuccess { _actionMessage.value = "Solicitud enviada" }
+                .onSuccess {
+                    _actionMessage.value = "Solicitud enviada"
+                    NotificationDispatcher.notify(
+                        userId = userId,
+                        type = NotificationType.FRIEND_REQUEST,
+                        title = "Nueva solicitud de amistad",
+                        body = "${viewer.name} quiere conectar con vos en LeoVer",
+                        relatedId = viewer.id,
+                        relatedType = "user"
+                    )
+                }
                 .onFailure { _actionMessage.value = it.message ?: "No se pudo enviar la solicitud" }
             _actionInProgress.value = false
         }
@@ -158,7 +170,18 @@ class UserPublicProfileViewModel(
             _actionInProgress.value = true
             _actionMessage.value = null
             friendRepository.respondToRequest(connectionId, accept = true, responderId = viewer.id)
-                .onSuccess { _actionMessage.value = "Ahora son amigos" }
+                .onSuccess {
+                    _actionMessage.value = "Ahora son amigos"
+                    // El perfil que estamos viendo es quien envió la solicitud
+                    NotificationDispatcher.notify(
+                        userId = userId,
+                        type = NotificationType.FRIEND_ACCEPTED,
+                        title = "Solicitud aceptada",
+                        body = "${viewer.name} aceptó tu solicitud en LeoVer",
+                        relatedId = viewer.id,
+                        relatedType = "user"
+                    )
+                }
                 .onFailure { _actionMessage.value = it.message ?: "No se pudo aceptar la solicitud" }
             _actionInProgress.value = false
         }

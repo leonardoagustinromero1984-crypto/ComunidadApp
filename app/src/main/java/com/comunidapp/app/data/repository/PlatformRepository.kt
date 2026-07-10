@@ -38,6 +38,7 @@ interface PlatformRepository {
         relatedId: String? = null,
         relatedType: String? = null
     ): Result<String>
+    suspend fun upsertDeviceToken(userId: String, token: String): Result<Unit>
 
     fun observeSavedPostIds(userId: String): StateFlow<Set<String>>
     suspend fun toggleSavePost(postId: String, userId: String): Result<Boolean>
@@ -93,6 +94,9 @@ class MockPlatformRepository : PlatformRepository {
     ) = InMemoryDataStore.addNotification(
         AppNotification("", userId, type, title, body, relatedId, relatedType, null, System.currentTimeMillis())
     )
+
+    override suspend fun upsertDeviceToken(userId: String, token: String): Result<Unit> =
+        InMemoryDataStore.upsertDeviceToken(userId, token)
 
     override fun observeSavedPostIds(userId: String) = InMemoryDataStore.observeSavedPosts(userId)
     override suspend fun toggleSavePost(postId: String, userId: String) =
@@ -185,6 +189,9 @@ class SupabasePlatformRepository(
         relatedId: String?,
         relatedType: String?
     ) = dataSource.createNotification(userId, type, title, body, relatedId, relatedType)
+
+    override suspend fun upsertDeviceToken(userId: String, token: String): Result<Unit> =
+        dataSource.upsertDeviceToken(userId, token)
 
     override fun observeSavedPostIds(userId: String): StateFlow<Set<String>> =
         savedFlows.getOrPut(userId) {

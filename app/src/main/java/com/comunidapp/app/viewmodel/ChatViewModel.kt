@@ -8,11 +8,14 @@ import com.comunidapp.app.data.model.Conversation
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.ChatRepository
+import com.comunidapp.app.data.model.NotificationType
+import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -91,6 +94,7 @@ class ChatStartViewModel(
 
 class ChatThreadViewModel(
     private val conversationId: String,
+    private val peerUserId: String = "",
     private val chatRepository: ChatRepository = DataProvider.chatRepository
 ) : ViewModel() {
 
@@ -116,7 +120,27 @@ class ChatThreadViewModel(
         viewModelScope.launch {
             _sendState.value = SendMessageState.Sending
             chatRepository.sendMessage(conversationId, sender, content)
-                .onSuccess { _sendState.value = SendMessageState.Sent }
+                .onSuccess {
+                    _sendState.value = SendMessageState.Sent
+                    val targetId = peerUserId.ifBlank {
+                        runCatching {
+                            chatRepository.observeConversations(sender.id)
+                                .first()
+                                .find { it.id == conversationId }
+                                ?.peerUserId
+                        }.getOrNull().orEmpty()
+                    }
+                    if (targetId.isNotBlank()) {
+                        NotificationDispatcher.notify(
+                            userId = targetId,
+                            type = NotificationType.CHAT_MESSAGE,
+                            title = "Nuevo mensaje",
+                            body = "${sender.name}: ${content.take(80)}",
+                            relatedId = conversationId,
+                            relatedType = "conversation"
+                        )
+                    }
+                }
                 .onFailure { error ->
                     _sendState.value = SendMessageState.Error(error.message ?: "Error al enviar")
                 }
@@ -128,11 +152,14 @@ class ChatThreadViewModel(
     }
 
     companion object {
-        fun factory(conversationId: String): ViewModelProvider.Factory =
+        fun factory(conversationId: String, peerUserId: String = ""): ViewModelProvider.Factory =
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                    return ChatThreadViewModel(conversationId = conversationId) as T
+                    return ChatThreadViewModel(
+                        conversationId = conversationId,
+                        peerUserId = peerUserId
+                    ) as T
                 }
             }
     }

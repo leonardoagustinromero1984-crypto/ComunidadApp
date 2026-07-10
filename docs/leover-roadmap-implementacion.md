@@ -63,6 +63,7 @@ Implementación en código:
 | Módulo | Estado |
 |--------|--------|
 | Notificaciones in-app | ✅ UI + ViewModel (`NotificationsScreen`) |
+| Push FCM (retención) | ✅ Cliente + `device_tokens` (013) + Edge `push` — ver `docs/leover-push-fcm-setup.md` |
 | Guardar / reportar / bloquear en feed | ✅ Overflow en `FeedPostCard` + filtro bloqueados |
 | Matching adopciones | ✅ Sección en `MyAdoptionsScreen` |
 | Avistamientos perdidos | ✅ Dialog + lista en `LostFoundScreen` |
@@ -76,15 +77,17 @@ Rutas nuevas: `notifications`, `admin_moderation`. Acceso desde Perfil.
 
 ---
 
-## Setup migraciones Fase 2/3
+## Setup migraciones Fase 2/3/4 + push
 
-Ejecutar en Supabase (después de 001–010):
+Ejecutar en Supabase (después de 001–010), en orden:
 
 ```
 supabase/migrations/011_fase2_fase3_services.sql
+supabase/migrations/012_fase1_to_4_closure.sql
+supabase/migrations/013_device_tokens_fcm.sql
 ```
 
-Incluye: `foster_requests`, `event_interests`, `service_profiles`, `service_bookings`, RPC `add_reputation_points`.
+Push: desplegar Edge Function y webhook según `docs/leover-push-fcm-setup.md`.
 
 ---
 
