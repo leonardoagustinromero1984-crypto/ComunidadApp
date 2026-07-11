@@ -2,10 +2,10 @@ package com.comunidapp.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.comunidapp.app.data.model.AppNotification
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.FriendConnection
 import com.comunidapp.app.data.model.FriendConnectionStatus
+import com.comunidapp.app.data.model.Friendship
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.model.UserBadge
@@ -15,6 +15,7 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.CommunityRepository
 import com.comunidapp.app.data.repository.FeedRepository
 import com.comunidapp.app.data.repository.FriendRepository
+import com.comunidapp.app.data.repository.FriendsRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.UserRepository
@@ -32,6 +33,8 @@ data class ProfileUiState(
     val user: User? = null,
     val pets: List<Pet> = emptyList(),
     val posts: List<FeedPost> = emptyList(),
+    val friends: List<User> = emptyList(),
+    val pendingRequests: List<Friendship> = emptyList(),
     val badges: List<UserBadge> = emptyList(),
     val pendingFriendRequests: Int = 0,
     val unreadNotifications: Int = 0,
@@ -45,6 +48,7 @@ class ProfileViewModel(
     private val petRepository: PetRepository = DataProvider.petRepository,
     private val feedRepository: FeedRepository = DataProvider.feedRepository,
     private val friendRepository: FriendRepository = DataProvider.friendRepository,
+    private val friendsRepository: FriendsRepository = DataProvider.friendsRepository,
     private val communityRepository: CommunityRepository = DataProvider.communityRepository,
     private val platformRepository: PlatformRepository = DataProvider.platformRepository
 ) : ViewModel() {
@@ -66,10 +70,14 @@ class ProfileViewModel(
                 ) { profile, pets, posts, connections, badges ->
                     ProfileCore(profile, pets, posts, connections, badges)
                 }
-                combine(
-                    profileCore,
+                val socialCore = combine(
+                    friendsRepository.observeFriends(authUser.id),
+                    friendsRepository.observePendingRequests(authUser.id),
                     platformRepository.observeNotifications(authUser.id)
-                ) { core, notifications ->
+                ) { friends, pending, notifications ->
+                    SocialCore(friends, pending, notifications.count { it.isUnread })
+                }
+                combine(profileCore, socialCore) { core, social ->
                     val user = core.profile ?: authUser
                     val pendingFriendRequests = core.connections.count {
                         it.status == FriendConnectionStatus.PENDING &&
@@ -80,9 +88,11 @@ class ProfileViewModel(
                         user = user,
                         pets = core.pets.filter { it.ownerId == authUser.id },
                         posts = core.posts.filter { it.authorId == authUser.id },
+                        friends = social.friends,
+                        pendingRequests = social.pending,
                         badges = core.badges.ifEmpty { user.badges },
                         pendingFriendRequests = pendingFriendRequests,
-                        unreadNotifications = notifications.count { it.isUnread }
+                        unreadNotifications = social.unreadNotifications
                     )
                 }
             }
@@ -103,5 +113,11 @@ class ProfileViewModel(
         val posts: List<FeedPost>,
         val connections: List<FriendConnection>,
         val badges: List<UserBadge>
+    )
+
+    private data class SocialCore(
+        val friends: List<User>,
+        val pending: List<Friendship>,
+        val unreadNotifications: Int
     )
 }

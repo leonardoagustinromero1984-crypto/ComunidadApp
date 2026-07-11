@@ -39,6 +39,8 @@ import com.comunidapp.app.data.repository.SupabasePetRepository
 import com.comunidapp.app.data.repository.SupabaseShelterRepository
 import com.comunidapp.app.data.repository.SupabaseUserRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.data.repository.FriendsRepository
+import com.comunidapp.app.data.repository.MockFriendsRepository
 
 object DataProvider {
 
@@ -90,6 +92,10 @@ object DataProvider {
 
     val platformRepository: PlatformRepository by lazy {
         if (useSupabase) SupabasePlatformRepository() else MockPlatformRepository()
+    }
+
+    val friendsRepository: FriendsRepository by lazy {
+        MockFriendsRepository(userRepository)
     }
 
     val storageService: ImageStorageService? by lazy {

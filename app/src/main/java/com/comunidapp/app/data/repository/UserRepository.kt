@@ -9,6 +9,7 @@ interface UserRepository {
     suspend fun getUser(userId: String): User?
     suspend fun createUser(user: User): Result<Unit>
     suspend fun updateUser(user: User): Result<Unit>
+    suspend fun searchUsers(query: String, excludeUserId: String): List<User>
     fun observeUser(userId: String): Flow<User?>
     fun observeUsers(): Flow<List<User>>
 }
@@ -27,6 +28,9 @@ class MockUserRepository : UserRepository {
         MockUserStore.upsert(user)
         return Result.success(Unit)
     }
+
+    override suspend fun searchUsers(query: String, excludeUserId: String): List<User> =
+        MockUserStore.search(query, excludeUserId)
 
     override fun observeUser(userId: String): Flow<User?> = MockUserStore.observe(userId)
 

@@ -70,12 +70,29 @@ class UserSupabaseDataSource {
         getUser(userId)
     }
 
-    suspend fun fetchUsers(limit: Int = 100): List<User> {
+suspend fun fetchUsers(limit: Int = 100): List<User> {
         return try {
             supabase.from(SupabaseTables.USERS)
                 .select {
                     order("created_at", Order.DESCENDING)
                     limit(limit.toLong())
+                }
+                .decodeList<UserRow>()
+                .map(::parseUser)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    suspend fun searchUsers(query: String, excludeUserId: String): List<User> {
+        if (query.isBlank()) return emptyList()
+        return try {
+            supabase.from(SupabaseTables.USERS)
+                .select {
+                    filter {
+                        ilike("name", "%$query%")
+                        neq("id", excludeUserId)
+                    }
                 }
                 .decodeList<UserRow>()
                 .map(::parseUser)

@@ -42,6 +42,7 @@ import com.comunidapp.app.ui.screens.profile.EditProfileScreen
 import com.comunidapp.app.ui.screens.profile.FriendRequestsScreen
 import com.comunidapp.app.ui.screens.profile.NotificationsScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
+import com.comunidapp.app.ui.screens.profile.SearchFriendsScreen
 import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
 import com.comunidapp.app.viewmodel.UserPublicProfileViewModel
 import com.comunidapp.app.viewmodel.ChatStartViewModel
@@ -224,12 +225,20 @@ private fun MainScreen(accountType: AccountType) {
                 ProfileScreen(
                     onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                     onNavigateToMyPets = { navController.navigate(NavRoutes.MY_PETS) },
-                    onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
+onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
                     onNavigateToChat = { navController.navigate(NavRoutes.CHAT) },
                     onNavigateToFriendRequests = { navController.navigate(NavRoutes.FRIEND_REQUESTS) },
                     onNavigateToNotifications = { navController.navigate(NavRoutes.NOTIFICATIONS) },
                     onNavigateToModeration = { navController.navigate(NavRoutes.ADMIN_MODERATION) },
+                    onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
+                    onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
                     onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
+                )
+            }
+            composable(NavRoutes.SEARCH_FRIENDS) {
+                SearchFriendsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onUserClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) }
                 )
             }
             composable(NavRoutes.EDIT_PROFILE) {
