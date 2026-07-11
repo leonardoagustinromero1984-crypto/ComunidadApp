@@ -130,7 +130,7 @@ fun ProfileScreen(
                             petsCount = uiState.pets.size,
                             postsCount = uiState.posts.size,
                             friendsCount = uiState.friends.size,
-                            pendingRequestsCount = uiState.pendingRequests.size,
+                            pendingRequestsCount = uiState.pendingFriendRequests,
                             topPadding = padding.calculateTopPadding()
                         )
                     }
@@ -138,7 +138,7 @@ fun ProfileScreen(
                     item {
                         FriendsSection(
                             friends = uiState.friends,
-                            pendingCount = uiState.pendingRequests.size,
+                            pendingCount = uiState.pendingFriendRequests,
                             onSearchFriends = onNavigateToSearchFriends,
                             onFriendClick = onFriendClick,
                             modifier = Modifier.padding(horizontal = 16.dp)

@@ -5,7 +5,6 @@ import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.FriendConnection
 import com.comunidapp.app.data.model.FriendConnectionStatus
-import com.comunidapp.app.data.model.Friendship
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.model.UserBadge
@@ -15,10 +14,10 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.CommunityRepository
 import com.comunidapp.app.data.repository.FeedRepository
 import com.comunidapp.app.data.repository.FriendRepository
-import com.comunidapp.app.data.repository.FriendsRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.domain.ProfilePrivacy
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -34,7 +33,6 @@ data class ProfileUiState(
     val pets: List<Pet> = emptyList(),
     val posts: List<FeedPost> = emptyList(),
     val friends: List<User> = emptyList(),
-    val pendingRequests: List<Friendship> = emptyList(),
     val badges: List<UserBadge> = emptyList(),
     val pendingFriendRequests: Int = 0,
     val unreadNotifications: Int = 0,
@@ -48,7 +46,6 @@ class ProfileViewModel(
     private val petRepository: PetRepository = DataProvider.petRepository,
     private val feedRepository: FeedRepository = DataProvider.feedRepository,
     private val friendRepository: FriendRepository = DataProvider.friendRepository,
-    private val friendsRepository: FriendsRepository = DataProvider.friendsRepository,
     private val communityRepository: CommunityRepository = DataProvider.communityRepository,
     private val platformRepository: PlatformRepository = DataProvider.platformRepository
 ) : ViewModel() {
@@ -70,15 +67,14 @@ class ProfileViewModel(
                 ) { profile, pets, posts, connections, badges ->
                     ProfileCore(profile, pets, posts, connections, badges)
                 }
-                val socialCore = combine(
-                    friendsRepository.observeFriends(authUser.id),
-                    friendsRepository.observePendingRequests(authUser.id),
+                combine(
+                    profileCore,
+                    userRepository.observeUsers(),
                     platformRepository.observeNotifications(authUser.id)
-                ) { friends, pending, notifications ->
-                    SocialCore(friends, pending, notifications.count { it.isUnread })
-                }
-                combine(profileCore, socialCore) { core, social ->
+                ) { core, users, notifications ->
                     val user = core.profile ?: authUser
+                    val friendIds = ProfilePrivacy.friendIdsFor(authUser.id, core.connections)
+                    val friends = users.filter { it.id in friendIds }
                     val pendingFriendRequests = core.connections.count {
                         it.status == FriendConnectionStatus.PENDING &&
                             it.addresseeId == authUser.id
@@ -88,11 +84,10 @@ class ProfileViewModel(
                         user = user,
                         pets = core.pets.filter { it.ownerId == authUser.id },
                         posts = core.posts.filter { it.authorId == authUser.id },
-                        friends = social.friends,
-                        pendingRequests = social.pending,
+                        friends = friends,
                         badges = core.badges.ifEmpty { user.badges },
                         pendingFriendRequests = pendingFriendRequests,
-                        unreadNotifications = social.unreadNotifications
+                        unreadNotifications = notifications.count { it.isUnread }
                     )
                 }
             }
@@ -113,11 +108,5 @@ class ProfileViewModel(
         val posts: List<FeedPost>,
         val connections: List<FriendConnection>,
         val badges: List<UserBadge>
-    )
-
-    private data class SocialCore(
-        val friends: List<User>,
-        val pending: List<Friendship>,
-        val unreadNotifications: Int
     )
 }

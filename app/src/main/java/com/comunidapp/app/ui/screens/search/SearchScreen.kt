@@ -1,5 +1,6 @@
 package com.comunidapp.app.ui.screens.search
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -8,6 +9,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -24,6 +27,7 @@ import com.comunidapp.app.ui.components.AdoptionCard
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.FeedPostCard
 import com.comunidapp.app.ui.components.PetCard
+import com.comunidapp.app.ui.screens.lostfound.LostFoundCard
 import com.comunidapp.app.viewmodel.SearchViewModel
 
 @Composable
@@ -78,13 +82,27 @@ fun SearchScreen(
                 if (results.users.isNotEmpty()) {
                     item { SectionTitle("Personas") }
                     items(results.users, key = { it.id }) { user ->
-                        Text(
-                            text = "${user.name} · ${user.locationText.orEmpty()}",
+                        Card(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(8.dp),
-                            style = MaterialTheme.typography.bodyLarge
-                        )
+                                .clickable { onAuthorClick(user.id) },
+                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(12.dp)) {
+                                Text(
+                                    text = user.name,
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                user.locationText?.takeIf { it.isNotBlank() }?.let { location ->
+                                    Text(
+                                        text = location,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
                 if (results.pets.isNotEmpty()) {
@@ -97,6 +115,12 @@ fun SearchScreen(
                     item { SectionTitle("Adopciones") }
                     items(results.adoptions, key = { it.id }) { post ->
                         AdoptionCard(post = post, onClick = { onAdoptionClick(post.id) })
+                    }
+                }
+                if (results.lostFound.isNotEmpty()) {
+                    item { SectionTitle("Perdidos / Encontrados") }
+                    items(results.lostFound, key = { it.id }) { post ->
+                        LostFoundCard(post = post)
                     }
                 }
             }

@@ -85,9 +85,23 @@ class LostFoundViewModel(
         _filters.update { it.copy(status = status) }
     }
 
+    fun currentUserId(): String? = authRepository.getCurrentUser()?.id
+
     fun markResolved(postId: String) {
+        val userId = authRepository.getCurrentUser()?.id
         viewModelScope.launch {
+            val post = lostFoundRepository.observeLostFoundPosts().value.find { it.id == postId }
+            if (post == null) {
+                _message.value = "No se encontró la alerta"
+                return@launch
+            }
+            if (userId == null || post.authorId != userId) {
+                _message.value = "Solo quien publicó la alerta puede marcarla como resuelta"
+                return@launch
+            }
             lostFoundRepository.updateStatus(postId, LostFoundStatus.RESOLVED)
+                .onSuccess { _message.value = "Alerta marcada como resuelta" }
+                .onFailure { _message.value = it.message ?: "No se pudo actualizar" }
         }
     }
 

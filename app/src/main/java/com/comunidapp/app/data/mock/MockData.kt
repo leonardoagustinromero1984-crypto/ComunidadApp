@@ -8,8 +8,6 @@ import com.comunidapp.app.data.model.CommunityCategory
 import com.comunidapp.app.data.model.CommunityListing
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.FosterHomeListing
-import com.comunidapp.app.data.model.Friendship
-import com.comunidapp.app.data.model.FriendshipStatus
 import com.comunidapp.app.data.model.LostFoundPost
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.Pet
@@ -112,13 +110,6 @@ object MockData {
             bio = "Clínica veterinaria con guardia 24 hs.",
             locationText = "Palermo, CABA"
         )
-    )
-
-    val initialFriendships = listOf(
-        Friendship(userId = "user_1", friendId = "user_3"),
-        Friendship(userId = "user_1", friendId = "user_5"),
-        Friendship(userId = "user_1", friendId = "user_6"),
-        Friendship(userId = "user_2", friendId = "user_3", status = FriendshipStatus.PENDING)
     )
 
     val pets = listOf(

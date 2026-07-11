@@ -301,14 +301,34 @@ fun MyAdoptionsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
-                            onClick = { viewModel.updateStatus(post.id, AdoptionStatus.IN_PROCESS) },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Pausar") }
-                        OutlinedButton(
-                            onClick = { viewModel.updateStatus(post.id, AdoptionStatus.ADOPTED) },
-                            modifier = Modifier.weight(1f)
-                        ) { Text("Adoptada") }
+                        when (post.status) {
+                            AdoptionStatus.AVAILABLE -> {
+                                OutlinedButton(
+                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.IN_PROCESS) },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Pausar") }
+                                OutlinedButton(
+                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.ADOPTED) },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Adoptada") }
+                            }
+                            AdoptionStatus.IN_PROCESS -> {
+                                OutlinedButton(
+                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.AVAILABLE) },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Reactivar") }
+                                OutlinedButton(
+                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.ADOPTED) },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Adoptada") }
+                            }
+                            AdoptionStatus.ADOPTED -> {
+                                OutlinedButton(
+                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.AVAILABLE) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("Volver a disponible") }
+                            }
+                        }
                     }
                 }
             }

@@ -2,16 +2,22 @@ package com.comunidapp.app.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.comunidapp.app.data.model.FriendConnectionStatus
+import com.comunidapp.app.data.model.NotificationType
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
-import com.comunidapp.app.data.repository.FriendsRepository
+import com.comunidapp.app.data.repository.FriendRepository
+import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.domain.ProfilePrivacy
+import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -36,7 +42,8 @@ data class SearchFriendsUiState(
 
 class SearchFriendsViewModel(
     private val authRepository: AuthRepository = AuthProvider.repository,
-    private val friendsRepository: FriendsRepository = DataProvider.friendsRepository
+    private val userRepository: UserRepository = DataProvider.userRepository,
+    private val friendRepository: FriendRepository = DataProvider.friendRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(SearchFriendsUiState())
@@ -55,14 +62,23 @@ class SearchFriendsViewModel(
             _uiState.update { it.copy(isSearching = true) }
             delay(300)
             val currentUser = authRepository.getCurrentUser() ?: return@launch
-            val users = friendsRepository.searchUsers(query, currentUser.id)
+            val connections = friendRepository.observeConnections(currentUser.id).first()
+            val friendIds = ProfilePrivacy.friendIdsFor(currentUser.id, connections)
+            val users = userRepository.searchUsers(query, currentUser.id)
+                .filter { it.id !in friendIds }
+                .take(20)
             val items = users.map { user ->
-                val actionState = when {
-                    friendsRepository.isFriend(currentUser.id, user.id) -> FriendActionState.FRIEND
-                    friendsRepository.hasPendingRequest(currentUser.id, user.id) -> FriendActionState.PENDING
-                    else -> FriendActionState.NONE
+                val pending = connections.any {
+                    it.status == FriendConnectionStatus.PENDING &&
+                        (
+                            (it.requesterId == currentUser.id && it.addresseeId == user.id) ||
+                                (it.requesterId == user.id && it.addresseeId == currentUser.id)
+                            )
                 }
-                UserSearchItem(user = user, actionState = actionState)
+                UserSearchItem(
+                    user = user,
+                    actionState = if (pending) FriendActionState.PENDING else FriendActionState.NONE
+                )
             }
             _uiState.update {
                 it.copy(
@@ -84,8 +100,16 @@ class SearchFriendsViewModel(
                     }
                 )
             }
-            friendsRepository.sendFriendRequest(currentUser.id, userId)
+            friendRepository.sendFriendRequest(currentUser.id, userId)
                 .onSuccess {
+                    NotificationDispatcher.notify(
+                        userId = userId,
+                        type = NotificationType.FRIEND_REQUEST,
+                        title = "Nueva solicitud de amistad",
+                        body = "${currentUser.name} quiere ser tu amigo en LeoVer",
+                        relatedId = currentUser.id,
+                        relatedType = "user"
+                    )
                     _uiState.update { state ->
                         state.copy(
                             results = state.results.map {

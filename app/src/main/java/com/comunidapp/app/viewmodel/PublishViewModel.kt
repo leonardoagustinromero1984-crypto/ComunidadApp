@@ -136,6 +136,10 @@ class PublishViewModel(
             _formState.update { it.copy(errorMessage = "Completá los campos obligatorios") }
             return
         }
+        if (imageUri == null) {
+            _formState.update { it.copy(errorMessage = "La foto es obligatoria para publicar una adopción") }
+            return
+        }
         viewModelScope.launch {
             _formState.update { PublishFormState(isLoading = true) }
             resolveAuthor()

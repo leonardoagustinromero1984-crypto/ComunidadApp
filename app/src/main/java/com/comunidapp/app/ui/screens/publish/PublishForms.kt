@@ -230,7 +230,7 @@ fun PublishAdoptionScreen(
             },
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (imageUri == null) "Agregar foto" else "Cambiar foto")
+            Text(if (imageUri == null) "Agregar foto (obligatoria)" else "Cambiar foto")
         }
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedTextField(

@@ -29,14 +29,14 @@ Implementación en código:
 
 | Requisito | Estado | Notas |
 |-----------|--------|-------|
-| Registro / login | ✅ ~90% | Supabase Auth + verificación email |
+| Registro / login | ✅ ~95% | Supabase Auth + verificación email (SMTP dominio) |
 | Perfil de usuario | ✅ ~85% | Edición, avatar, tipos de cuenta |
 | Perfil de mascota | ✅ ~85% | CRUD + salud; campos §7 (peso, raza, color) en modelo/DB |
-| Red social | ⚠️ ~60% | Feed, likes, comentarios, búsqueda; faltan historias/reels |
+| Red social | ✅ ~75% | Feed, likes, comentarios, URGENT, pull-to-refresh; sin historias/reels |
 | Chat | ✅ ~70% | 1:1 con Supabase + amistades |
-| Adopciones | ⚠️ ~70% | Persistencia + solicitudes |
-| Mascotas perdidas | ⚠️ ~55% | Persistencia + mapa básico |
-| Búsquedas | ⚠️ ~50% | Búsqueda global de usuarios/posts |
+| Adopciones | ✅ ~85% | Solicitudes, dashboard, foto obligatoria, pausar/reactivar |
+| Mascotas perdidas | ✅ ~75% | Foto obligatoria, resuelta (dueño), filtros; mapa placeholder |
+| Búsquedas | ✅ ~70% | Usuarios/posts/pets/adopciones/perdidos + debounce |
 
 ### Fase 2 — Comunidad
 
@@ -120,21 +120,21 @@ Push: desplegar Edge Function y webhook según `docs/leover-push-fcm-setup.md`.
 ## 5. Próximos pasos recomendados (orden)
 
 ### Sprint A — Cerrar Fase 1 social
-- [ ] Likes y comentarios en `posts` (tablas + UI interactiva)
-- [ ] Pull-to-refresh y paginación en feed
-- [ ] Tipo de publicación `URGENT`
-- [ ] Búsqueda global (usuarios, mascotas, publicaciones)
+- [x] Likes y comentarios en `posts` (tablas + UI interactiva)
+- [x] Pull-to-refresh en feed (paginación server-side pendiente a escala)
+- [x] Tipo de publicación `URGENT`
+- [x] Búsqueda global (usuarios, mascotas, publicaciones, adopciones, perdidos)
 
 ### Sprint B — Cerrar Fase 1 adopciones
-- [ ] Formulario de solicitud de adopción (§8)
-- [ ] Dashboard publicador: solicitudes, estados
-- [ ] Foto en publicación de adopción
-- [ ] Pausar / marcar adoptada
+- [x] Formulario de solicitud de adopción (§8)
+- [x] Dashboard publicador: solicitudes, estados
+- [x] Foto obligatoria en publicación de adopción
+- [x] Pausar / reactivar / marcar adoptada
 
 ### Sprint C — Cerrar Fase 1 perdidos
-- [ ] Foto obligatoria en alerta
-- [ ] Marcar como resuelta desde UI
-- [ ] Vista mapa (v1.1 con GPS)
+- [x] Foto obligatoria en alerta
+- [x] Marcar como resuelta desde UI (solo autor)
+- [ ] Vista mapa real con GPS (v1.1)
 
 ### Sprint D — Iniciar Fase 2
 - [ ] Tablas y repos: refugios, eventos, donaciones, tránsito

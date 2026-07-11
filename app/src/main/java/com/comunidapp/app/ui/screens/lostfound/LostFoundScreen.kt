@@ -98,6 +98,7 @@ fun LostFoundContent(
     val posts by viewModel.posts.collectAsState()
     val filters by viewModel.filters.collectAsState()
     val sightingsByPost by viewModel.sightingsByPost.collectAsState()
+    val currentUserId = remember { viewModel.currentUserId() }
     var sightingPostId by remember { mutableStateOf<String?>(null) }
     var sightingNote by remember { mutableStateOf("") }
     var sightingLocation by remember { mutableStateOf("") }
@@ -189,6 +190,16 @@ fun LostFoundContent(
                     },
                     label = { Text("Encontrados") }
                 )
+                FilterChip(
+                    selected = filters.status == LostFoundStatus.ACTIVE || filters.status == null,
+                    onClick = { viewModel.onStatusFilterChange(LostFoundStatus.ACTIVE) },
+                    label = { Text("Activas") }
+                )
+                FilterChip(
+                    selected = filters.status == LostFoundStatus.RESOLVED,
+                    onClick = { viewModel.onStatusFilterChange(LostFoundStatus.RESOLVED) },
+                    label = { Text("Resueltas") }
+                )
                 PetSpecies.entries.take(4).forEach { species ->
                     FilterChip(
                         selected = filters.species == species,
@@ -219,15 +230,26 @@ fun LostFoundContent(
         ) {
             items(posts, key = { it.id }) { post ->
                 val context = LocalContext.current
+                val canResolve = post.status == LostFoundStatus.ACTIVE &&
+                    currentUserId != null &&
+                    post.authorId == currentUserId
                 LostFoundCard(
                     post = post,
                     sightings = sightingsByPost[post.id].orEmpty(),
-                    onMarkResolved = { viewModel.markResolved(post.id) },
+                    onMarkResolved = if (canResolve) {
+                        { viewModel.markResolved(post.id) }
+                    } else {
+                        null
+                    },
                     onOpenMap = { openInMaps(context, post) },
-                    onReportSighting = {
-                        sightingPostId = post.id
-                        sightingNote = ""
-                        sightingLocation = post.location
+                    onReportSighting = if (post.status == LostFoundStatus.ACTIVE) {
+                        {
+                            sightingPostId = post.id
+                            sightingNote = ""
+                            sightingLocation = post.location
+                        }
+                    } else {
+                        null
                     }
                 )
             }
