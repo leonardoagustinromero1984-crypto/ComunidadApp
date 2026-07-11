@@ -24,6 +24,9 @@ class SupabaseUserRepository(
 
     override suspend fun updateUser(user: com.comunidapp.app.data.model.User) = dataSource.updateUser(user)
 
+    override suspend fun searchUsers(query: String, excludeUserId: String) =
+        dataSource.searchUsers(query, excludeUserId)
+
     override fun observeUser(userId: String) = dataSource.observeUser(userId)
 }
 

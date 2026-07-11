@@ -65,6 +65,23 @@ class UserSupabaseDataSource {
     fun observeUser(userId: String): Flow<User?> = pollingFlow {
         getUser(userId)
     }
+
+    suspend fun searchUsers(query: String, excludeUserId: String): List<User> {
+        if (query.isBlank()) return emptyList()
+        return try {
+            supabase.from(SupabaseTables.USERS)
+                .select {
+                    filter {
+                        ilike("name", "%$query%")
+                        neq("id", excludeUserId)
+                    }
+                }
+                .decodeList<UserRow>()
+                .map(::parseUser)
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 }
 
 class PetSupabaseDataSource {

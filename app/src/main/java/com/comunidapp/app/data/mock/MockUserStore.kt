@@ -21,4 +21,19 @@ object MockUserStore {
     fun upsert(user: User) {
         users.update { current -> current + (user.id to user) }
     }
+
+    fun allUsers(): List<User> = users.value.values.toList()
+
+    fun search(query: String, excludeUserId: String): List<User> {
+        val normalized = query.trim().lowercase()
+        if (normalized.isBlank()) return emptyList()
+        return allUsers()
+            .filter { it.id != excludeUserId }
+            .filter {
+                it.name.lowercase().contains(normalized) ||
+                    it.email.lowercase().contains(normalized) ||
+                    it.locationText?.lowercase()?.contains(normalized) == true
+            }
+            .sortedBy { it.name }
+    }
 }

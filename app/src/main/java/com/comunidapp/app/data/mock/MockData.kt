@@ -8,6 +8,8 @@ import com.comunidapp.app.data.model.CommunityCategory
 import com.comunidapp.app.data.model.CommunityListing
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.FosterHomeListing
+import com.comunidapp.app.data.model.Friendship
+import com.comunidapp.app.data.model.FriendshipStatus
 import com.comunidapp.app.data.model.LostFoundPost
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.Pet
@@ -81,7 +83,38 @@ object MockData {
             profileImageUrl = Images.SHOP_1,
             bio = "Alimentos premium y accesorios. Envíos en CABA.",
             locationText = "Recoleta, CABA"
+        ),
+        User(
+            id = "user_5",
+            name = "Ana Martínez",
+            email = "ana@email.com",
+            profileImageUrl = Images.FOSTER_1,
+            bio = "Hogar de tránsito para perros y gatos.",
+            locationText = "Rosario, Santa Fe"
+        ),
+        User(
+            id = "user_6",
+            name = "Luis Fernández",
+            email = "luis@email.com",
+            profileImageUrl = Images.FOSTER_2,
+            bio = "Paseador profesional. Amante de los perros grandes.",
+            locationText = "Córdoba, Argentina"
+        ),
+        User(
+            id = "user_7",
+            name = "VetCare Centro",
+            email = "info@vetcare.ar",
+            accountType = AccountType.VET,
+            bio = "Clínica veterinaria con guardia 24 hs.",
+            locationText = "Palermo, CABA"
         )
+    )
+
+    val initialFriendships = listOf(
+        Friendship(userId = "user_1", friendId = "user_3"),
+        Friendship(userId = "user_1", friendId = "user_5"),
+        Friendship(userId = "user_1", friendId = "user_6"),
+        Friendship(userId = "user_2", friendId = "user_3", status = FriendshipStatus.PENDING)
     )
 
     val pets = listOf(

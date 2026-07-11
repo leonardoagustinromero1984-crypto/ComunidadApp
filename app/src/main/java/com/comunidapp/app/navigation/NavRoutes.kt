@@ -23,6 +23,7 @@ object NavRoutes {
     const val PET_DETAIL = "pet_detail/{petId}"
 
     const val EDIT_PROFILE = "edit_profile"
+    const val SEARCH_FRIENDS = "search_friends"
     const val USER_PROFILE = "user_profile/{userId}"
 
     const val ADD_PET = "add_pet"

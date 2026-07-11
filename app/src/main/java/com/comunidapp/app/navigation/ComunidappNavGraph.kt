@@ -32,6 +32,7 @@ import com.comunidapp.app.ui.screens.pets.MyPetsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
 import com.comunidapp.app.ui.screens.profile.EditProfileScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
+import com.comunidapp.app.ui.screens.profile.SearchFriendsScreen
 import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
 import com.comunidapp.app.ui.screens.publish.PublishAdoptionScreen
 import com.comunidapp.app.ui.screens.publish.PublishGeneralScreen
@@ -197,7 +198,15 @@ private fun MainScreen(accountType: AccountType) {
                 ProfileScreen(
                     onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                     onNavigateToMyPets = { navController.navigate(NavRoutes.MY_PETS) },
+                    onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
+                    onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
                     onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
+                )
+            }
+            composable(NavRoutes.SEARCH_FRIENDS) {
+                SearchFriendsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onUserClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) }
                 )
             }
             composable(NavRoutes.EDIT_PROFILE) {
