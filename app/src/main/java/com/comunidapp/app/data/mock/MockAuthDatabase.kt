@@ -4,21 +4,36 @@ import com.comunidapp.app.data.model.AuthAccount
 import java.util.UUID
 
 /**
- * Base de datos mock en memoria para auth.
- * Cuando conectemos Firebase Auth, esto se reemplaza por Firebase (no guardar contraseñas localmente en producción).
+ * Fixture mock de autenticación (solo memoria).
+ *
+ * Cuenta demo documentada (no es credencial de producción):
+ * - email: el de [MockData.currentUser]
+ * - password: [DEMO_PASSWORD]
  */
 object MockAuthDatabase {
+
+    /** Contraseña mínima 8 caracteres (contrato M01). Solo fixture local. */
+    const val DEMO_PASSWORD = "demo1234"
 
     private val accounts = mutableMapOf<String, AuthAccount>()
 
     init {
-        // Usuario demo pre-verificado
+        seedDemoAccount()
+    }
+
+    private fun seedDemoAccount() {
+        accounts.clear()
         accounts[MockData.currentUser.email.lowercase()] = AuthAccount(
-            email = MockData.currentUser.email,
-            password = "123456",
+            email = MockData.currentUser.email.lowercase(),
+            password = DEMO_PASSWORD,
             name = MockData.currentUser.name,
             emailVerified = true
         )
+    }
+
+    /** Reinicia fixtures para pruebas deterministas. */
+    fun resetToFixtures() {
+        seedDemoAccount()
     }
 
     fun findByEmail(email: String): AuthAccount? =
@@ -43,9 +58,10 @@ object MockAuthDatabase {
         accounts[key]?.let { accounts[key] = it.copy(resetToken = token) }
     }
 
-    fun generateResetToken(email: String): String {
+    fun generateResetToken(email: String): String? {
+        val account = findByEmail(email) ?: return null
         val token = UUID.randomUUID().toString().take(8).uppercase()
-        setResetToken(email, token)
+        setResetToken(account.email, token)
         return token
     }
 

@@ -41,7 +41,7 @@ Sin `SUPABASE_URL` / `SUPABASE_ANON_KEY` en `local.properties`, la app usa datos
 Credenciales mock:
 
 - Email: `maria@email.com`
-- Contraseña: `123456`
+- Contraseña: `demo1234` (fixture local ≥8 caracteres; no es credencial de producción)
 
 ### 3. Modo Supabase
 

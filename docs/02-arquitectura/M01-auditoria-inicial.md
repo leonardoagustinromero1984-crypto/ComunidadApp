@@ -81,7 +81,7 @@ CI remoto (GitHub Actions): no ejecutado/observado en esta sesión; el workflow 
 |-------|------|
 | `User` / `AccountType` | `data/model/` |
 | `AuthAccount` | `data/model/AuthAccount.kt` (solo mock) |
-| Credenciales demo | `MockAuthDatabase` — email `maria@email.com`, password `123456`, verificada |
+| Credenciales demo | `MockAuthDatabase` — email `maria@email.com`, password `demo1234` (≥8), verificada |
 | Store usuarios mock | `MockUserStore` / `MockData` |
 
 **Quirk mock (riesgo QA):** si el email no existe en la DB mock, `login` acepta cualquier password y entra como `MockData.currentUser` con ese email (`AuthRepository.kt`). Útil para demos; **inadecuado** como contrato seguro de M01.
@@ -349,8 +349,19 @@ Criterio transversal: no pasar de etapa con assemble/tests/lint en rojo (M01-RN-
 
 ---
 
-## 11. Instrucción de parada
+## 11. Instrucción de parada (Etapa 1)
 
-**Etapa 1 completa.** No iniciar Etapa 2 ni M02 hasta revisión/aprobación explícita de esta auditoría.
+**Etapa 1 completa** en el momento de la auditoría. Etapa 2 se ejecutó después de la aprobación (ver §12).
 
-**Entregable:** `/docs/02-arquitectura/M01-auditoria-inicial.md`
+**Entregable Etapa 1:** `/docs/02-arquitectura/M01-auditoria-inicial.md`
+
+## 12. Actualización post Etapa 2 (implementado)
+
+Tras aprobación de esta auditoría, Etapa 2 consolidó:
+
+- D-M01-01…09 (decisions) → ver `M01-etapa-2-cierre.md`
+- Mock endurecido; demo password `demo1234`
+- `domain/auth/*` + validadores + `AuthErrorMapper` → `AppError`
+- `SessionViewModel.authState` + logout suspendido sin `runBlocking`
+- Sin migraciones / Edge Functions / pantallas completas
+

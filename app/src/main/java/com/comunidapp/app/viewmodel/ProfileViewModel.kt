@@ -26,6 +26,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 data class ProfileUiState(
     val isLoading: Boolean = true,
@@ -99,7 +100,9 @@ class ProfileViewModel(
         )
 
     fun logout() {
-        authRepository.logout()
+        viewModelScope.launch {
+            authRepository.logout()
+        }
     }
 
     private data class ProfileCore(

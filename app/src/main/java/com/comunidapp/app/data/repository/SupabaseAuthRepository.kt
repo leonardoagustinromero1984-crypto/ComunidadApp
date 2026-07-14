@@ -5,6 +5,9 @@ import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.remote.supabase.SupabaseAuthConfig
 import com.comunidapp.app.data.remote.supabase.UserSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.supabase
+import com.comunidapp.app.domain.auth.AuthErrorCode
+import com.comunidapp.app.domain.auth.AuthErrorMapper
+import com.comunidapp.app.domain.auth.validation.AuthValidators
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
@@ -12,7 +15,6 @@ import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -21,10 +23,15 @@ class SupabaseAuthRepository(
 ) : AuthRepository {
 
     override suspend fun login(email: String, password: String): Result<User> {
-        val normalizedEmail = email.trim().lowercase()
-        if (normalizedEmail.isBlank() || password.isBlank()) {
-            return Result.failure(IllegalArgumentException("Email y contraseña son requeridos"))
+        AuthValidators.validateEmail(email).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
         }
+        if (password.isEmpty()) {
+            return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.INVALID_CREDENTIALS, "empty password")
+            )
+        }
+        val normalizedEmail = AuthValidators.normalizeEmail(email)
         return try {
             supabase.auth.signInWith(Email) {
                 this.email = normalizedEmail
@@ -32,10 +39,14 @@ class SupabaseAuthRepository(
             }
             supabase.auth.refreshCurrentSession()
             val authUser = supabase.auth.currentUserOrNull()
-                ?: return Result.failure(IllegalArgumentException("Error al iniciar sesión"))
+                ?: return Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.INVALID_CREDENTIALS, "no session")
+                )
 
             if (!authUser.isEmailConfirmed()) {
-                return Result.failure(EmailNotVerifiedException(normalizedEmail))
+                return Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.EMAIL_NOT_VERIFIED, "email not confirmed")
+                )
             }
 
             val profile = fetchUserProfile(authUser, normalizedEmail)
@@ -51,10 +62,20 @@ class SupabaseAuthRepository(
         password: String,
         accountType: AccountType
     ): Result<User> {
-        val normalizedEmail = email.trim().lowercase()
-        if (name.isBlank() || normalizedEmail.isBlank() || password.isBlank()) {
-            return Result.failure(IllegalArgumentException("Todos los campos son requeridos"))
+        if (name.isBlank()) {
+            return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.UNKNOWN_AUTH_ERROR, "name required")
+            )
         }
+        AuthValidators.validateEmail(email).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        AuthValidators.validatePassword(password).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        val normalizedEmail = AuthValidators.normalizeEmail(email)
+        // D-M01-05: no decidir roles de negocio en M01.
+        val effectiveType = AccountType.PERSON
         return try {
             val trimmedName = name.trim()
             val signedUpUser = supabase.auth.signUpWith(
@@ -65,18 +86,20 @@ class SupabaseAuthRepository(
                 this.password = password
                 data = buildJsonObject {
                     put("name", trimmedName)
-                    put("account_type", accountType.name)
+                    put("account_type", effectiveType.name)
                 }
             }
 
             val authUser = signedUpUser ?: supabase.auth.currentUserOrNull()
-                ?: return Result.failure(IllegalArgumentException("Error al crear la cuenta"))
+                ?: return Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.UNKNOWN_AUTH_ERROR, "signup failed")
+                )
 
             val user = User(
                 id = authUser.id,
                 name = trimmedName,
                 email = normalizedEmail,
-                accountType = accountType
+                accountType = effectiveType
             )
 
             if (supabase.auth.currentUserOrNull() != null) {
@@ -90,10 +113,10 @@ class SupabaseAuthRepository(
     }
 
     override suspend fun sendPasswordResetEmail(email: String): Result<Unit> {
-        val normalizedEmail = email.trim().lowercase()
-        if (normalizedEmail.isBlank()) {
-            return Result.failure(IllegalArgumentException("Ingresá tu email"))
+        AuthValidators.validateEmail(email).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
         }
+        val normalizedEmail = AuthValidators.normalizeEmail(email)
         return try {
             supabase.auth.resetPasswordForEmail(
                 normalizedEmail,
@@ -110,18 +133,27 @@ class SupabaseAuthRepository(
         token: String,
         newPassword: String
     ): Result<Unit> {
+        // Etapa 4: completar updateUser post-deep-link. No devolver falso éxito.
         return Result.failure(
-            IllegalArgumentException("Abrí el link que te enviamos por email para restablecer tu contraseña")
+            AuthErrorMapper.toException(
+                AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE,
+                "Password reset is not available in-app until M01 stage 4"
+            )
         )
     }
 
     override suspend fun sendEmailVerification(email: String): Result<Unit> {
-        val normalizedEmail = email.trim().lowercase()
+        val normalizedEmail = AuthValidators.normalizeEmail(email)
         return try {
             val sessionUser = supabase.auth.currentUserOrNull()
             if (sessionUser != null) {
                 if (!sessionUser.email.equals(normalizedEmail, ignoreCase = true)) {
-                    return Result.failure(IllegalArgumentException("El email no coincide con la sesión activa"))
+                    return Result.failure(
+                        AuthErrorMapper.toException(
+                            AuthErrorCode.INVALID_CREDENTIALS,
+                            "email mismatch with session"
+                        )
+                    )
                 }
                 supabase.auth.resendEmail(OtpType.Email.SIGNUP, sessionUser.email ?: normalizedEmail)
             } else {
@@ -134,18 +166,24 @@ class SupabaseAuthRepository(
     }
 
     override suspend fun confirmEmailVerification(email: String): Result<Unit> {
-        val normalizedEmail = email.trim().lowercase()
+        val normalizedEmail = AuthValidators.normalizeEmail(email)
         return try {
             val sessionUser = supabase.auth.currentUserOrNull()
             if (sessionUser == null) {
                 return Result.failure(
-                    IllegalArgumentException(
-                        "Abrí el link del email o ingresá el código de 6 dígitos que te enviamos."
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.RECOVERY_LINK_INVALID,
+                        "no session for confirm email"
                     )
                 )
             }
             if (!sessionUser.email.equals(normalizedEmail, ignoreCase = true)) {
-                return Result.failure(IllegalArgumentException("El email no coincide con la sesión activa"))
+                return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.INVALID_CREDENTIALS,
+                        "email mismatch"
+                    )
+                )
             }
             supabase.auth.refreshCurrentSession()
             val refreshed = supabase.auth.currentUserOrNull()
@@ -155,8 +193,9 @@ class SupabaseAuthRepository(
                 Result.success(Unit)
             } else {
                 Result.failure(
-                    IllegalArgumentException(
-                        "Tu email aún no está confirmado. Usá el código de 6 dígitos del email."
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.EMAIL_NOT_VERIFIED,
+                        "still not confirmed"
                     )
                 )
             }
@@ -166,10 +205,12 @@ class SupabaseAuthRepository(
     }
 
     override suspend fun verifyEmailOtp(email: String, otpCode: String): Result<Unit> {
-        val normalizedEmail = email.trim().lowercase()
+        val normalizedEmail = AuthValidators.normalizeEmail(email)
         val token = otpCode.trim()
         if (token.length < 6) {
-            return Result.failure(IllegalArgumentException("Ingresá el código de 6 dígitos del email"))
+            return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.RECOVERY_LINK_INVALID, "otp too short")
+            )
         }
         return try {
             supabase.auth.verifyEmailOtp(
@@ -200,8 +241,8 @@ class SupabaseAuthRepository(
         return authUser.toUser()
     }
 
-    override fun logout() {
-        runBlocking { supabase.auth.signOut() }
+    override suspend fun logout() {
+        supabase.auth.signOut()
     }
 
     override fun observeAuthState(): Flow<User?> =
@@ -238,27 +279,6 @@ class SupabaseAuthRepository(
     private fun UserInfo.isEmailConfirmed(): Boolean =
         emailConfirmedAt != null
 
-    private fun mapSupabaseException(e: Exception): Exception {
-        val raw = e.message.orEmpty()
-        val message = when {
-            raw.contains("rate limit", ignoreCase = true) ||
-                raw.contains("over_email_send_rate_limit", ignoreCase = true) ||
-                raw.contains("email rate limit exceeded", ignoreCase = true) ->
-                "Supabase limitó el envío de emails (demasiados intentos de registro o reenvío). " +
-                    "Esperá 30–60 minutos, usá otro email, o desactivá temporalmente " +
-                    "'Confirm email' en Supabase → Authentication → Providers → Email."
-            raw.contains("Invalid login credentials", ignoreCase = true) ->
-                "Email o contraseña incorrectos"
-            raw.contains("User already registered", ignoreCase = true) ||
-                raw.contains("already been registered", ignoreCase = true) ->
-                "Ya existe una cuenta con ese email. Revisá tu bandeja o iniciá sesión."
-            raw.contains("Password should be at least", ignoreCase = true) ->
-                "La contraseña debe tener al menos 6 caracteres"
-            raw.contains("Email link is invalid or has expired", ignoreCase = true) ||
-                raw.contains("otp_expired", ignoreCase = true) ->
-                "El código o el link expiró. Pedí un email nuevo con \"Reenviar email\"."
-            else -> raw.ifBlank { "Ocurrió un error. Intentá de nuevo." }
-        }
-        return IllegalArgumentException(message)
-    }
+    private fun mapSupabaseException(e: Exception): Exception =
+        AuthErrorMapper.fromThrowableToException(e)
 }
