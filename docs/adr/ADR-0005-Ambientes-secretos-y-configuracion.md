@@ -8,6 +8,8 @@
 
 La config Android entra por `local.properties` → `BuildConfig` (`SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_ENABLED`). Sin flavors `staging`/`production` todavía. Edge Function push usa secrets en el dashboard de Supabase.
 
+Desde M00 Etapa 4, el código de aplicación consulta **`AppConfigProvider` / `AppConfig`** (y `FeatureFlags`) en lugar de leer `BuildConfig` en UI o proveedores. `BuildConfig` permanece como fuente de inyección Gradle; la anon key no se expone en `AppConfig` ni en logs.
+
 ## Problema
 
 ¿Cómo configurar ambientes y secretos sin filtrarlos al repo y sin crash si faltan?
@@ -49,5 +51,7 @@ La config Android entra por `local.properties` → `BuildConfig` (`SUPABASE_URL`
 ## Referencias
 
 - `app/build.gradle.kts`  
+- `app/src/main/java/com/comunidapp/app/core/config/`  
 - `local.properties.example`  
-- `supabase/.env.example`
+- `supabase/.env.example`  
+- [M00-etapa-4-cierre.md](../02-arquitectura/M00-etapa-4-cierre.md)

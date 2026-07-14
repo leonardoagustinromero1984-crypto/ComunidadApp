@@ -1,17 +1,17 @@
 # M00 — Plan de calidad
 
 **Fecha:** 2026-07-14  
-**Etapa:** 2 (documentación); ejecución de fixes de lint = etapas posteriores  
-**Base de medición:** auditoría M00 + corrida Etapa 1 / revalidación Etapa 2
+**Etapa:** 4 (cierre M00); lint verde desde Etapa 3  
+**Base de medición:** auditoría M00 + Etapas 3–4
 
-## 1. Estado actual (actualizado Etapa 3)
+## 1. Estado actual (actualizado Etapa 4)
 
 | Validación | Estado | Notas |
 |------------|--------|-------|
 | `:app:assembleDebug` | OK | |
-| `:app:testDebugUnitTest` | OK | 7 tests (1 ejemplo + 6 mappers) |
-| `:app:lintDebug` | **OK** | 0 errors; ~35 warnings (deuda no crítica) |
-| CI | Workflow `.github/workflows/android-ci.yml` | PR/push a `main` |
+| `:app:testDebugUnitTest` | OK | **20** tests (7 previos + 13 fundación: AppConfig, flags, sanitize, AppError) |
+| `:app:lintDebug` | **OK** | 0 errors; 38 warnings (deuda no crítica) |
+| CI | Workflow `.github/workflows/android-ci.yml` | PR/push a `main`; modo mock sin secretos |
 | Instrumentados | Pendientes | Requieren emulador/dispositivo |
 
 Evidencia: [M00-lint-antes.md](M00-lint-antes.md) → [M00-lint-despues.md](M00-lint-despues.md).
@@ -89,8 +89,9 @@ Un baseline solo se consideraría más adelante para warnings históricos no cr�
 | Etapa | Mínimo obligatorio |
 |-------|--------------------|
 | 2 (docs) | `assembleDebug` + `testDebugUnitTest`; lint registrado (puede fallar) |
-| Fixes calidad | Lint Fragment + AppLinks verdes o justificados |
-| CI (futuro) | Mismos comandos en GitHub Actions; bloqueo de `.env` reales |
+| 3 (calidad/CI) | Lint Fragment + AppLinks verdes; workflow CI |
+| 4 (config/observabilidad) | AppConfig/flags/logger/errores/UI states + network security; tests fundación; lint 0 errors |
+| CI | Mismos comandos en GitHub Actions; sin secretos reales |
 
 Comandos:
 

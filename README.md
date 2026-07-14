@@ -79,11 +79,15 @@ FCM requiere `app/google-services.json` y, para envío desde servidor, secrets d
 # Pruebas unitarias
 ./gradlew.bat :app:testDebugUnitTest
 
-# Lint (hoy puede fallar; ver plan de calidad)
+# Lint (objetivo: 0 errors)
 ./gradlew.bat :app:lintDebug
 ```
 
 En Unix/macOS usá `./gradlew` en lugar de `./gradlew.bat`.
+
+CI (push/PR a `main`): [`.github/workflows/android-ci.yml`](.github/workflows/android-ci.yml) — assemble + unit tests + lint en modo mock, sin inyectar secretos.
+
+Configuración tipada: `AppConfigProvider` / `FeatureFlags` (`core/config`, `core/featureflags`). Ver [ADR-0005](docs/adr/ADR-0005-Ambientes-secretos-y-configuracion.md).
 
 ## Qué no commitear
 

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Tráfico claro deshabilitado por defecto.
+  Supabase y FCM usan HTTPS.
+  No hay excepciones de cleartext en release.
+  Debug: sin excepciones inventadas; si se necesita HTTP local a futuro,
+  documentar dominio/IP explícito aquí y en M00-etapa-4-cierre.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

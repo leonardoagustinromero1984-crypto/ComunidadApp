@@ -1,6 +1,8 @@
 package com.comunidapp.app
 
 import android.app.Application
+import com.comunidapp.app.core.config.AppConfigProvider
+import com.comunidapp.app.core.logging.AppLog
 import com.comunidapp.app.notifications.LeoverNotificationHelper
 import com.comunidapp.app.notifications.PushTokenRegistrar
 import kotlinx.coroutines.CoroutineScope
@@ -15,6 +17,12 @@ class LeoverApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         instance = this
+        val config = AppConfigProvider.get()
+        AppLog.info(
+            "LeoverApp",
+            "startup env=${config.environment} mock=${config.isMockMode} version=${config.appVersionName}"
+        )
+        config.missingConfigMessage?.let { AppLog.warning("LeoverApp", it) }
         LeoverNotificationHelper.ensureChannel(this)
         appScope.launch {
             PushTokenRegistrar.syncCurrentToken()

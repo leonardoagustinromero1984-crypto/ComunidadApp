@@ -35,12 +35,15 @@ docs/
 | D01 Mapa de módulos | [01-producto/D01-Modulos-y-Orden.md](01-producto/D01-Modulos-y-Orden.md) |
 | M00 Fundación técnica | [03-modulos/M00-Fundacion-Tecnica.md](03-modulos/M00-Fundacion-Tecnica.md) |
 | M00 Etapa 2 (gobierno) | [03-modulos/M00-Etapa-2-Documentacion-y-Gobierno.md](03-modulos/M00-Etapa-2-Documentacion-y-Gobierno.md) |
+| M00 Etapa 4 (config/observabilidad) | [03-modulos/M00-Etapa-4-Configuracion-Observabilidad-y-Cierre.md](03-modulos/M00-Etapa-4-Configuracion-Observabilidad-y-Cierre.md) |
 | Auditoría inicial M00 | [02-arquitectura/M00-auditoria-inicial.md](02-arquitectura/M00-auditoria-inicial.md) |
 | Arquitectura inicial | [02-arquitectura/arquitectura-inicial.md](02-arquitectura/arquitectura-inicial.md) |
 | ADRs | [adr/](adr/) |
 | Plan de calidad M00 | [04-calidad/M00-plan-de-calidad.md](04-calidad/M00-plan-de-calidad.md) |
 | Lint antes/después Etapa 3 | [04-calidad/M00-lint-antes.md](04-calidad/M00-lint-antes.md) · [04-calidad/M00-lint-despues.md](04-calidad/M00-lint-despues.md) |
 | Cierre Etapa 3 | [02-arquitectura/M00-etapa-3-cierre.md](02-arquitectura/M00-etapa-3-cierre.md) |
+| Cierre Etapa 4 | [02-arquitectura/M00-etapa-4-cierre.md](02-arquitectura/M00-etapa-4-cierre.md) |
+| Cierre final M00 | [02-arquitectura/M00-cierre-final.md](02-arquitectura/M00-cierre-final.md) |
 | Inventario legacy | [99-legacy/INVENTARIO.md](99-legacy/INVENTARIO.md) |
 | Setup Supabase (operativo) | [supabase-setup.md](supabase-setup.md) |
 | Push FCM | [leover-push-fcm-setup.md](leover-push-fcm-setup.md) |

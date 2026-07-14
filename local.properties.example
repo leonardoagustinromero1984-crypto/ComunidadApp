@@ -7,13 +7,19 @@ sdk.dir=C\:\\Users\\TU_USUARIO\\AppData\\Local\\Android\\Sdk
 # ---------------------------------------------------------------------------
 # Supabase — Project Settings → API
 # Si falta URL o ANON_KEY, la app usa modo mock (sin crash).
+# La UI y el código nuevo deben leer configuración vía AppConfigProvider
+# (no BuildConfig / este archivo directamente). Ver ADR-0005.
 # ---------------------------------------------------------------------------
 
-# URL del proyecto (ejemplo ficticio)
+# URL del proyecto (ejemplo ficticio; se expone solo el host en AppConfig)
 SUPABASE_URL=https://TU_PROJECT_REF.supabase.co
 
 # Clave anon/public (ejemplo ficticio; no uses service_role aquí)
+# Nunca loguear esta clave. No va a AppConfig.
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.EJEMPLO_ANON_KEY_FICTICIA
+
+# Ambientes: hoy solo debug/release (buildTypes). Staging se añadirá cuando
+# exista un proyecto Supabase de staging (sin inventar flavors ahora).
 
 # Secrets de Edge Functions (FCM push) NO van en este archivo.
 # Ver: supabase/.env.example y docs/leover-push-fcm-setup.md

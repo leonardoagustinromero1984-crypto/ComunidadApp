@@ -16,6 +16,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.core.config.AppConfigProvider
 import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.navigation.ComunidappNavGraph
 import com.comunidapp.app.notifications.PushTokenRegistrar
@@ -76,7 +77,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleAuthDeepLink(intent: Intent?) {
-        if (!BuildConfig.SUPABASE_ENABLED || intent == null) return
+        if (!AppConfigProvider.featureFlags().useSupabase || intent == null) return
         if (intent.data?.scheme == com.comunidapp.app.data.remote.supabase.SupabaseAuthConfig.SCHEME) {
             supabase.handleDeeplinks(intent)
         }

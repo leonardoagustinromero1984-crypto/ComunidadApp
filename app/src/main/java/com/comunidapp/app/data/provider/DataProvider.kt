@@ -1,6 +1,6 @@
 package com.comunidapp.app.data.provider
 
-import com.comunidapp.app.BuildConfig
+import com.comunidapp.app.core.config.AppConfigProvider
 import com.comunidapp.app.data.remote.storage.ImageStorageService
 import com.comunidapp.app.data.remote.storage.SupabaseStorageService
 import com.comunidapp.app.data.repository.AdoptionRepository
@@ -42,7 +42,7 @@ import com.comunidapp.app.data.repository.UserRepository
 
 object DataProvider {
 
-    val useSupabase: Boolean get() = BuildConfig.SUPABASE_ENABLED
+    val useSupabase: Boolean get() = AppConfigProvider.featureFlags().useSupabase
 
     val userRepository: UserRepository by lazy {
         if (useSupabase) SupabaseUserRepository() else MockUserRepository()

@@ -1,8 +1,8 @@
 # LEOVER — Arquitectura inicial (estado real)
 
 **Fecha:** 2026-07-14  
-**Estado:** Vigente  
-**Alcance:** describe únicamente lo que existe o fue aprobado en Etapa 2 M00.  
+**Estado:** Vigente (actualizado M00 Etapa 4)  
+**Alcance:** describe el sistema tras el cierre de M00.  
 **No incluye:** NestJS, Docker Compose, Prisma/TypeORM, API REST propia ni segunda base de datos.
 
 Documentos relacionados:
@@ -46,6 +46,7 @@ ui/ (screens, components, theme)
 viewmodel/
         ↓ usa
 domain/ (permisos, privacidad, módulos)
+core/ (config, featureflags, logging, result)  ← AppConfigProvider
         ↓
 data/repository (interfaces)  ←────────── DataProvider / AuthProvider
         ↓                           ↓
@@ -54,19 +55,30 @@ data/repository (interfaces)  ←────────── DataProvider / A
 
 **Límites:**
 
-- **UI** no debe llamar a Supabase/Ktor directamente.
+- **UI** no debe llamar a Supabase/Ktor directamente ni leer `BuildConfig`/`local.properties`.
 - **ViewModels** dependen de repositorios e interfaces, no de datasources.
 - **Domain** contiene reglas de producto (permisos, privacidad), no I/O.
+- **core/** concentra configuración tipada, flags, logger y errores comunes para código nuevo.
 - **Data** traduce filas remotas ↔ modelos de dominio.
 
 ---
 
 ## 3. Flujo de datos
 
-1. `AuthProvider` elige `SupabaseAuthRepository` o mock según `BuildConfig.SUPABASE_ENABLED`.
-2. `DataProvider` expone repositorios mock o Supabase con el mismo criterio.
+1. `AppConfigProvider` resuelve ambiente, mock/remoto y flags a partir de `BuildConfig` (credenciales inválidas → mock seguro).
+2. `AuthProvider` / `DataProvider` eligen Supabase o mock según `AppConfigProvider.featureFlags().useSupabase`.
 3. ViewModels observan `Flow`/`StateFlow` y emiten UiState.
-4. Pantallas Compose renderizan Loading / contenido / mensajes (loading común en `LoadingState`; vacío/error aún no unificados).
+4. Pantallas Compose pueden usar estados comunes en `ui/components/state/` (`LoadingState`, `EmptyState`, `ErrorState` + retry). El wrapper legacy `ui/components/LoadingState` delega al foundation.
+
+### Fundación de plataforma (M00 Etapa 4)
+
+| Pieza | Ubicación |
+|-------|-----------|
+| AppConfig | `core/config/` |
+| FeatureFlags | `core/featureflags/` (pagos/mapas experimentales OFF por defecto) |
+| AppLogger | `core/logging/` (sanitiza tokens, email, coords; release reducido) |
+| AppResult / AppError | `core/result/` (para código nuevo; sin migración masiva) |
+| Network Security Config | `res/xml/network_security_config.xml` (cleartext OFF) |
 
 ---
 
@@ -144,11 +156,11 @@ flowchart TB
 
 ## 9. Riesgos actuales
 
-1. Lint debug falla (~53 errores); plan en `04-calidad/`.
-2. Paquete `com.comunidapp.app` vs marca Leover.
+1. Lint debug en verde (0 errors); warnings residuales documentados en `04-calidad/`.
+2. Paquete `com.comunidapp.app` vs marca Leover (ADR-0006; sin renombre aún).
 3. Documentación legacy Firebase mezcla con setup real Supabase.
 4. Secretos: `local.properties` OK; `google-services.json` versionado (repo privado).
-5. Producto funcional avanzado vs M00 aún abierto (CI, flags, observabilidad formal).
+5. Observabilidad base lista (`AppLogger`); Crashlytics/Sentry fuera de M00 (M07).
 
 ---
 
