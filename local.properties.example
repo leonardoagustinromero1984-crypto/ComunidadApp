@@ -1,6 +1,19 @@
-# Copiá este archivo como local.properties (está en .gitignore) y completá tus credenciales.
+# Copiá este archivo como local.properties (está en .gitignore).
+# Nunca commitees local.properties con valores reales.
+
+# Ruta del Android SDK (ajustá tu usuario)
 sdk.dir=C\:\\Users\\TU_USUARIO\\AppData\\Local\\Android\\Sdk
 
-# Supabase → Project Settings → API
+# ---------------------------------------------------------------------------
+# Supabase — Project Settings → API
+# Si falta URL o ANON_KEY, la app usa modo mock (sin crash).
+# ---------------------------------------------------------------------------
+
+# URL del proyecto (ejemplo ficticio)
 SUPABASE_URL=https://TU_PROJECT_REF.supabase.co
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...
+
+# Clave anon/public (ejemplo ficticio; no uses service_role aquí)
+SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.EJEMPLO_ANON_KEY_FICTICIA
+
+# Secrets de Edge Functions (FCM push) NO van en este archivo.
+# Ver: supabase/.env.example y docs/leover-push-fcm-setup.md
