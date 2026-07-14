@@ -39,6 +39,8 @@ docs/
 | Arquitectura inicial | [02-arquitectura/arquitectura-inicial.md](02-arquitectura/arquitectura-inicial.md) |
 | ADRs | [adr/](adr/) |
 | Plan de calidad M00 | [04-calidad/M00-plan-de-calidad.md](04-calidad/M00-plan-de-calidad.md) |
+| Lint antes/después Etapa 3 | [04-calidad/M00-lint-antes.md](04-calidad/M00-lint-antes.md) · [04-calidad/M00-lint-despues.md](04-calidad/M00-lint-despues.md) |
+| Cierre Etapa 3 | [02-arquitectura/M00-etapa-3-cierre.md](02-arquitectura/M00-etapa-3-cierre.md) |
 | Inventario legacy | [99-legacy/INVENTARIO.md](99-legacy/INVENTARIO.md) |
 | Setup Supabase (operativo) | [supabase-setup.md](supabase-setup.md) |
 | Push FCM | [leover-push-fcm-setup.md](leover-push-fcm-setup.md) |

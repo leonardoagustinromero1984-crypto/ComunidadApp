@@ -4,14 +4,17 @@
 **Etapa:** 2 (documentación); ejecución de fixes de lint = etapas posteriores  
 **Base de medición:** auditoría M00 + corrida Etapa 1 / revalidación Etapa 2
 
-## 1. Estado actual
+## 1. Estado actual (actualizado Etapa 3)
 
-| Validación | Estado (Etapa 1 / pre-Etapa 2) | Notas |
-|------------|--------------------------------|-------|
+| Validación | Estado | Notas |
+|------------|--------|-------|
 | `:app:assembleDebug` | OK | |
 | `:app:testDebugUnitTest` | OK | 7 tests (1 ejemplo + 6 mappers) |
-| `:app:lintDebug` | FAIL | ~53 errors, ~35 warnings |
-| Instrumentados | No ejecutados en M00 aún | Requieren emulador/dispositivo |
+| `:app:lintDebug` | **OK** | 0 errors; ~35 warnings (deuda no crítica) |
+| CI | Workflow `.github/workflows/android-ci.yml` | PR/push a `main` |
+| Instrumentados | Pendientes | Requieren emulador/dispositivo |
+
+Evidencia: [M00-lint-antes.md](M00-lint-antes.md) → [M00-lint-despues.md](M00-lint-despues.md).
 
 ### Lint — Issues dominantes (Etapa 1)
 
@@ -33,25 +36,11 @@
 
 Lint de `androidx.activity` exige **Fragment ≥ 1.3.0** cuando se usa `registerForActivityResult`. El catálogo actual no declara `androidx.fragment:fragment` de forma explícita; la versión transitiva puede ser antigua o inconsistente con Activity 1.8.0.
 
-### Pasos (Etapa posterior de M00, no Etapa 2)
+### Hecho en Etapa 3
 
-1. Confirmar versión resuelta:
-
-   ```bash
-   ./gradlew.bat :app:dependencies --configuration debugCompileClasspath | findstr fragment
-   ```
-
-2. Añadir explícitamente en `gradle/libs.versions.toml` + `app/build.gradle.kts`:
-
-   - `androidx.fragment:fragment-ktx` ≥ **1.8.x** (o al menos 1.3.0).
-
-3. Re-ejecutar `:app:lintDebug` y verificar caída masiva del conteo (~51 → ~0 de ese ID).
-
-4. Si persiste en un call-site concreto, inspeccionar ese archivo (no silenciar con baseline global).
-
-### Criterio de éxito
-
-- Cero (o residual justificado) de `InvalidFragmentVersionForActivityResult`.
+1. Confirmado transitivo `androidx.fragment:fragment:1.0.0`.
+2. Añadido `androidx.fragment:fragment-ktx:1.8.6` explícito.
+3. Lint: **0** `InvalidFragmentVersionForActivityResult`.
 
 ---
 
@@ -63,31 +52,19 @@ Lint de `androidx.activity` exige **Fragment ≥ 1.3.0** cuando se usa `register
 
 Este deep link es de **OAuth Supabase** (custom scheme), no App Link web.
 
-### Corrección propuesta (etapa de fixes)
+### Hecho en Etapa 3
 
-1. Quitar `android:autoVerify="true"` del intent-filter de login-callback **o**  
-2. Separar: deep link custom sin `autoVerify`; App Links https solo cuando exista dominio M11.
-
-3. Verificar que el redirect URI en Supabase Auth coincida.
-
-### Criterio de éxito
-
-- Lint sin `AppLinkUrlError`.  
-- Login con deep link sigue funcionando en dispositivo.
+1. Quitado `android:autoVerify="true"` del intent-filter OAuth `com.comunidapp.app` / `login-callback`.
+2. App Links HTTPS quedan para M11 cuando exista dominio real.
+3. Lint sin `AppLinkUrlError`. Validar login en dispositivo en smoke futuro.
 
 ---
 
 ## 4. Criterios para aceptar un lint baseline
 
-Solo **después** de:
+Causas raíz críticas resueltas en Etapa 3. Lint queda en verde **sin baseline**.
 
-1. Resolver Fragment / Activity Result.  
-2. Resolver App Links / deep link.  
-3. Revisar issues de seguridad/correctness restantes.  
-
-Entonces se podrá generar baseline **solo** para deuda no crítica (UnusedResources, sugerencias de versiones, estilo), documentando cada ID retenido en este archivo o en un ADR de calidad.
-
-Baseline **no** se crea en Etapa 2.
+Un baseline solo se consideraría más adelante para warnings históricos no críticos, documentando cada ID.
 
 ---
 
