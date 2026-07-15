@@ -18,6 +18,7 @@ import com.comunidapp.app.ui.components.ComunidappBottomBar
 import com.comunidapp.app.ui.components.SessionLoadingScreen
 import com.comunidapp.app.ui.components.bottomNavItemsFor
 import com.comunidapp.app.ui.screens.admin.AdminModerationScreen
+import com.comunidapp.app.ui.screens.admin.PlatformAdminScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.MyAdoptionsScreen
 import com.comunidapp.app.ui.screens.search.SearchScreen
@@ -282,6 +283,7 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToFriendRequests = { navController.navigate(NavRoutes.FRIEND_REQUESTS) },
                     onNavigateToNotifications = { navController.navigate(NavRoutes.NOTIFICATIONS) },
                     onNavigateToModeration = { navController.navigate(NavRoutes.ADMIN_MODERATION) },
+                    onNavigateToPlatformAdmin = { navController.navigate(NavRoutes.PLATFORM_ADMIN) },
                     onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
                     onNavigateToAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
                     onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
@@ -551,6 +553,9 @@ private fun MainScreen(accountType: AccountType) {
             }
             composable(NavRoutes.ADMIN_MODERATION) {
                 AdminModerationScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.PLATFORM_ADMIN) {
+                PlatformAdminScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(
                 route = NavRoutes.CHAT_START,

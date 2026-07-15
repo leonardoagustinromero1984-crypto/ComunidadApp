@@ -80,6 +80,7 @@ fun ProfileScreen(
     onNavigateToFriendRequests: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToModeration: () -> Unit = {},
+    onNavigateToPlatformAdmin: () -> Unit = {},
     onNavigateToSearchFriends: () -> Unit = {},
     onNavigateToAccountSecurity: () -> Unit = {},
     onFriendClick: (String) -> Unit = {},
@@ -246,6 +247,20 @@ fun ProfileScreen(
                                 shape = RoundedCornerShape(14.dp)
                             ) {
                                 Text("Moderación")
+                            }
+                        }
+                    }
+
+                    if (uiState.canViewPlatformAdmin) {
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToPlatformAdmin,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Administración")
                             }
                         }
                     }

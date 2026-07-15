@@ -21,8 +21,10 @@ enum class PermissionCode(val code: String) {
     MODERATION_MANAGE_REPORTS("moderation.manage_reports"),
     USERS_VIEW_PRIVATE("users.view_private"),
     USERS_CHANGE_STATUS("users.change_status"),
+    ROLES_VIEW("roles.view"),
     ROLES_ASSIGN("roles.assign"),
-    ROLES_REVOKE("roles.revoke");
+    ROLES_REVOKE("roles.revoke"),
+    AUDIT_VIEW("audit.view");
 
     companion object {
         fun fromCode(raw: String): PermissionCode? =
@@ -69,8 +71,10 @@ object RolePermissionMatrix {
     private val ADMIN: Set<PermissionCode> = MODERATOR + setOf(
         PermissionCode.USERS_VIEW_PRIVATE,
         PermissionCode.USERS_CHANGE_STATUS,
+        PermissionCode.ROLES_VIEW,
         PermissionCode.ROLES_ASSIGN,
-        PermissionCode.ROLES_REVOKE
+        PermissionCode.ROLES_REVOKE,
+        PermissionCode.AUDIT_VIEW
     )
 
     private val SUPERADMIN: Set<PermissionCode> = ADMIN

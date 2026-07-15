@@ -151,6 +151,9 @@ class UserSupabaseDataSource {
             )
             val uid = supabase.auth.currentUserOrNull()?.id
                 ?: return Result.failure(IllegalStateException("NOT_AUTHENTICATED"))
+            runCatching {
+                supabase.postgrest.rpc(function = "ensure_my_default_user_role")
+            }
             getOwnProfile(uid)
         } catch (e: Exception) {
             Result.failure(e)

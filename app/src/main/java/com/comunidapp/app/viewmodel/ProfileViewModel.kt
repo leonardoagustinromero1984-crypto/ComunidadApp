@@ -41,6 +41,8 @@ data class ProfileUiState(
     val unreadNotifications: Int = 0,
     /** D-M02-08: solo con permiso real moderation.view */
     val canViewModeration: Boolean = false,
+    /** Roles/admin: roles.view o users.change_status */
+    val canViewPlatformAdmin: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -77,7 +79,12 @@ class ProfileViewModel(
                     profileCore,
                     userRepository.observeUsers(),
                     platformRepository.observeNotifications(authUser.id),
-                    permissionRepository.observeAuthorizationContext(authUser.id)
+                    flow {
+                        emit(permissionRepository.refresh(authUser.id))
+                        permissionRepository.observeAuthorizationContext(authUser.id).collect {
+                            emit(it)
+                        }
+                    }
                 ) { core, users, notifications, authz ->
                     val user = core.profile ?: authUser
                     val friendIds = ProfilePrivacy.friendIdsFor(authUser.id, core.connections)
@@ -95,7 +102,14 @@ class ProfileViewModel(
                         badges = core.badges.ifEmpty { user.badges },
                         pendingFriendRequests = pendingFriendRequests,
                         unreadNotifications = notifications.count { it.isUnread },
-                        canViewModeration = AuthorizationService.canViewModeration(authz)
+                        canViewModeration = AuthorizationService.canViewModeration(authz),
+                        canViewPlatformAdmin = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.ROLES_VIEW
+                        ) || AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.USERS_CHANGE_STATUS
+                        )
                     )
                 }
             }
@@ -108,6 +122,7 @@ class ProfileViewModel(
 
     fun logout() {
         viewModelScope.launch {
+            permissionRepository.invalidate()
             authRepository.logout()
         }
     }

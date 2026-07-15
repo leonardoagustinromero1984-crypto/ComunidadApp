@@ -56,6 +56,7 @@ object NavRoutes {
     const val SERVICE_DETAIL = "service_detail/{serviceId}"
     const val NOTIFICATIONS = "notifications"
     const val ADMIN_MODERATION = "admin_moderation"
+    const val PLATFORM_ADMIN = "platform_admin"
 
     const val ARG_CONVERSATION_ID = "conversationId"
     const val ARG_PEER_NAME = "peerName"

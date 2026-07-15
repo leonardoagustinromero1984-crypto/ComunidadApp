@@ -270,6 +270,7 @@ class SessionViewModel(
                     )
                 }
             _currentUser.value = null
+            DataProvider.permissionRepository.invalidate()
             emitAuth(AuthState.Unauthenticated)
         }
     }

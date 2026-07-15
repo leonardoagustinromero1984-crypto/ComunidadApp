@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
@@ -45,7 +46,12 @@ class AdminModerationViewModel(
                 flowOf(AdminModerationUiState(accessAllowed = false, accessChecked = true))
             } else {
                 combine(
-                    permissionRepository.observeAuthorizationContext(user.id),
+                    flow {
+                        emit(permissionRepository.refresh(user.id))
+                        permissionRepository.observeAuthorizationContext(user.id).collect {
+                            emit(it)
+                        }
+                    },
                     platformRepository.observeOpenReports(),
                     _message
                 ) { authz, reports, message ->

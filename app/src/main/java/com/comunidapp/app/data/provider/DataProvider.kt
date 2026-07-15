@@ -27,11 +27,14 @@ import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.MockPlatformRepository
 import com.comunidapp.app.data.repository.MockPermissionRepository
+import com.comunidapp.app.data.repository.MockPlatformAdministrationRepository
 import com.comunidapp.app.data.repository.MockServiceRepository
 import com.comunidapp.app.data.repository.PermissionRepository
+import com.comunidapp.app.data.repository.PlatformAdministrationRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.ServiceRepository
-import com.comunidapp.app.data.repository.StubSupabasePermissionRepository
+import com.comunidapp.app.data.repository.SupabasePermissionRepository
+import com.comunidapp.app.data.repository.SupabasePlatformAdministrationRepository
 import com.comunidapp.app.data.repository.SupabasePlatformRepository
 import com.comunidapp.app.data.repository.SupabaseServiceRepository
 import com.comunidapp.app.data.repository.ShelterRepository
@@ -97,7 +100,15 @@ object DataProvider {
     }
 
     val permissionRepository: PermissionRepository by lazy {
-        if (useSupabase) StubSupabasePermissionRepository() else MockPermissionRepository()
+        if (useSupabase) SupabasePermissionRepository() else MockPermissionRepository()
+    }
+
+    val platformAdministrationRepository: PlatformAdministrationRepository by lazy {
+        if (useSupabase) {
+            SupabasePlatformAdministrationRepository()
+        } else {
+            MockPlatformAdministrationRepository(permissionRepository)
+        }
     }
 
     val storageService: ImageStorageService? by lazy {
