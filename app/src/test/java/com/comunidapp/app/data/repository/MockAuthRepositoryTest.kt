@@ -4,6 +4,8 @@ import com.comunidapp.app.data.mock.MockAuthDatabase
 import com.comunidapp.app.data.mock.MockData
 import com.comunidapp.app.domain.auth.AuthErrorCode
 import com.comunidapp.app.domain.auth.AuthException
+import com.comunidapp.app.domain.auth.ConsentMetadata
+import com.comunidapp.app.domain.auth.LegalDocumentConfig
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -16,6 +18,8 @@ import org.junit.Test
 class MockAuthRepositoryTest {
 
     private lateinit var repo: MockAuthRepository
+
+    private val demoConsent = ConsentMetadata.forRegistration()
 
     @Before
     fun setUp() {
@@ -59,12 +63,20 @@ class MockAuthRepositoryTest {
     @Test
     fun register_and_duplicate() = runBlocking {
         val email = "nueva@email.com"
-        val first = repo.register("Nueva", email, "password1", com.comunidapp.app.data.model.AccountType.SHELTER)
+        val first = repo.register(
+            "Nueva",
+            email,
+            "password1",
+            demoConsent,
+            com.comunidapp.app.data.model.AccountType.SHELTER
+        )
         assertTrue(first.isSuccess)
-        // AccountType de negocio se fuerza a PERSON
         assertEquals(com.comunidapp.app.data.model.AccountType.PERSON, first.getOrNull()?.accountType)
+        val saved = repo.consentFor(email)
+        assertEquals(LegalDocumentConfig.terms.version, saved?.termsVersion)
+        assertEquals(LegalDocumentConfig.privacy.version, saved?.privacyVersion)
 
-        val dup = repo.register("Otra", email, "password1")
+        val dup = repo.register("Otra", email, "password1", demoConsent)
         assertTrue(dup.isFailure)
         assertEquals(
             AuthErrorCode.EMAIL_ALREADY_REGISTERED.name,
@@ -74,7 +86,7 @@ class MockAuthRepositoryTest {
 
     @Test
     fun register_short_password() = runBlocking {
-        val result = repo.register("X", "corta@email.com", "1234567")
+        val result = repo.register("X", "corta@email.com", "1234567", demoConsent)
         assertTrue(result.isFailure)
         assertEquals(
             AuthErrorCode.WEAK_PASSWORD.name,
@@ -85,8 +97,7 @@ class MockAuthRepositoryTest {
     @Test
     fun verification_and_login() = runBlocking {
         val email = "verify@email.com"
-        repo.register("V", email, "password1")
-        // Unverified: observe/getCurrent filters out
+        repo.register("V", email, "password1", demoConsent)
         assertNull(repo.getCurrentUser())
         assertFalse(repo.isEmailVerified(email))
 

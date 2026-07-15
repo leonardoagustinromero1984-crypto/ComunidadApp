@@ -9,6 +9,7 @@ import com.comunidapp.app.data.mock.MockUserStore
 import com.comunidapp.app.domain.auth.AuthErrorCode
 import com.comunidapp.app.domain.auth.AuthErrorMapper
 import com.comunidapp.app.domain.auth.AuthException
+import com.comunidapp.app.domain.auth.ConsentMetadata
 import com.comunidapp.app.domain.auth.validation.AuthValidators
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -18,7 +19,6 @@ import kotlinx.coroutines.flow.map
 class EmailNotVerifiedException(email: String) :
     Exception("Debés confirmar tu email antes de iniciar sesión.") {
     init {
-        // email retenido solo para diagnóstico interno del mapper; no loguear.
         require(email.isNotBlank())
     }
 }
@@ -33,6 +33,7 @@ interface AuthRepository {
         name: String,
         email: String,
         password: String,
+        consent: ConsentMetadata,
         accountType: AccountType = AccountType.PERSON
     ): Result<User>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
@@ -49,6 +50,11 @@ interface AuthRepository {
 class MockAuthRepository : AuthRepository {
 
     private val _authState = MutableStateFlow<User?>(null)
+    private val consentsByEmail = mutableMapOf<String, ConsentMetadata>()
+
+    /** Solo tests: último consentimiento guardado para un email. */
+    fun consentFor(email: String): ConsentMetadata? =
+        consentsByEmail[AuthValidators.normalizeEmail(email)]
 
     override fun observeAuthState(): Flow<User?> = _authState.map { user ->
         if (user == null) return@map null
@@ -63,6 +69,7 @@ class MockAuthRepository : AuthRepository {
     /** Solo tests: limpia sesión y reinstala fixtures. */
     fun resetForTests() {
         setLoggedInUser(null)
+        consentsByEmail.clear()
         MockAuthDatabase.resetToFixtures()
     }
 
@@ -125,6 +132,7 @@ class MockAuthRepository : AuthRepository {
         name: String,
         email: String,
         password: String,
+        consent: ConsentMetadata,
         accountType: AccountType
     ): Result<User> {
         delay(50)
@@ -142,6 +150,22 @@ class MockAuthRepository : AuthRepository {
         AuthValidators.validatePassword(password).getOrElse {
             return Result.failure(AuthErrorMapper.fromThrowableToException(it))
         }
+        AuthValidators.validateConsents(
+            acceptedTerms = true,
+            acceptedPrivacy = true,
+            termsVersion = consent.termsVersion,
+            privacyVersion = consent.privacyVersion
+        ).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        if (consent.source != ConsentMetadata.SOURCE_REGISTRATION) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.CONFIGURATION_ERROR,
+                    "invalid consent source"
+                )
+            )
+        }
         val normalizedEmail = AuthValidators.normalizeEmail(email)
 
         if (MockAuthDatabase.findByEmail(normalizedEmail) != null) {
@@ -153,7 +177,6 @@ class MockAuthRepository : AuthRepository {
             )
         }
 
-        // M01: AccountType de UI se ignora como decisión de negocio; default técnico PERSON.
         val effectiveType = AccountType.PERSON
 
         MockAuthDatabase.save(
@@ -163,6 +186,11 @@ class MockAuthRepository : AuthRepository {
                 name = name.trim(),
                 emailVerified = false
             )
+        )
+        consentsByEmail[normalizedEmail] = consent.copy(
+            termsVersion = consent.termsVersion.trim(),
+            privacyVersion = consent.privacyVersion.trim(),
+            source = ConsentMetadata.SOURCE_REGISTRATION
         )
         sendEmailVerification(normalizedEmail)
 
@@ -175,7 +203,6 @@ class MockAuthRepository : AuthRepository {
             emailVerified = false
         )
         MockUserStore.upsert(user)
-        // No sesión "Authenticated" hasta verificar (observeAuthState filtra no verificados).
         setLoggedInUser(user)
         return Result.success(user)
     }

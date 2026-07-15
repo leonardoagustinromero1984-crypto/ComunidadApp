@@ -42,8 +42,12 @@ docs/
 | Plan de calidad M00 | [04-calidad/M00-plan-de-calidad.md](04-calidad/M00-plan-de-calidad.md) |
 | Lint antes/después Etapa 3 | [04-calidad/M00-lint-antes.md](04-calidad/M00-lint-antes.md) · [04-calidad/M00-lint-despues.md](04-calidad/M00-lint-despues.md) |
 | Cierre Etapa 3 | [02-arquitectura/M00-etapa-3-cierre.md](02-arquitectura/M00-etapa-3-cierre.md) |
-| Cierre Etapa 4 | [02-arquitectura/M00-etapa-4-cierre.md](02-arquitectura/M00-etapa-4-cierre.md) |
+| Cierre Etapa 4 M00 | [02-arquitectura/M00-etapa-4-cierre.md](02-arquitectura/M00-etapa-4-cierre.md) |
 | Cierre final M00 | [02-arquitectura/M00-cierre-final.md](02-arquitectura/M00-cierre-final.md) |
+| M01 auditoría | [02-arquitectura/M01-auditoria-inicial.md](02-arquitectura/M01-auditoria-inicial.md) |
+| M01 cierre Etapa 2 | [02-arquitectura/M01-etapa-2-cierre.md](02-arquitectura/M01-etapa-2-cierre.md) |
+| M01 cierre Etapa 3 | [02-arquitectura/M01-etapa-3-cierre.md](02-arquitectura/M01-etapa-3-cierre.md) |
+| Pruebas SQL consents | [04-calidad/M01-pruebas-user-consents.md](04-calidad/M01-pruebas-user-consents.md) |
 | Inventario legacy | [99-legacy/INVENTARIO.md](99-legacy/INVENTARIO.md) |
 | Setup Supabase (operativo) | [supabase-setup.md](supabase-setup.md) |
 | Push FCM | [leover-push-fcm-setup.md](leover-push-fcm-setup.md) |

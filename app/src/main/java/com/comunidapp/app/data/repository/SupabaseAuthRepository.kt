@@ -7,6 +7,7 @@ import com.comunidapp.app.data.remote.supabase.UserSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.auth.AuthErrorCode
 import com.comunidapp.app.domain.auth.AuthErrorMapper
+import com.comunidapp.app.domain.auth.ConsentMetadata
 import com.comunidapp.app.domain.auth.validation.AuthValidators
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
@@ -60,6 +61,7 @@ class SupabaseAuthRepository(
         name: String,
         email: String,
         password: String,
+        consent: ConsentMetadata,
         accountType: AccountType
     ): Result<User> {
         if (name.isBlank()) {
@@ -73,8 +75,15 @@ class SupabaseAuthRepository(
         AuthValidators.validatePassword(password).getOrElse {
             return Result.failure(AuthErrorMapper.fromThrowableToException(it))
         }
+        AuthValidators.validateConsents(
+            acceptedTerms = true,
+            acceptedPrivacy = true,
+            termsVersion = consent.termsVersion,
+            privacyVersion = consent.privacyVersion
+        ).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
         val normalizedEmail = AuthValidators.normalizeEmail(email)
-        // D-M01-05: no decidir roles de negocio en M01.
         val effectiveType = AccountType.PERSON
         return try {
             val trimmedName = name.trim()
@@ -86,7 +95,10 @@ class SupabaseAuthRepository(
                 this.password = password
                 data = buildJsonObject {
                     put("name", trimmedName)
-                    put("account_type", effectiveType.name)
+                    put("terms_version", consent.termsVersion)
+                    put("privacy_version", consent.privacyVersion)
+                    put("consent_source", consent.source)
+                    consent.locale?.takeIf { it.isNotBlank() }?.let { put("consent_locale", it) }
                 }
             }
 

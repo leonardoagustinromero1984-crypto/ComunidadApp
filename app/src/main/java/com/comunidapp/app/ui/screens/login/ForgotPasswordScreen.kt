@@ -38,6 +38,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.domain.auth.EmailMasking
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.PasswordTextField
 import com.comunidapp.app.viewmodel.EmailVerificationViewModel
@@ -231,7 +232,7 @@ fun EmailVerificationScreen(
                 textAlign = TextAlign.Center
             )
             Text(
-                text = email,
+                text = EmailMasking.mask(email),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center

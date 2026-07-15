@@ -32,6 +32,8 @@ import com.comunidapp.app.ui.screens.login.EmailVerificationScreen
 import com.comunidapp.app.ui.screens.login.ForgotPasswordScreen
 import com.comunidapp.app.ui.screens.login.LoginScreen
 import com.comunidapp.app.ui.screens.login.RegisterScreen
+import com.comunidapp.app.ui.screens.legal.PrivacyDraftScreen
+import com.comunidapp.app.ui.screens.legal.TermsDraftScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundMapScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundScreen
 import com.comunidapp.app.ui.screens.pets.AddPetScreen
@@ -122,8 +124,16 @@ private fun RootNavHost(
                         popUpTo(NavRoutes.REGISTER) { inclusive = true }
                     }
                 },
-                onNavigateBack = { rootNavController.popBackStack() }
+                onNavigateBack = { rootNavController.popBackStack() },
+                onNavigateToTerms = { rootNavController.navigate(NavRoutes.LEGAL_TERMS) },
+                onNavigateToPrivacy = { rootNavController.navigate(NavRoutes.LEGAL_PRIVACY) }
             )
+        }
+        composable(NavRoutes.LEGAL_TERMS) {
+            TermsDraftScreen(onNavigateBack = { rootNavController.popBackStack() })
+        }
+        composable(NavRoutes.LEGAL_PRIVACY) {
+            PrivacyDraftScreen(onNavigateBack = { rootNavController.popBackStack() })
         }
         composable(NavRoutes.FORGOT_PASSWORD) {
             ForgotPasswordScreen(

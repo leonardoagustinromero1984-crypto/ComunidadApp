@@ -6,6 +6,8 @@ object NavRoutes {
     const val MAIN = "main"
     const val FORGOT_PASSWORD = "forgot_password"
     const val EMAIL_VERIFICATION = "email_verification/{email}"
+    const val LEGAL_TERMS = "legal_terms"
+    const val LEGAL_PRIVACY = "legal_privacy"
 
     const val HOME = "home"
     const val SUMATE = "sumate"
