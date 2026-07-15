@@ -25,9 +25,12 @@ import com.comunidapp.app.data.repository.MockShelterRepository
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.MockPlatformRepository
+import com.comunidapp.app.data.repository.MockPermissionRepository
 import com.comunidapp.app.data.repository.MockServiceRepository
+import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.ServiceRepository
+import com.comunidapp.app.data.repository.StubSupabasePermissionRepository
 import com.comunidapp.app.data.repository.SupabasePlatformRepository
 import com.comunidapp.app.data.repository.SupabaseServiceRepository
 import com.comunidapp.app.data.repository.ShelterRepository
@@ -90,6 +93,10 @@ object DataProvider {
 
     val platformRepository: PlatformRepository by lazy {
         if (useSupabase) SupabasePlatformRepository() else MockPlatformRepository()
+    }
+
+    val permissionRepository: PermissionRepository by lazy {
+        if (useSupabase) StubSupabasePermissionRepository() else MockPermissionRepository()
     }
 
     val storageService: ImageStorageService? by lazy {

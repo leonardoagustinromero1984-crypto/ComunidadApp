@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -36,14 +37,19 @@ fun AdminModerationScreen(
     onNavigateBack: () -> Unit,
     viewModel: AdminModerationViewModel = viewModel()
 ) {
-    val reports by viewModel.reports.collectAsState()
-    val message by viewModel.message.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(message) {
-        message?.let {
+    LaunchedEffect(uiState.message) {
+        uiState.message?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearMessage()
+        }
+    }
+
+    LaunchedEffect(uiState.accessChecked, uiState.accessAllowed) {
+        if (uiState.accessChecked && !uiState.accessAllowed) {
+            onNavigateBack()
         }
     }
 
@@ -57,42 +63,61 @@ fun AdminModerationScreen(
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
-        if (reports.isEmpty()) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "No hay reportes abiertos en LeoVer",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+        when {
+            !uiState.accessChecked -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
             }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = padding.calculateTopPadding() + 8.dp,
-                    bottom = padding.calculateBottomPadding() + 8.dp
-                ),
-                verticalArrangement = Arrangement.spacedBy(10.dp)
-            ) {
-                item {
+            !uiState.accessAllowed -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
                     Text(
-                        text = "Reportes abiertos",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
+                        text = "No tenés permiso para ver moderación.",
+                        color = MaterialTheme.colorScheme.error
                     )
                 }
-                items(reports, key = { it.id }) { report ->
-                    ReportCard(
-                        report = report,
-                        onDismiss = { viewModel.dismissReport(report.id) },
-                        onAction = { viewModel.actionReport(report.id) }
+            }
+            uiState.reports.isEmpty() -> {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "No hay reportes abiertos en LeoVer",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
+                }
+            }
+            else -> {
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(
+                        start = 16.dp,
+                        end = 16.dp,
+                        top = padding.calculateTopPadding() + 8.dp,
+                        bottom = padding.calculateBottomPadding() + 8.dp
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    items(uiState.reports, key = { it.id }) { report ->
+                        ReportCard(
+                            report = report,
+                            onDismiss = { viewModel.dismissReport(report.id) },
+                            onAction = { viewModel.actionReport(report.id) }
+                        )
+                    }
                 }
             }
         }
@@ -117,20 +142,14 @@ private fun ReportCard(
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp)
             )
-            report.details?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
             Row(
-                modifier = Modifier.padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                horizontalArrangement = Arrangement.End
             ) {
                 TextButton(onClick = onDismiss) { Text("Desestimar") }
-                TextButton(onClick = onAction) { Text("Accionar") }
+                TextButton(onClick = onAction) { Text("Tomar acción") }
             }
         }
     }

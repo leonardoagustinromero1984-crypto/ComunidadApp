@@ -236,15 +236,17 @@ fun ProfileScreen(
                         }
                     }
 
-                    item {
-                        OutlinedButton(
-                            onClick = onNavigateToModeration,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Moderación")
+                    if (uiState.canViewModeration) {
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToModeration,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Moderación")
+                            }
                         }
                     }
 

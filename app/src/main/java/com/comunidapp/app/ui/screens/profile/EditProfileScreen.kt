@@ -34,7 +34,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.R
-import com.comunidapp.app.ui.components.AccountTypeDropdown
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
@@ -134,14 +133,6 @@ fun EditProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true,
                     enabled = !uiState.isSaving
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                AccountTypeDropdown(
-                    selected = uiState.accountType,
-                    onSelected = viewModel::onAccountTypeChange,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isSaving,
-                    label = stringResource(R.string.profile_account_type)
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(

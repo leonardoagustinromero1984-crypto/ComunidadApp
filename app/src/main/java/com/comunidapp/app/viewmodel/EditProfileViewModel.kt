@@ -83,10 +83,6 @@ class EditProfileViewModel(
         _uiState.update { it.copy(phone = value, errorMessage = null) }
     }
 
-    fun onAccountTypeChange(value: AccountType) {
-        _uiState.update { it.copy(accountType = value, errorMessage = null) }
-    }
-
     fun onProfilePrivateChange(value: Boolean) {
         _uiState.update { it.copy(profilePrivate = value, errorMessage = null) }
     }
@@ -137,7 +133,8 @@ class EditProfileViewModel(
                 bio = state.bio.trim().ifBlank { null },
                 locationText = state.locationText.trim().ifBlank { null },
                 phone = state.phone.trim().ifBlank { null },
-                accountType = state.accountType,
+                // D-M02-03: conservar accountType legacy; no editable
+                accountType = baseUser.accountType,
                 profilePrivate = state.profilePrivate,
                 profileImageUrl = imageUrl
             )
