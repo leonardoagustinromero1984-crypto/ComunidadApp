@@ -114,7 +114,7 @@ Ver `docs/04-calidad/M02-reporte-validacion-staging.md`.
 | Etapa 3 | `d464cbf` |
 | Etapa 4 | `87b8c07` |
 | Spec Etapa 5 | `d6604d1` |
-| Cierre Etapa 5 / M02 | *(commit final de esta rama)* |
+| Cierre Etapa 5 / M02 | `b70aad8` |
 
 ---
 
