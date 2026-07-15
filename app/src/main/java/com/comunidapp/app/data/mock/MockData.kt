@@ -56,7 +56,12 @@ object MockData {
         profileImageUrl = Images.USER,
         bio = "Amante de los animales. Adopté a Luna hace 2 años 🐾",
         locationText = "Buenos Aires, Argentina",
-        petIds = listOf("pet_1", "pet_2")
+        petIds = listOf("pet_1", "pet_2"),
+        username = "maria.demo",
+        displayName = "María González",
+        onboardingStatus = "COMPLETED",
+        accountStatus = "ACTIVE",
+        profilePrivate = false
     )
 
     val users = listOf(

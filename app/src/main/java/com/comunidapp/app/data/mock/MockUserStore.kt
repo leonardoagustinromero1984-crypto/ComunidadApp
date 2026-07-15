@@ -33,9 +33,10 @@ object MockUserStore {
             .filter { it.id != excludeUserId }
             .filter {
                 it.name.lowercase().contains(normalized) ||
-                    it.email.lowercase().contains(normalized) ||
+                    it.displayName?.lowercase()?.contains(normalized) == true ||
+                    it.username?.lowercase()?.contains(normalized) == true ||
                     it.locationText?.lowercase()?.contains(normalized) == true
             }
-            .sortedBy { it.name }
+            .sortedBy { it.resolvedDisplayName }
     }
 }

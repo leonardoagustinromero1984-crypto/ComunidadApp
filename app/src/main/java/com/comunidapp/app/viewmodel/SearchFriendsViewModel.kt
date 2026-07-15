@@ -11,6 +11,7 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.FriendRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.ProfilePrivacy
+import com.comunidapp.app.domain.user.toBridgeUser
 import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
@@ -64,7 +65,9 @@ class SearchFriendsViewModel(
             val currentUser = authRepository.getCurrentUser() ?: return@launch
             val connections = friendRepository.observeConnections(currentUser.id).first()
             val friendIds = ProfilePrivacy.friendIdsFor(currentUser.id, connections)
-            val users = userRepository.searchUsers(query, currentUser.id)
+            val users = userRepository.searchPublicProfiles(currentUser.id, query)
+                .getOrDefault(emptyList())
+                .map { it.toBridgeUser() }
                 .filter { it.id !in friendIds }
                 .take(20)
             val items = users.map { user ->

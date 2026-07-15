@@ -13,6 +13,9 @@ import com.comunidapp.app.domain.auth.AuthErrorMapper
 import com.comunidapp.app.domain.auth.AuthState
 import com.comunidapp.app.domain.auth.AuthUser
 import com.comunidapp.app.domain.auth.ConsentMetadata
+import com.comunidapp.app.domain.user.AccountStatus
+import com.comunidapp.app.domain.user.ProfileGate
+import com.comunidapp.app.domain.user.ProfileSessionGate
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,13 +28,15 @@ import kotlinx.coroutines.launch
 
 /**
  * Compatibilidad con el gate de navegación existente.
- * Preferir [authState] para lógica nueva de M01.
+ * Preferir [authState] para lógica nueva.
  */
 enum class SessionState {
     Loading,
     LoggedOut,
     LegalConsentRequired,
     PasswordResetActive,
+    ProfileSetupRequired,
+    AccountAccessBlocked,
     LoggedIn
 }
 
@@ -49,6 +54,9 @@ class SessionViewModel(
 
     private val _currentUser = MutableStateFlow<User?>(null)
     val currentUser: StateFlow<User?> = _currentUser.asStateFlow()
+
+    private val _blockedAccountStatus = MutableStateFlow(AccountStatus.SUSPENDED)
+    val blockedAccountStatus: StateFlow<AccountStatus> = _blockedAccountStatus.asStateFlow()
 
     private var observeJob: Job? = null
     private var logoutJob: Job? = null
@@ -90,31 +98,14 @@ class SessionViewModel(
                     }
                     _currentUser.value = user
                     if (user != null) {
-                        val hasConsent = authRepository.hasCurrentLegalConsent(user.id)
-                        if (!hasConsent) {
-                            emitAuth(
-                                AuthState.LegalConsentRequired(
-                                    AuthUser(
-                                        id = user.id,
-                                        email = user.email,
-                                        emailVerified = user.emailVerified
-                                    )
-                                )
-                            )
-                        } else {
-                            emitAuth(
-                                AuthState.Authenticated(
-                                    AuthUser(
-                                        id = user.id,
-                                        email = user.email,
-                                        emailVerified = user.emailVerified,
-                                        sessionStartedAtEpochMs = System.currentTimeMillis()
-                                    )
-                                )
-                            )
-                        }
+                        resolveAuthenticatedFlow(user)
                     } else if (_authState.value is AuthState.Authenticated ||
                         _authState.value is AuthState.LegalConsentRequired ||
+                        _authState.value is AuthState.ProfileSetupRequired ||
+                        _authState.value is AuthState.AccountRestricted ||
+                        _authState.value is AuthState.AccountSuspended ||
+                        _authState.value is AuthState.AccountBanned ||
+                        _authState.value is AuthState.OnboardingBlocked ||
                         _authState.value is AuthState.Initializing ||
                         _authState.value is AuthState.SigningOut
                     ) {
@@ -123,6 +114,43 @@ class SessionViewModel(
                 }
         }
     }
+
+    private suspend fun resolveAuthenticatedFlow(user: User) {
+        val hasConsent = authRepository.hasCurrentLegalConsent(user.id)
+        val authUser = toAuthUser(user)
+        if (!hasConsent) {
+            emitAuth(AuthState.LegalConsentRequired(authUser))
+            return
+        }
+        emitAuth(authStateForProfile(user, authUser))
+    }
+
+    private fun authStateForProfile(user: User, authUser: AuthUser): AuthState {
+        return when (val gate = ProfileSessionGate.evaluate(user)) {
+            ProfileGate.ProfileSetupRequired -> AuthState.ProfileSetupRequired(authUser)
+            ProfileGate.OnboardingBlocked -> {
+                _blockedAccountStatus.value = AccountStatus.RESTRICTED
+                AuthState.OnboardingBlocked(authUser)
+            }
+            ProfileGate.AccountSuspended -> {
+                _blockedAccountStatus.value = AccountStatus.SUSPENDED
+                AuthState.AccountSuspended(authUser)
+            }
+            ProfileGate.AccountBanned -> {
+                _blockedAccountStatus.value = AccountStatus.BANNED
+                AuthState.AccountBanned(authUser)
+            }
+            ProfileGate.AccountRestricted -> AuthState.AccountRestricted(authUser)
+            ProfileGate.ProfileReady -> AuthState.Authenticated(authUser)
+        }
+    }
+
+    private fun toAuthUser(user: User) = AuthUser(
+        id = user.id,
+        email = user.email,
+        emailVerified = user.emailVerified,
+        sessionStartedAtEpochMs = System.currentTimeMillis()
+    )
 
     /**
      * Procesa deep link clasificado (ya consumido una vez por [AuthDeepLinkParser]).
@@ -133,9 +161,7 @@ class SessionViewModel(
                 passwordResetActive = true
                 emitAuth(AuthState.PasswordResetActive)
             }
-            AuthDeepLinkKind.EmailConfirmation -> {
-                // La sesión la restaura handleDeeplinks; la UI de verificación existente aplica.
-            }
+            AuthDeepLinkKind.EmailConfirmation -> Unit
             AuthDeepLinkKind.Unknown -> Unit
         }
     }
@@ -174,15 +200,7 @@ class SessionViewModel(
                 .onSuccess {
                     val user = _currentUser.value
                     if (user != null) {
-                        emitAuth(
-                            AuthState.Authenticated(
-                                AuthUser(
-                                    id = user.id,
-                                    email = user.email,
-                                    emailVerified = user.emailVerified
-                                )
-                            )
-                        )
+                        emitAuth(authStateForProfile(user, toAuthUser(user)))
                     }
                 }
                 .onFailure { error ->
@@ -197,8 +215,17 @@ class SessionViewModel(
     }
 
     /**
-     * Login controlado para tests y Etapa 3. Evita doble envío en estados transitorios.
+     * Tras completar onboarding, re-evalúa el perfil observado.
      */
+    fun onProfileSetupCompleted() {
+        viewModelScope.launch {
+            val user = _currentUser.value ?: return@launch
+            val refreshed = userRepository.getUser(user.id) ?: user
+            _currentUser.value = refreshed
+            emitAuth(authStateForProfile(refreshed, toAuthUser(refreshed)))
+        }
+    }
+
     fun signIn(email: String, password: String) {
         if (_authState.value.isTransient) return
         loginJob?.cancel()
@@ -207,28 +234,7 @@ class SessionViewModel(
             authRepository.login(email, password)
                 .onSuccess { user ->
                     _currentUser.value = user
-                    val hasConsent = authRepository.hasCurrentLegalConsent(user.id)
-                    if (!hasConsent) {
-                        emitAuth(
-                            AuthState.LegalConsentRequired(
-                                AuthUser(
-                                    id = user.id,
-                                    email = user.email,
-                                    emailVerified = user.emailVerified
-                                )
-                            )
-                        )
-                    } else {
-                        emitAuth(
-                            AuthState.Authenticated(
-                                AuthUser(
-                                    id = user.id,
-                                    email = user.email,
-                                    emailVerified = user.emailVerified
-                                )
-                            )
-                        )
-                    }
+                    resolveAuthenticatedFlow(user)
                 }
                 .onFailure { error ->
                     val appError = AuthErrorMapper.fromThrowable(error)
@@ -272,8 +278,13 @@ class SessionViewModel(
         _authState.value = state
         _sessionState.value = when (state) {
             AuthState.Initializing -> SessionState.Loading
-            is AuthState.Authenticated -> SessionState.LoggedIn
+            is AuthState.Authenticated,
+            is AuthState.AccountRestricted -> SessionState.LoggedIn
             is AuthState.LegalConsentRequired -> SessionState.LegalConsentRequired
+            is AuthState.ProfileSetupRequired -> SessionState.ProfileSetupRequired
+            is AuthState.OnboardingBlocked,
+            is AuthState.AccountSuspended,
+            is AuthState.AccountBanned -> SessionState.AccountAccessBlocked
             AuthState.PasswordResetActive -> SessionState.PasswordResetActive
             AuthState.SigningOut -> SessionState.LoggedOut
             else -> SessionState.LoggedOut

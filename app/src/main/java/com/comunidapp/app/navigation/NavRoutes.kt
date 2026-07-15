@@ -11,6 +11,8 @@ object NavRoutes {
     const val ACCOUNT_SECURITY = "account_security"
     const val PASSWORD_RESET_ACTIVE = "password_reset_active"
     const val LEGAL_CONSENT_REQUIRED = "legal_consent_required"
+    const val PROFILE_ONBOARDING = "profile_onboarding"
+    const val ACCOUNT_ACCESS_BLOCKED = "account_access_blocked"
 
     const val HOME = "home"
     const val SUMATE = "sumate"

@@ -2,6 +2,7 @@ package com.comunidapp.app.data.provider
 
 import com.comunidapp.app.core.config.AppConfigProvider
 import com.comunidapp.app.data.remote.storage.ImageStorageService
+import com.comunidapp.app.data.remote.storage.ProfileAvatarStorageService
 import com.comunidapp.app.data.remote.storage.SupabaseStorageService
 import com.comunidapp.app.data.repository.AdoptionRepository
 import com.comunidapp.app.data.repository.AdoptionRequestRepository
@@ -101,5 +102,9 @@ object DataProvider {
 
     val storageService: ImageStorageService? by lazy {
         if (useSupabase) SupabaseStorageService() else null
+    }
+
+    val profileAvatarStorage: ProfileAvatarStorageService? by lazy {
+        if (useSupabase) ProfileAvatarStorageService() else null
     }
 }

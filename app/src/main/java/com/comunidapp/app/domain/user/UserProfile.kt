@@ -2,11 +2,10 @@ package com.comunidapp.app.domain.user
 
 /**
  * Perfil social completo (M02). Separado de [com.comunidapp.app.domain.auth.AuthUser].
- * No inventa columnas remotas aún; mapea sobre el modelo legacy [com.comunidapp.app.data.model.User].
  */
 data class UserProfile(
     val id: String,
-    /** Compatibilidad: columna `name` hasta Etapa 3. */
+    /** Compatibilidad columna `name`. */
     val name: String,
     val displayName: String,
     val username: Username?,
@@ -15,6 +14,9 @@ data class UserProfile(
     val avatarPath: String? = null,
     val bio: String? = null,
     val locationText: String? = null,
+    val city: String? = null,
+    val province: String? = null,
+    val countryCode: String? = null,
     val phone: String? = null,
     val phonePublic: Boolean = false,
     val profilePrivate: Boolean = true,
@@ -22,25 +24,28 @@ data class UserProfile(
     val setupStatus: ProfileSetupStatus = ProfileSetupStatus.NOT_STARTED,
     val accountStatus: AccountStatus = AccountStatus.ACTIVE,
     val emailVerified: Boolean = false,
-    /** Legacy / capacidad de negocio — no otorga permisos de plataforma. */
+    val locale: String? = null,
+    val timezone: String? = null,
+    /** Legacy / capacidad de negocio — no otorga permisos. */
     val legacyAccountType: String? = null,
     val createdAtEpochMs: Long? = null,
     val updatedAtEpochMs: Long? = null
 ) {
-    val isProfilePublic: Boolean get() = !profilePrivate
+    val isProfilePublic: Boolean
+        get() = privacy.profileVisibility == ProfileVisibility.PUBLIC
 }
 
-/**
- * Proyección pública allowlist — sin email, phone, modules ni campos internos.
- */
 data class PublicUserProfile(
     val id: String,
     val displayName: String,
     val username: String?,
     val avatarUrl: String? = null,
+    val avatarPath: String? = null,
     val bio: String? = null,
     val locationText: String? = null,
-    val profilePrivate: Boolean = true
+    val city: String? = null,
+    val province: String? = null,
+    val countryCode: String? = null
 )
 
 enum class ProfileSetupStatus {
@@ -57,30 +62,21 @@ enum class AccountStatus {
     BANNED
 }
 
-/**
- * Preferencias de visibilidad (contrato). Persistencia SQL en Etapa 3 (`user_privacy_settings`).
- */
-data class UserPrivacySettings(
-    val profilePrivate: Boolean = true,
-    val showLocation: Boolean = true,
-    /** Contrato M20 — no implementa chat. */
-    val allowMessagesFrom: MessageAudience = MessageAudience.FOLLOWERS,
-    /** Contrato M19 — no implementa follow. */
-    val allowFollowRequests: Boolean = true,
-    val showActivity: Boolean = false,
-    /** Contrato M11. */
-    val allowPublicIndexing: Boolean = false
-)
-
-enum class MessageAudience {
-    ANYONE,
-    FOLLOWERS,
-    NOBODY
+enum class ProfileVisibility {
+    PUBLIC,
+    FRIENDS,
+    PRIVATE
 }
 
-/**
- * Username normalizado (siempre lowercase).
- */
+data class UserPrivacySettings(
+    val profileVisibility: ProfileVisibility = ProfileVisibility.PRIVATE,
+    val showLocation: Boolean = true,
+    val showPhone: Boolean = false,
+    val allowFriendRequests: Boolean = true
+) {
+    val profilePrivate: Boolean get() = profileVisibility == ProfileVisibility.PRIVATE
+}
+
 @JvmInline
 value class Username private constructor(val value: String) {
     override fun toString(): String = value
@@ -89,3 +85,27 @@ value class Username private constructor(val value: String) {
         fun ofNormalized(normalized: String): Username = Username(normalized)
     }
 }
+
+data class CompleteOnboardingCommand(
+    val displayName: String,
+    val username: String,
+    val city: String? = null,
+    val province: String? = null,
+    val countryCode: String? = null,
+    val bio: String? = null,
+    val avatarPath: String? = null,
+    val privacy: UserPrivacySettings = UserPrivacySettings(),
+    val locale: String? = null,
+    val timezone: String? = null
+)
+
+data class UpdateMyProfileCommand(
+    val displayName: String? = null,
+    val bio: String? = null,
+    val city: String? = null,
+    val province: String? = null,
+    val countryCode: String? = null,
+    val locale: String? = null,
+    val timezone: String? = null,
+    val avatarPath: String? = null
+)

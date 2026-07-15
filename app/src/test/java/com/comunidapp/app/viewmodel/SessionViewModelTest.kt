@@ -96,11 +96,14 @@ class SessionViewModelTest {
     }
 
     private class FakeUserRepository : UserRepository {
-        override suspend fun getUser(userId: String): User? = null
+        private val profile = MockData.currentUser
+        override suspend fun getUser(userId: String): User? =
+            if (userId == profile.id) profile else null
         override suspend fun createUser(user: User) = Result.success(Unit)
         override suspend fun updateUser(user: User) = Result.success(Unit)
         override suspend fun searchUsers(query: String, excludeUserId: String): List<User> = emptyList()
-        override fun observeUser(userId: String): Flow<User?> = flowOf(null)
-        override fun observeUsers(): Flow<List<User>> = flowOf(emptyList())
+        override fun observeUser(userId: String): Flow<User?> =
+            flowOf(if (userId == profile.id) profile else null)
+        override fun observeUsers(): Flow<List<User>> = flowOf(listOf(profile))
     }
 }

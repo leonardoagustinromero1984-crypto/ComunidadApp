@@ -32,6 +32,29 @@ sealed interface AuthState {
         val user: AuthUser
     ) : AuthState
 
+    /** Sesión válida sin perfil/onboarding completo (M02). */
+    data class ProfileSetupRequired(
+        val user: AuthUser
+    ) : AuthState
+
+    /** Cuenta restringida: acceso limitado informativo (sin inventar módulos). */
+    data class AccountRestricted(
+        val user: AuthUser
+    ) : AuthState
+
+    data class AccountSuspended(
+        val user: AuthUser
+    ) : AuthState
+
+    data class AccountBanned(
+        val user: AuthUser
+    ) : AuthState
+
+    /** Onboarding bloqueado; requiere soporte. */
+    data class OnboardingBlocked(
+        val user: AuthUser
+    ) : AuthState
+
     data object PasswordRecoveryRequested : AuthState
 
     /** Sesión de recovery establecida vía deep link; lista para nueva contraseña. */

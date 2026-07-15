@@ -46,6 +46,8 @@ import com.comunidapp.app.ui.screens.profile.NotificationsScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
 import com.comunidapp.app.ui.screens.profile.SearchFriendsScreen
 import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
+import com.comunidapp.app.ui.screens.onboarding.ProfileOnboardingScreen
+import com.comunidapp.app.ui.screens.security.AccountAccessBlockedScreen
 import com.comunidapp.app.ui.screens.security.AccountSecurityScreen
 import com.comunidapp.app.ui.screens.security.LegalConsentRequiredScreen
 import com.comunidapp.app.ui.screens.security.PasswordResetActiveScreen
@@ -101,6 +103,18 @@ fun ComunidappNavGraph(
             PasswordResetActiveScreen(
                 onSuccess = { /* session becomes LoggedOut → login */ },
                 onInvalidLink = { sessionViewModel.clearPasswordResetActive() },
+                sessionViewModel = sessionViewModel
+            )
+        }
+        SessionState.ProfileSetupRequired -> {
+            ProfileOnboardingScreen(
+                onComplete = { sessionViewModel.onProfileSetupCompleted() }
+            )
+        }
+        SessionState.AccountAccessBlocked -> {
+            val blockedStatus by sessionViewModel.blockedAccountStatus.collectAsState()
+            AccountAccessBlockedScreen(
+                accountStatus = blockedStatus,
                 sessionViewModel = sessionViewModel
             )
         }

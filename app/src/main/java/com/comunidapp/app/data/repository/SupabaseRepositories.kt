@@ -16,6 +16,7 @@ import com.comunidapp.app.data.remote.supabase.PetSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.SocialSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.PostSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.UserSupabaseDataSource
+import com.comunidapp.app.domain.user.UserProfileMapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -23,6 +24,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 class SupabaseUserRepository(
@@ -41,6 +43,43 @@ class SupabaseUserRepository(
     override fun observeUser(userId: String) = dataSource.observeUser(userId)
 
     override fun observeUsers() = dataSource.observeUsers()
+
+    override suspend fun getOwnProfile(userId: String) = dataSource.getOwnProfile(userId)
+
+    override fun observeOwnProfile(userId: String) =
+        observeUser(userId).map { user ->
+            user?.let {
+                // privacy fetched lazily; bridge mapea desde flags legacy si falla
+                UserProfileMapper.toUserProfile(it)
+            }
+        }
+
+    override suspend fun isUsernameAvailable(username: String, excludingUserId: String?) =
+        dataSource.isUsernameAvailable(username)
+
+    override suspend fun completeOnboarding(
+        userId: String,
+        command: com.comunidapp.app.domain.user.CompleteOnboardingCommand
+    ) = dataSource.completeOnboarding(command)
+
+    override suspend fun updateMyProfile(
+        userId: String,
+        command: com.comunidapp.app.domain.user.UpdateMyProfileCommand
+    ) = dataSource.updateMyProfile(command)
+
+    override suspend fun getPublicProfile(viewerId: String, targetUserId: String) =
+        dataSource.getPublicProfile(targetUserId)
+
+    override suspend fun searchPublicProfiles(viewerId: String, query: String, limit: Int) =
+        dataSource.searchPublicProfiles(query, limit)
+
+    override suspend fun getPrivacySettings(userId: String) =
+        dataSource.getPrivacySettings(userId)
+
+    override suspend fun updatePrivacySettings(
+        userId: String,
+        settings: com.comunidapp.app.domain.user.UserPrivacySettings
+    ) = dataSource.updatePrivacySettings(userId, settings)
 }
 
 class SupabasePetRepository(

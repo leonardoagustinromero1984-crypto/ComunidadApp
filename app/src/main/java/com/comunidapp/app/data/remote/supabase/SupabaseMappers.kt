@@ -71,7 +71,17 @@ data class UserRow(
     @SerialName("reputation_score") val reputationScore: Int = 0,
     @SerialName("profile_private") val profilePrivate: Boolean = true,
     @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null
+    @SerialName("updated_at") val updatedAt: String? = null,
+    val username: String? = null,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("avatar_path") val avatarPath: String? = null,
+    val city: String? = null,
+    val province: String? = null,
+    @SerialName("country_code") val countryCode: String? = null,
+    val locale: String? = null,
+    val timezone: String? = null,
+    @SerialName("onboarding_status") val onboardingStatus: String = "NOT_STARTED",
+    @SerialName("account_status") val accountStatus: String = "ACTIVE"
 )
 
 @Serializable
@@ -162,7 +172,17 @@ fun parseUser(row: UserRow): User = User(
     reputationScore = row.reputationScore,
     profilePrivate = row.profilePrivate,
     createdAt = row.createdAt.toEpochMillis(),
-    updatedAt = row.updatedAt.toEpochMillis()
+    updatedAt = row.updatedAt.toEpochMillis(),
+    username = row.username,
+    displayName = row.displayName,
+    avatarPath = row.avatarPath,
+    city = row.city,
+    province = row.province,
+    countryCode = row.countryCode,
+    locale = row.locale,
+    timezone = row.timezone,
+    onboardingStatus = row.onboardingStatus,
+    accountStatus = row.accountStatus
 )
 
 fun User.toUserUpdateRow(now: Instant = Instant.now()): UserUpdateRow = UserUpdateRow(
@@ -192,7 +212,17 @@ fun User.toUserRow(now: Instant = Instant.now()): UserRow = UserRow(
     emailVerified = emailVerified,
     fosterHomeActive = fosterHomeActive,
     createdAt = (createdAt?.let { Instant.ofEpochMilli(it) } ?: now).toString(),
-    updatedAt = now.toString()
+    updatedAt = now.toString(),
+    username = username,
+    displayName = displayName,
+    avatarPath = avatarPath,
+    city = city,
+    province = province,
+    countryCode = countryCode,
+    locale = locale,
+    timezone = timezone,
+    onboardingStatus = onboardingStatus,
+    accountStatus = accountStatus
 )
 
 fun parsePet(row: PetRow): Pet = Pet(
