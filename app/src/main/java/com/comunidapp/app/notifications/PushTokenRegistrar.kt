@@ -30,4 +30,15 @@ object PushTokenRegistrar {
             AppLog.warning(TAG, "No se pudo guardar token FCM", e)
         }
     }
+
+    /** Desvincula tokens FCM del usuario actual antes del signOut. */
+    suspend fun unlinkForCurrentUser() {
+        if (!AppConfigProvider.featureFlags().useSupabase) return
+        val userId = AuthProvider.repository.getCurrentUser()?.id ?: return
+        try {
+            DataProvider.platformRepository.deleteDeviceTokens(userId)
+        } catch (e: Exception) {
+            AppLog.warning(TAG, "No se pudo desvincular token FCM", e)
+        }
+    }
 }

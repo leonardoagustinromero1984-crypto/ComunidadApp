@@ -46,6 +46,9 @@ import com.comunidapp.app.ui.screens.profile.NotificationsScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
 import com.comunidapp.app.ui.screens.profile.SearchFriendsScreen
 import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
+import com.comunidapp.app.ui.screens.security.AccountSecurityScreen
+import com.comunidapp.app.ui.screens.security.LegalConsentRequiredScreen
+import com.comunidapp.app.ui.screens.security.PasswordResetActiveScreen
 import com.comunidapp.app.viewmodel.UserPublicProfileViewModel
 import com.comunidapp.app.viewmodel.ChatStartViewModel
 import com.comunidapp.app.viewmodel.ChatThreadViewModel
@@ -76,6 +79,31 @@ fun ComunidappNavGraph(
 
     when (sessionState) {
         SessionState.Loading -> SessionLoadingScreen()
+        SessionState.LegalConsentRequired -> {
+            val consentNav = rememberNavController()
+            NavHost(navController = consentNav, startDestination = NavRoutes.LEGAL_CONSENT_REQUIRED) {
+                composable(NavRoutes.LEGAL_CONSENT_REQUIRED) {
+                    LegalConsentRequiredScreen(
+                        sessionViewModel = sessionViewModel,
+                        onNavigateToTerms = { consentNav.navigate(NavRoutes.LEGAL_TERMS) },
+                        onNavigateToPrivacy = { consentNav.navigate(NavRoutes.LEGAL_PRIVACY) }
+                    )
+                }
+                composable(NavRoutes.LEGAL_TERMS) {
+                    TermsDraftScreen(onNavigateBack = { consentNav.popBackStack() })
+                }
+                composable(NavRoutes.LEGAL_PRIVACY) {
+                    PrivacyDraftScreen(onNavigateBack = { consentNav.popBackStack() })
+                }
+            }
+        }
+        SessionState.PasswordResetActive -> {
+            PasswordResetActiveScreen(
+                onSuccess = { /* session becomes LoggedOut → login */ },
+                onInvalidLink = { sessionViewModel.clearPasswordResetActive() },
+                sessionViewModel = sessionViewModel
+            )
+        }
         SessionState.LoggedOut, SessionState.LoggedIn -> {
             key(sessionState) {
                 RootNavHost(
@@ -235,15 +263,32 @@ private fun MainScreen(accountType: AccountType) {
                 ProfileScreen(
                     onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                     onNavigateToMyPets = { navController.navigate(NavRoutes.MY_PETS) },
-onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
+                    onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
                     onNavigateToChat = { navController.navigate(NavRoutes.CHAT) },
                     onNavigateToFriendRequests = { navController.navigate(NavRoutes.FRIEND_REQUESTS) },
                     onNavigateToNotifications = { navController.navigate(NavRoutes.NOTIFICATIONS) },
                     onNavigateToModeration = { navController.navigate(NavRoutes.ADMIN_MODERATION) },
                     onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
+                    onNavigateToAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
                     onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
                     onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
                 )
+            }
+            composable(NavRoutes.ACCOUNT_SECURITY) {
+                AccountSecurityScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAccountDeleted = {
+                        navController.popBackStack(NavRoutes.PROFILE, inclusive = false)
+                    },
+                    onNavigateToTerms = { navController.navigate(NavRoutes.LEGAL_TERMS) },
+                    onNavigateToPrivacy = { navController.navigate(NavRoutes.LEGAL_PRIVACY) }
+                )
+            }
+            composable(NavRoutes.LEGAL_TERMS) {
+                TermsDraftScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.LEGAL_PRIVACY) {
+                PrivacyDraftScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(NavRoutes.SEARCH_FRIENDS) {
                 SearchFriendsScreen(

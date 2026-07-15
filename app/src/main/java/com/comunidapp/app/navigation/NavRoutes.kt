@@ -8,6 +8,9 @@ object NavRoutes {
     const val EMAIL_VERIFICATION = "email_verification/{email}"
     const val LEGAL_TERMS = "legal_terms"
     const val LEGAL_PRIVACY = "legal_privacy"
+    const val ACCOUNT_SECURITY = "account_security"
+    const val PASSWORD_RESET_ACTIVE = "password_reset_active"
+    const val LEGAL_CONSENT_REQUIRED = "legal_consent_required"
 
     const val HOME = "home"
     const val SUMATE = "sumate"

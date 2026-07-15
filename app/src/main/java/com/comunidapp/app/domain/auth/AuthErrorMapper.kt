@@ -21,8 +21,9 @@ enum class AuthErrorCode {
     NETWORK_UNAVAILABLE,
     CONFIGURATION_ERROR,
     ACCOUNT_DELETION_FAILED,
-    /** Reset remoto aún no implementado (Etapa 4). */
+    /** Sin sesión de recovery válida para completar el reset. */
     PASSWORD_RESET_NOT_AVAILABLE,
+    LEGAL_CONSENT_REQUIRED,
     UNKNOWN_AUTH_ERROR
 }
 
@@ -128,8 +129,13 @@ object AuthErrorMapper {
                 raw.contains("config", ignoreCase = true) ->
                 AuthErrorCode.CONFIGURATION_ERROR
 
-            raw.contains("account deletion", ignoreCase = true) ->
+            raw.contains("account deletion", ignoreCase = true) ||
+                raw.contains("ACCOUNT_DELETION", ignoreCase = true) ->
                 AuthErrorCode.ACCOUNT_DELETION_FAILED
+
+            raw.contains("CONSENT", ignoreCase = true) ||
+                raw.contains("legal consent", ignoreCase = true) ->
+                AuthErrorCode.LEGAL_CONSENT_REQUIRED
 
             raw.contains("email", ignoreCase = true) &&
                 (raw.contains("invalid", ignoreCase = true) || raw.contains("formato", ignoreCase = true)) ->
@@ -148,7 +154,8 @@ object AuthErrorMapper {
         AuthErrorCode.INVALID_EMAIL,
         AuthErrorCode.RECOVERY_LINK_INVALID,
         AuthErrorCode.RECOVERY_LINK_EXPIRED,
-        AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE -> AppErrorKind.VALIDATION
+        AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE,
+        AuthErrorCode.LEGAL_CONSENT_REQUIRED -> AppErrorKind.VALIDATION
         AuthErrorCode.RATE_LIMITED -> AppErrorKind.RATE_LIMITED
         AuthErrorCode.NETWORK_UNAVAILABLE -> AppErrorKind.NETWORK
         AuthErrorCode.CONFIGURATION_ERROR -> AppErrorKind.CONFIGURATION
@@ -182,8 +189,9 @@ object AuthErrorMapper {
         AuthErrorCode.ACCOUNT_DELETION_FAILED ->
             "No se pudo eliminar la cuenta. Intentá más tarde."
         AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE ->
-            "Abrí el enlace del email para continuar el restablecimiento. " +
-                "El cambio de contraseña en la app quedará en Etapa 4."
+            "Abrí el enlace del email para continuar el restablecimiento."
+        AuthErrorCode.LEGAL_CONSENT_REQUIRED ->
+            "Debés aceptar los términos y la política de privacidad vigentes."
         AuthErrorCode.UNKNOWN_AUTH_ERROR ->
             "Ocurrió un problema de autenticación. Intentá de nuevo."
     }

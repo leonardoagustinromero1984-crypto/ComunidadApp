@@ -7,10 +7,12 @@ import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.domain.auth.AuthDeepLinkKind
 import com.comunidapp.app.domain.auth.AuthErrorCode
 import com.comunidapp.app.domain.auth.AuthErrorMapper
 import com.comunidapp.app.domain.auth.AuthState
 import com.comunidapp.app.domain.auth.AuthUser
+import com.comunidapp.app.domain.auth.ConsentMetadata
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +30,8 @@ import kotlinx.coroutines.launch
 enum class SessionState {
     Loading,
     LoggedOut,
+    LegalConsentRequired,
+    PasswordResetActive,
     LoggedIn
 }
 
@@ -49,6 +53,10 @@ class SessionViewModel(
     private var observeJob: Job? = null
     private var logoutJob: Job? = null
     private var loginJob: Job? = null
+    private var consentJob: Job? = null
+
+    /** Deep link de recovery activo; bloquea entrada a MAIN hasta reset. */
+    private var passwordResetActive: Boolean = false
 
     init {
         startObserving()
@@ -62,9 +70,12 @@ class SessionViewModel(
                     if (authUser == null) {
                         if (_authState.value !is AuthState.SigningOut &&
                             _authState.value !is AuthState.Authenticating &&
-                            _authState.value !is AuthState.Registering
+                            _authState.value !is AuthState.Registering &&
+                            _authState.value !is AuthState.PasswordResetActive
                         ) {
-                            emitAuth(AuthState.Unauthenticated)
+                            if (!passwordResetActive) {
+                                emitAuth(AuthState.Unauthenticated)
+                            }
                         }
                         flowOf(null)
                     } else {
@@ -72,24 +83,115 @@ class SessionViewModel(
                     }
                 }
                 .collect { user ->
+                    if (passwordResetActive) {
+                        _currentUser.value = user
+                        emitAuth(AuthState.PasswordResetActive)
+                        return@collect
+                    }
                     _currentUser.value = user
+                    if (user != null) {
+                        val hasConsent = authRepository.hasCurrentLegalConsent(user.id)
+                        if (!hasConsent) {
+                            emitAuth(
+                                AuthState.LegalConsentRequired(
+                                    AuthUser(
+                                        id = user.id,
+                                        email = user.email,
+                                        emailVerified = user.emailVerified
+                                    )
+                                )
+                            )
+                        } else {
+                            emitAuth(
+                                AuthState.Authenticated(
+                                    AuthUser(
+                                        id = user.id,
+                                        email = user.email,
+                                        emailVerified = user.emailVerified,
+                                        sessionStartedAtEpochMs = System.currentTimeMillis()
+                                    )
+                                )
+                            )
+                        }
+                    } else if (_authState.value is AuthState.Authenticated ||
+                        _authState.value is AuthState.LegalConsentRequired ||
+                        _authState.value is AuthState.Initializing ||
+                        _authState.value is AuthState.SigningOut
+                    ) {
+                        emitAuth(AuthState.Unauthenticated)
+                    }
+                }
+        }
+    }
+
+    /**
+     * Procesa deep link clasificado (ya consumido una vez por [AuthDeepLinkParser]).
+     */
+    fun onAuthDeepLink(kind: AuthDeepLinkKind) {
+        when (kind) {
+            AuthDeepLinkKind.PasswordRecovery -> {
+                passwordResetActive = true
+                emitAuth(AuthState.PasswordResetActive)
+            }
+            AuthDeepLinkKind.EmailConfirmation -> {
+                // La sesión la restaura handleDeeplinks; la UI de verificación existente aplica.
+            }
+            AuthDeepLinkKind.Unknown -> Unit
+        }
+    }
+
+    fun clearPasswordResetActive() {
+        passwordResetActive = false
+        if (_authState.value is AuthState.PasswordResetActive) {
+            emitAuth(AuthState.Unauthenticated)
+        }
+    }
+
+    fun acceptLegalConsents(
+        acceptedTerms: Boolean,
+        acceptedPrivacy: Boolean,
+        locale: String? = null
+    ) {
+        if (_authState.value !is AuthState.LegalConsentRequired) return
+        if (consentJob?.isActive == true) return
+        consentJob = viewModelScope.launch {
+            val consent = ConsentMetadata.forPostLoginGate(locale)
+            com.comunidapp.app.domain.auth.validation.AuthValidators.validateConsents(
+                acceptedTerms = acceptedTerms,
+                acceptedPrivacy = acceptedPrivacy,
+                termsVersion = consent.termsVersion,
+                privacyVersion = consent.privacyVersion
+            ).getOrElse { err ->
+                emitAuth(
+                    AuthState.AuthError(
+                        AuthErrorMapper.fromThrowable(err),
+                        previous = _authState.value
+                    )
+                )
+                return@launch
+            }
+            authRepository.acceptLegalConsents(consent)
+                .onSuccess {
+                    val user = _currentUser.value
                     if (user != null) {
                         emitAuth(
                             AuthState.Authenticated(
                                 AuthUser(
                                     id = user.id,
                                     email = user.email,
-                                    emailVerified = user.emailVerified,
-                                    sessionStartedAtEpochMs = System.currentTimeMillis()
+                                    emailVerified = user.emailVerified
                                 )
                             )
                         )
-                    } else if (_authState.value is AuthState.Authenticated ||
-                        _authState.value is AuthState.Initializing ||
-                        _authState.value is AuthState.SigningOut
-                    ) {
-                        emitAuth(AuthState.Unauthenticated)
                     }
+                }
+                .onFailure { error ->
+                    emitAuth(
+                        AuthState.AuthError(
+                            AuthErrorMapper.fromThrowable(error),
+                            previous = _authState.value
+                        )
+                    )
                 }
         }
     }
@@ -105,15 +207,28 @@ class SessionViewModel(
             authRepository.login(email, password)
                 .onSuccess { user ->
                     _currentUser.value = user
-                    emitAuth(
-                        AuthState.Authenticated(
-                            AuthUser(
-                                id = user.id,
-                                email = user.email,
-                                emailVerified = user.emailVerified
+                    val hasConsent = authRepository.hasCurrentLegalConsent(user.id)
+                    if (!hasConsent) {
+                        emitAuth(
+                            AuthState.LegalConsentRequired(
+                                AuthUser(
+                                    id = user.id,
+                                    email = user.email,
+                                    emailVerified = user.emailVerified
+                                )
                             )
                         )
-                    )
+                    } else {
+                        emitAuth(
+                            AuthState.Authenticated(
+                                AuthUser(
+                                    id = user.id,
+                                    email = user.email,
+                                    emailVerified = user.emailVerified
+                                )
+                            )
+                        )
+                    }
                 }
                 .onFailure { error ->
                     val appError = AuthErrorMapper.fromThrowable(error)
@@ -138,6 +253,7 @@ class SessionViewModel(
         logoutJob?.cancel()
         logoutJob = viewModelScope.launch {
             emitAuth(AuthState.SigningOut)
+            passwordResetActive = false
             runCatching { authRepository.logout() }
                 .onFailure { error ->
                     emitAuth(
@@ -157,6 +273,8 @@ class SessionViewModel(
         _sessionState.value = when (state) {
             AuthState.Initializing -> SessionState.Loading
             is AuthState.Authenticated -> SessionState.LoggedIn
+            is AuthState.LegalConsentRequired -> SessionState.LegalConsentRequired
+            AuthState.PasswordResetActive -> SessionState.PasswordResetActive
             AuthState.SigningOut -> SessionState.LoggedOut
             else -> SessionState.LoggedOut
         }

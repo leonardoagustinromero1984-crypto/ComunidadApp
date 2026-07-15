@@ -49,6 +49,12 @@ class MainActivity : ComponentActivity() {
                 val sessionViewModel: SessionViewModel = viewModel()
                 val sessionState by sessionViewModel.sessionState.collectAsState()
                 keepSplashScreen = sessionState == SessionState.Loading
+                LaunchedEffect(Unit) {
+                    pendingDeepLinkKind?.let { kind ->
+                        pendingDeepLinkKind = null
+                        sessionViewModel.onAuthDeepLink(kind)
+                    }
+                }
                 LaunchedEffect(sessionState) {
                     if (sessionState == SessionState.LoggedIn) {
                         PushTokenRegistrar.syncCurrentToken()
@@ -78,8 +84,15 @@ class MainActivity : ComponentActivity() {
 
     private fun handleAuthDeepLink(intent: Intent?) {
         if (!AppConfigProvider.featureFlags().useSupabase || intent == null) return
-        if (intent.data?.scheme == com.comunidapp.app.data.remote.supabase.SupabaseAuthConfig.SCHEME) {
-            supabase.handleDeeplinks(intent)
-        }
+        val data = intent.data ?: return
+        if (data.scheme != com.comunidapp.app.data.remote.supabase.SupabaseAuthConfig.SCHEME) return
+        val kind = com.comunidapp.app.domain.auth.AuthDeepLinkParser.consumeOnce(data.toString())
+        supabase.handleDeeplinks(intent)
+        pendingDeepLinkKind = kind
+    }
+
+    companion object {
+        @Volatile
+        var pendingDeepLinkKind: com.comunidapp.app.domain.auth.AuthDeepLinkKind? = null
     }
 }

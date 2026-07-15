@@ -329,18 +329,6 @@ class ForgotPasswordViewModel(
     }
 
     fun resetPassword() {
-        // Solo mock/local hasta Etapa 4 (reset remoto final).
-        if (AuthProvider.isRemoteBackendEnabled) {
-            _uiState.update {
-                it.copy(
-                    errorMessage = AuthErrorMapper.fromCode(
-                        AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE,
-                        "remote reset not available"
-                    ).userMessage
-                )
-            }
-            return
-        }
         val state = _uiState.value
         if (state.isLoading) return
         if (state.newPassword != state.confirmPassword) {
@@ -349,7 +337,12 @@ class ForgotPasswordViewModel(
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            authRepository.resetPassword(state.email, state.token, state.newPassword)
+            val result = if (AuthProvider.isRemoteBackendEnabled) {
+                authRepository.updatePasswordFromRecovery(state.newPassword)
+            } else {
+                authRepository.resetPassword(state.email, state.token, state.newPassword)
+            }
+            result
                 .onSuccess {
                     _uiState.update { it.copy(isLoading = false, resetSuccess = true) }
                 }

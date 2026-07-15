@@ -80,6 +80,7 @@ data class ConsentMetadata(
 ) {
     companion object {
         const val SOURCE_REGISTRATION = "registration"
+        const val SOURCE_POST_LOGIN_GATE = "post_login_gate"
 
         fun forRegistration(locale: String? = null): ConsentMetadata =
             ConsentMetadata(
@@ -87,6 +88,14 @@ data class ConsentMetadata(
                 privacyVersion = LegalDocumentConfig.privacy.version,
                 locale = locale,
                 source = SOURCE_REGISTRATION
+            )
+
+        fun forPostLoginGate(locale: String? = null): ConsentMetadata =
+            ConsentMetadata(
+                termsVersion = LegalDocumentConfig.terms.version,
+                privacyVersion = LegalDocumentConfig.privacy.version,
+                locale = locale,
+                source = SOURCE_POST_LOGIN_GATE
             )
     }
 }

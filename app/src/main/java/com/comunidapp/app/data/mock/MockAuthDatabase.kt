@@ -69,4 +69,9 @@ object MockAuthDatabase {
         val account = findByEmail(email) ?: return false
         return account.resetToken != null && account.resetToken.equals(token.trim(), ignoreCase = true)
     }
+
+    fun deleteAccount(email: String): Boolean {
+        val key = email.lowercase().trim()
+        return accounts.remove(key) != null
+    }
 }

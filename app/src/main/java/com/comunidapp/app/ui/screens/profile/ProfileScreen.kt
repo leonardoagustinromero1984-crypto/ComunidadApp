@@ -81,6 +81,7 @@ fun ProfileScreen(
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToModeration: () -> Unit = {},
     onNavigateToSearchFriends: () -> Unit = {},
+    onNavigateToAccountSecurity: () -> Unit = {},
     onFriendClick: (String) -> Unit = {},
     onPetClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
@@ -287,6 +288,18 @@ fun ProfileScreen(
                                 post = post,
                                 modifier = Modifier.padding(horizontal = 16.dp)
                             )
+                        }
+                    }
+
+                    item {
+                        OutlinedButton(
+                            onClick = onNavigateToAccountSecurity,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Seguridad de la cuenta")
                         }
                     }
 

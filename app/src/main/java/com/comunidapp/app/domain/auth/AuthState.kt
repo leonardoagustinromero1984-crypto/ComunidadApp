@@ -24,13 +24,21 @@ sealed interface AuthState {
         val user: AuthUser
     ) : AuthState
 
+    /**
+     * Sesión válida sin consentimiento vigente de versiones legales actuales.
+     * Bloquea el flujo principal hasta aceptar (RPC con auth.uid()).
+     */
+    data class LegalConsentRequired(
+        val user: AuthUser
+    ) : AuthState
+
     data object PasswordRecoveryRequested : AuthState
 
+    /** Sesión de recovery establecida vía deep link; lista para nueva contraseña. */
     data object PasswordResetActive : AuthState
 
     data object SigningOut : AuthState
 
-    /** Reservado para Etapa 4; no se usa todavía en flujo activo. */
     data object AccountDeletionPending : AuthState
 
     data class ConfigurationError(

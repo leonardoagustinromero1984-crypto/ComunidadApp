@@ -1,6 +1,6 @@
--- M01 Etapa 3 — user_consents + actualización idempotente de handle_new_user
--- Base: lógica vigente en 009_profile_privacy.sql (conserva public.users + profile_private).
--- 004 y 009 NO se sobrescriben; esta migración reemplaza solo la función.
+-- M01 Etapa 4 — corrección D-M01-10 sobre 014 (aún NO aplicada en remoto compartido).
+-- Estrategia: siempre crear public.users; insertar user_consents SOLO si metadata legal válida.
+-- NO inventar consentimiento. NO fallar altas admin/invite por falta de metadata.
 
 create table if not exists public.user_consents (
     id uuid primary key default gen_random_uuid(),
@@ -16,7 +16,7 @@ create table if not exists public.user_consents (
     constraint user_consents_privacy_version_not_blank
         check (length(trim(privacy_version)) > 0),
     constraint user_consents_source_allowed
-        check (source in ('registration')),
+        check (source in ('registration', 'post_login_gate')),
     constraint user_consents_user_versions_unique
         unique (user_id, terms_version, privacy_version)
 );
@@ -33,8 +33,7 @@ create policy user_consents_select_own
     to authenticated
     using (auth.uid() = user_id);
 
--- Sin INSERT/UPDATE/DELETE para authenticated: el alta inicial la hace el trigger (security definer).
--- service_role conserva acceso administrativo por defecto en Supabase.
+-- Sin INSERT directo cliente: altas iniciales por trigger; posteriores vía RPC security definer.
 
 create or replace function public.handle_new_user()
 returns trigger
@@ -52,16 +51,7 @@ declare
         'registration'
     );
 begin
-    -- Solo PERSON en alta M01 (no confiar en account_type del cliente).
-    -- Conservamos columna account_type del perfil con default técnico PERSON.
-    if terms_v is null or privacy_v is null then
-        raise exception 'CONSENT_REQUIRED: terms_version and privacy_version metadata are required';
-    end if;
-
-    if consent_source <> 'registration' then
-        raise exception 'CONSENT_SOURCE_INVALID: only registration is allowed at signup';
-    end if;
-
+    -- Siempre crear/actualizar public.users (conserva 009: profile_private).
     insert into public.users (id, email, name, account_type, email_verified, profile_private)
     values (
         new.id,
@@ -78,38 +68,106 @@ begin
         email_verified = excluded.email_verified,
         updated_at = timezone('utc', now());
 
-    insert into public.user_consents (
-        user_id,
-        terms_version,
-        privacy_version,
-        accepted_at,
-        locale,
-        source
-    )
-    values (
-        new.id,
-        terms_v,
-        privacy_v,
-        timezone('utc', now()),
-        consent_locale,
-        consent_source
-    )
-    on conflict (user_id, terms_version, privacy_version) do nothing;
+    -- Consentimiento solo si metadata válida; no inventar aceptación.
+    if terms_v is not null
+       and privacy_v is not null
+       and consent_source in ('registration', 'post_login_gate') then
+        insert into public.user_consents (
+            user_id,
+            terms_version,
+            privacy_version,
+            accepted_at,
+            locale,
+            source
+        )
+        values (
+            new.id,
+            terms_v,
+            privacy_v,
+            timezone('utc', now()),
+            consent_locale,
+            consent_source
+        )
+        on conflict (user_id, terms_version, privacy_version) do nothing;
+    end if;
 
     return new;
 end;
 $$;
 
--- Trigger ya existe desde 004; no recrear a menos que falte.
 do $$
 begin
     if not exists (
-        select 1
-        from pg_trigger
-        where tgname = 'on_auth_user_created'
+        select 1 from pg_trigger where tgname = 'on_auth_user_created'
     ) then
         create trigger on_auth_user_created
             after insert on auth.users
             for each row execute function public.handle_new_user();
     end if;
 end $$;
+
+-- Aceptación posterior (gate LegalConsentRequired): usa auth.uid(), nunca user_id libre.
+create or replace function public.accept_legal_consents(
+    p_terms_version text,
+    p_privacy_version text,
+    p_locale text default null,
+    p_source text default 'post_login_gate'
+)
+returns void
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+    uid uuid := auth.uid();
+    terms_v text := nullif(trim(coalesce(p_terms_version, '')), '');
+    privacy_v text := nullif(trim(coalesce(p_privacy_version, '')), '');
+    src text := coalesce(nullif(trim(coalesce(p_source, '')), ''), 'post_login_gate');
+begin
+    if uid is null then
+        raise exception 'NOT_AUTHENTICATED';
+    end if;
+    if terms_v is null or privacy_v is null then
+        raise exception 'CONSENT_VERSIONS_REQUIRED';
+    end if;
+    if src not in ('registration', 'post_login_gate') then
+        raise exception 'CONSENT_SOURCE_INVALID';
+    end if;
+
+    insert into public.user_consents (
+        user_id, terms_version, privacy_version, accepted_at, locale, source
+    ) values (
+        uid, terms_v, privacy_v, timezone('utc', now()), nullif(trim(coalesce(p_locale, '')), ''), src
+    )
+    on conflict (user_id, terms_version, privacy_version) do nothing;
+end;
+$$;
+
+revoke all on function public.accept_legal_consents(text, text, text, text) from public;
+grant execute on function public.accept_legal_consents(text, text, text, text) to authenticated;
+
+-- Solicitudes de eliminación (idempotencia / soporte; sin PII).
+create table if not exists public.account_deletion_requests (
+    id uuid primary key default gen_random_uuid(),
+    user_id uuid null references auth.users (id) on delete set null,
+    status text not null,
+    requested_at timestamptz not null default timezone('utc', now()),
+    completed_at timestamptz null,
+    failure_code text null,
+    created_at timestamptz not null default timezone('utc', now()),
+    constraint account_deletion_requests_status_allowed
+        check (status in ('pending', 'completed', 'failed'))
+);
+
+create index if not exists account_deletion_requests_user_id_idx
+    on public.account_deletion_requests (user_id);
+
+alter table public.account_deletion_requests enable row level security;
+
+-- Lectura propia opcional; insert/update solo service role (Edge Function).
+drop policy if exists account_deletion_requests_select_own on public.account_deletion_requests;
+create policy account_deletion_requests_select_own
+    on public.account_deletion_requests
+    for select
+    to authenticated
+    using (auth.uid() = user_id);

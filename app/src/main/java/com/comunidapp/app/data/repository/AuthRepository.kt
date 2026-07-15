@@ -37,7 +37,18 @@ interface AuthRepository {
         accountType: AccountType = AccountType.PERSON
     ): Result<User>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
+    /** Mock: token. Remoto: requiere sesión de recovery; [email]/[token] se ignoran si hay sesión. */
     suspend fun resetPassword(email: String, token: String, newPassword: String): Result<Unit>
+    /** Actualiza contraseña con sesión de recovery activa (SDK updateUser). */
+    suspend fun updatePasswordFromRecovery(newPassword: String): Result<Unit>
+    suspend fun changePassword(currentPassword: String, newPassword: String): Result<Unit>
+    suspend fun hasCurrentLegalConsent(userId: String): Boolean
+    suspend fun acceptLegalConsents(consent: ConsentMetadata): Result<Unit>
+    /**
+     * Elimina la cuenta del usuario autenticado vía Edge Function (remoto)
+     * o borrado mock local. No acepta userId libre como autoridad.
+     */
+    suspend fun deleteAccount(idempotencyKey: String): Result<Unit>
     suspend fun sendEmailVerification(email: String): Result<Unit>
     suspend fun confirmEmailVerification(email: String): Result<Unit>
     suspend fun verifyEmailOtp(email: String, otpCode: String): Result<Unit>
@@ -51,6 +62,11 @@ class MockAuthRepository : AuthRepository {
 
     private val _authState = MutableStateFlow<User?>(null)
     private val consentsByEmail = mutableMapOf<String, ConsentMetadata>()
+
+    init {
+        consentsByEmail[AuthValidators.normalizeEmail(MockData.currentUser.email)] =
+            ConsentMetadata.forRegistration()
+    }
 
     /** Solo tests: último consentimiento guardado para un email. */
     fun consentFor(email: String): ConsentMetadata? =
@@ -67,10 +83,36 @@ class MockAuthRepository : AuthRepository {
     }
 
     /** Solo tests: limpia sesión y reinstala fixtures. */
+    /** Solo tests. */
+    fun clearConsentsForTests() {
+        consentsByEmail.clear()
+    }
+
     fun resetForTests() {
         setLoggedInUser(null)
+        recoverySessionEmail = null
         consentsByEmail.clear()
+        deletedEmails.clear()
+        reauthFailures = 0
         MockAuthDatabase.resetToFixtures()
+        // Fixture demo ya verificada: consentimiento vigente alineado a LegalDocumentConfig.
+        consentsByEmail[AuthValidators.normalizeEmail(MockData.currentUser.email)] =
+            ConsentMetadata.forRegistration()
+    }
+
+    private var recoverySessionEmail: String? = null
+    private val deletedEmails = mutableSetOf<String>()
+    private var reauthFailures = 0
+
+    /** Solo tests / UI mock: abre sesión de recovery equivalente al deep link. */
+    fun activateRecoverySession(email: String) {
+        recoverySessionEmail = AuthValidators.normalizeEmail(email)
+    }
+
+    fun isRecoverySessionActive(): Boolean = recoverySessionEmail != null
+
+    fun clearRecoverySession() {
+        recoverySessionEmail = null
     }
 
     override suspend fun login(email: String, password: String): Result<User> {
@@ -232,10 +274,17 @@ class MockAuthRepository : AuthRepository {
         newPassword: String
     ): Result<Unit> {
         delay(40)
-        AuthValidators.validateEmail(email).getOrElse {
+        AuthValidators.validatePassword(newPassword).getOrElse {
             return Result.failure(AuthErrorMapper.fromThrowableToException(it))
         }
-        AuthValidators.validatePassword(newPassword).getOrElse {
+        // Prefer recovery session if active (deep link mock).
+        val recoveryEmail = recoverySessionEmail
+        if (recoveryEmail != null) {
+            MockAuthDatabase.updatePassword(recoveryEmail, newPassword)
+            clearRecoverySession()
+            return Result.success(Unit)
+        }
+        AuthValidators.validateEmail(email).getOrElse {
             return Result.failure(AuthErrorMapper.fromThrowableToException(it))
         }
         val normalizedEmail = AuthValidators.normalizeEmail(email)
@@ -248,6 +297,113 @@ class MockAuthRepository : AuthRepository {
             )
         }
         MockAuthDatabase.updatePassword(normalizedEmail, newPassword)
+        return Result.success(Unit)
+    }
+
+    override suspend fun updatePasswordFromRecovery(newPassword: String): Result<Unit> {
+        delay(40)
+        AuthValidators.validatePassword(newPassword).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        val email = recoverySessionEmail
+            ?: return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE,
+                    "no recovery session"
+                )
+            )
+        MockAuthDatabase.updatePassword(email, newPassword)
+        clearRecoverySession()
+        setLoggedInUser(null)
+        return Result.success(Unit)
+    }
+
+    override suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String
+    ): Result<Unit> {
+        delay(40)
+        AuthValidators.validatePassword(newPassword).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        val user = _authState.value
+            ?: return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+            )
+        val account = MockAuthDatabase.findByEmail(user.email)
+            ?: return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.INVALID_CREDENTIALS, "missing account")
+            )
+        if (account.password != currentPassword) {
+            reauthFailures += 1
+            if (reauthFailures >= 5) {
+                return Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.RATE_LIMITED, "too many reauth failures")
+                )
+            }
+            return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.INVALID_CREDENTIALS, "bad current password")
+            )
+        }
+        reauthFailures = 0
+        MockAuthDatabase.updatePassword(user.email, newPassword)
+        return Result.success(Unit)
+    }
+
+    override suspend fun hasCurrentLegalConsent(userId: String): Boolean {
+        val user = _authState.value ?: getCurrentUser() ?: return false
+        if (user.id != userId && user.email != userId) {
+            // Mock store keys by email; callers pass user.id — resolve via session.
+        }
+        val email = user.email
+        val consent = consentsByEmail[AuthValidators.normalizeEmail(email)] ?: return false
+        return consent.termsVersion == com.comunidapp.app.domain.auth.LegalDocumentConfig.terms.version &&
+            consent.privacyVersion == com.comunidapp.app.domain.auth.LegalDocumentConfig.privacy.version
+    }
+
+    override suspend fun acceptLegalConsents(consent: ConsentMetadata): Result<Unit> {
+        delay(30)
+        val user = _authState.value
+            ?: return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+            )
+        AuthValidators.validateConsents(
+            acceptedTerms = true,
+            acceptedPrivacy = true,
+            termsVersion = consent.termsVersion,
+            privacyVersion = consent.privacyVersion
+        ).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        consentsByEmail[AuthValidators.normalizeEmail(user.email)] = consent.copy(
+            source = consent.source.ifBlank { ConsentMetadata.SOURCE_POST_LOGIN_GATE }
+        )
+        return Result.success(Unit)
+    }
+
+    override suspend fun deleteAccount(idempotencyKey: String): Result<Unit> {
+        delay(40)
+        if (idempotencyKey.isBlank()) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.ACCOUNT_DELETION_FAILED,
+                    "idempotency key required"
+                )
+            )
+        }
+        val user = _authState.value
+            ?: return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+            )
+        val email = AuthValidators.normalizeEmail(user.email)
+        if (email in deletedEmails) {
+            setLoggedInUser(null)
+            return Result.success(Unit) // idempotent retry
+        }
+        MockAuthDatabase.deleteAccount(email)
+        consentsByEmail.remove(email)
+        deletedEmails.add(email)
+        setLoggedInUser(null)
         return Result.success(Unit)
     }
 

@@ -1,5 +1,7 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.BuildConfig
+import com.comunidapp.app.core.logging.AppLog
 import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.remote.supabase.SupabaseAuthConfig
@@ -8,20 +10,32 @@ import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.auth.AuthErrorCode
 import com.comunidapp.app.domain.auth.AuthErrorMapper
 import com.comunidapp.app.domain.auth.ConsentMetadata
+import com.comunidapp.app.domain.auth.LegalDocumentConfig
 import com.comunidapp.app.domain.auth.validation.AuthValidators
+import com.comunidapp.app.notifications.PushTokenRegistrar
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
+import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 
 class SupabaseAuthRepository(
     private val userDataSource: UserSupabaseDataSource = UserSupabaseDataSource()
 ) : AuthRepository {
+
+    private var reauthFailures = 0
 
     override suspend fun login(email: String, password: String): Result<User> {
         AuthValidators.validateEmail(email).getOrElse {
@@ -144,14 +158,180 @@ class SupabaseAuthRepository(
         email: String,
         token: String,
         newPassword: String
-    ): Result<Unit> {
-        // Etapa 4: completar updateUser post-deep-link. No devolver falso éxito.
-        return Result.failure(
-            AuthErrorMapper.toException(
-                AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE,
-                "Password reset is not available in-app until M01 stage 4"
+    ): Result<Unit> = updatePasswordFromRecovery(newPassword)
+
+    override suspend fun updatePasswordFromRecovery(newPassword: String): Result<Unit> {
+        AuthValidators.validatePassword(newPassword).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        val session = supabase.auth.currentSessionOrNull()
+            ?: return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE,
+                    "no recovery session"
+                )
             )
-        )
+        if (session.user == null) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE,
+                    "session without user"
+                )
+            )
+        }
+        return try {
+            supabase.auth.updateUser {
+                password = newPassword
+            }
+            // Invalidar sesión de recovery tras uso (anti doble envío).
+            runCatching { supabase.auth.signOut() }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(mapSupabaseException(e))
+        }
+    }
+
+    override suspend fun changePassword(
+        currentPassword: String,
+        newPassword: String
+    ): Result<Unit> {
+        AuthValidators.validatePassword(newPassword).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        val user = supabase.auth.currentUserOrNull()
+            ?: return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+            )
+        val email = user.email
+            ?: return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no email on user")
+            )
+        return try {
+            // Reautenticación: verificar contraseña actual con sign-in (email/password).
+            supabase.auth.signInWith(Email) {
+                this.email = email
+                this.password = currentPassword
+            }
+            reauthFailures = 0
+            supabase.auth.updateUser {
+                password = newPassword
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            reauthFailures += 1
+            if (reauthFailures >= 5) {
+                return Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.RATE_LIMITED, "too many reauth failures")
+                )
+            }
+            Result.failure(mapSupabaseException(e))
+        }
+    }
+
+    override suspend fun hasCurrentLegalConsent(userId: String): Boolean {
+        return try {
+            val rows = supabase.from(USER_CONSENTS_TABLE)
+                .select {
+                    filter {
+                        eq("user_id", userId)
+                        eq("terms_version", LegalDocumentConfig.terms.version)
+                        eq("privacy_version", LegalDocumentConfig.privacy.version)
+                    }
+                }
+                .decodeList<UserConsentRow>()
+            rows.isNotEmpty()
+        } catch (e: Exception) {
+            // Migración 014 aún no aplicada en remoto: no inventar consentimiento ni brickear.
+            AppLog.warning(TAG, "user_consents query unavailable; skipping gate until migration", e)
+            true
+        }
+    }
+
+    override suspend fun acceptLegalConsents(consent: ConsentMetadata): Result<Unit> {
+        AuthValidators.validateConsents(
+            acceptedTerms = true,
+            acceptedPrivacy = true,
+            termsVersion = consent.termsVersion,
+            privacyVersion = consent.privacyVersion
+        ).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        if (supabase.auth.currentUserOrNull() == null) {
+            return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+            )
+        }
+        return try {
+            supabase.postgrest.rpc(
+                function = "accept_legal_consents",
+                parameters = buildJsonObject {
+                    put("p_terms_version", consent.termsVersion)
+                    put("p_privacy_version", consent.privacyVersion)
+                    consent.locale?.let { put("p_locale", it) }
+                    put(
+                        "p_source",
+                        consent.source.ifBlank { ConsentMetadata.SOURCE_POST_LOGIN_GATE }
+                    )
+                }
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(mapSupabaseException(e))
+        }
+    }
+
+    override suspend fun deleteAccount(idempotencyKey: String): Result<Unit> {
+        if (idempotencyKey.isBlank()) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.ACCOUNT_DELETION_FAILED,
+                    "idempotency key required"
+                )
+            )
+        }
+        val session = supabase.auth.currentSessionOrNull()
+            ?: return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+            )
+        val accessToken = session.accessToken
+        return withContext(Dispatchers.IO) {
+            try {
+                val url = URL("${BuildConfig.SUPABASE_URL.trimEnd('/')}/functions/v1/delete-account")
+                val conn = (url.openConnection() as HttpURLConnection).apply {
+                    requestMethod = "POST"
+                    connectTimeout = 30_000
+                    readTimeout = 60_000
+                    doOutput = true
+                    setRequestProperty("Authorization", "Bearer $accessToken")
+                    setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                    setRequestProperty("Content-Type", "application/json")
+                    setRequestProperty("Idempotency-Key", idempotencyKey)
+                }
+                // Nunca enviar user_id: la función deriva UID del JWT.
+                OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { it.write("{}") }
+                val code = conn.responseCode
+                val body = runCatching {
+                    (if (code in 200..299) conn.inputStream else conn.errorStream)
+                        ?.bufferedReader()
+                        ?.readText()
+                        .orEmpty()
+                }.getOrDefault("")
+                conn.disconnect()
+                if (code in 200..299) {
+                    runCatching { supabase.auth.signOut() }
+                    Result.success(Unit)
+                } else {
+                    Result.failure(
+                        AuthErrorMapper.toException(
+                            AuthErrorCode.ACCOUNT_DELETION_FAILED,
+                            "delete-account HTTP $code ${body.take(120)}"
+                        )
+                    )
+                }
+            } catch (e: Exception) {
+                Result.failure(mapSupabaseException(e))
+            }
+        }
     }
 
     override suspend fun sendEmailVerification(email: String): Result<Unit> {
@@ -254,6 +434,7 @@ class SupabaseAuthRepository(
     }
 
     override suspend fun logout() {
+        runCatching { PushTokenRegistrar.unlinkForCurrentUser() }
         supabase.auth.signOut()
     }
 
@@ -293,4 +474,14 @@ class SupabaseAuthRepository(
 
     private fun mapSupabaseException(e: Exception): Exception =
         AuthErrorMapper.fromThrowableToException(e)
+
+    @Serializable
+    private data class UserConsentRow(
+        val id: String? = null
+    )
+
+    companion object {
+        private const val TAG = "SupabaseAuthRepository"
+        private const val USER_CONSENTS_TABLE = "user_consents"
+    }
 }

@@ -222,6 +222,17 @@ class PlatformSupabaseDataSource {
         }
     }
 
+    suspend fun deleteDeviceTokens(userId: String): Result<Unit> {
+        return try {
+            supabase.from(SupabaseTables.DEVICE_TOKENS).delete {
+                filter { eq("user_id", userId) }
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     suspend fun fetchSavedPostIds(userId: String): Set<String> {
         return try {
             supabase.from(SupabaseTables.POST_SAVES)
