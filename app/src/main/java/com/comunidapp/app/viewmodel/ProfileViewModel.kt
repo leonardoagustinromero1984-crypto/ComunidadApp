@@ -144,8 +144,10 @@ class ProfileViewModel(
 
     fun logout() {
         viewModelScope.launch {
+            runCatching { authRepository.logout() }
             permissionRepository.invalidate()
-            authRepository.logout()
+            com.comunidapp.app.domain.organization.OrganizationContextProvider.clear()
+            com.comunidapp.app.viewmodel.moderation.AdministrativeSessionCleanup.clear()
         }
     }
 

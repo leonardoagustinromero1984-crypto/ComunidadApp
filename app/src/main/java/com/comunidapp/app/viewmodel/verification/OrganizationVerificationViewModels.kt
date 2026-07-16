@@ -133,6 +133,9 @@ class OrganizationVerificationReviewViewModel(
 
     fun refresh() {
         viewModelScope.launch {
+            _uiState.update {
+                OrganizationVerificationReviewUiState(phase = AdministrativeScreenPhase.Loading)
+            }
             val gate = AdministrativeAccessGate.evaluate(
                 authRepository,
                 permissionRepository,

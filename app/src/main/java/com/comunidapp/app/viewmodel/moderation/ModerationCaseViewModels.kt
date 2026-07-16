@@ -37,13 +37,14 @@ class ModerationCaseQueueViewModel(
 
     private val _uiState = MutableStateFlow(ModerationCaseQueueUiState())
     val uiState: StateFlow<ModerationCaseQueueUiState> = _uiState.asStateFlow()
+    private var createLock = false
 
     init { refresh() }
 
     fun refresh() {
         viewModelScope.launch {
             _uiState.update {
-                it.copy(phase = AdministrativeScreenPhase.Loading, cases = emptyList())
+                ModerationCaseQueueUiState(phase = AdministrativeScreenPhase.Loading)
             }
             val gate = AdministrativeAccessGate.evaluate(
                 authRepository,
@@ -87,27 +88,43 @@ class ModerationCaseQueueViewModel(
     }
 
     fun createCase(title: String) {
-        if (_uiState.value.phase == AdministrativeScreenPhase.Submitting) return
+        if (createLock) return
+        if (_uiState.value.phase != AdministrativeScreenPhase.Content &&
+            _uiState.value.phase != AdministrativeScreenPhase.Empty
+        ) {
+            return
+        }
+        if (!_uiState.value.canManageCases) {
+            _uiState.update { it.copy(message = "No tenés permiso.") }
+            return
+        }
+        createLock = true
         viewModelScope.launch {
-            if (!_uiState.value.canManageCases) {
-                _uiState.update { it.copy(message = "No tenés permiso.") }
-                return@launch
-            }
-            val actor = authRepository.getCurrentUser()?.id ?: return@launch
-            _uiState.update { it.copy(phase = AdministrativeScreenPhase.Submitting) }
-            when (val result = moderationRepository.createCase(title, actor, System.currentTimeMillis())) {
-                is AppResult.Success -> {
-                    _uiState.update { it.copy(message = "Caso creado") }
-                    refresh()
-                }
-                is AppResult.Failure -> {
-                    _uiState.update {
-                        it.copy(
-                            phase = AdministrativeScreenPhase.Content,
-                            message = result.error.userMessage
-                        )
+            try {
+                val actor = authRepository.getCurrentUser()?.id ?: return@launch
+                _uiState.update { it.copy(phase = AdministrativeScreenPhase.Submitting) }
+                when (
+                    val result = moderationRepository.createCase(
+                        title,
+                        actor,
+                        System.currentTimeMillis()
+                    )
+                ) {
+                    is AppResult.Success -> {
+                        _uiState.update { it.copy(message = "Caso creado") }
+                        refresh()
+                    }
+                    is AppResult.Failure -> {
+                        _uiState.update {
+                            it.copy(
+                                phase = AdministrativeScreenPhase.Content,
+                                message = result.error.userMessage
+                            )
+                        }
                     }
                 }
+            } finally {
+                createLock = false
             }
         }
     }
@@ -210,6 +227,10 @@ class ModerationCaseDetailViewModel(
     }
 
     fun assignToMe() {
+        if (!_uiState.value.canManageCases) {
+            _uiState.update { it.copy(message = "No tenés permiso para gestionar casos.") }
+            return
+        }
         mutate {
             val actor = authRepository.getCurrentUser()?.id ?: return@mutate AppResult.Failure(
                 com.comunidapp.app.core.result.AppError(
@@ -224,12 +245,20 @@ class ModerationCaseDetailViewModel(
     }
 
     fun changeStatus(status: ModerationCaseStatus, closeReasonCode: String? = null) {
+        if (!_uiState.value.canManageCases) {
+            _uiState.update { it.copy(message = "No tenés permiso para gestionar casos.") }
+            return
+        }
         mutate {
             moderationRepository.changeCaseStatus(caseId, status, closeReasonCode, clock())
         }
     }
 
     fun addNote(body: String) {
+        if (!_uiState.value.canManageCases) {
+            _uiState.update { it.copy(message = "No tenés permiso para gestionar casos.") }
+            return
+        }
         mutate {
             val actor = authRepository.getCurrentUser()?.id ?: return@mutate AppResult.Failure(
                 com.comunidapp.app.core.result.AppError(
@@ -283,6 +312,7 @@ class ModerationCaseDetailViewModel(
 
     private fun mutate(block: suspend () -> AppResult<*>) {
         if (lock) return
+        if (_uiState.value.phase != AdministrativeScreenPhase.Content) return
         viewModelScope.launch {
             if (lock) return@launch
             lock = true

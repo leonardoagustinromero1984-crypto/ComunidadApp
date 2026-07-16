@@ -86,6 +86,11 @@ class ModerationAppealQueueViewModel(
 
     fun review(appealId: String, decision: ModerationAppealStatus, reason: String) {
         if (lock) return
+        if (_uiState.value.phase != AdministrativeScreenPhase.Content &&
+            _uiState.value.phase != AdministrativeScreenPhase.Empty
+        ) {
+            return
+        }
         viewModelScope.launch {
             if (lock) return@launch
             val actor = authRepository.getCurrentUser()?.id ?: return@launch

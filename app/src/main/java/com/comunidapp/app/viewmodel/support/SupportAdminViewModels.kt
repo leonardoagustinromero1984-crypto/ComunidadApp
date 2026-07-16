@@ -10,6 +10,7 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.data.repository.SupportRepository
 import com.comunidapp.app.domain.authorization.PermissionCode
+import com.comunidapp.app.domain.support.SupportCategory
 import com.comunidapp.app.domain.support.SupportMessage
 import com.comunidapp.app.domain.support.SupportTicket
 import com.comunidapp.app.domain.support.SupportTicketStatus
@@ -44,6 +45,9 @@ class SupportAdminQueueViewModel(
 
     fun refresh() {
         viewModelScope.launch {
+            _uiState.update {
+                SupportAdminQueueUiState(phase = AdministrativeScreenPhase.Loading)
+            }
             val gate = AdministrativeAccessGate.evaluate(
                 authRepository,
                 permissionRepository,
@@ -57,22 +61,30 @@ class SupportAdminQueueViewModel(
                 }
                 return@launch
             }
-            _uiState.update { it.copy(phase = AdministrativeScreenPhase.Loading) }
             when (val result = supportRepository.listSupportQueue()) {
                 is AppResult.Success -> {
+                    val canSensitive = gate.canViewSensitive
+                    val tickets = if (canSensitive) {
+                        result.data
+                    } else {
+                        result.data.filter {
+                            it.category != SupportCategory.PRIVACY &&
+                                it.category != SupportCategory.SAFETY
+                        }
+                    }
                     _uiState.update {
                         it.copy(
-                            phase = if (result.data.isEmpty()) {
+                            phase = if (tickets.isEmpty()) {
                                 AdministrativeScreenPhase.Empty
                             } else {
                                 AdministrativeScreenPhase.Content
                             },
-                            tickets = result.data,
+                            tickets = tickets,
                             canManage = AdministrativeAccessGate.hasExtra(
                                 gate,
                                 PermissionCode.SUPPORT_MANAGE
                             ),
-                            canViewSensitive = gate.canViewSensitive
+                            canViewSensitive = canSensitive
                         )
                     }
                 }
@@ -128,6 +140,9 @@ class SupportTicketAdminDetailViewModel(
 
     fun refresh() {
         viewModelScope.launch {
+            _uiState.update {
+                SupportTicketAdminDetailUiState(phase = AdministrativeScreenPhase.Loading)
+            }
             val gate = AdministrativeAccessGate.evaluate(
                 authRepository,
                 permissionRepository,
@@ -143,6 +158,18 @@ class SupportTicketAdminDetailViewModel(
             }
             when (val result = supportRepository.getTicketDetail(ticketId)) {
                 is AppResult.Success -> {
+                    val ticket = result.data.ticket
+                    if ((ticket.category == SupportCategory.PRIVACY ||
+                            ticket.category == SupportCategory.SAFETY) &&
+                        !gate.canViewSensitive
+                    ) {
+                        _uiState.update {
+                            SupportTicketAdminDetailUiState(
+                                phase = AdministrativeScreenPhase.AccessDenied
+                            )
+                        }
+                        return@launch
+                    }
                     val msgs = SensitiveDataPresentation.messagesForStaff(
                         result.data.messages,
                         includeInternal = gate.canViewSensitive ||
@@ -151,7 +178,7 @@ class SupportTicketAdminDetailViewModel(
                     _uiState.update {
                         it.copy(
                             phase = AdministrativeScreenPhase.Content,
-                            ticket = result.data.ticket,
+                            ticket = ticket,
                             messages = msgs,
                             canManage = AdministrativeAccessGate.hasExtra(
                                 gate,

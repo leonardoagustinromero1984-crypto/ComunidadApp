@@ -41,6 +41,9 @@ class AdministrativeAuditViewModel(
 
     fun refresh() {
         viewModelScope.launch {
+            _uiState.update {
+                AdministrativeAuditUiState(phase = AdministrativeScreenPhase.Loading)
+            }
             val gate = AdministrativeAccessGate.evaluate(
                 authRepository,
                 permissionRepository,
@@ -52,7 +55,6 @@ class AdministrativeAuditViewModel(
                 }
                 return@launch
             }
-            _uiState.update { it.copy(phase = AdministrativeScreenPhase.Loading, events = emptyList()) }
             when (val result = auditRepository.listAdministrativeEvents()) {
                 is AppResult.Success -> {
                     _uiState.update {

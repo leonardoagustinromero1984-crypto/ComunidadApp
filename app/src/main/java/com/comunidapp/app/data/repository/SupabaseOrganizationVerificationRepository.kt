@@ -40,10 +40,8 @@ class SupabaseOrganizationVerificationRepository : OrganizationVerificationRepos
             val root = decodeObject(element) ?: throw IllegalStateException("NOT_FOUND")
             val reviewObj = root["review"]?.let { decodeObject(it) }
                 ?: throw IllegalStateException("NOT_FOUND")
-            val noteOverride = root.string("review_note")
-            parseReview(reviewObj).let { review ->
-                if (noteOverride != null) review.copy(reviewNote = noteOverride) else review
-            }
+            // Top-level review_note is the redaction authority (023); never keep nested leak.
+            parseReview(reviewObj).copy(reviewNote = root.string("review_note"))
         }
 
     override suspend fun assignVerificationReview(

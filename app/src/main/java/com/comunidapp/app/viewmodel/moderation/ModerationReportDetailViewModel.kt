@@ -109,12 +109,20 @@ class ModerationReportDetailViewModel(
     }
 
     fun triage(status: ModerationReportStatus, priority: ModerationPriority? = null) {
+        if (!_uiState.value.canManageReports) {
+            _uiState.update { it.copy(message = "No tenés permiso para gestionar reportes.") }
+            return
+        }
         mutate("Reporte actualizado") {
             moderationRepository.triageReport(reportId, status, priority, clock())
         }
     }
 
     fun markDuplicate(duplicateOfReportId: String) {
+        if (!_uiState.value.canManageReports) {
+            _uiState.update { it.copy(message = "No tenés permiso para gestionar reportes.") }
+            return
+        }
         mutate("Marcado como duplicado") {
             moderationRepository.markReportDuplicate(reportId, duplicateOfReportId, clock())
         }
@@ -177,6 +185,10 @@ class ModerationReportDetailViewModel(
     }
 
     fun attachToCase(caseId: String) {
+        if (!_uiState.value.canManageCases) {
+            _uiState.update { it.copy(message = "No tenés permiso para gestionar casos.") }
+            return
+        }
         mutate("Reporte adjunto al caso") {
             moderationRepository.attachReportToCase(reportId, caseId, clock())
         }
@@ -186,10 +198,7 @@ class ModerationReportDetailViewModel(
 
     private fun mutate(successMessage: String, block: suspend () -> AppResult<*>) {
         if (mutationLock) return
-        if (!_uiState.value.canManageReports && !_uiState.value.canManageCases) {
-            _uiState.update { it.copy(message = "No tenés permiso para esta acción.") }
-            return
-        }
+        if (_uiState.value.phase != AdministrativeScreenPhase.Content) return
         mutationLock = true
         viewModelScope.launch {
             _uiState.update {
