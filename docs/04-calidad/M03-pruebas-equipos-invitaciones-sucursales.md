@@ -111,3 +111,7 @@ PENDIENTE DE VALIDACIÓN REMOTA
 ```
 
 No se ejecutó staging en esta sesión. Release bloqueado hasta checklist PASS documentado.
+
+### Nota Etapa 5 (correctiva 021)
+
+Se detectó y corrigió en repo (sin editar 020) que la política SELECT de `organization_branches` podía exponer `contact_phone` privado a cualquier autenticado. La migración `021_organizations_branches_rls_privacy_fix.sql` restringe SELECT a `organization.view_private`; el listado público permanece vía RPC allowlist. **B04** debe revalidarse en staging tras aplicar 021.
