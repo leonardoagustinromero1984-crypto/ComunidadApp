@@ -26,22 +26,30 @@ import com.comunidapp.app.data.repository.MockPetRepository
 import com.comunidapp.app.data.repository.MockShelterRepository
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
-import com.comunidapp.app.data.repository.MockPlatformRepository
+import com.comunidapp.app.data.repository.AdministrativeAuditRepository
+import com.comunidapp.app.data.repository.MockAdministrativeAuditRepository
+import com.comunidapp.app.data.repository.MockModerationRepository
 import com.comunidapp.app.data.repository.MockOrganizationInvitationRepository
 import com.comunidapp.app.data.repository.MockOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.MockOrganizationPermissionRepository
 import com.comunidapp.app.data.repository.MockOrganizationRepository
+import com.comunidapp.app.data.repository.MockOrganizationVerificationRepository
 import com.comunidapp.app.data.repository.MockPermissionRepository
 import com.comunidapp.app.data.repository.MockPlatformAdministrationRepository
+import com.comunidapp.app.data.repository.MockPlatformRepository
 import com.comunidapp.app.data.repository.MockServiceRepository
+import com.comunidapp.app.data.repository.MockSupportRepository
+import com.comunidapp.app.data.repository.ModerationRepository
 import com.comunidapp.app.data.repository.OrganizationInvitationRepository
 import com.comunidapp.app.data.repository.OrganizationMembershipRepository
 import com.comunidapp.app.data.repository.OrganizationPermissionRepository
 import com.comunidapp.app.data.repository.OrganizationRepository
+import com.comunidapp.app.data.repository.OrganizationVerificationRepository
 import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.data.repository.PlatformAdministrationRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.ServiceRepository
+import com.comunidapp.app.data.repository.SupportRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationInvitationRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationPermissionRepository
@@ -171,6 +179,25 @@ object DataProvider {
         } else {
             MockPlatformAdministrationRepository(permissionRepository)
         }
+    }
+
+    /**
+     * M04 Etapa 2: contratos + mocks locales. Sin implementaciones Supabase todavía.
+     */
+    val moderationRepository: ModerationRepository by lazy {
+        MockModerationRepository()
+    }
+
+    val organizationVerificationRepository: OrganizationVerificationRepository by lazy {
+        MockOrganizationVerificationRepository()
+    }
+
+    val supportRepository: SupportRepository by lazy {
+        MockSupportRepository()
+    }
+
+    val administrativeAuditRepository: AdministrativeAuditRepository by lazy {
+        MockAdministrativeAuditRepository()
     }
 
     val storageService: ImageStorageService? by lazy {
