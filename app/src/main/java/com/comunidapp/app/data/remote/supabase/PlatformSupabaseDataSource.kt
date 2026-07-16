@@ -12,6 +12,7 @@ import com.comunidapp.app.data.model.ReportTargetType
 import com.comunidapp.app.data.model.ServiceReview
 import com.comunidapp.app.data.model.ShopProduct
 import io.github.jan.supabase.postgrest.from
+import io.github.jan.supabase.postgrest.postgrest
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -19,6 +20,14 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import java.util.UUID
 import kotlin.coroutines.coroutineContext
 
@@ -45,10 +54,11 @@ data class UserBlockRow(
 @Serializable
 data class ContentReportRow(
     val id: String,
-    @SerialName("reporter_id") val reporterId: String,
+    @SerialName("reporter_id") val reporterId: String? = null,
     @SerialName("target_type") val targetType: String,
     @SerialName("target_id") val targetId: String,
-    val reason: String,
+    val reason: String? = null,
+    @SerialName("reason_code") val reasonCode: String? = null,
     val details: String? = null,
     val status: String = ReportStatus.OPEN.name,
     @SerialName("created_at") val createdAt: String? = null,
@@ -325,20 +335,19 @@ class PlatformSupabaseDataSource {
         reason: String,
         details: String? = null
     ): Result<String> {
+        // reporterId ignored: create_content_report uses auth.uid() server-side.
         return try {
-            val id = UUID.randomUUID().toString()
-            supabase.from(SupabaseTables.CONTENT_REPORTS).insert(
-                ContentReportRow(
-                    id = id,
-                    reporterId = reporterId,
-                    targetType = targetType.name,
-                    targetId = targetId,
-                    reason = reason,
-                    details = details,
-                    status = ReportStatus.OPEN.name,
-                    createdAt = nowIso()
-                )
-            )
+            val element = supabase.postgrest.rpc(
+                function = "create_content_report",
+                parameters = buildJsonObject {
+                    put("p_target_type", targetType.name)
+                    put("p_target_id", targetId)
+                    put("p_reason_code", reason)
+                    details?.let { put("p_description", it) }
+                }
+            ).decodeAs<JsonElement>()
+            val id = (element as? JsonObject)?.get("id")?.jsonPrimitive?.content
+                ?: return Result.failure(IllegalStateException("CREATE_REPORT_EMPTY"))
             Result.success(id)
         } catch (e: Exception) {
             Result.failure(e)
@@ -347,13 +356,20 @@ class PlatformSupabaseDataSource {
 
     suspend fun fetchOpenReports(): List<ContentReport> {
         return try {
-            supabase.from(SupabaseTables.CONTENT_REPORTS)
-                .select {
-                    filter { eq("status", ReportStatus.OPEN.name) }
-                    order("created_at", Order.DESCENDING)
+            val element = supabase.postgrest.rpc(
+                function = "list_moderation_queue",
+                parameters = buildJsonObject {
+                    put("p_status", ReportStatus.OPEN.name)
+                    put("p_limit", 50)
                 }
-                .decodeList<ContentReportRow>()
-                .map(::parseContentReport)
+            ).decodeAs<JsonElement>()
+            val array = element as? JsonArray ?: return emptyList()
+            val mapper = Json { ignoreUnknownKeys = true }
+            array.mapNotNull { item ->
+                runCatching {
+                    mapper.decodeFromJsonElement(ContentReportRow.serializer(), item)
+                }.getOrNull()?.let(::parseContentReport)
+            }.filter { it.status == ReportStatus.OPEN }
         } catch (_: Exception) {
             emptyList()
         }
@@ -367,14 +383,15 @@ class PlatformSupabaseDataSource {
         status: ReportStatus,
         reviewerId: String
     ): Result<Unit> {
+        // reviewerId ignored: triage_content_report uses auth.uid() server-side.
         return try {
-            supabase.from(SupabaseTables.CONTENT_REPORTS).update(
-                mapOf(
-                    "status" to status.name,
-                    "reviewed_at" to nowIso(),
-                    "reviewed_by" to reviewerId
-                )
-            ) { filter { eq("id", id) } }
+            supabase.postgrest.rpc(
+                function = "triage_content_report",
+                parameters = buildJsonObject {
+                    put("p_report_id", id)
+                    put("p_status", status.name)
+                }
+            ).decodeAs<JsonElement>()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -582,10 +599,10 @@ fun parseNotification(row: NotificationRow): AppNotification = AppNotification(
 
 fun parseContentReport(row: ContentReportRow): ContentReport = ContentReport(
     id = row.id,
-    reporterId = row.reporterId,
+    reporterId = row.reporterId.orEmpty(),
     targetType = ReportTargetType.fromString(row.targetType),
     targetId = row.targetId,
-    reason = row.reason,
+    reason = row.reasonCode ?: row.reason.orEmpty(),
     details = row.details,
     status = ReportStatus.fromString(row.status),
     createdAt = row.createdAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() }

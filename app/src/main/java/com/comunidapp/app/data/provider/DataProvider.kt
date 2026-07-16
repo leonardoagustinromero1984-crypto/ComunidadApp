@@ -50,14 +50,18 @@ import com.comunidapp.app.data.repository.PlatformAdministrationRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.ServiceRepository
 import com.comunidapp.app.data.repository.SupportRepository
+import com.comunidapp.app.data.repository.SupabaseAdministrativeAuditRepository
+import com.comunidapp.app.data.repository.SupabaseModerationRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationInvitationRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationPermissionRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationRepository
+import com.comunidapp.app.data.repository.SupabaseOrganizationVerificationRepository
 import com.comunidapp.app.data.repository.SupabasePermissionRepository
 import com.comunidapp.app.data.repository.SupabasePlatformAdministrationRepository
 import com.comunidapp.app.data.repository.SupabasePlatformRepository
 import com.comunidapp.app.data.repository.SupabaseServiceRepository
+import com.comunidapp.app.data.repository.SupabaseSupportRepository
 import com.comunidapp.app.data.repository.ShelterRepository
 import com.comunidapp.app.data.repository.SupabaseAdoptionRepository
 import com.comunidapp.app.data.repository.SupabaseCommunityRepository
@@ -182,22 +186,30 @@ object DataProvider {
     }
 
     /**
-     * M04 Etapa 2: contratos + mocks locales. Sin implementaciones Supabase todavía.
+     * M04 Etapa 3: repositorios Supabase cuando useSupabase; mocks locales en caso contrario.
      */
     val moderationRepository: ModerationRepository by lazy {
-        MockModerationRepository()
+        if (useSupabase) SupabaseModerationRepository() else MockModerationRepository()
     }
 
     val organizationVerificationRepository: OrganizationVerificationRepository by lazy {
-        MockOrganizationVerificationRepository()
+        if (useSupabase) {
+            SupabaseOrganizationVerificationRepository()
+        } else {
+            MockOrganizationVerificationRepository()
+        }
     }
 
     val supportRepository: SupportRepository by lazy {
-        MockSupportRepository()
+        if (useSupabase) SupabaseSupportRepository() else MockSupportRepository()
     }
 
     val administrativeAuditRepository: AdministrativeAuditRepository by lazy {
-        MockAdministrativeAuditRepository()
+        if (useSupabase) {
+            SupabaseAdministrativeAuditRepository()
+        } else {
+            MockAdministrativeAuditRepository()
+        }
     }
 
     val storageService: ImageStorageService? by lazy {

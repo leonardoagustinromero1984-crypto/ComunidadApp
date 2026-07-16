@@ -19,6 +19,15 @@ enum class PermissionCode(val code: String) {
     PROFILE_READ_PUBLIC("profile.read.public"),
     MODERATION_VIEW("moderation.view"),
     MODERATION_MANAGE_REPORTS("moderation.manage_reports"),
+    MODERATION_MANAGE_CASES("moderation.manage_cases"),
+    MODERATION_APPLY_ACTIONS("moderation.apply_actions"),
+    MODERATION_VIEW_SENSITIVE("moderation.view_sensitive"),
+    MODERATION_REVIEW_APPEALS("moderation.review_appeals"),
+    ORGANIZATIONS_REVIEW_VERIFICATION("organizations.review_verification"),
+    ORGANIZATIONS_REVOKE_VERIFICATION("organizations.revoke_verification"),
+    SUPPORT_VIEW("support.view"),
+    SUPPORT_MANAGE("support.manage"),
+    SUPPORT_VIEW_SENSITIVE("support.view_sensitive"),
     USERS_VIEW_PRIVATE("users.view_private"),
     USERS_CHANGE_STATUS("users.change_status"),
     ROLES_VIEW("roles.view"),
@@ -65,10 +74,18 @@ object RolePermissionMatrix {
 
     private val MODERATOR: Set<PermissionCode> = USER + setOf(
         PermissionCode.MODERATION_VIEW,
-        PermissionCode.MODERATION_MANAGE_REPORTS
+        PermissionCode.MODERATION_MANAGE_REPORTS,
+        PermissionCode.MODERATION_MANAGE_CASES,
+        PermissionCode.MODERATION_REVIEW_APPEALS
     )
 
     private val ADMIN: Set<PermissionCode> = MODERATOR + setOf(
+        PermissionCode.MODERATION_APPLY_ACTIONS,
+        PermissionCode.MODERATION_VIEW_SENSITIVE,
+        PermissionCode.ORGANIZATIONS_REVIEW_VERIFICATION,
+        PermissionCode.SUPPORT_VIEW,
+        PermissionCode.SUPPORT_MANAGE,
+        PermissionCode.SUPPORT_VIEW_SENSITIVE,
         PermissionCode.USERS_VIEW_PRIVATE,
         PermissionCode.USERS_CHANGE_STATUS,
         PermissionCode.ROLES_VIEW,
@@ -77,7 +94,9 @@ object RolePermissionMatrix {
         PermissionCode.AUDIT_VIEW
     )
 
-    private val SUPERADMIN: Set<PermissionCode> = ADMIN
+    private val SUPERADMIN: Set<PermissionCode> = ADMIN + setOf(
+        PermissionCode.ORGANIZATIONS_REVOKE_VERIFICATION
+    )
 
     fun permissionsFor(roles: Set<PlatformRoleCode>): Set<PermissionCode> {
         if (roles.isEmpty()) return emptySet()

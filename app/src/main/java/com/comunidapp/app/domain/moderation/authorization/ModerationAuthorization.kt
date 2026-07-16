@@ -27,6 +27,15 @@ enum class AdministrativePermissionCode(val code: String) {
         fun fromM02(code: PermissionCode): AdministrativePermissionCode? = when (code) {
             PermissionCode.MODERATION_VIEW -> MODERATION_VIEW
             PermissionCode.MODERATION_MANAGE_REPORTS -> MODERATION_MANAGE_REPORTS
+            PermissionCode.MODERATION_MANAGE_CASES -> MODERATION_MANAGE_CASES
+            PermissionCode.MODERATION_APPLY_ACTIONS -> MODERATION_APPLY_ACTIONS
+            PermissionCode.MODERATION_VIEW_SENSITIVE -> MODERATION_VIEW_SENSITIVE
+            PermissionCode.MODERATION_REVIEW_APPEALS -> MODERATION_REVIEW_APPEALS
+            PermissionCode.ORGANIZATIONS_REVIEW_VERIFICATION -> ORGANIZATIONS_REVIEW_VERIFICATION
+            PermissionCode.ORGANIZATIONS_REVOKE_VERIFICATION -> ORGANIZATIONS_REVOKE_VERIFICATION
+            PermissionCode.SUPPORT_VIEW -> SUPPORT_VIEW
+            PermissionCode.SUPPORT_MANAGE -> SUPPORT_MANAGE
+            PermissionCode.SUPPORT_VIEW_SENSITIVE -> SUPPORT_VIEW_SENSITIVE
             PermissionCode.AUDIT_VIEW -> AUDIT_VIEW
             else -> null
         }
