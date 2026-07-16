@@ -26,9 +26,17 @@ import com.comunidapp.app.data.repository.MockShelterRepository
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.MockPlatformRepository
+import com.comunidapp.app.data.repository.MockOrganizationInvitationRepository
+import com.comunidapp.app.data.repository.MockOrganizationMembershipRepository
+import com.comunidapp.app.data.repository.MockOrganizationPermissionRepository
+import com.comunidapp.app.data.repository.MockOrganizationRepository
 import com.comunidapp.app.data.repository.MockPermissionRepository
 import com.comunidapp.app.data.repository.MockPlatformAdministrationRepository
 import com.comunidapp.app.data.repository.MockServiceRepository
+import com.comunidapp.app.data.repository.OrganizationInvitationRepository
+import com.comunidapp.app.data.repository.OrganizationMembershipRepository
+import com.comunidapp.app.data.repository.OrganizationPermissionRepository
+import com.comunidapp.app.data.repository.OrganizationRepository
 import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.data.repository.PlatformAdministrationRepository
 import com.comunidapp.app.data.repository.PlatformRepository
@@ -101,6 +109,28 @@ object DataProvider {
 
     val permissionRepository: PermissionRepository by lazy {
         if (useSupabase) SupabasePermissionRepository() else MockPermissionRepository()
+    }
+
+    /**
+     * M03 Etapa 2: solo mocks. Sin cliente Supabase ni migraciones.
+     */
+    val organizationRepository: OrganizationRepository by lazy {
+        MockOrganizationRepository()
+    }
+
+    val organizationMembershipRepository: OrganizationMembershipRepository by lazy {
+        MockOrganizationMembershipRepository()
+    }
+
+    val organizationInvitationRepository: OrganizationInvitationRepository by lazy {
+        MockOrganizationInvitationRepository(organizationMembershipRepository)
+    }
+
+    val organizationPermissionRepository: OrganizationPermissionRepository by lazy {
+        MockOrganizationPermissionRepository(
+            organizationRepository,
+            organizationMembershipRepository
+        )
     }
 
     val platformAdministrationRepository: PlatformAdministrationRepository by lazy {

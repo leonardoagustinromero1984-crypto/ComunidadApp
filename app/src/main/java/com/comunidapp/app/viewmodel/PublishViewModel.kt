@@ -152,14 +152,12 @@ class PublishViewModel(
                         }
                         return@launch
                     }
+                    // M03: AccountType no implica organización ni shelter_id institucional.
+                    // Vinculación real vía OrganizationResourceLink (Etapa 3+).
                     val adoption = AdoptionPost(
                         id = "",
                         publisherId = author.id,
-                        shelterId = if (author.accountType == com.comunidapp.app.data.model.AccountType.SHELTER) {
-                            author.id
-                        } else {
-                            null
-                        },
+                        shelterId = null,
                         shelterName = author.name,
                         name = name.trim(),
                         species = species,
