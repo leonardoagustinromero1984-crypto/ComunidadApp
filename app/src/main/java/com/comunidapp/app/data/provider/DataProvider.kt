@@ -27,6 +27,16 @@ import com.comunidapp.app.data.repository.MockShelterRepository
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.AdministrativeAuditRepository
+import com.comunidapp.app.data.repository.FileAccessRepository
+import com.comunidapp.app.data.repository.FileAssetRepository
+import com.comunidapp.app.data.repository.FileDownloadRepository
+import com.comunidapp.app.data.repository.FileRetentionRepository
+import com.comunidapp.app.data.repository.FileUploadRepository
+import com.comunidapp.app.data.repository.MockFileAccessRepository
+import com.comunidapp.app.data.repository.MockFileAssetRepository
+import com.comunidapp.app.data.repository.MockFileDownloadRepository
+import com.comunidapp.app.data.repository.MockFileRetentionRepository
+import com.comunidapp.app.data.repository.MockFileUploadRepository
 import com.comunidapp.app.data.repository.MockAdministrativeAuditRepository
 import com.comunidapp.app.data.repository.MockModerationRepository
 import com.comunidapp.app.data.repository.MockOrganizationInvitationRepository
@@ -210,6 +220,31 @@ object DataProvider {
         } else {
             MockAdministrativeAuditRepository()
         }
+    }
+
+    /**
+     * M05 Etapa 2: contratos + mocks deterministas.
+     * Sin implementaciones Supabase nuevas; servicios Storage legacy se mantienen abajo.
+     * useSupabase=false (y también true en Etapa 2) → mocks M05, nunca null.
+     */
+    private val mockFileAssetRepository: MockFileAssetRepository by lazy { MockFileAssetRepository() }
+
+    val fileAssetRepository: FileAssetRepository by lazy { mockFileAssetRepository }
+
+    val fileUploadRepository: FileUploadRepository by lazy {
+        MockFileUploadRepository(mockFileAssetRepository)
+    }
+
+    val fileDownloadRepository: FileDownloadRepository by lazy {
+        MockFileDownloadRepository(mockFileAssetRepository)
+    }
+
+    val fileAccessRepository: FileAccessRepository by lazy {
+        MockFileAccessRepository(mockFileAssetRepository)
+    }
+
+    val fileRetentionRepository: FileRetentionRepository by lazy {
+        MockFileRetentionRepository(mockFileAssetRepository)
     }
 
     val storageService: ImageStorageService? by lazy {

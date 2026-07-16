@@ -1,5 +1,12 @@
 package com.comunidapp.app.data.remote.storage
 
+/**
+ * Paths legacy / existentes (M02–M03 y media social en `leover`).
+ *
+ * Paths nuevos M05 (con assetId) se construyen vía
+ * [com.comunidapp.app.domain.files.FilePathBuilder].
+ * No crear builders incompatibles: este objeto permanece la fuente de paths legacy.
+ */
 object StoragePaths {
     /** Path oficial M02: ownership validado en Storage RLS. */
     fun userAvatar(userId: String, filename: String = "avatar.jpg"): String =
@@ -16,4 +23,8 @@ object StoragePaths {
     fun postImage(postId: String) = "posts/$postId/image.jpg"
     fun adoptionImage(adoptionId: String) = "adoptions/$adoptionId/image.jpg"
     fun lostFoundImage(postId: String) = "lost_found/$postId/image.jpg"
+
+    /** Reconoce si un path coincide con convención legacy (solo lectura). */
+    fun isLegacyStylePath(path: String): Boolean =
+        com.comunidapp.app.domain.files.FilePathBuilder.recognizeLegacyReadPath(path) != null
 }
