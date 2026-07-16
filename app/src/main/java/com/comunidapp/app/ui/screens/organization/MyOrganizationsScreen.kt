@@ -33,6 +33,7 @@ import com.comunidapp.app.viewmodel.MyOrganizationsViewModel
 fun MyOrganizationsScreen(
     onNavigateBack: () -> Unit,
     onCreateOrganization: () -> Unit,
+    onManageOrganization: (String) -> Unit,
     onEditOrganization: (String) -> Unit,
     onOpenPublic: (String) -> Unit,
     viewModel: MyOrganizationsViewModel = viewModel()
@@ -85,6 +86,7 @@ fun MyOrganizationsScreen(
                         items(uiState.organizations, key = { it.id.value }) { org ->
                             OrganizationListItem(
                                 organization = org,
+                                onManage = { onManageOrganization(org.id.value) },
                                 onEdit = { onEditOrganization(org.id.value) },
                                 onOpenPublic = { onOpenPublic(org.slug.value) }
                             )
@@ -99,13 +101,14 @@ fun MyOrganizationsScreen(
 @Composable
 private fun OrganizationListItem(
     organization: Organization,
+    onManage: () -> Unit,
     onEdit: () -> Unit,
     onOpenPublic: () -> Unit
 ) {
     OutlinedCard(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onEdit),
+            .clickable(onClick = onManage),
         shape = RoundedCornerShape(14.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
@@ -126,6 +129,18 @@ private fun OrganizationListItem(
                 style = MaterialTheme.typography.labelMedium
             )
             Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = "Administrar",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.clickable(onClick = onManage)
+            )
+            Text(
+                text = "Editar perfil",
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier.clickable(onClick = onEdit)
+            )
             Text(
                 text = "Ver perfil público",
                 color = MaterialTheme.colorScheme.primary,

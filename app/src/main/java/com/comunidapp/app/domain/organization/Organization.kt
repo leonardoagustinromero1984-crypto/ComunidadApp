@@ -104,13 +104,47 @@ data class OrganizationBranch(
     val id: String,
     val organizationId: OrganizationId,
     val name: String,
-    val address: String? = null,
+    val addressLine: String? = null,
     val city: String? = null,
     val province: String? = null,
     val countryCode: String? = null,
+    val postalCode: String? = null,
     val phone: String? = null,
-    val scheduleText: String? = null,
-    val active: Boolean = true
+    val phonePublic: Boolean = false,
+    val openingHoursJson: String? = null,
+    val status: OrganizationBranchStatus = OrganizationBranchStatus.ACTIVE
+)
+
+enum class OrganizationBranchStatus {
+    ACTIVE,
+    INACTIVE,
+    CLOSED
+}
+
+data class CreateOrganizationBranchCommand(
+    val organizationId: OrganizationId,
+    val name: String,
+    val addressLine: String? = null,
+    val city: String? = null,
+    val province: String? = null,
+    val countryCode: String? = null,
+    val postalCode: String? = null,
+    val phone: String? = null,
+    val phonePublic: Boolean = false,
+    val openingHoursJson: String? = null
+)
+
+data class UpdateOrganizationBranchCommand(
+    val branchId: String,
+    val name: String? = null,
+    val addressLine: String? = null,
+    val city: String? = null,
+    val province: String? = null,
+    val countryCode: String? = null,
+    val postalCode: String? = null,
+    val phone: String? = null,
+    val phonePublic: Boolean? = null,
+    val openingHoursJson: String? = null
 )
 
 enum class OrganizationValidationErrorCode {

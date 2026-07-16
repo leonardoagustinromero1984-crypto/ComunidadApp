@@ -116,4 +116,11 @@ object OrganizationInvitationRules {
             revokedAtEpochMs = nowEpochMs,
             token = null
         )
+
+    fun markDeclined(invitation: OrganizationInvitation, nowEpochMs: Long): OrganizationInvitation =
+        invitation.copy(
+            status = OrganizationInvitationStatus.DECLINED,
+            revokedAtEpochMs = nowEpochMs,
+            token = null
+        )
 }

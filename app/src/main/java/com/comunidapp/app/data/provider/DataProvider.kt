@@ -42,6 +42,7 @@ import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.data.repository.PlatformAdministrationRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.ServiceRepository
+import com.comunidapp.app.data.repository.SupabaseOrganizationInvitationRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationPermissionRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationRepository
@@ -116,11 +117,14 @@ object DataProvider {
     }
 
     /**
-     * M03 Etapa 3: Supabase RPCs cuando useSupabase; mocks locales en caso contrario.
-     * Invitaciones siguen mock-only (sin RPC).
+     * M03 Etapa 4: invitaciones Supabase cuando useSupabase; mock local en caso contrario.
      */
     private val mockOrganizationMembershipRepository by lazy {
         MockOrganizationMembershipRepository()
+    }
+
+    private val mockOrganizationInvitationRepository by lazy {
+        MockOrganizationInvitationRepository(mockOrganizationMembershipRepository)
     }
 
     private val mockOrganizationRepository by lazy {
@@ -140,7 +144,11 @@ object DataProvider {
     }
 
     val organizationInvitationRepository: OrganizationInvitationRepository by lazy {
-        MockOrganizationInvitationRepository(organizationMembershipRepository)
+        if (useSupabase) {
+            SupabaseOrganizationInvitationRepository(organizationMembershipRepository)
+        } else {
+            mockOrganizationInvitationRepository
+        }
     }
 
     val organizationPermissionRepository: OrganizationPermissionRepository by lazy {

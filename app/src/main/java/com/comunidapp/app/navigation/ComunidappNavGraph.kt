@@ -50,6 +50,9 @@ import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
 import com.comunidapp.app.ui.screens.organization.CreateOrganizationScreen
 import com.comunidapp.app.ui.screens.organization.EditOrganizationScreen
 import com.comunidapp.app.ui.screens.organization.MyOrganizationsScreen
+import com.comunidapp.app.ui.screens.organization.OrganizationBranchesScreen
+import com.comunidapp.app.ui.screens.organization.OrganizationManageScreen
+import com.comunidapp.app.ui.screens.organization.OrganizationTeamScreen
 import com.comunidapp.app.ui.screens.organization.PublicOrganizationScreen
 import com.comunidapp.app.ui.screens.onboarding.ProfileOnboardingScreen
 import com.comunidapp.app.ui.screens.security.AccountAccessBlockedScreen
@@ -58,6 +61,9 @@ import com.comunidapp.app.ui.screens.security.LegalConsentRequiredScreen
 import com.comunidapp.app.ui.screens.security.PasswordResetActiveScreen
 import com.comunidapp.app.viewmodel.UserPublicProfileViewModel
 import com.comunidapp.app.viewmodel.EditOrganizationViewModel
+import com.comunidapp.app.viewmodel.OrganizationBranchesViewModel
+import com.comunidapp.app.viewmodel.OrganizationManageViewModel
+import com.comunidapp.app.viewmodel.OrganizationTeamViewModel
 import com.comunidapp.app.viewmodel.PublicOrganizationViewModel
 import com.comunidapp.app.viewmodel.ChatStartViewModel
 import com.comunidapp.app.viewmodel.ChatThreadViewModel
@@ -329,6 +335,9 @@ private fun MainScreen(accountType: AccountType) {
                 MyOrganizationsScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onCreateOrganization = { navController.navigate(NavRoutes.CREATE_ORGANIZATION) },
+                    onManageOrganization = { id ->
+                        navController.navigate(NavRoutes.manageOrganization(id))
+                    },
                     onEditOrganization = { id ->
                         navController.navigate(NavRoutes.editOrganization(id))
                     },
@@ -364,6 +373,78 @@ private fun MainScreen(accountType: AccountType) {
                         viewModelStoreOwner = backStackEntry,
                         key = "edit_org_$organizationId",
                         factory = EditOrganizationViewModel.factory(organizationId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.MANAGE_ORGANIZATION,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_ORGANIZATION_ID) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val organizationId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_ORGANIZATION_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                OrganizationManageScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onEditProfile = {
+                        navController.navigate(NavRoutes.editOrganization(organizationId))
+                    },
+                    onManageTeam = {
+                        navController.navigate(NavRoutes.organizationTeam(organizationId))
+                    },
+                    onManageBranches = {
+                        navController.navigate(NavRoutes.organizationBranches(organizationId))
+                    },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "manage_org_$organizationId",
+                        factory = OrganizationManageViewModel.factory(organizationId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.ORGANIZATION_TEAM,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_ORGANIZATION_ID) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val organizationId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_ORGANIZATION_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                OrganizationTeamScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onLeftOrganization = {
+                        navController.popBackStack(NavRoutes.MY_ORGANIZATIONS, false)
+                    },
+                    onClosedOrganization = {
+                        navController.popBackStack(NavRoutes.MY_ORGANIZATIONS, false)
+                    },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "team_org_$organizationId",
+                        factory = OrganizationTeamViewModel.factory(organizationId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.ORGANIZATION_BRANCHES,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_ORGANIZATION_ID) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val organizationId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_ORGANIZATION_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                OrganizationBranchesScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "branches_org_$organizationId",
+                        factory = OrganizationBranchesViewModel.factory(organizationId)
                     )
                 )
             }

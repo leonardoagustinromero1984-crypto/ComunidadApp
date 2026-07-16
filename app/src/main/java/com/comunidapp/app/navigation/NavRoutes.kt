@@ -36,6 +36,9 @@ object NavRoutes {
     const val MY_ORGANIZATIONS = "my_organizations"
     const val CREATE_ORGANIZATION = "create_organization"
     const val EDIT_ORGANIZATION = "edit_organization/{organizationId}"
+    const val MANAGE_ORGANIZATION = "manage_organization/{organizationId}"
+    const val ORGANIZATION_TEAM = "organization_team/{organizationId}"
+    const val ORGANIZATION_BRANCHES = "organization_branches/{organizationId}"
     const val PUBLIC_ORGANIZATION = "public_organization/{slug}"
 
     const val ADD_PET = "add_pet"
@@ -85,6 +88,12 @@ object NavRoutes {
         "user_profile/${java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())}"
     fun editOrganization(organizationId: String) =
         "edit_organization/${java.net.URLEncoder.encode(organizationId, Charsets.UTF_8.name())}"
+    fun manageOrganization(organizationId: String) =
+        "manage_organization/${java.net.URLEncoder.encode(organizationId, Charsets.UTF_8.name())}"
+    fun organizationTeam(organizationId: String) =
+        "organization_team/${java.net.URLEncoder.encode(organizationId, Charsets.UTF_8.name())}"
+    fun organizationBranches(organizationId: String) =
+        "organization_branches/${java.net.URLEncoder.encode(organizationId, Charsets.UTF_8.name())}"
     fun publicOrganization(slug: String) =
         "public_organization/${java.net.URLEncoder.encode(slug, Charsets.UTF_8.name())}"
     fun chatThread(conversationId: String, peerName: String) =

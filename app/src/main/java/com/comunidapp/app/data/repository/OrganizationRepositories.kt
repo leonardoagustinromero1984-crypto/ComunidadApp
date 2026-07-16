@@ -1,7 +1,10 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.domain.organization.CreateOrganizationBranchCommand
 import com.comunidapp.app.domain.organization.CreateOrganizationInvitationCommand
 import com.comunidapp.app.domain.organization.Organization
+import com.comunidapp.app.domain.organization.OrganizationBranch
+import com.comunidapp.app.domain.organization.OrganizationBranchStatus
 import com.comunidapp.app.domain.organization.OrganizationContactVisibility
 import com.comunidapp.app.domain.organization.OrganizationId
 import com.comunidapp.app.domain.organization.OrganizationInvitation
@@ -14,6 +17,7 @@ import com.comunidapp.app.domain.organization.OrganizationType
 import com.comunidapp.app.domain.organization.OrganizationValidators
 import com.comunidapp.app.domain.organization.OrganizationVerificationStatus
 import com.comunidapp.app.domain.organization.PublicOrganization
+import com.comunidapp.app.domain.organization.UpdateOrganizationBranchCommand
 import com.comunidapp.app.domain.organization.UpdateOrganizationCommand
 import com.comunidapp.app.domain.organization.ValidatedOrganizationDraft
 import com.comunidapp.app.domain.organization.authorization.OrganizationAuthorizationContext
@@ -68,6 +72,25 @@ interface OrganizationRepository {
         resourceType: OrganizationResourceType,
         resourceId: String
     ): Result<Unit>
+
+    suspend fun listBranches(
+        organizationId: OrganizationId,
+        includePrivate: Boolean = true
+    ): Result<List<OrganizationBranch>>
+
+    suspend fun createBranch(command: CreateOrganizationBranchCommand): Result<OrganizationBranch>
+
+    suspend fun updateBranch(command: UpdateOrganizationBranchCommand): Result<OrganizationBranch>
+
+    suspend fun setBranchStatus(
+        branchId: String,
+        status: OrganizationBranchStatus
+    ): Result<OrganizationBranch>
+
+    suspend fun closeOrganization(
+        organizationId: OrganizationId,
+        reasonCode: String = "org_closed"
+    ): Result<Organization>
 }
 
 interface OrganizationMembershipRepository {
@@ -85,6 +108,36 @@ interface OrganizationMembershipRepository {
     suspend fun countActiveOwners(organizationId: OrganizationId): Int
 
     suspend fun addMembership(membership: OrganizationMembership): Result<Unit>
+
+    suspend fun listMembers(organizationId: OrganizationId): Result<List<OrganizationMembership>>
+
+    suspend fun changeMemberRole(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        role: OrganizationRoleCode,
+        reasonCode: String = "member_role_changed"
+    ): Result<OrganizationMembership>
+
+    suspend fun suspendMember(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        reasonCode: String = "member_suspended"
+    ): Result<OrganizationMembership>
+
+    suspend fun removeMember(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        reasonCode: String = "member_removed"
+    ): Result<Unit>
+
+    suspend fun leaveOrganization(organizationId: OrganizationId): Result<Unit>
+
+    suspend fun transferOwnership(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        actorNewRole: OrganizationRoleCode = OrganizationRoleCode.ADMIN,
+        reasonCode: String = "ownership_transferred"
+    ): Result<Unit>
 }
 
 interface OrganizationInvitationRepository {
@@ -101,6 +154,16 @@ interface OrganizationInvitationRepository {
         actorUserId: String,
         nowEpochMs: Long
     ): Result<OrganizationInvitation>
+
+    suspend fun listByOrganization(
+        organizationId: OrganizationId
+    ): Result<List<OrganizationInvitation>>
+
+    suspend fun listMyPending(): Result<List<OrganizationInvitation>>
+
+    suspend fun acceptByToken(token: OrganizationInvitationToken): Result<OrganizationMembership>
+
+    suspend fun declineByToken(token: OrganizationInvitationToken): Result<Unit>
 }
 
 interface OrganizationPermissionRepository {
@@ -124,12 +187,14 @@ class MockOrganizationRepository(
         MockOrganizationMembershipRepository()
 ) : OrganizationRepository {
     private val orgs = MutableStateFlow<Map<String, Organization>>(emptyMap())
+    private val branches = MutableStateFlow<Map<String, OrganizationBranch>>(emptyMap())
 
     /** Usuario “sesión” para createOrganization en mock / tests. */
     var actingUserId: String? = null
 
     fun resetForTests() {
         orgs.value = emptyMap()
+        branches.value = emptyMap()
         actingUserId = null
     }
 
@@ -326,6 +391,94 @@ class MockOrganizationRepository(
         return Result.success(Unit)
     }
 
+    override suspend fun listBranches(
+        organizationId: OrganizationId,
+        includePrivate: Boolean
+    ): Result<List<OrganizationBranch>> {
+        if (getById(organizationId) == null) {
+            return Result.failure(IllegalStateException("ORGANIZATION_NOT_FOUND"))
+        }
+        val list = branches.value.values
+            .filter { it.organizationId == organizationId && it.status != OrganizationBranchStatus.CLOSED }
+            .sortedBy { it.name.lowercase() }
+        return Result.success(list)
+    }
+
+    override suspend fun createBranch(
+        command: CreateOrganizationBranchCommand
+    ): Result<OrganizationBranch> {
+        if (getById(command.organizationId) == null) {
+            return Result.failure(IllegalStateException("ORGANIZATION_NOT_FOUND"))
+        }
+        val name = command.name.trim()
+        if (name.length < 2) {
+            return Result.failure(IllegalArgumentException("NAME_INVALID"))
+        }
+        val id = UUID.randomUUID().toString()
+        val branch = OrganizationBranch(
+            id = id,
+            organizationId = command.organizationId,
+            name = name,
+            addressLine = command.addressLine?.trim()?.ifBlank { null },
+            city = command.city?.trim()?.ifBlank { null },
+            province = command.province?.trim()?.ifBlank { null },
+            countryCode = command.countryCode?.trim()?.uppercase()?.ifBlank { null },
+            postalCode = command.postalCode?.trim()?.ifBlank { null },
+            phone = command.phone?.trim()?.ifBlank { null },
+            phonePublic = command.phonePublic,
+            openingHoursJson = command.openingHoursJson,
+            status = OrganizationBranchStatus.ACTIVE
+        )
+        branches.update { it + (id to branch) }
+        return Result.success(branch)
+    }
+
+    override suspend fun updateBranch(
+        command: UpdateOrganizationBranchCommand
+    ): Result<OrganizationBranch> {
+        val current = branches.value[command.branchId]
+            ?: return Result.failure(IllegalStateException("BRANCH_NOT_FOUND"))
+        val updated = current.copy(
+            name = command.name?.trim()?.ifBlank { null } ?: current.name,
+            addressLine = command.addressLine?.trim()?.ifBlank { null } ?: current.addressLine,
+            city = command.city?.trim()?.ifBlank { null } ?: current.city,
+            province = command.province?.trim()?.ifBlank { null } ?: current.province,
+            countryCode = command.countryCode?.trim()?.uppercase()?.ifBlank { null }
+                ?: current.countryCode,
+            postalCode = command.postalCode?.trim()?.ifBlank { null } ?: current.postalCode,
+            phone = command.phone?.trim()?.ifBlank { null } ?: current.phone,
+            phonePublic = command.phonePublic ?: current.phonePublic,
+            openingHoursJson = command.openingHoursJson ?: current.openingHoursJson
+        )
+        branches.update { it + (updated.id to updated) }
+        return Result.success(updated)
+    }
+
+    override suspend fun setBranchStatus(
+        branchId: String,
+        status: OrganizationBranchStatus
+    ): Result<OrganizationBranch> {
+        val current = branches.value[branchId]
+            ?: return Result.failure(IllegalStateException("BRANCH_NOT_FOUND"))
+        val updated = current.copy(status = status)
+        branches.update { it + (branchId to updated) }
+        return Result.success(updated)
+    }
+
+    override suspend fun closeOrganization(
+        organizationId: OrganizationId,
+        reasonCode: String
+    ): Result<Organization> {
+        val current = orgs.value[organizationId.value]
+            ?: return Result.failure(IllegalStateException("ORGANIZATION_NOT_FOUND"))
+        val updated = current.copy(
+            status = OrganizationStatus.CLOSED,
+            updatedAtEpochMs = System.currentTimeMillis()
+        )
+        orgs.update { it + (updated.id.value to updated) }
+        return Result.success(updated)
+    }
+
     private suspend fun resolveActingUserId(): String? =
         actingUserId?.takeIf { it.isNotBlank() }
             ?: AuthProvider.repository.getCurrentUser()?.id?.takeIf { it.isNotBlank() }
@@ -367,6 +520,101 @@ class MockOrganizationMembershipRepository : OrganizationMembershipRepository {
 
     override suspend fun addMembership(membership: OrganizationMembership): Result<Unit> {
         memberships.update { it + (membership.id to membership) }
+        return Result.success(Unit)
+    }
+
+    private fun updateMembership(membership: OrganizationMembership) {
+        memberships.update { it + (membership.id to membership) }
+    }
+
+    override suspend fun listMembers(
+        organizationId: OrganizationId
+    ): Result<List<OrganizationMembership>> =
+        Result.success(
+            memberships.value.values.filter {
+                it.organizationId == organizationId &&
+                    it.status in setOf(
+                        OrganizationMembershipStatus.ACTIVE,
+                        OrganizationMembershipStatus.SUSPENDED,
+                        OrganizationMembershipStatus.INVITED
+                    )
+            }
+        )
+
+    override suspend fun changeMemberRole(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        role: OrganizationRoleCode,
+        reasonCode: String
+    ): Result<OrganizationMembership> {
+        val current = getActiveMembership(organizationId, targetUserId)
+            ?: return Result.failure(IllegalStateException("MEMBER_NOT_FOUND"))
+        if (role == OrganizationRoleCode.OWNER) {
+            return Result.failure(IllegalStateException("USE_TRANSFER_OWNERSHIP"))
+        }
+        val updated = current.copy(role = role)
+        updateMembership(updated)
+        return Result.success(updated)
+    }
+
+    override suspend fun suspendMember(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        reasonCode: String
+    ): Result<OrganizationMembership> {
+        val current = getActiveMembership(organizationId, targetUserId)
+            ?: return Result.failure(IllegalStateException("MEMBER_NOT_FOUND"))
+        val updated = current.copy(status = OrganizationMembershipStatus.SUSPENDED)
+        updateMembership(updated)
+        return Result.success(updated)
+    }
+
+    override suspend fun removeMember(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        reasonCode: String
+    ): Result<Unit> {
+        val current = memberships.value.values.find {
+            it.organizationId == organizationId &&
+                it.userId == targetUserId &&
+                it.status in setOf(
+                    OrganizationMembershipStatus.ACTIVE,
+                    OrganizationMembershipStatus.SUSPENDED
+                )
+        } ?: return Result.failure(IllegalStateException("MEMBER_NOT_FOUND"))
+        updateMembership(current.copy(status = OrganizationMembershipStatus.REMOVED))
+        return Result.success(Unit)
+    }
+
+    override suspend fun leaveOrganization(organizationId: OrganizationId): Result<Unit> {
+        val actor = AuthProvider.repository.getCurrentUser()?.id
+            ?: return Result.failure(IllegalStateException("NOT_AUTHENTICATED"))
+        val current = getActiveMembership(organizationId, actor)
+            ?: return Result.failure(IllegalStateException("NOT_A_MEMBER"))
+        if (current.role == OrganizationRoleCode.OWNER && countActiveOwners(organizationId) <= 1) {
+            return Result.failure(IllegalStateException("LAST_OWNER_PROTECTED"))
+        }
+        updateMembership(current.copy(status = OrganizationMembershipStatus.LEFT))
+        return Result.success(Unit)
+    }
+
+    override suspend fun transferOwnership(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        actorNewRole: OrganizationRoleCode,
+        reasonCode: String
+    ): Result<Unit> {
+        val actor = AuthProvider.repository.getCurrentUser()?.id
+            ?: return Result.failure(IllegalStateException("NOT_AUTHENTICATED"))
+        val actorMembership = getActiveMembership(organizationId, actor)
+            ?: return Result.failure(IllegalStateException("FORBIDDEN"))
+        if (actorMembership.role != OrganizationRoleCode.OWNER) {
+            return Result.failure(IllegalStateException("FORBIDDEN"))
+        }
+        val target = getActiveMembership(organizationId, targetUserId)
+            ?: return Result.failure(IllegalStateException("TARGET_NOT_MEMBER"))
+        updateMembership(target.copy(role = OrganizationRoleCode.OWNER))
+        updateMembership(actorMembership.copy(role = actorNewRole))
         return Result.success(Unit)
     }
 }
@@ -445,6 +693,51 @@ class MockOrganizationInvitationRepository(
         val revoked = OrganizationInvitationRules.markRevoked(current, nowEpochMs)
         invites.update { it + (invitationId to revoked) }
         return Result.success(revoked)
+    }
+
+    override suspend fun listByOrganization(
+        organizationId: OrganizationId
+    ): Result<List<OrganizationInvitation>> =
+        Result.success(
+            invites.value.values.filter { it.organizationId == organizationId }
+                .sortedByDescending { it.expiresAtEpochMs }
+        )
+
+    override suspend fun listMyPending(): Result<List<OrganizationInvitation>> {
+        val actor = AuthProvider.repository.getCurrentUser()?.id
+            ?: return Result.success(emptyList())
+        val now = System.currentTimeMillis()
+        return Result.success(
+            invites.value.values.filter {
+                it.status == OrganizationInvitationStatus.PENDING &&
+                    !OrganizationInvitationRules.isExpired(it, now) &&
+                    (it.targetUserId == null || it.targetUserId == actor)
+            }
+        )
+    }
+
+    override suspend fun acceptByToken(
+        token: OrganizationInvitationToken
+    ): Result<OrganizationMembership> {
+        val actor = AuthProvider.repository.getCurrentUser()?.id
+            ?: return Result.failure(IllegalStateException("NOT_AUTHENTICATED"))
+        val invitation = invites.value.values.find {
+            it.token?.rawToken == token.rawToken && it.status == OrganizationInvitationStatus.PENDING
+        } ?: return Result.failure(IllegalStateException("INVITATION_INVALID"))
+        val now = System.currentTimeMillis()
+        accept(invitation.id, actor, token, now).getOrElse { return Result.failure(it) }
+        val membership = membershipRepository.getActiveMembership(invitation.organizationId, actor)
+            ?: return Result.failure(IllegalStateException("MEMBERSHIP_NOT_CREATED"))
+        return Result.success(membership)
+    }
+
+    override suspend fun declineByToken(token: OrganizationInvitationToken): Result<Unit> {
+        val invitation = invites.value.values.find {
+            it.token?.rawToken == token.rawToken && it.status == OrganizationInvitationStatus.PENDING
+        } ?: return Result.failure(IllegalStateException("INVITATION_INVALID"))
+        val declined = OrganizationInvitationRules.markDeclined(invitation, System.currentTimeMillis())
+        invites.update { it + (invitation.id to declined) }
+        return Result.success(Unit)
     }
 }
 

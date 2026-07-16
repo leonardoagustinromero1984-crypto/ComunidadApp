@@ -271,6 +271,7 @@ class SessionViewModel(
                 }
             _currentUser.value = null
             DataProvider.permissionRepository.invalidate()
+            com.comunidapp.app.domain.organization.OrganizationContextProvider.clear()
             emitAuth(AuthState.Unauthenticated)
         }
     }

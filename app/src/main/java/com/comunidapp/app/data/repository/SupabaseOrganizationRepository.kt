@@ -1,7 +1,10 @@
 package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.remote.supabase.supabase
+import com.comunidapp.app.domain.organization.CreateOrganizationBranchCommand
 import com.comunidapp.app.domain.organization.Organization
+import com.comunidapp.app.domain.organization.OrganizationBranch
+import com.comunidapp.app.domain.organization.OrganizationBranchStatus
 import com.comunidapp.app.domain.organization.OrganizationContactVisibility
 import com.comunidapp.app.domain.organization.OrganizationId
 import com.comunidapp.app.domain.organization.OrganizationResourceType
@@ -10,6 +13,7 @@ import com.comunidapp.app.domain.organization.OrganizationStatus
 import com.comunidapp.app.domain.organization.OrganizationType
 import com.comunidapp.app.domain.organization.OrganizationVerificationStatus
 import com.comunidapp.app.domain.organization.PublicOrganization
+import com.comunidapp.app.domain.organization.UpdateOrganizationBranchCommand
 import com.comunidapp.app.domain.organization.UpdateOrganizationCommand
 import com.comunidapp.app.domain.organization.ValidatedOrganizationDraft
 import com.comunidapp.app.domain.organization.authorization.OrganizationAuthorizationContext
@@ -73,6 +77,22 @@ data class PublicOrganizationRpcRow(
     @SerialName("cover_path") val coverPath: String? = null,
     @SerialName("contact_email") val contactEmail: String? = null,
     @SerialName("contact_phone") val contactPhone: String? = null
+)
+
+@Serializable
+data class OrganizationBranchRow(
+    val id: String,
+    @SerialName("organization_id") val organizationId: String,
+    val name: String,
+    @SerialName("address_line") val addressLine: String? = null,
+    val city: String? = null,
+    val province: String? = null,
+    @SerialName("country_code") val countryCode: String? = null,
+    @SerialName("postal_code") val postalCode: String? = null,
+    @SerialName("contact_phone") val contactPhone: String? = null,
+    @SerialName("contact_phone_public") val contactPhonePublic: Boolean = false,
+    @SerialName("opening_hours") val openingHours: JsonElement? = null,
+    val status: String = "ACTIVE"
 )
 
 @Serializable
@@ -141,6 +161,25 @@ object OrganizationRowMapper {
             invitedByUserId = row.invitedBy,
             joinedAtEpochMs = row.joinedAt.toEpochMillis()
         )
+
+    fun toBranch(row: OrganizationBranchRow): OrganizationBranch = OrganizationBranch(
+        id = row.id,
+        organizationId = OrganizationId(row.organizationId),
+        name = row.name,
+        addressLine = row.addressLine,
+        city = row.city,
+        province = row.province,
+        countryCode = row.countryCode,
+        postalCode = row.postalCode,
+        phone = row.contactPhone,
+        phonePublic = row.contactPhonePublic,
+        openingHoursJson = row.openingHours?.toString(),
+        status = parseBranchStatus(row.status)
+    )
+
+    fun parseBranchStatus(raw: String): OrganizationBranchStatus =
+        runCatching { OrganizationBranchStatus.valueOf(raw.trim().uppercase()) }
+            .getOrDefault(OrganizationBranchStatus.ACTIVE)
 
     fun parseType(raw: String): OrganizationType =
         runCatching { OrganizationType.valueOf(raw.trim().uppercase()) }
@@ -359,6 +398,120 @@ class SupabaseOrganizationRepository : OrganizationRepository {
             Result.failure(e)
         }
     }
+
+    override suspend fun listBranches(
+        organizationId: OrganizationId,
+        includePrivate: Boolean
+    ): Result<List<OrganizationBranch>> {
+        return try {
+            val element = supabase.postgrest.rpc(
+                function = "list_organization_branches",
+                parameters = buildJsonObject {
+                    put("p_organization_id", organizationId.value)
+                    put("p_include_private", includePrivate)
+                }
+            ).decodeAs<JsonElement>()
+            val array = element as? JsonArray ?: return Result.success(emptyList())
+            val list = array.mapNotNull { item ->
+                runCatching {
+                    json.decodeFromJsonElement(OrganizationBranchRow.serializer(), item)
+                }.getOrNull()?.let(OrganizationRowMapper::toBranch)
+            }
+            Result.success(list)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun createBranch(
+        command: CreateOrganizationBranchCommand
+    ): Result<OrganizationBranch> {
+        return try {
+            val row = supabase.postgrest.rpc(
+                function = "create_organization_branch",
+                parameters = buildJsonObject {
+                    put("p_organization_id", command.organizationId.value)
+                    put("p_name", command.name)
+                    command.addressLine?.let { put("p_address_line", it) }
+                    command.city?.let { put("p_city", it) }
+                    command.province?.let { put("p_province", it) }
+                    command.countryCode?.let { put("p_country_code", it) }
+                    command.postalCode?.let { put("p_postal_code", it) }
+                    command.phone?.let { put("p_contact_phone", it) }
+                    put("p_contact_phone_public", command.phonePublic)
+                    command.openingHoursJson?.let { put("p_opening_hours", it) }
+                }
+            ).decodeList<OrganizationBranchRow>().firstOrNull()
+                ?: return Result.failure(IllegalStateException("CREATE_BRANCH_EMPTY"))
+            Result.success(OrganizationRowMapper.toBranch(row))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun updateBranch(
+        command: UpdateOrganizationBranchCommand
+    ): Result<OrganizationBranch> {
+        return try {
+            val row = supabase.postgrest.rpc(
+                function = "update_organization_branch",
+                parameters = buildJsonObject {
+                    put("p_branch_id", command.branchId)
+                    command.name?.let { put("p_name", it) }
+                    command.addressLine?.let { put("p_address_line", it) }
+                    command.city?.let { put("p_city", it) }
+                    command.province?.let { put("p_province", it) }
+                    command.countryCode?.let { put("p_country_code", it) }
+                    command.postalCode?.let { put("p_postal_code", it) }
+                    command.phone?.let { put("p_contact_phone", it) }
+                    command.phonePublic?.let { put("p_contact_phone_public", it) }
+                    command.openingHoursJson?.let { put("p_opening_hours", it) }
+                }
+            ).decodeList<OrganizationBranchRow>().firstOrNull()
+                ?: return Result.failure(IllegalStateException("UPDATE_BRANCH_EMPTY"))
+            Result.success(OrganizationRowMapper.toBranch(row))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun setBranchStatus(
+        branchId: String,
+        status: OrganizationBranchStatus
+    ): Result<OrganizationBranch> {
+        return try {
+            val row = supabase.postgrest.rpc(
+                function = "set_organization_branch_status",
+                parameters = buildJsonObject {
+                    put("p_branch_id", branchId)
+                    put("p_status", status.name)
+                }
+            ).decodeList<OrganizationBranchRow>().firstOrNull()
+                ?: return Result.failure(IllegalStateException("SET_BRANCH_STATUS_EMPTY"))
+            Result.success(OrganizationRowMapper.toBranch(row))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun closeOrganization(
+        organizationId: OrganizationId,
+        reasonCode: String
+    ): Result<Organization> {
+        return try {
+            val row = supabase.postgrest.rpc(
+                function = "close_organization",
+                parameters = buildJsonObject {
+                    put("p_organization_id", organizationId.value)
+                    put("p_reason_code", reasonCode)
+                }
+            ).decodeList<OrganizationRow>().firstOrNull()
+                ?: return Result.failure(IllegalStateException("CLOSE_ORGANIZATION_EMPTY"))
+            Result.success(OrganizationRowMapper.toDomain(row))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 class SupabaseOrganizationMembershipRepository : OrganizationMembershipRepository {
@@ -427,6 +580,122 @@ class SupabaseOrganizationMembershipRepository : OrganizationMembershipRepositor
 
     override suspend fun addMembership(membership: OrganizationMembership): Result<Unit> =
         Result.failure(UnsupportedOperationException("membership writes only via RPC"))
+
+    override suspend fun listMembers(
+        organizationId: OrganizationId
+    ): Result<List<OrganizationMembership>> {
+        return try {
+            val rows = supabase.postgrest.rpc(
+                function = "list_organization_members",
+                parameters = buildJsonObject {
+                    put("p_organization_id", organizationId.value)
+                }
+            ).decodeList<OrganizationMembershipRow>()
+            Result.success(rows.map(OrganizationRowMapper::toMembership))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun changeMemberRole(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        role: OrganizationRoleCode,
+        reasonCode: String
+    ): Result<OrganizationMembership> {
+        return try {
+            val row = supabase.postgrest.rpc(
+                function = "change_organization_member_role",
+                parameters = buildJsonObject {
+                    put("p_organization_id", organizationId.value)
+                    put("p_target_user_id", targetUserId)
+                    put("p_role_code", role.name)
+                    put("p_reason_code", reasonCode)
+                }
+            ).decodeList<OrganizationMembershipRow>().firstOrNull()
+                ?: return Result.failure(IllegalStateException("CHANGE_ROLE_EMPTY"))
+            Result.success(OrganizationRowMapper.toMembership(row))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun suspendMember(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        reasonCode: String
+    ): Result<OrganizationMembership> {
+        return try {
+            val row = supabase.postgrest.rpc(
+                function = "suspend_organization_member",
+                parameters = buildJsonObject {
+                    put("p_organization_id", organizationId.value)
+                    put("p_target_user_id", targetUserId)
+                    put("p_reason_code", reasonCode)
+                }
+            ).decodeList<OrganizationMembershipRow>().firstOrNull()
+                ?: return Result.failure(IllegalStateException("SUSPEND_MEMBER_EMPTY"))
+            Result.success(OrganizationRowMapper.toMembership(row))
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun removeMember(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        reasonCode: String
+    ): Result<Unit> {
+        return try {
+            supabase.postgrest.rpc(
+                function = "remove_organization_member",
+                parameters = buildJsonObject {
+                    put("p_organization_id", organizationId.value)
+                    put("p_target_user_id", targetUserId)
+                    put("p_reason_code", reasonCode)
+                }
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun leaveOrganization(organizationId: OrganizationId): Result<Unit> {
+        return try {
+            supabase.postgrest.rpc(
+                function = "leave_organization",
+                parameters = buildJsonObject {
+                    put("p_organization_id", organizationId.value)
+                }
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun transferOwnership(
+        organizationId: OrganizationId,
+        targetUserId: String,
+        actorNewRole: OrganizationRoleCode,
+        reasonCode: String
+    ): Result<Unit> {
+        return try {
+            supabase.postgrest.rpc(
+                function = "transfer_organization_ownership",
+                parameters = buildJsonObject {
+                    put("p_organization_id", organizationId.value)
+                    put("p_target_user_id", targetUserId)
+                    put("p_actor_new_role", actorNewRole.name)
+                    put("p_reason_code", reasonCode)
+                }
+            )
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
 }
 
 /**
