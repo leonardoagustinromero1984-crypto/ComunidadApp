@@ -18,12 +18,15 @@ import com.comunidapp.app.domain.moderation.ModerationActionType
 import com.comunidapp.app.domain.moderation.ModerationAppeal
 import com.comunidapp.app.domain.moderation.ModerationAppealStatus
 import com.comunidapp.app.domain.moderation.ModerationCase
+import com.comunidapp.app.domain.moderation.ModerationCaseNote
 import com.comunidapp.app.domain.moderation.ModerationCaseStatus
 import com.comunidapp.app.domain.moderation.ModerationPriority
 import com.comunidapp.app.domain.moderation.ModerationReport
 import com.comunidapp.app.domain.moderation.ModerationReportRules
+import com.comunidapp.app.domain.moderation.ModerationReportStatus
 import com.comunidapp.app.domain.moderation.ModerationTargetRef
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
@@ -81,6 +84,67 @@ class SupabaseModerationRepository : ModerationRepository {
         }
     }
 
+    override suspend fun triageReport(
+        reportId: String,
+        status: ModerationReportStatus,
+        priority: ModerationPriority?,
+        nowEpochMs: Long
+    ): AppResult<ModerationReport> = runRpc {
+        val element = supabase.postgrest.rpc(
+            function = "triage_content_report",
+            parameters = buildJsonObject {
+                put("p_report_id", reportId)
+                put("p_status", status.name)
+                if (priority != null) put("p_priority", priority.name)
+            }
+        ).decodeAs<JsonElement>()
+        val obj = decodeObject(element) ?: throw IllegalStateException("TRIAGE_EMPTY")
+        // RPC returns partial; refresh full staff projection
+        val refreshed = supabase.postgrest.rpc(
+            function = "get_moderation_report_for_staff",
+            parameters = buildJsonObject { put("p_report_id", reportId) }
+        ).decodeAs<JsonElement>()
+        val full = decodeObject(refreshed)
+        if (full != null) {
+            parseReport(full, fallbackReporterId = "")
+        } else {
+            ModerationReport(
+                id = obj.requireString("id"),
+                reporterId = "",
+                target = ModerationTargetRef(
+                    type = com.comunidapp.app.domain.moderation.ModerationTargetType.OTHER,
+                    targetId = "unknown",
+                    otherDescription = "triaged"
+                ),
+                reasonCode = "other",
+                status = parseReportStatus(obj.string("status")),
+                priority = parsePriority(obj.string("priority")),
+                createdAtEpochMs = nowEpochMs,
+                updatedAtEpochMs = obj.longFromIso("updated_at", nowEpochMs)
+            )
+        }
+    }
+
+    override suspend fun markReportDuplicate(
+        reportId: String,
+        duplicateOfReportId: String,
+        nowEpochMs: Long
+    ): AppResult<ModerationReport> = runRpc {
+        supabase.postgrest.rpc(
+            function = "mark_content_report_duplicate",
+            parameters = buildJsonObject {
+                put("p_report_id", reportId)
+                put("p_duplicate_of_report_id", duplicateOfReportId)
+            }
+        ).decodeAs<JsonElement>()
+        val refreshed = supabase.postgrest.rpc(
+            function = "get_moderation_report_for_staff",
+            parameters = buildJsonObject { put("p_report_id", reportId) }
+        ).decodeAs<JsonElement>()
+        val obj = decodeObject(refreshed) ?: throw IllegalStateException("NOT_FOUND")
+        parseReport(obj, fallbackReporterId = "")
+    }
+
     override suspend fun createCase(
         title: String,
         createdByUserId: String,
@@ -95,6 +159,47 @@ class SupabaseModerationRepository : ModerationRepository {
         ).decodeAs<JsonElement>()
         val obj = decodeObject(element) ?: throw IllegalStateException("CREATE_CASE_EMPTY")
         parseCase(obj, fallbackCreator = createdByUserId, fallbackNow = nowEpochMs)
+    }
+
+    override suspend fun listCases(status: ModerationCaseStatus?): AppResult<List<ModerationCase>> = runRpc {
+        val element = supabase.postgrest.rpc(
+            function = "list_moderation_cases",
+            parameters = buildJsonObject {
+                if (status != null) {
+                    put("p_status", status.name)
+                }
+                put("p_limit", 50)
+            }
+        ).decodeAs<JsonElement>()
+        decodeArray(element).mapNotNull { item ->
+            decodeObject(item)?.let { parseCase(it, fallbackCreator = "", fallbackNow = 0L) }
+        }
+    }
+
+    override suspend fun getCase(caseId: String): AppResult<ModerationCaseDetail> = runRpc {
+        val element = supabase.postgrest.rpc(
+            function = "get_moderation_case",
+            parameters = buildJsonObject { put("p_case_id", caseId) }
+        ).decodeAs<JsonElement>()
+        val root = decodeObject(element) ?: throw IllegalStateException("NOT_FOUND")
+        val caseObj = root["case"]?.let { decodeObject(it) }
+            ?: throw IllegalStateException("NOT_FOUND")
+        val case = parseCase(caseObj, fallbackCreator = "", fallbackNow = 0L)
+        val reportItems = root["reports"]?.let { decodeArray(it) } ?: JsonArray(emptyList())
+        val noteItems = root["notes"]?.let { decodeArray(it) } ?: JsonArray(emptyList())
+        val actionItems = root["actions"]?.let { decodeArray(it) } ?: JsonArray(emptyList())
+        ModerationCaseDetail(
+            case = case,
+            reports = reportItems.mapNotNull { item ->
+                decodeObject(item)?.let { parseReport(it, fallbackReporterId = "") }
+            },
+            notes = noteItems.mapNotNull { item ->
+                decodeObject(item)?.let { parseNote(it) }
+            },
+            actions = actionItems.mapNotNull { item ->
+                decodeObject(item)?.let { parseAction(it, fallbackActor = "", fallbackNow = 0L) }
+            }
+        )
     }
 
     override suspend fun attachReportToCase(
@@ -144,6 +249,23 @@ class SupabaseModerationRepository : ModerationRepository {
         ).decodeAs<JsonElement>()
         val obj = decodeObject(element) ?: throw IllegalStateException("CHANGE_CASE_EMPTY")
         parseCase(obj, fallbackCreator = "", fallbackNow = nowEpochMs)
+    }
+
+    override suspend fun addInternalNote(
+        caseId: String,
+        body: String,
+        authorUserId: String,
+        nowEpochMs: Long
+    ): AppResult<ModerationCaseNote> = runRpc {
+        val element = supabase.postgrest.rpc(
+            function = "add_moderation_internal_note",
+            parameters = buildJsonObject {
+                put("p_case_id", caseId)
+                put("p_body", body)
+            }
+        ).decodeAs<JsonElement>()
+        val obj = decodeObject(element) ?: throw IllegalStateException("ADD_NOTE_EMPTY")
+        parseNote(obj, fallbackAuthor = authorUserId, fallbackNow = nowEpochMs)
     }
 
     override suspend fun recordAction(
@@ -218,6 +340,19 @@ class SupabaseModerationRepository : ModerationRepository {
         val obj = decodeObject(element) ?: throw IllegalStateException("REVIEW_APPEAL_EMPTY")
         parseAppeal(obj, fallbackSubmitter = "", fallbackNow = nowEpochMs)
     }
+
+    private fun parseNote(
+        obj: JsonObject,
+        fallbackAuthor: String = "",
+        fallbackNow: Long = 0L
+    ): ModerationCaseNote =
+        ModerationCaseNote(
+            id = obj.requireString("id"),
+            caseId = obj.string("case_id").orEmpty(),
+            authorUserId = obj.string("author_user_id") ?: fallbackAuthor,
+            body = obj.string("body").orEmpty(),
+            createdAtEpochMs = obj.longFromIso("created_at", fallbackNow)
+        )
 
     private fun parseReport(
         obj: JsonObject,

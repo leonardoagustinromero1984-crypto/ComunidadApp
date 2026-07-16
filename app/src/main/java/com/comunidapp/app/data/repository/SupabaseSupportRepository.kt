@@ -57,15 +57,19 @@ class SupabaseSupportRepository : SupportRepository {
     }
 
     override suspend fun getTicket(ticketId: String): AppResult<SupportTicket> {
+        return when (val detail = getTicketDetail(ticketId)) {
+            is AppResult.Success -> AppResult.Success(detail.data.ticket)
+            is AppResult.Failure -> detail
+        }
+    }
+
+    override suspend fun getTicketDetail(ticketId: String): AppResult<SupportTicketDetail> {
         val requesterAttempt = runCatching {
             val element = supabase.postgrest.rpc(
                 function = "get_support_ticket_for_requester",
                 parameters = buildJsonObject { put("p_ticket_id", ticketId) }
             ).decodeAs<JsonElement>()
-            val root = decodeObject(element) ?: throw IllegalStateException("NOT_FOUND")
-            val ticketObj = root["ticket"]?.let { decodeObject(it) }
-                ?: throw IllegalStateException("NOT_FOUND")
-            parseTicket(ticketObj, fallbackRequester = "")
+            parseTicketDetail(element, fallbackRequester = "")
         }
         if (requesterAttempt.isSuccess) {
             return AppResult.Success(requesterAttempt.getOrThrow())
@@ -79,10 +83,7 @@ class SupabaseSupportRepository : SupportRepository {
                 function = "get_support_ticket_for_staff",
                 parameters = buildJsonObject { put("p_ticket_id", ticketId) }
             ).decodeAs<JsonElement>()
-            val root = decodeObject(element) ?: throw IllegalStateException("NOT_FOUND")
-            val ticketObj = root["ticket"]?.let { decodeObject(it) }
-                ?: throw IllegalStateException("NOT_FOUND")
-            parseTicket(ticketObj, fallbackRequester = "")
+            parseTicketDetail(element, fallbackRequester = "")
         }
     }
 
@@ -164,6 +165,23 @@ class SupabaseSupportRepository : SupportRepository {
         ).decodeAs<JsonElement>()
         val obj = decodeObject(element) ?: throw IllegalStateException("ADD_MESSAGE_EMPTY")
         parseMessage(obj, fallbackAuthor = authorUserId, fallbackNow = nowEpochMs)
+    }
+
+    private fun parseTicketDetail(
+        element: JsonElement,
+        fallbackRequester: String
+    ): SupportTicketDetail {
+        val root = decodeObject(element) ?: throw IllegalStateException("NOT_FOUND")
+        val ticketObj = root["ticket"]?.let { decodeObject(it) }
+            ?: throw IllegalStateException("NOT_FOUND")
+        val ticket = parseTicket(ticketObj, fallbackRequester = fallbackRequester)
+        val msgs = root["messages"]?.let { decodeArray(it) } ?: kotlinx.serialization.json.JsonArray(emptyList())
+        return SupportTicketDetail(
+            ticket = ticket,
+            messages = msgs.mapNotNull { item ->
+                decodeObject(item)?.let { parseMessage(it, fallbackAuthor = "", fallbackNow = 0L) }
+            }
+        )
     }
 
     private fun parseTicket(

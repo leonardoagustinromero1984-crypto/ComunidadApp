@@ -43,6 +43,11 @@ data class ProfileUiState(
     val canViewModeration: Boolean = false,
     /** Roles/admin: roles.view o users.change_status */
     val canViewPlatformAdmin: Boolean = false,
+    val canViewCases: Boolean = false,
+    val canReviewAppeals: Boolean = false,
+    val canReviewVerification: Boolean = false,
+    val canViewSupportStaff: Boolean = false,
+    val canViewAudit: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -109,6 +114,23 @@ class ProfileViewModel(
                         ) || AuthorizationService.hasPermission(
                             authz,
                             com.comunidapp.app.domain.authorization.PermissionCode.USERS_CHANGE_STATUS
+                        ),
+                        canViewCases = AuthorizationService.canViewModeration(authz),
+                        canReviewAppeals = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.MODERATION_REVIEW_APPEALS
+                        ),
+                        canReviewVerification = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.ORGANIZATIONS_REVIEW_VERIFICATION
+                        ),
+                        canViewSupportStaff = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.SUPPORT_VIEW
+                        ),
+                        canViewAudit = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.AUDIT_VIEW
                         )
                     )
                 }

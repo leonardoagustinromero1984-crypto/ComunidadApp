@@ -17,8 +17,22 @@ import androidx.navigation.navArgument
 import com.comunidapp.app.ui.components.ComunidappBottomBar
 import com.comunidapp.app.ui.components.SessionLoadingScreen
 import com.comunidapp.app.ui.components.bottomNavItemsFor
-import com.comunidapp.app.ui.screens.admin.AdminModerationScreen
+import com.comunidapp.app.ui.screens.admin.AdministrativeAuditScreen
 import com.comunidapp.app.ui.screens.admin.PlatformAdminScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationAppealDetailScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationAppealQueueScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationCaseDetailScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationCaseQueueScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationQueueScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationReportDetailScreen
+import com.comunidapp.app.ui.screens.moderation.MyModerationAppealsScreen
+import com.comunidapp.app.ui.screens.support.CreateSupportTicketScreen
+import com.comunidapp.app.ui.screens.support.MySupportTicketsScreen
+import com.comunidapp.app.ui.screens.support.SupportQueueScreen
+import com.comunidapp.app.ui.screens.support.SupportTicketAdminDetailScreen
+import com.comunidapp.app.ui.screens.support.SupportTicketDetailScreen
+import com.comunidapp.app.ui.screens.verification.OrganizationVerificationQueueScreen
+import com.comunidapp.app.ui.screens.verification.OrganizationVerificationReviewScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.MyAdoptionsScreen
 import com.comunidapp.app.ui.screens.search.SearchScreen
@@ -296,6 +310,13 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToNotifications = { navController.navigate(NavRoutes.NOTIFICATIONS) },
                     onNavigateToModeration = { navController.navigate(NavRoutes.ADMIN_MODERATION) },
                     onNavigateToPlatformAdmin = { navController.navigate(NavRoutes.PLATFORM_ADMIN) },
+                    onNavigateToCases = { navController.navigate(NavRoutes.MODERATION_CASES) },
+                    onNavigateToAppealsStaff = { navController.navigate(NavRoutes.MODERATION_APPEALS) },
+                    onNavigateToMyAppeals = { navController.navigate(NavRoutes.MY_MODERATION_APPEALS) },
+                    onNavigateToVerification = { navController.navigate(NavRoutes.ORG_VERIFICATION_QUEUE) },
+                    onNavigateToMySupport = { navController.navigate(NavRoutes.MY_SUPPORT_TICKETS) },
+                    onNavigateToSupportStaff = { navController.navigate(NavRoutes.SUPPORT_ADMIN_QUEUE) },
+                    onNavigateToAudit = { navController.navigate(NavRoutes.ADMINISTRATIVE_AUDIT) },
                     onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
                     onNavigateToAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
                     onNavigateToMyOrganizations = { navController.navigate(NavRoutes.MY_ORGANIZATIONS) },
@@ -701,7 +722,134 @@ private fun MainScreen(accountType: AccountType) {
                 NotificationsScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(NavRoutes.ADMIN_MODERATION) {
-                AdminModerationScreen(onNavigateBack = { navController.popBackStack() })
+                ModerationQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onReportClick = { id -> navController.navigate(NavRoutes.moderationReportDetail(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.MODERATION_REPORT_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_REPORT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val reportId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_REPORT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ModerationReportDetailScreen(
+                    reportId = reportId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MODERATION_CASES) {
+                ModerationCaseQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCaseClick = { id -> navController.navigate(NavRoutes.moderationCaseDetail(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.MODERATION_CASE_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_CASE_ID) { type = NavType.StringType })
+            ) { entry ->
+                val caseId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CASE_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ModerationCaseDetailScreen(
+                    caseId = caseId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MODERATION_APPEALS) {
+                ModerationAppealQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAppealClick = { id -> navController.navigate(NavRoutes.moderationAppealDetail(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.MODERATION_APPEAL_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_APPEAL_ID) { type = NavType.StringType })
+            ) { entry ->
+                val appealId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_APPEAL_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ModerationAppealDetailScreen(
+                    appealId = appealId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MY_MODERATION_APPEALS) {
+                MyModerationAppealsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.ORG_VERIFICATION_QUEUE) {
+                OrganizationVerificationQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onReviewClick = { id -> navController.navigate(NavRoutes.orgVerificationReview(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.ORG_VERIFICATION_REVIEW,
+                arguments = listOf(navArgument(NavRoutes.ARG_REVIEW_ID) { type = NavType.StringType })
+            ) { entry ->
+                val reviewId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_REVIEW_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                OrganizationVerificationReviewScreen(
+                    reviewId = reviewId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MY_SUPPORT_TICKETS) {
+                MySupportTicketsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onTicketClick = { id -> navController.navigate(NavRoutes.supportTicketDetail(id)) },
+                    onCreateClick = { navController.navigate(NavRoutes.CREATE_SUPPORT_TICKET) }
+                )
+            }
+            composable(NavRoutes.CREATE_SUPPORT_TICKET) {
+                CreateSupportTicketScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreated = { id ->
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.supportTicketDetail(id))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.SUPPORT_TICKET_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_TICKET_ID) { type = NavType.StringType })
+            ) { entry ->
+                val ticketId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_TICKET_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                SupportTicketDetailScreen(
+                    ticketId = ticketId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.SUPPORT_ADMIN_QUEUE) {
+                SupportQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onTicketClick = { id -> navController.navigate(NavRoutes.supportAdminTicket(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.SUPPORT_ADMIN_TICKET,
+                arguments = listOf(navArgument(NavRoutes.ARG_TICKET_ID) { type = NavType.StringType })
+            ) { entry ->
+                val ticketId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_TICKET_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                SupportTicketAdminDetailScreen(
+                    ticketId = ticketId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.ADMINISTRATIVE_AUDIT) {
+                AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(NavRoutes.PLATFORM_ADMIN) {
                 PlatformAdminScreen(onNavigateBack = { navController.popBackStack() })

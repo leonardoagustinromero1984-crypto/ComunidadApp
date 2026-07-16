@@ -65,6 +65,27 @@ object NavRoutes {
     const val NOTIFICATIONS = "notifications"
     const val ADMIN_MODERATION = "admin_moderation"
     const val PLATFORM_ADMIN = "platform_admin"
+    const val MODERATION_REPORT_DETAIL = "moderation_report/{reportId}"
+    const val MODERATION_CASES = "moderation_cases"
+    const val MODERATION_CASE_DETAIL = "moderation_case/{caseId}"
+    const val MODERATION_APPEALS = "moderation_appeals"
+    const val MODERATION_APPEAL_DETAIL = "moderation_appeal/{appealId}"
+    const val MY_MODERATION_APPEALS = "my_moderation_appeals"
+    const val ORG_VERIFICATION_QUEUE = "org_verification_queue"
+    const val ORG_VERIFICATION_REVIEW = "org_verification_review/{reviewId}"
+    const val MY_SUPPORT_TICKETS = "my_support_tickets"
+    const val CREATE_SUPPORT_TICKET = "create_support_ticket"
+    const val SUPPORT_TICKET_DETAIL = "support_ticket/{ticketId}"
+    const val SUPPORT_ADMIN_QUEUE = "support_admin_queue"
+    const val SUPPORT_ADMIN_TICKET = "support_admin_ticket/{ticketId}"
+    const val ADMINISTRATIVE_AUDIT = "administrative_audit"
+    const val ADMINISTRATIVE_OPS_HUB = "administrative_ops_hub"
+
+    const val ARG_REPORT_ID = "reportId"
+    const val ARG_CASE_ID = "caseId"
+    const val ARG_APPEAL_ID = "appealId"
+    const val ARG_REVIEW_ID = "reviewId"
+    const val ARG_TICKET_ID = "ticketId"
 
     const val ARG_CONVERSATION_ID = "conversationId"
     const val ARG_PEER_NAME = "peerName"
@@ -102,4 +123,17 @@ object NavRoutes {
     fun chatStart(userId: String, peerName: String) =
         "chat_start/${java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())}/" +
             java.net.URLEncoder.encode(peerName, Charsets.UTF_8.name())
+
+    fun moderationReportDetail(reportId: String) =
+        "moderation_report/${java.net.URLEncoder.encode(reportId, Charsets.UTF_8.name())}"
+    fun moderationCaseDetail(caseId: String) =
+        "moderation_case/${java.net.URLEncoder.encode(caseId, Charsets.UTF_8.name())}"
+    fun moderationAppealDetail(appealId: String) =
+        "moderation_appeal/${java.net.URLEncoder.encode(appealId, Charsets.UTF_8.name())}"
+    fun orgVerificationReview(reviewId: String) =
+        "org_verification_review/${java.net.URLEncoder.encode(reviewId, Charsets.UTF_8.name())}"
+    fun supportTicketDetail(ticketId: String) =
+        "support_ticket/${java.net.URLEncoder.encode(ticketId, Charsets.UTF_8.name())}"
+    fun supportAdminTicket(ticketId: String) =
+        "support_admin_ticket/${java.net.URLEncoder.encode(ticketId, Charsets.UTF_8.name())}"
 }

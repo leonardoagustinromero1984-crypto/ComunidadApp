@@ -10,8 +10,10 @@ import com.comunidapp.app.domain.moderation.ModerationAppeal
 import com.comunidapp.app.domain.moderation.ModerationAppealRules
 import com.comunidapp.app.domain.moderation.ModerationAppealStatus
 import com.comunidapp.app.domain.moderation.ModerationCase
+import com.comunidapp.app.domain.moderation.ModerationCaseNote
 import com.comunidapp.app.domain.moderation.ModerationCaseRules
 import com.comunidapp.app.domain.moderation.ModerationCaseStatus
+import com.comunidapp.app.domain.moderation.ModerationPriority
 import com.comunidapp.app.domain.moderation.ModerationReport
 import com.comunidapp.app.domain.moderation.ModerationReportRules
 import com.comunidapp.app.domain.moderation.ModerationReportStatus
@@ -30,6 +32,18 @@ import com.comunidapp.app.domain.verification.VerificationValidators
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
 
+data class ModerationCaseDetail(
+    val case: ModerationCase,
+    val reports: List<ModerationReport> = emptyList(),
+    val notes: List<ModerationCaseNote> = emptyList(),
+    val actions: List<ModerationAction> = emptyList()
+)
+
+data class SupportTicketDetail(
+    val ticket: SupportTicket,
+    val messages: List<SupportMessage> = emptyList()
+)
+
 interface ModerationRepository {
     suspend fun createReport(
         reporterId: String,
@@ -45,11 +59,28 @@ interface ModerationRepository {
 
     suspend fun listModerationQueue(): AppResult<List<ModerationReport>>
 
+    suspend fun triageReport(
+        reportId: String,
+        status: ModerationReportStatus,
+        priority: ModerationPriority? = null,
+        nowEpochMs: Long
+    ): AppResult<ModerationReport>
+
+    suspend fun markReportDuplicate(
+        reportId: String,
+        duplicateOfReportId: String,
+        nowEpochMs: Long
+    ): AppResult<ModerationReport>
+
     suspend fun createCase(
         title: String,
         createdByUserId: String,
         nowEpochMs: Long
     ): AppResult<ModerationCase>
+
+    suspend fun listCases(status: ModerationCaseStatus? = null): AppResult<List<ModerationCase>>
+
+    suspend fun getCase(caseId: String): AppResult<ModerationCaseDetail>
 
     suspend fun attachReportToCase(reportId: String, caseId: String, nowEpochMs: Long): AppResult<Unit>
 
@@ -65,6 +96,13 @@ interface ModerationRepository {
         closeReasonCode: String?,
         nowEpochMs: Long
     ): AppResult<ModerationCase>
+
+    suspend fun addInternalNote(
+        caseId: String,
+        body: String,
+        authorUserId: String,
+        nowEpochMs: Long
+    ): AppResult<ModerationCaseNote>
 
     suspend fun recordAction(
         caseId: String,
@@ -129,6 +167,9 @@ interface SupportRepository {
     suspend fun getMyTickets(requesterUserId: String): AppResult<List<SupportTicket>>
 
     suspend fun getTicket(ticketId: String): AppResult<SupportTicket>
+
+    /** Ticket + mensajes (RPC requester/staff). INTERNAL nunca al solicitante en UI. */
+    suspend fun getTicketDetail(ticketId: String): AppResult<SupportTicketDetail>
 
     suspend fun listSupportQueue(): AppResult<List<SupportTicket>>
 
@@ -198,12 +239,30 @@ class MockModerationRepository : ModerationRepository {
     private val cases = ConcurrentHashMap<String, ModerationCase>()
     private val actions = ConcurrentHashMap<String, ModerationAction>()
     private val appeals = ConcurrentHashMap<String, ModerationAppeal>()
+    private val notes = ConcurrentHashMap<String, ModerationCaseNote>()
 
     fun resetForTests() {
         reports.clear()
         cases.clear()
         actions.clear()
         appeals.clear()
+        notes.clear()
+    }
+
+    fun seedReport(report: ModerationReport) {
+        reports[report.id] = report
+    }
+
+    fun seedCase(case: ModerationCase) {
+        cases[case.id] = case
+    }
+
+    fun seedAction(action: ModerationAction) {
+        actions[action.id] = action
+    }
+
+    fun seedAppeal(appeal: ModerationAppeal) {
+        appeals[appeal.id] = appeal
     }
 
     override suspend fun createReport(
@@ -242,6 +301,40 @@ class MockModerationRepository : ModerationRepository {
             }.sortedByDescending { it.createdAtEpochMs }
         )
 
+    override suspend fun triageReport(
+        reportId: String,
+        status: ModerationReportStatus,
+        priority: ModerationPriority?,
+        nowEpochMs: Long
+    ): AppResult<ModerationReport> {
+        val current = reports[reportId] ?: return fail("NOT_FOUND", AppErrorKind.NOT_FOUND)
+        val updated = current.copy(
+            status = status,
+            priority = priority ?: current.priority,
+            updatedAtEpochMs = nowEpochMs
+        )
+        reports[reportId] = updated
+        return AppResult.Success(updated)
+    }
+
+    override suspend fun markReportDuplicate(
+        reportId: String,
+        duplicateOfReportId: String,
+        nowEpochMs: Long
+    ): AppResult<ModerationReport> {
+        val current = reports[reportId] ?: return fail("NOT_FOUND", AppErrorKind.NOT_FOUND)
+        ModerationReportRules.canMarkDuplicate(current, duplicateOfReportId)
+            .getOrElse { return fail(it.message ?: "VALIDATION") }
+        if (reports[duplicateOfReportId] == null) return fail("NOT_FOUND", AppErrorKind.NOT_FOUND)
+        val updated = current.copy(
+            status = ModerationReportStatus.DUPLICATE,
+            duplicateOfReportId = duplicateOfReportId,
+            updatedAtEpochMs = nowEpochMs
+        )
+        reports[reportId] = updated
+        return AppResult.Success(updated)
+    }
+
     override suspend fun createCase(
         title: String,
         createdByUserId: String,
@@ -253,6 +346,25 @@ class MockModerationRepository : ModerationRepository {
         val saved = draft.copy(id = id)
         cases[id] = saved
         return AppResult.Success(saved)
+    }
+
+    override suspend fun listCases(status: ModerationCaseStatus?): AppResult<List<ModerationCase>> =
+        AppResult.Success(
+            cases.values
+                .filter { status == null || it.status == status }
+                .sortedByDescending { it.updatedAtEpochMs }
+        )
+
+    override suspend fun getCase(caseId: String): AppResult<ModerationCaseDetail> {
+        val current = cases[caseId] ?: return fail("NOT_FOUND", AppErrorKind.NOT_FOUND)
+        return AppResult.Success(
+            ModerationCaseDetail(
+                case = current,
+                reports = reports.values.filter { it.caseId == caseId }.sortedByDescending { it.createdAtEpochMs },
+                notes = notes.values.filter { it.caseId == caseId }.sortedBy { it.createdAtEpochMs },
+                actions = actions.values.filter { it.caseId == caseId }.sortedBy { it.appliedAtEpochMs }
+            )
+        )
     }
 
     override suspend fun attachReportToCase(
@@ -299,6 +411,29 @@ class MockModerationRepository : ModerationRepository {
         )
         cases[caseId] = updated
         return AppResult.Success(updated)
+    }
+
+    override suspend fun addInternalNote(
+        caseId: String,
+        body: String,
+        authorUserId: String,
+        nowEpochMs: Long
+    ): AppResult<ModerationCaseNote> {
+        if (cases[caseId] == null) return fail("NOT_FOUND", AppErrorKind.NOT_FOUND)
+        if (authorUserId.isBlank()) return fail("AUTHOR_REQUIRED")
+        val text = ModerationCaseRules.validateNote(body)
+            .getOrElse { return fail(it.message ?: "VALIDATION") }
+        val id = UUID.randomUUID().toString()
+        val note = ModerationCaseNote(
+            id = id,
+            caseId = caseId,
+            authorUserId = authorUserId,
+            body = text,
+            createdAtEpochMs = nowEpochMs
+        )
+        notes[id] = note
+        cases[caseId] = cases[caseId]!!.copy(updatedAtEpochMs = nowEpochMs)
+        return AppResult.Success(note)
     }
 
     override suspend fun recordAction(
@@ -469,6 +604,17 @@ class MockSupportRepository : SupportRepository {
     override suspend fun getTicket(ticketId: String): AppResult<SupportTicket> {
         val ticket = tickets[ticketId] ?: return fail("NOT_FOUND", AppErrorKind.NOT_FOUND)
         return AppResult.Success(ticket)
+    }
+
+    override suspend fun getTicketDetail(ticketId: String): AppResult<SupportTicketDetail> {
+        val ticket = tickets[ticketId] ?: return fail("NOT_FOUND", AppErrorKind.NOT_FOUND)
+        return AppResult.Success(
+            SupportTicketDetail(
+                ticket = ticket,
+                messages = messages.values.filter { it.ticketId == ticketId }
+                    .sortedBy { it.createdAtEpochMs }
+            )
+        )
     }
 
     override suspend fun listSupportQueue(): AppResult<List<SupportTicket>> =
