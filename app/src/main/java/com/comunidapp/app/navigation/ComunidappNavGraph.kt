@@ -47,12 +47,18 @@ import com.comunidapp.app.ui.screens.profile.NotificationsScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
 import com.comunidapp.app.ui.screens.profile.SearchFriendsScreen
 import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
+import com.comunidapp.app.ui.screens.organization.CreateOrganizationScreen
+import com.comunidapp.app.ui.screens.organization.EditOrganizationScreen
+import com.comunidapp.app.ui.screens.organization.MyOrganizationsScreen
+import com.comunidapp.app.ui.screens.organization.PublicOrganizationScreen
 import com.comunidapp.app.ui.screens.onboarding.ProfileOnboardingScreen
 import com.comunidapp.app.ui.screens.security.AccountAccessBlockedScreen
 import com.comunidapp.app.ui.screens.security.AccountSecurityScreen
 import com.comunidapp.app.ui.screens.security.LegalConsentRequiredScreen
 import com.comunidapp.app.ui.screens.security.PasswordResetActiveScreen
 import com.comunidapp.app.viewmodel.UserPublicProfileViewModel
+import com.comunidapp.app.viewmodel.EditOrganizationViewModel
+import com.comunidapp.app.viewmodel.PublicOrganizationViewModel
 import com.comunidapp.app.viewmodel.ChatStartViewModel
 import com.comunidapp.app.viewmodel.ChatThreadViewModel
 import com.comunidapp.app.ui.screens.publish.PublishAdoptionScreen
@@ -286,6 +292,7 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToPlatformAdmin = { navController.navigate(NavRoutes.PLATFORM_ADMIN) },
                     onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
                     onNavigateToAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
+                    onNavigateToMyOrganizations = { navController.navigate(NavRoutes.MY_ORGANIZATIONS) },
                     onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
                     onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
                 )
@@ -316,6 +323,67 @@ private fun MainScreen(accountType: AccountType) {
                 EditProfileScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onSaveSuccess = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MY_ORGANIZATIONS) {
+                MyOrganizationsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreateOrganization = { navController.navigate(NavRoutes.CREATE_ORGANIZATION) },
+                    onEditOrganization = { id ->
+                        navController.navigate(NavRoutes.editOrganization(id))
+                    },
+                    onOpenPublic = { slug ->
+                        navController.navigate(NavRoutes.publicOrganization(slug))
+                    }
+                )
+            }
+            composable(NavRoutes.CREATE_ORGANIZATION) {
+                CreateOrganizationScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreated = { organizationId ->
+                        navController.navigate(NavRoutes.editOrganization(organizationId)) {
+                            popUpTo(NavRoutes.MY_ORGANIZATIONS)
+                        }
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.EDIT_ORGANIZATION,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_ORGANIZATION_ID) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val organizationId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_ORGANIZATION_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                EditOrganizationScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaveSuccess = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "edit_org_$organizationId",
+                        factory = EditOrganizationViewModel.factory(organizationId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.PUBLIC_ORGANIZATION,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_SLUG) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val slug = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_SLUG).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                PublicOrganizationScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "public_org_$slug",
+                        factory = PublicOrganizationViewModel.factory(slug)
+                    )
                 )
             }
             composable(

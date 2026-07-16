@@ -72,6 +72,9 @@ data class Organization(
     val city: String? = null,
     val province: String? = null,
     val countryCode: String? = null,
+    /** Path Storage (no URL eterna). */
+    val logoPath: String? = null,
+    val coverPath: String? = null,
     val createdByUserId: String,
     val createdAtEpochMs: Long? = null,
     val updatedAtEpochMs: Long? = null
@@ -91,6 +94,8 @@ data class PublicOrganization(
     val countryCode: String? = null,
     val status: OrganizationStatus,
     val verificationStatus: OrganizationVerificationStatus,
+    val logoPath: String? = null,
+    val coverPath: String? = null,
     val publicEmail: String? = null,
     val publicPhone: String? = null
 )
@@ -136,21 +141,29 @@ object OrganizationValidators {
         typeDescription: String?,
         slugRaw: String,
         description: String? = null,
-        countryCode: String? = null
+        countryCode: String? = null,
+        province: String? = null,
+        city: String? = null
     ): Result<ValidatedOrganizationDraft> {
-        val legal = legalName.trim()
         val public = publicName.trim()
-        if (legal.length < NAME_MIN) {
-            return failure(OrganizationValidationErrorCode.NAME_TOO_SHORT, "legal name short")
-        }
-        if (legal.length > NAME_MAX) {
-            return failure(OrganizationValidationErrorCode.NAME_TOO_LONG, "legal name long")
-        }
         if (public.length < NAME_MIN) {
             return failure(OrganizationValidationErrorCode.NAME_TOO_SHORT, "public name short")
         }
         if (public.length > NAME_MAX) {
             return failure(OrganizationValidationErrorCode.NAME_TOO_LONG, "public name long")
+        }
+        // legalName opcional: si viene vacío se usa el nombre público.
+        val legalRaw = legalName.trim()
+        val legal = if (legalRaw.isEmpty()) {
+            public
+        } else {
+            if (legalRaw.length < NAME_MIN) {
+                return failure(OrganizationValidationErrorCode.NAME_TOO_SHORT, "legal name short")
+            }
+            if (legalRaw.length > NAME_MAX) {
+                return failure(OrganizationValidationErrorCode.NAME_TOO_LONG, "legal name long")
+            }
+            legalRaw
         }
         if (type == OrganizationType.OTHER && typeDescription.isNullOrBlank()) {
             return failure(
@@ -177,7 +190,9 @@ object OrganizationValidators {
                 typeDescription = typeDescription?.trim()?.ifBlank { null },
                 slug = slug,
                 description = desc,
-                countryCode = cc
+                countryCode = cc,
+                province = province?.trim()?.ifBlank { null },
+                city = city?.trim()?.ifBlank { null }
             )
         )
     }
@@ -196,6 +211,8 @@ object OrganizationValidators {
             countryCode = organization.countryCode,
             status = organization.status,
             verificationStatus = organization.verificationStatus,
+            logoPath = organization.logoPath,
+            coverPath = organization.coverPath,
             publicEmail = if (showEmail) organization.institutionalEmail else null,
             publicPhone = if (showPhone) organization.institutionalPhone else null
         )
@@ -245,5 +262,26 @@ data class ValidatedOrganizationDraft(
     val typeDescription: String?,
     val slug: OrganizationSlug,
     val description: String?,
-    val countryCode: String?
+    val countryCode: String?,
+    val province: String? = null,
+    val city: String? = null
+)
+
+/**
+ * Comando allowlist para update_my_organization (sin status/verification).
+ */
+data class UpdateOrganizationCommand(
+    val organizationId: OrganizationId,
+    val displayName: String? = null,
+    val legalName: String? = null,
+    val description: String? = null,
+    val countryCode: String? = null,
+    val province: String? = null,
+    val city: String? = null,
+    val contactEmail: String? = null,
+    val contactPhone: String? = null,
+    val contactEmailPublic: Boolean? = null,
+    val contactPhonePublic: Boolean? = null,
+    val logoPath: String? = null,
+    val coverPath: String? = null
 )

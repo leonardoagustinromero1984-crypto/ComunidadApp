@@ -70,6 +70,22 @@ class OrganizationValidatorsTest {
     }
 
     @Test
+    fun optional_legal_name_uses_public_name() {
+        val result = OrganizationValidators.validateCreate(
+            legalName = "",
+            publicName = "Patitas",
+            type = OrganizationType.SHELTER,
+            typeDescription = null,
+            slugRaw = "patitas-opt",
+            city = "CABA",
+            province = "BA"
+        )
+        assertTrue(result.isSuccess)
+        assertEquals("Patitas", result.getOrThrow().legalName)
+        assertEquals("CABA", result.getOrThrow().city)
+    }
+
+    @Test
     fun rejects_short_name() {
         val result = OrganizationValidators.validateCreate(
             legalName = "A",

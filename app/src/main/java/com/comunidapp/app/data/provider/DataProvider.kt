@@ -2,6 +2,7 @@ package com.comunidapp.app.data.provider
 
 import com.comunidapp.app.core.config.AppConfigProvider
 import com.comunidapp.app.data.remote.storage.ImageStorageService
+import com.comunidapp.app.data.remote.storage.OrganizationMediaStorageService
 import com.comunidapp.app.data.remote.storage.ProfileAvatarStorageService
 import com.comunidapp.app.data.remote.storage.SupabaseStorageService
 import com.comunidapp.app.data.repository.AdoptionRepository
@@ -41,6 +42,9 @@ import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.data.repository.PlatformAdministrationRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.ServiceRepository
+import com.comunidapp.app.data.repository.SupabaseOrganizationMembershipRepository
+import com.comunidapp.app.data.repository.SupabaseOrganizationPermissionRepository
+import com.comunidapp.app.data.repository.SupabaseOrganizationRepository
 import com.comunidapp.app.data.repository.SupabasePermissionRepository
 import com.comunidapp.app.data.repository.SupabasePlatformAdministrationRepository
 import com.comunidapp.app.data.repository.SupabasePlatformRepository
@@ -112,14 +116,27 @@ object DataProvider {
     }
 
     /**
-     * M03 Etapa 2: solo mocks. Sin cliente Supabase ni migraciones.
+     * M03 Etapa 3: Supabase RPCs cuando useSupabase; mocks locales en caso contrario.
+     * Invitaciones siguen mock-only (sin RPC).
      */
+    private val mockOrganizationMembershipRepository by lazy {
+        MockOrganizationMembershipRepository()
+    }
+
+    private val mockOrganizationRepository by lazy {
+        MockOrganizationRepository(mockOrganizationMembershipRepository)
+    }
+
     val organizationRepository: OrganizationRepository by lazy {
-        MockOrganizationRepository()
+        if (useSupabase) SupabaseOrganizationRepository() else mockOrganizationRepository
     }
 
     val organizationMembershipRepository: OrganizationMembershipRepository by lazy {
-        MockOrganizationMembershipRepository()
+        if (useSupabase) {
+            SupabaseOrganizationMembershipRepository()
+        } else {
+            mockOrganizationMembershipRepository
+        }
     }
 
     val organizationInvitationRepository: OrganizationInvitationRepository by lazy {
@@ -127,10 +144,17 @@ object DataProvider {
     }
 
     val organizationPermissionRepository: OrganizationPermissionRepository by lazy {
-        MockOrganizationPermissionRepository(
-            organizationRepository,
-            organizationMembershipRepository
-        )
+        if (useSupabase) {
+            SupabaseOrganizationPermissionRepository(
+                organizationRepository,
+                organizationMembershipRepository
+            )
+        } else {
+            MockOrganizationPermissionRepository(
+                organizationRepository,
+                organizationMembershipRepository
+            )
+        }
     }
 
     val platformAdministrationRepository: PlatformAdministrationRepository by lazy {
@@ -147,5 +171,9 @@ object DataProvider {
 
     val profileAvatarStorage: ProfileAvatarStorageService? by lazy {
         if (useSupabase) ProfileAvatarStorageService() else null
+    }
+
+    val organizationMediaStorage: OrganizationMediaStorageService? by lazy {
+        if (useSupabase) OrganizationMediaStorageService() else null
     }
 }

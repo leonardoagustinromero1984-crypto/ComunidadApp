@@ -83,6 +83,7 @@ fun ProfileScreen(
     onNavigateToPlatformAdmin: () -> Unit = {},
     onNavigateToSearchFriends: () -> Unit = {},
     onNavigateToAccountSecurity: () -> Unit = {},
+    onNavigateToMyOrganizations: () -> Unit = {},
     onFriendClick: (String) -> Unit = {},
     onPetClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
@@ -199,6 +200,18 @@ fun ProfileScreen(
                             ) {
                                 Text("Mis adopciones publicadas")
                             }
+                        }
+                    }
+
+                    item {
+                        OutlinedButton(
+                            onClick = onNavigateToMyOrganizations,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Mis organizaciones")
                         }
                     }
 
