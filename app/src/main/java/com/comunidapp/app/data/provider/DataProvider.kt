@@ -72,6 +72,11 @@ import com.comunidapp.app.data.repository.SupabasePlatformAdministrationReposito
 import com.comunidapp.app.data.repository.SupabasePlatformRepository
 import com.comunidapp.app.data.repository.SupabaseServiceRepository
 import com.comunidapp.app.data.repository.SupabaseSupportRepository
+import com.comunidapp.app.data.repository.SupabaseFileAccessRepository
+import com.comunidapp.app.data.repository.SupabaseFileAssetRepository
+import com.comunidapp.app.data.repository.SupabaseFileDownloadRepository
+import com.comunidapp.app.data.repository.SupabaseFileRetentionRepository
+import com.comunidapp.app.data.repository.SupabaseFileUploadRepository
 import com.comunidapp.app.data.repository.ShelterRepository
 import com.comunidapp.app.data.repository.SupabaseAdoptionRepository
 import com.comunidapp.app.data.repository.SupabaseCommunityRepository
@@ -222,29 +227,43 @@ object DataProvider {
         }
     }
 
-    /**
-     * M05 Etapa 2: contratos + mocks deterministas.
-     * Sin implementaciones Supabase nuevas; servicios Storage legacy se mantienen abajo.
-     * useSupabase=false (y también true en Etapa 2) → mocks M05, nunca null.
-     */
+    /** M05 Etapa 3: RPC/Storage Supabase o mocks deterministas locales. */
     private val mockFileAssetRepository: MockFileAssetRepository by lazy { MockFileAssetRepository() }
 
-    val fileAssetRepository: FileAssetRepository by lazy { mockFileAssetRepository }
+    val fileAssetRepository: FileAssetRepository by lazy {
+        if (useSupabase) SupabaseFileAssetRepository() else mockFileAssetRepository
+    }
 
     val fileUploadRepository: FileUploadRepository by lazy {
-        MockFileUploadRepository(mockFileAssetRepository)
+        if (useSupabase) {
+            SupabaseFileUploadRepository()
+        } else {
+            MockFileUploadRepository(mockFileAssetRepository)
+        }
     }
 
     val fileDownloadRepository: FileDownloadRepository by lazy {
-        MockFileDownloadRepository(mockFileAssetRepository)
+        if (useSupabase) {
+            SupabaseFileDownloadRepository(fileAssetRepository)
+        } else {
+            MockFileDownloadRepository(mockFileAssetRepository)
+        }
     }
 
     val fileAccessRepository: FileAccessRepository by lazy {
-        MockFileAccessRepository(mockFileAssetRepository)
+        if (useSupabase) {
+            SupabaseFileAccessRepository(fileAssetRepository)
+        } else {
+            MockFileAccessRepository(mockFileAssetRepository)
+        }
     }
 
     val fileRetentionRepository: FileRetentionRepository by lazy {
-        MockFileRetentionRepository(mockFileAssetRepository)
+        if (useSupabase) {
+            SupabaseFileRetentionRepository()
+        } else {
+            MockFileRetentionRepository(mockFileAssetRepository)
+        }
     }
 
     val storageService: ImageStorageService? by lazy {
