@@ -25,6 +25,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
@@ -149,26 +150,54 @@ class PlatformSupabaseDataSource {
 
     suspend fun fetchNotifications(userId: String): List<AppNotification> {
         return try {
-            supabase.from(SupabaseTables.NOTIFICATIONS)
-                .select {
-                    filter { eq("user_id", userId) }
-                    order("created_at", Order.DESCENDING)
+            val element = supabase.postgrest.rpc(
+                function = "m06_get_inbox",
+                parameters = buildJsonObject {
+                    put("p_limit", 100)
+                    put("p_offset", 0)
                 }
-                .decodeList<NotificationRow>()
-                .map(::parseNotification)
+            ).decodeAs<JsonElement>()
+            parseNotificationArray(element)
         } catch (_: Exception) {
-            emptyList()
+            // Compatibility fallback before migration 026 is applied remotely.
+            runCatching {
+                supabase.from(SupabaseTables.NOTIFICATIONS)
+                    .select {
+                        filter { eq("user_id", userId) }
+                        order("created_at", Order.DESCENDING)
+                    }
+                    .decodeList<NotificationRow>()
+                    .map(::parseNotification)
+            }.getOrDefault(emptyList())
         }
     }
+
+    private fun parseNotificationArray(element: JsonElement): List<AppNotification> {
+        val array = element as? JsonArray ?: return emptyList()
+        val mapper = Json { ignoreUnknownKeys = true }
+        return array.mapNotNull { item ->
+            val row = item as? JsonObject ?: return@mapNotNull null
+            runCatching {
+                val notificationRow = mapper.decodeFromJsonElement(NotificationRow.serializer(), row)
+                val readAt = row.string("read_at")
+                    ?: if (row.string("is_read") == "true") row.string("updated_at") else null
+                parseNotification(notificationRow.copy(readAt = readAt))
+            }.getOrNull()
+        }
+    }
+
+    private fun JsonObject.string(key: String): String? =
+        this[key]?.jsonPrimitive?.contentOrNull
 
     fun observeNotifications(userId: String): Flow<List<AppNotification>> =
         pollingFlow { fetchNotifications(userId) }
 
     suspend fun markNotificationRead(id: String): Result<Unit> {
         return try {
-            supabase.from(SupabaseTables.NOTIFICATIONS).update(
-                mapOf("read_at" to nowIso())
-            ) { filter { eq("id", id) } }
+            supabase.postgrest.rpc(
+                function = "m06_mark_notification_read",
+                parameters = buildJsonObject { put("p_notification_id", id) }
+            ).decodeAs<JsonElement>()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -177,9 +206,8 @@ class PlatformSupabaseDataSource {
 
     suspend fun markAllNotificationsRead(userId: String): Result<Unit> {
         return try {
-            supabase.from(SupabaseTables.NOTIFICATIONS).update(
-                mapOf("read_at" to nowIso())
-            ) { filter { eq("user_id", userId) } }
+            supabase.postgrest.rpc(function = "m06_mark_all_notifications_read")
+                .decodeAs<JsonElement>()
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
@@ -194,21 +222,28 @@ class PlatformSupabaseDataSource {
         relatedId: String? = null,
         relatedType: String? = null
     ): Result<String> {
+        return Result.failure(SecurityException("NOTIFICATION_CLIENT_INSERT_DENIED_M06_STAGE_3"))
+    }
+
+    suspend fun archiveNotification(id: String): Result<Unit> {
         return try {
-            val id = UUID.randomUUID().toString()
-            supabase.from(SupabaseTables.NOTIFICATIONS).insert(
-                NotificationRow(
-                    id = id,
-                    userId = userId,
-                    type = type.name,
-                    title = title,
-                    body = body,
-                    relatedId = relatedId,
-                    relatedType = relatedType,
-                    createdAt = nowIso()
-                )
-            )
-            Result.success(id)
+            supabase.postgrest.rpc(
+                function = "m06_archive_notification",
+                parameters = buildJsonObject { put("p_notification_id", id) }
+            ).decodeAs<JsonElement>()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun deleteNotificationLogical(id: String): Result<Unit> {
+        return try {
+            supabase.postgrest.rpc(
+                function = "m06_delete_notification_logical",
+                parameters = buildJsonObject { put("p_notification_id", id) }
+            ).decodeAs<JsonElement>()
+            Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)
         }

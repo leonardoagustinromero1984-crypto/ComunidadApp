@@ -6,7 +6,9 @@ import com.comunidapp.app.data.model.AppNotification
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
+import com.comunidapp.app.data.repository.NotificationInboxRepository
 import com.comunidapp.app.data.repository.PlatformRepository
+import java.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -19,6 +21,7 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class NotificationsViewModel(
     private val platformRepository: PlatformRepository = DataProvider.platformRepository,
+    private val notificationInboxRepository: NotificationInboxRepository = DataProvider.notificationInboxRepository,
     private val authRepository: AuthRepository = AuthProvider.repository
 ) : ViewModel() {
 
@@ -43,6 +46,20 @@ class NotificationsViewModel(
         val userId = authRepository.getCurrentUser()?.id ?: return
         viewModelScope.launch {
             platformRepository.markAllNotificationsRead(userId)
+        }
+    }
+
+    fun archive(id: String) {
+        val userId = authRepository.getCurrentUser()?.id ?: return
+        viewModelScope.launch {
+            notificationInboxRepository.archive(userId, id, Instant.now())
+        }
+    }
+
+    fun deleteLogical(id: String) {
+        val userId = authRepository.getCurrentUser()?.id ?: return
+        viewModelScope.launch {
+            notificationInboxRepository.deleteLogical(userId, id, Instant.now())
         }
     }
 }

@@ -1,5 +1,6 @@
 package com.comunidapp.app.notifications
 
+import com.comunidapp.app.core.logging.AppLog
 import com.comunidapp.app.data.model.NotificationType
 import com.comunidapp.app.data.provider.DataProvider
 import kotlinx.coroutines.CoroutineScope
@@ -13,6 +14,7 @@ import kotlinx.coroutines.launch
  */
 object NotificationDispatcher {
 
+    private const val TAG = "NotificationDispatcher"
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val platform get() = DataProvider.platformRepository
 
@@ -28,6 +30,12 @@ object NotificationDispatcher {
         scope.launch {
             runCatching {
                 platform.createNotification(userId, type, title, body, relatedId, relatedType)
+            }.onSuccess { result ->
+                result.onFailure {
+                    AppLog.warning(TAG, "Notificación cliente denegada por M06: ${it.message}")
+                }
+            }.onFailure {
+                AppLog.warning(TAG, "No se pudo solicitar notificación cliente", it)
             }
         }
     }

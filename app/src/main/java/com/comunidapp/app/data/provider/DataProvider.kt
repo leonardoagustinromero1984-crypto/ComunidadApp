@@ -18,6 +18,8 @@ import com.comunidapp.app.data.remote.storage.SupabaseStorageService
 import com.comunidapp.app.data.repository.AdoptionRepository
 import com.comunidapp.app.data.repository.AdoptionRequestRepository
 import com.comunidapp.app.data.repository.ChatRepository
+import com.comunidapp.app.data.repository.ClientDeniedNotificationDeliveryRepository
+import com.comunidapp.app.data.repository.ClientDeniedNotificationOutboxRepository
 import com.comunidapp.app.data.repository.CommunityRepository
 import com.comunidapp.app.data.repository.MockAdoptionRequestRepository
 import com.comunidapp.app.data.repository.MockChatRepository
@@ -105,6 +107,9 @@ import com.comunidapp.app.data.repository.SupabaseAdoptionRepository
 import com.comunidapp.app.data.repository.SupabaseCommunityRepository
 import com.comunidapp.app.data.repository.SupabaseFeedRepository
 import com.comunidapp.app.data.repository.SupabaseLostFoundRepository
+import com.comunidapp.app.data.repository.SupabaseNotificationInboxRepository
+import com.comunidapp.app.data.repository.SupabaseNotificationInstallationRepository
+import com.comunidapp.app.data.repository.SupabaseNotificationPreferenceRepository
 import com.comunidapp.app.data.repository.SupabasePetRepository
 import com.comunidapp.app.data.repository.SupabaseShelterRepository
 import com.comunidapp.app.data.repository.SupabaseUserRepository
@@ -164,9 +169,8 @@ object DataProvider {
     }
 
     /**
-     * M06 Etapa 2 — contratos/mocks deterministas (sin Supabase).
-     * Con useSupabase=true se preserva [platformRepository]/FCM legacy;
-     * estos repos de contrato permanecen mocks hasta Etapa 3 (sin implementación remota).
+     * M06 — mocks deterministas para modo local y contratos server-side no expuestos al cliente.
+     * Etapa 3 usa Supabase real para inbox/preferencias/instalaciones cuando corresponde.
      */
     private val m06Stage2ContractMocks: MockNotificationRepositories by lazy {
         MockNotificationRepositories.create(
@@ -175,25 +179,25 @@ object DataProvider {
         )
     }
 
-    /** Mock de contrato M06 Etapa 2 (bandeja). No-null en ambos flags. */
-    val notificationInboxRepository: NotificationInboxRepository
-        get() = m06Stage2ContractMocks.inbox
+    val notificationInboxRepository: NotificationInboxRepository by lazy {
+        if (useSupabase) SupabaseNotificationInboxRepository() else m06Stage2ContractMocks.inbox
+    }
 
-    /** Mock de contrato M06 Etapa 2 (preferencias). */
-    val notificationPreferenceRepository: NotificationPreferenceRepository
-        get() = m06Stage2ContractMocks.preference
+    val notificationPreferenceRepository: NotificationPreferenceRepository by lazy {
+        if (useSupabase) SupabaseNotificationPreferenceRepository() else m06Stage2ContractMocks.preference
+    }
 
-    /** Mock de contrato M06 Etapa 2 (instalaciones / fingerprints). */
-    val notificationInstallationRepository: NotificationInstallationRepository
-        get() = m06Stage2ContractMocks.installation
+    val notificationInstallationRepository: NotificationInstallationRepository by lazy {
+        if (useSupabase) SupabaseNotificationInstallationRepository() else m06Stage2ContractMocks.installation
+    }
 
-    /** Mock de contrato M06 Etapa 2 (deliveries). */
-    val notificationDeliveryRepository: NotificationDeliveryRepository
-        get() = m06Stage2ContractMocks.delivery
+    val notificationDeliveryRepository: NotificationDeliveryRepository by lazy {
+        if (useSupabase) ClientDeniedNotificationDeliveryRepository() else m06Stage2ContractMocks.delivery
+    }
 
-    /** Mock de contrato M06 Etapa 2 (outbox). */
-    val notificationOutboxRepository: NotificationOutboxRepository
-        get() = m06Stage2ContractMocks.outbox
+    val notificationOutboxRepository: NotificationOutboxRepository by lazy {
+        if (useSupabase) ClientDeniedNotificationOutboxRepository() else m06Stage2ContractMocks.outbox
+    }
 
     /** Acceso tipado a los mocks de etapa 2 (tests / inyección). */
     val m06Stage2NotificationMocks: MockNotificationRepositories
