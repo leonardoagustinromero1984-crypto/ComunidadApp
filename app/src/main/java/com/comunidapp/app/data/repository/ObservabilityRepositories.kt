@@ -67,6 +67,12 @@ interface SecurityEventRepository {
 interface ApplicationErrorRepository {
     suspend fun capture(error: ApplicationError, auth: ObservabilityAuthorizationContext): AppResult<ApplicationError>
     suspend fun findByFingerprint(fingerprint: String): AppResult<List<ApplicationError>>
+    /** Lectura staff — una página por request; requiere observability.view en UI/RPC. */
+    suspend fun list(
+        auth: ObservabilityAuthorizationContext,
+        offset: Int = 0,
+        limit: Int = 50
+    ): AppResult<List<ApplicationError>>
 }
 
 interface PerformanceMetricRepository {
@@ -330,6 +336,22 @@ class MockApplicationErrorRepository(
 
     override suspend fun findByFingerprint(fingerprint: String): AppResult<List<ApplicationError>> =
         AppResult.Success(store.errors.values.filter { it.sanitized.fingerprint == fingerprint })
+
+    override suspend fun list(
+        auth: ObservabilityAuthorizationContext,
+        offset: Int,
+        limit: Int
+    ): AppResult<List<ApplicationError>> {
+        if (ObservabilityPermission.OBSERVABILITY_VIEW !in auth.permissions &&
+            ObservabilityPermission.OBSERVABILITY_MANAGE !in auth.permissions
+        ) {
+            return obsFail(ObservabilityErrorCode.OBS_PERMISSION_DENIED, AppErrorKind.FORBIDDEN)
+        }
+        return AppResult.Success(
+            store.errors.values.sortedByDescending { it.occurredAt }
+                .drop(offset.coerceAtLeast(0)).take(limit.coerceIn(1, 200))
+        )
+    }
 }
 
 class MockPerformanceMetricRepository(

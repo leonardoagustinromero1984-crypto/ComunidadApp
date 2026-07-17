@@ -107,17 +107,17 @@ object ObservabilityAuthorization {
                 }
             }
             ObservabilityRequestedAction.VIEW -> {
+                // Etapa 6: audit.view / AUDIT_VIEW no es autoridad M07 (solo permisos dedicados).
                 val allowed = when (ctx.requestedSensitivity) {
                     ObservabilitySensitivity.PUBLIC_AGGREGATE,
                     ObservabilitySensitivity.INTERNAL ->
                         ObservabilityPermission.OBSERVABILITY_VIEW in ctx.permissions ||
-                            ObservabilityPermission.AUDIT_VIEW in ctx.permissions ||
                             ObservabilityPermission.ANALYTICS_VIEW in ctx.permissions
                     ObservabilitySensitivity.CONFIDENTIAL ->
-                        ObservabilityPermission.AUDIT_VIEW in ctx.permissions ||
-                            ObservabilityPermission.OBSERVABILITY_VIEW in ctx.permissions
+                        ObservabilityPermission.OBSERVABILITY_VIEW in ctx.permissions
                     ObservabilitySensitivity.RESTRICTED ->
-                        ObservabilityPermission.AUDIT_VIEW in ctx.permissions
+                        ObservabilityPermission.OBSERVABILITY_VIEW in ctx.permissions ||
+                            ObservabilityPermission.AUDIT_VIEW_SENSITIVE in ctx.permissions
                     ObservabilitySensitivity.SECURITY_SENSITIVE ->
                         ObservabilityPermission.AUDIT_VIEW_SENSITIVE in ctx.permissions ||
                             ObservabilityPermission.SECURITY_EVENTS_VIEW in ctx.permissions

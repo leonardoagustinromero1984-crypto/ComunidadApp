@@ -424,3 +424,127 @@ fun ObservabilityPermissionsInfoScreen(
         }
     }
 }
+
+@Composable
+fun ObservabilityAuditListScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: com.comunidapp.app.viewmodel.observability.ObservabilityAuditListViewModel =
+        viewModel(factory = com.comunidapp.app.viewmodel.observability.ObservabilityAuditListViewModel.factory())
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(uiState.phase) {
+        if (uiState.phase == AdministrativeScreenPhase.AccessDenied) onNavigateBack()
+    }
+    AdministrativePhaseHost(
+        title = "Auditoría M07",
+        phase = uiState.phase,
+        onNavigateBack = onNavigateBack,
+        emptyTitle = "Sin eventos",
+        emptyMessage = "No hay eventos de auditoría visibles.",
+        errorMessage = uiState.errorMessage ?: "No pudimos cargar la auditoría.",
+        onRetry = { viewModel.refresh() }
+    ) { contentModifier ->
+        LazyColumn(
+            modifier = contentModifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                Text(
+                    "Una página por request. Sin contenido leído ni filtros con PII.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            items(uiState.rows, key = { it.id }) { row ->
+                Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 1.dp) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(row.primary, fontWeight = FontWeight.SemiBold)
+                        Text(row.secondary)
+                        if (row.tertiary.isNotBlank()) {
+                            Text(row.tertiary, style = MaterialTheme.typography.bodySmall)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ObservabilityErrorsListScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: com.comunidapp.app.viewmodel.observability.ObservabilityErrorsListViewModel =
+        viewModel(factory = com.comunidapp.app.viewmodel.observability.ObservabilityErrorsListViewModel.factory())
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(uiState.phase) {
+        if (uiState.phase == AdministrativeScreenPhase.AccessDenied) onNavigateBack()
+    }
+    AdministrativePhaseHost(
+        title = "Errores M07",
+        phase = uiState.phase,
+        onNavigateBack = onNavigateBack,
+        emptyTitle = "Sin errores",
+        emptyMessage = "No hay errores de aplicación registrados.",
+        errorMessage = uiState.errorMessage ?: "No pudimos cargar errores.",
+        onRetry = { viewModel.refresh() }
+    ) { contentModifier ->
+        LazyColumn(
+            modifier = contentModifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            items(uiState.rows, key = { it.id }) { row ->
+                Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 1.dp) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(row.primary, fontWeight = FontWeight.SemiBold)
+                        Text(row.secondary)
+                        if (row.tertiary.isNotBlank()) Text(row.tertiary)
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ObservabilityExportsScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: com.comunidapp.app.viewmodel.observability.ObservabilityExportsViewModel =
+        viewModel(factory = com.comunidapp.app.viewmodel.observability.ObservabilityExportsViewModel.factory())
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(uiState.phase) {
+        if (uiState.phase == AdministrativeScreenPhase.AccessDenied) onNavigateBack()
+    }
+    AdministrativePhaseHost(
+        title = "Exportaciones M07",
+        phase = uiState.phase,
+        onNavigateBack = onNavigateBack,
+        emptyTitle = "Sin solicitudes",
+        emptyMessage = "Solicitá una exportación autorizada (archivo pendiente).",
+        errorMessage = uiState.errorMessage ?: "No pudimos procesar la exportación.",
+        onRetry = { }
+    ) { contentModifier ->
+        Column(
+            modifier = contentModifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                "EXPORTACIÓN DE ARCHIVO PENDIENTE. Sin CSV/JSONL simulado ni signed URLs.",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Button(onClick = { viewModel.requestExport() }) {
+                Text("Solicitar exportación")
+            }
+            uiState.infoMessage?.let { Text(it) }
+            uiState.lastExport?.let { exp ->
+                Text("Estado: ${exp.state}")
+                Text("filePending: ${exp.filePending}")
+                Text("Nota: ${exp.note ?: "—"}")
+            }
+        }
+    }
+}

@@ -54,17 +54,17 @@ for n in $nums; do
 done
 highest=$(echo "$nums" | tail -n1)
 echo "Highest migration: $highest"
-if [[ "$highest" != "031" ]]; then
-  echo "Expected highest migration 031, got $highest"
+if [[ "$highest" != "031" && "$highest" != "032" ]]; then
+  echo "Expected highest migration 031 or 032, got $highest"
   FAIL=1
 fi
 echo "- Migrations: highest=$highest" >> "$SUMMARY"
 
 echo "== Prior migrations 001–030 intact (git base when available) =="
 if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
-  base="${M07_BASE_COMMIT:-65b0a3d914cf13db6d525b5362f6c35869fea32a}"
+  base="${M07_BASE_COMMIT:-a02acb15bc78be6b9c405d563f2de2030da70abd}"
   if git -C "$ROOT" cat-file -e "$base^{commit}" 2>/dev/null; then
-    changed=$(git -C "$ROOT" diff --name-only "$base" -- supabase/migrations/ | grep -E 'migrations/0(0[1-9]|1[0-9]|2[0-9]|30)_' || true)
+    changed=$(git -C "$ROOT" diff --name-only "$base" -- supabase/migrations/ | grep -E 'migrations/0(0[1-9]|1[0-9]|2[0-9]|3[01])_' || true)
     if [[ -n "$changed" ]]; then
       echo "Prior migrations edited:"
       echo "$changed"
@@ -217,7 +217,7 @@ echo "sql basic OK"
 
 echo "== JaCoCo informative note =="
 echo "- JaCoCo: informative only; baseline recorded after local :app:jacocoTestReport" >> "$SUMMARY"
-echo "- Staging migrations 014–031: PENDIENTE (no remote apply in CI)" >> "$SUMMARY"
+echo "- Staging migrations 014–032: PENDIENTE (no remote apply in CI)" >> "$SUMMARY"
 echo "- EXPORTACIÓN DE ARCHIVO PENDIENTE" >> "$SUMMARY"
 echo "- INTEGRACIÓN M06 PENDIENTE" >> "$SUMMARY"
 echo "- External providers: none" >> "$SUMMARY"

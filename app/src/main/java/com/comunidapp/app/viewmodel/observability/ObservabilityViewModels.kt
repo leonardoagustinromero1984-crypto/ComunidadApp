@@ -58,7 +58,7 @@ private fun PermissionCode.toObsPermission(): ObservabilityPermission? = when (t
     PermissionCode.ALERT_MANAGE -> ObservabilityPermission.ALERT_MANAGE
     PermissionCode.RETENTION_MANAGE -> ObservabilityPermission.RETENTION_MANAGE
     PermissionCode.HEALTH_CHECK_EXECUTE -> ObservabilityPermission.HEALTH_CHECK_EXECUTE
-    PermissionCode.AUDIT_VIEW -> ObservabilityPermission.AUDIT_VIEW
+    // Etapa 6: audit.view no se mapea como autoridad M07
     else -> null
 }
 

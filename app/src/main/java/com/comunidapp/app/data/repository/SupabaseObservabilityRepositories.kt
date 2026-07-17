@@ -195,6 +195,53 @@ class SupabaseApplicationErrorRepository : ApplicationErrorRepository {
 
     override suspend fun findByFingerprint(fingerprint: String): AppResult<List<ApplicationError>> =
         AppResult.Success(emptyList())
+
+    override suspend fun list(
+        auth: ObservabilityAuthorizationContext,
+        offset: Int,
+        limit: Int
+    ): AppResult<List<ApplicationError>> = runCatching {
+        val element = m07Rpc(
+            "m07_list_application_errors",
+            buildJsonObject {
+                put("p_limit", limit)
+                put("p_offset", offset)
+            }
+        )
+        val rows = element as? JsonArray ?: JsonArray(emptyList())
+        AppResult.Success(rows.mapNotNull { (it as? JsonObject)?.toApplicationErrorRow() })
+    }.getOrElse {
+        obsFail(ObservabilityErrorCode.OBS_READ_DENIED, AppErrorKind.FORBIDDEN)
+    }
+}
+
+private fun JsonObject.toApplicationErrorRow(): ApplicationError? {
+    val id = (this["id"] as? JsonPrimitive)?.contentOrNull ?: return null
+    val code = ObservabilityErrorCode.fromString(
+        (this["error_code"] as? JsonPrimitive)?.contentOrNull
+    )
+    val module = ObservabilityModule.fromString(
+        (this["module"] as? JsonPrimitive)?.contentOrNull
+    ) ?: ObservabilityModule.M07
+    val fingerprint = (this["fingerprint"] as? JsonPrimitive)?.contentOrNull ?: "fp_unknown"
+    val corr = CorrelationId.parseOrNull((this["correlation_id"] as? JsonPrimitive)?.contentOrNull)
+    val occurred = (this["occurred_at"] as? JsonPrimitive)?.contentOrNull
+        ?.let { runCatching { Instant.parse(it) }.getOrNull() } ?: Instant.EPOCH
+    return ApplicationError(
+        id = id,
+        module = module,
+        errorCode = code,
+        sanitized = com.comunidapp.app.domain.observability.sanitization.SanitizedThrowable(
+            errorClass = "ApplicationError",
+            safeMessage = "REDACTED",
+            fingerprint = fingerprint,
+            causeDepth = 1,
+            isRetryable = (this["is_retryable"] as? JsonPrimitive)?.contentOrNull
+                ?.toBooleanStrictOrNull() ?: false
+        ),
+        correlationId = corr,
+        occurredAt = occurred
+    )
 }
 
 class SupabaseObservabilityExportRepository : ObservabilityExportRepository {

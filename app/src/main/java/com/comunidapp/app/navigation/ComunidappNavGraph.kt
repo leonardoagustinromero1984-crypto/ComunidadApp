@@ -31,6 +31,9 @@ import com.comunidapp.app.ui.screens.admin.ObservabilityMetricsScreen
 import com.comunidapp.app.ui.screens.admin.ObservabilityOverviewScreen
 import com.comunidapp.app.ui.screens.admin.ObservabilityPermissionsInfoScreen
 import com.comunidapp.app.ui.screens.admin.ObservabilityRetentionScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityAuditListScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityErrorsListScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityExportsScreen
 import com.comunidapp.app.ui.screens.admin.PlatformAdminScreen
 import com.comunidapp.app.ui.screens.moderation.ModerationAppealDetailScreen
 import com.comunidapp.app.ui.screens.moderation.ModerationAppealQueueScreen
@@ -954,15 +957,15 @@ private fun MainScreen(accountType: AccountType) {
             composable(NavRoutes.OBSERVABILITY_INCIDENTS) {
                 ObservabilityIncidentsScreen(onNavigateBack = { navController.popBackStack() })
             }
-            // Reuse Etapa 3 audit list; deep links do not grant access (gate in screen/VM).
+            // M07 Etapa 6: dedicated screens — no AdministrativeAuditScreen / audit.view proxy
             composable(NavRoutes.OBSERVABILITY_AUDIT) {
-                AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
+                ObservabilityAuditListScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(NavRoutes.OBSERVABILITY_ERRORS) {
-                AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
+                ObservabilityErrorsListScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(NavRoutes.OBSERVABILITY_EXPORTS) {
-                AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
+                ObservabilityExportsScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(NavRoutes.OBSERVABILITY_RETENTION) {
                 ObservabilityRetentionScreen(onNavigateBack = { navController.popBackStack() })

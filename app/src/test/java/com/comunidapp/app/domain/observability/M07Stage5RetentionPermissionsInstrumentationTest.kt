@@ -44,14 +44,15 @@ class M07Stage5RetentionPermissionsInstrumentationTest {
     ).first { it.isDirectory }
 
     @Test
-    fun migration031_isOnlyNewAndPriorIntact() {
+    fun migration031_isPresentAndPriorIntactThrough030() {
         val dir = migrationsDir()
         val files = dir.listFiles { f -> f.name.matches(Regex("\\d{3}_.*\\.sql")) }!!.map { it.name }.sorted()
         assertTrue(files.any { it.startsWith("031_") })
         assertEquals(1, files.count { it.startsWith("031_") })
-        assertFalse(files.any { it.startsWith("032_") })
         val prior = (1..30).map { "%03d".format(it) }
         prior.forEach { n -> assertTrue(files.any { it.startsWith("${n}_") }) }
+        // Etapa 6 may add 032 hardening; 031 remains the Stage-5 migration
+        assertTrue(files.map { it.substring(0, 3).toInt() }.maxOrNull()!! >= 31)
     }
 
     @Test

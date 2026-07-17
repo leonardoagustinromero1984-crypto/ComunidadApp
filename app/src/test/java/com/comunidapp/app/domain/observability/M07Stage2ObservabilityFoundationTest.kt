@@ -229,7 +229,7 @@ class M07Stage2ObservabilityFoundationTest {
         assertEquals(ObservabilityAccessDecision.DENIED_PERMISSION, ObservabilityAuthorization.authorize(base))
 
         val wrongOrg = base.copy(
-            permissions = setOf(ObservabilityPermission.AUDIT_VIEW),
+            permissions = setOf(ObservabilityPermission.OBSERVABILITY_VIEW),
             requestedAction = ObservabilityRequestedAction.VIEW
         )
         assertEquals(
