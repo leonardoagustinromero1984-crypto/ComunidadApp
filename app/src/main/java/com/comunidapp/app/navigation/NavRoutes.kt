@@ -63,6 +63,7 @@ object NavRoutes {
     const val PUBLISH_SHELTER = "publish_shelter"
     const val SERVICE_DETAIL = "service_detail/{serviceId}"
     const val NOTIFICATIONS = "notifications"
+    const val NOTIFICATION_PREFERENCES = "notification_preferences"
     const val ADMIN_MODERATION = "admin_moderation"
     const val PLATFORM_ADMIN = "platform_admin"
     const val MODERATION_REPORT_DETAIL = "moderation_report/{reportId}"

@@ -66,13 +66,16 @@ interface NotificationInstallationRepository {
         tokenFingerprint: String,
         now: Instant,
         appVersion: String? = null,
-        deviceLabel: String? = null
+        deviceLabel: String? = null,
+        /** Referencia protegida server-side; nunca se expone en el modelo público. */
+        tokenReference: String? = null
     ): AppResult<NotificationInstallation>
 
     suspend fun rotateToken(
         installationId: String,
         newFingerprint: String,
-        now: Instant
+        now: Instant,
+        tokenReference: String? = null
     ): AppResult<NotificationInstallation>
 
     suspend fun revokeCurrentInstallation(
@@ -137,10 +140,14 @@ class NotificationMockStore {
     val inbox = ConcurrentHashMap<String, NotificationInboxItem>()
     val preferences = ConcurrentHashMap<String, NotificationPreference>()
     val installations = ConcurrentHashMap<String, NotificationInstallation>()
+    /** Token references for mock push only; never returned by public APIs. */
+    val installationTokenRefs = ConcurrentHashMap<String, String>()
     val deliveries = ConcurrentHashMap<String, NotificationDelivery>()
     val outbox = ConcurrentHashMap<String, NotificationOutboxEvent>()
     val inboxByDedup = ConcurrentHashMap<String, String>()
     val outboxByIdempotency = ConcurrentHashMap<String, String>()
+    val processedPushNotificationIds = ConcurrentHashMap.newKeySet<String>()
+    var simulatePushFailure: String? = null
     val seq = AtomicInteger(0)
 
     fun nextId(prefix: String): String = "$prefix-${seq.incrementAndGet()}"
@@ -149,10 +156,13 @@ class NotificationMockStore {
         inbox.clear()
         preferences.clear()
         installations.clear()
+        installationTokenRefs.clear()
         deliveries.clear()
         outbox.clear()
         inboxByDedup.clear()
         outboxByIdempotency.clear()
+        processedPushNotificationIds.clear()
+        simulatePushFailure = null
         seq.set(0)
     }
 }
@@ -328,25 +338,47 @@ class MockNotificationInstallationRepository(
         tokenFingerprint: String,
         now: Instant,
         appVersion: String?,
-        deviceLabel: String?
+        deviceLabel: String?,
+        tokenReference: String?
     ): AppResult<NotificationInstallation> {
+        store.installations[installationId]?.let { existing ->
+            if (existing.userId == userId &&
+                existing.tokenFingerprint == tokenFingerprint.trim().lowercase() &&
+                existing.isActive
+            ) {
+                return AppResult.Success(existing)
+            }
+            if (existing.userId != userId && existing.isActive) {
+                val unbound = NotificationInstallationRules.revokeCurrent(
+                    existing, installationId, now
+                ).getOrElse { return notifFail(it.message ?: "UNBIND_FAILED") }
+                store.installations[installationId] = unbound
+            }
+        }
         val created = NotificationInstallationRules.register(
             installationId, userId, platform, tokenFingerprint, now, appVersion, deviceLabel
         ).getOrElse { return notifFail(it.message ?: "INSTALLATION_INVALID") }
         store.installations[installationId] = created
+        if (!tokenReference.isNullOrBlank()) {
+            store.installationTokenRefs[installationId] = tokenReference
+        }
         return AppResult.Success(created)
     }
 
     override suspend fun rotateToken(
         installationId: String,
         newFingerprint: String,
-        now: Instant
+        now: Instant,
+        tokenReference: String?
     ): AppResult<NotificationInstallation> {
         val current = store.installations[installationId]
             ?: return notifFail("NOT_FOUND", AppErrorKind.NOT_FOUND)
         val rotated = NotificationInstallationRules.rotateFingerprint(current, newFingerprint, now)
             .getOrElse { return notifFail(it.message ?: "ROTATE_FAILED") }
         store.installations[installationId] = rotated
+        if (!tokenReference.isNullOrBlank()) {
+            store.installationTokenRefs[installationId] = tokenReference
+        }
         return AppResult.Success(rotated)
     }
 

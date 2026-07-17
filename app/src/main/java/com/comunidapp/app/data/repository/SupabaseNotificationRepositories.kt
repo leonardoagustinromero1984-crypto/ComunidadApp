@@ -104,12 +104,20 @@ class SupabaseNotificationPreferenceRepository : NotificationPreferenceRepositor
                 put("p_category", preference.category.name)
                 put("p_in_app_enabled", preference.inAppEnabled)
                 put("p_push_enabled", preference.pushEnabled)
-                put("p_email_enabled", preference.emailEnabled)
+                put("p_email_enabled", false) // Email no implementado en Etapa 4
                 put("p_marketing_consent", preference.marketingConsent)
                 put("p_timezone", preference.timezone.id)
                 if (qh != null) {
                     put("p_quiet_hours_start", qh.startLocalTime.toString())
                     put("p_quiet_hours_end", qh.endLocalTime.toString())
+                    put(
+                        "p_quiet_hours_days",
+                        JsonArray(
+                            qh.daysOfWeek
+                                .map { JsonPrimitive(it.value) }
+                                .sortedBy { it.content.toIntOrNull() ?: 0 }
+                        )
+                    )
                 }
             }
         )
@@ -142,7 +150,8 @@ class SupabaseNotificationInstallationRepository : NotificationInstallationRepos
         tokenFingerprint: String,
         now: Instant,
         appVersion: String?,
-        deviceLabel: String?
+        deviceLabel: String?,
+        tokenReference: String?
     ): AppResult<NotificationInstallation> = runRpc {
         val element = rpc(
             "m06_register_installation",
@@ -150,6 +159,7 @@ class SupabaseNotificationInstallationRepository : NotificationInstallationRepos
                 put("p_installation_id", installationId)
                 put("p_platform", platform.name)
                 put("p_token_fingerprint", tokenFingerprint)
+                tokenReference?.takeIf { it.isNotBlank() }?.let { put("p_token_reference", it) }
                 appVersion?.let { put("p_app_version", it) }
                 deviceLabel?.let { put("p_device_label", it) }
             }
@@ -161,13 +171,15 @@ class SupabaseNotificationInstallationRepository : NotificationInstallationRepos
     override suspend fun rotateToken(
         installationId: String,
         newFingerprint: String,
-        now: Instant
+        now: Instant,
+        tokenReference: String?
     ): AppResult<NotificationInstallation> = runRpc {
         val element = rpc(
             "m06_rotate_installation_token",
             buildJsonObject {
                 put("p_installation_id", installationId)
                 put("p_token_fingerprint", newFingerprint)
+                tokenReference?.takeIf { it.isNotBlank() }?.let { put("p_token_reference", it) }
             }
         )
         M04SupabaseRpcSupport.decodeObject(element)?.toInstallation()
@@ -289,20 +301,18 @@ private fun JsonObject.toPreference(): NotificationPreference? {
     val timezone = runCatching { ZoneId.of(string("timezone") ?: "UTC") }.getOrDefault(ZoneId.of("UTC"))
     val start = string("quiet_hours_start")?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
     val end = string("quiet_hours_end")?.let { runCatching { LocalTime.parse(it) }.getOrNull() }
+    val days = when (val raw = this["quiet_hours_days"]) {
+        is JsonArray -> raw.mapNotNull { (it as? JsonPrimitive)?.intOrNull }
+            .mapNotNull { iso -> DayOfWeek.entries.firstOrNull { it.value == iso } }
+            .toSet()
+        else -> DayOfWeek.entries.toSet()
+    }
     val quietHours = if (start != null && end != null) {
         NotificationQuietHours(
             startLocalTime = start,
             endLocalTime = end,
             timezone = timezone,
-            daysOfWeek = setOf(
-                DayOfWeek.MONDAY,
-                DayOfWeek.TUESDAY,
-                DayOfWeek.WEDNESDAY,
-                DayOfWeek.THURSDAY,
-                DayOfWeek.FRIDAY,
-                DayOfWeek.SATURDAY,
-                DayOfWeek.SUNDAY
-            )
+            daysOfWeek = days.ifEmpty { DayOfWeek.entries.toSet() }
         )
     } else {
         null
@@ -312,7 +322,7 @@ private fun JsonObject.toPreference(): NotificationPreference? {
         category = category,
         inAppEnabled = boolean("in_app_enabled") ?: true,
         pushEnabled = boolean("push_enabled") ?: true,
-        emailEnabled = boolean("email_enabled") ?: false,
+        emailEnabled = false,
         quietHours = quietHours,
         timezone = timezone,
         marketingConsent = boolean("marketing_consent") ?: false,

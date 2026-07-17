@@ -3,6 +3,7 @@ package com.comunidapp.app.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -14,6 +15,10 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.domain.notifications.authorization.NotificationDeepLinkAuthorization
+import com.comunidapp.app.notifications.NotificationDeepLinkRouter
+import com.comunidapp.app.notifications.NotificationPendingNavigationStore
 import com.comunidapp.app.ui.components.ComunidappBottomBar
 import com.comunidapp.app.ui.components.SessionLoadingScreen
 import com.comunidapp.app.ui.components.bottomNavItemsFor
@@ -57,6 +62,7 @@ import com.comunidapp.app.ui.screens.pets.MyPetsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
 import com.comunidapp.app.ui.screens.profile.EditProfileScreen
 import com.comunidapp.app.ui.screens.profile.FriendRequestsScreen
+import com.comunidapp.app.ui.screens.profile.NotificationPreferencesScreen
 import com.comunidapp.app.ui.screens.profile.NotificationsScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
 import com.comunidapp.app.ui.screens.profile.SearchFriendsScreen
@@ -240,6 +246,24 @@ private fun MainScreen(accountType: AccountType) {
     val currentRoute = navBackStackEntry?.destination?.route
     val bottomNavRoutes = bottomNavItemsFor(accountType).map { it.route }
     val showBottomBar = currentRoute in bottomNavRoutes
+
+    LaunchedEffect(Unit) {
+        val pending = NotificationPendingNavigationStore.consume() ?: return@LaunchedEffect
+        val userId = AuthProvider.repository.getCurrentUser()?.id
+        val context = NotificationDeepLinkAuthorization.DeepLinkOpenContext(
+            authenticatedUserId = userId,
+            platformPermissions = emptySet(),
+            organizationId = pending.deepLink.organizationId,
+            organizationPermissionCodes = emptySet(),
+            resourceExists = true,
+            permissionLookupFailed = false
+        )
+        val resolved = NotificationDeepLinkRouter.resolve(pending.deepLink, context)
+        // Staff/org routes sin permisos resueltos caen a fallback seguro.
+        navController.navigate(resolved.navRoute) {
+            launchSingleTop = true
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -719,7 +743,17 @@ private fun MainScreen(accountType: AccountType) {
                 )
             }
             composable(NavRoutes.NOTIFICATIONS) {
-                NotificationsScreen(onNavigateBack = { navController.popBackStack() })
+                NotificationsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToPreferences = {
+                        navController.navigate(NavRoutes.NOTIFICATION_PREFERENCES)
+                    }
+                )
+            }
+            composable(NavRoutes.NOTIFICATION_PREFERENCES) {
+                NotificationPreferencesScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             composable(NavRoutes.ADMIN_MODERATION) {
                 ModerationQueueScreen(
