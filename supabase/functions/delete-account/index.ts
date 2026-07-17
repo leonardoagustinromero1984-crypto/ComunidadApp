@@ -112,6 +112,14 @@ Deno.serve(async (req) => {
         .from("account_deletion_requests")
         .update({ status: "failed", failure_code: "storage" })
         .eq("id", requestId);
+      await admin.rpc("m07_client_note_data_access", {
+        p_event_key: "m01.account.deletion_failed",
+        p_correlation_id: correlationId.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) ||
+          crypto.randomUUID().replaceAll("-", "").slice(0, 32),
+        p_result: "FAILURE",
+        p_error_code: "storage",
+        p_metadata: { result: "FAILURE", error_code: "storage" },
+      }).catch(() => null);
       return json({ error: "storage_failed", correlation_id: correlationId }, 500);
     }
 
@@ -126,6 +134,14 @@ Deno.serve(async (req) => {
         .from("account_deletion_requests")
         .update({ status: "failed", failure_code: "auth_delete" })
         .eq("id", requestId);
+      await admin.rpc("m07_client_note_data_access", {
+        p_event_key: "m01.account.deletion_failed",
+        p_correlation_id: correlationId.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) ||
+          crypto.randomUUID().replaceAll("-", "").slice(0, 32),
+        p_result: "FAILURE",
+        p_error_code: "auth_delete",
+        p_metadata: { result: "FAILURE", error_code: "auth_delete" },
+      }).catch(() => null);
       return json({ error: "auth_delete_failed", correlation_id: correlationId }, 500);
     }
 

@@ -20,7 +20,7 @@ object SensitiveDataSanitizer {
     private val keyAssign = Regex(
         "(?i)(password|passwd|pwd|token|access[_-]?token|refresh[_-]?token|api[_-]?key|anon[_-]?key|secret|authorization|service[_-]?role|fcm[_-]?token)\\s*[=:]\\s*[^\\s,;\"']+"
     )
-    private val signedUrl = Regex("(?i)(signed[-_]?url|https?://[^\\s\"']+token=[^\\s\"']+|x-amz-|X-Goog-)")
+    private val signedUrl = Regex("(?i)(signed[-_]?url\\s*[=:]\\s*\\S+|signed[-_]?url|https?://\\S+|x-amz-|X-Goog-)")
     private val sql = Regex("(?i)\\b(select|insert|update|delete|drop|alter|grant|revoke)\\b[^\\n]{0,200}")
     private val stack = Regex("(?i)(at\\s+[\\w.$]+\\([\\w.]+:\\d+\\)|Caused by:)")
     private val localPath = Regex("(?i)([A-Z]:\\\\[^\\s\"']+|/(?:Users|home|data|var)/[^\\s\"']+)")

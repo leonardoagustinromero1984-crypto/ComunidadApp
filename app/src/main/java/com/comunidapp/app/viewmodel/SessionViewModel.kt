@@ -237,6 +237,7 @@ class SessionViewModel(
                     resolveAuthenticatedFlow(user)
                 }
                 .onFailure { error ->
+                    com.comunidapp.app.domain.observability.ObservabilityInstrumentation.reportLoginFailure()
                     val appError = AuthErrorMapper.fromThrowable(error)
                     if (appError.code == AuthErrorCode.EMAIL_NOT_VERIFIED.name) {
                         emitAuth(AuthState.EmailVerificationRequired(emailHint = null))
@@ -269,6 +270,7 @@ class SessionViewModel(
                         )
                     )
                 }
+            com.comunidapp.app.domain.observability.ObservabilityInstrumentation.reportLogout()
             _currentUser.value = null
             DataProvider.permissionRepository.invalidate()
             com.comunidapp.app.domain.organization.OrganizationContextProvider.clear()

@@ -60,7 +60,8 @@ fun sanitizeLogMessage(message: String): String {
  * En release, solo warning/error (sin verbose).
  * Throwable se sanitiza: no se envía el objeto raw a Log cuando hay riesgo de fuga;
  * se anexa fingerprint/clase segura al mensaje.
- * No envía logs remotos; no crash handler; no breadcrumbs.
+ * Remoto: solo errores allowlisted (no DEBUG), vía ObservabilityInstrumentation sin loops.
+ * No crash handler; no breadcrumbs; no proveedores externos.
  */
 object AndroidAppLogger : AppLogger {
 
@@ -83,6 +84,11 @@ object AndroidAppLogger : AppLogger {
         if (!shouldLog(LogLevel.WARNING)) return
         val msg = formatMessage(message, correlationId, throwable)
         Log.w(sanitizeTag(tag), msg)
+        // Consent gate unavailable is logged from AuthRepository without modifying it:
+        // observe the safe message pattern and report allowlisted remote error.
+        if (message.contains("skipping gate until migration", ignoreCase = true)) {
+            maybeReportRemote("M01_CONSENT_GATE_UNAVAILABLE", "M01", msg, correlationId)
+        }
     }
 
     override fun error(
@@ -94,6 +100,32 @@ object AndroidAppLogger : AppLogger {
         if (!shouldLog(LogLevel.ERROR)) return
         val msg = formatMessage(message, correlationId, throwable)
         Log.e(sanitizeTag(tag), msg)
+        // DEBUG never remotes; ERROR only for allowlisted codes embedded as OBS_* / M0x_*
+        val code = extractAllowlistedCode(message) ?: return
+        maybeReportRemote(code, "M07", msg, correlationId)
+    }
+
+    private fun extractAllowlistedCode(message: String): String? {
+        val allow = setOf(
+            "OBS_UNKNOWN", "OBS_WRITE_FAILED", "OBS_CORRELATION_INVALID",
+            "OBS_METADATA_DENIED", "OBS_EVENT_UNKNOWN", "OBS_PERMISSION_DENIED",
+            "M01_CONSENT_GATE_UNAVAILABLE", "M05_STORAGE_ERROR",
+            "M05_SIGNED_URL_ERROR", "M06_DEEP_LINK_DENIED"
+        )
+        return allow.firstOrNull { message.contains(it) }
+    }
+
+    private fun maybeReportRemote(
+        code: String,
+        module: String,
+        sanitizedMessage: String,
+        correlationId: CorrelationId?
+    ) {
+        // Never from DEBUG path; never recurse into reporter failures.
+        runCatching {
+            com.comunidapp.app.domain.observability.ObservabilityInstrumentation
+                .reportAllowlistedRemoteError(code, module, sanitizedMessage, correlationId)
+        }
     }
 
     private fun formatMessage(

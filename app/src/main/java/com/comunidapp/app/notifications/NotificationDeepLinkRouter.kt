@@ -30,6 +30,8 @@ object NotificationDeepLinkRouter {
                 usedFallback = false
             )
         }
+        com.comunidapp.app.domain.observability.ObservabilityInstrumentation
+            .reportDeepLinkDenied(decision.name)
         val fallback = NotificationDeepLinkAuthorization.resolveFallbackOnDeny(link)
         val safe = if (fallback.routeType == NotificationDeepLinkRoute.NOTIFICATIONS_INBOX) {
             NavRoutes.NOTIFICATIONS

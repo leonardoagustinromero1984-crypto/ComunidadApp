@@ -114,6 +114,9 @@ enum class ObservabilityErrorCode {
     OBS_RETENTION_UNDEFINED,
     OBS_SAMPLING_REJECTED,
     OBS_REPOSITORY_UNAVAILABLE,
+    OBS_WRITE_DENIED,
+    OBS_WRITE_FAILED,
+    OBS_READ_DENIED,
     OBS_UNKNOWN;
 
     companion object {

@@ -89,6 +89,22 @@ Deno.serve(async (req) => {
       else failed += 1;
     }
 
+    // M07: observe edge push invocation (no tokens/URLs).
+    try {
+      const corr = crypto.randomUUID().replaceAll("-", "").slice(0, 32);
+      await admin.rpc("m07_best_effort_audit", {
+        p_event_key: "m06.edge.push_invoked",
+        p_action: "PUSH_INVOKE",
+        p_result: failed > 0 && delivered === 0 ? "FAILURE" : "SUCCESS",
+        p_correlation_id: corr,
+        p_resource_type: "edge_push",
+        p_resource_id: null,
+        p_metadata: { result: failed > 0 && delivered === 0 ? "FAILURE" : "SUCCESS" },
+      });
+    } catch (_) {
+      /* never fail push on observability */
+    }
+
     return json({ processed: deliveries.length, delivered, failed });
   } catch (e) {
     console.error("push_unhandled", sanitizeError(String(e)));

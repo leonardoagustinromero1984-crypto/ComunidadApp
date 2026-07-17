@@ -12,6 +12,10 @@ import com.comunidapp.app.data.repository.MockObservabilityRepositories
 import com.comunidapp.app.data.repository.ObservabilityExportRepository
 import com.comunidapp.app.data.repository.PerformanceMetricRepository
 import com.comunidapp.app.data.repository.SecurityEventRepository
+import com.comunidapp.app.data.repository.SupabaseApplicationErrorRepository
+import com.comunidapp.app.data.repository.SupabaseAuditEventRepository
+import com.comunidapp.app.data.repository.SupabaseObservabilityExportRepository
+import com.comunidapp.app.data.repository.SupabaseSecurityEventRepository
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -36,7 +40,19 @@ class M07DataProviderWiringTest {
     }
 
     @Test
-    fun clientDeniedAudit_implementsContract() {
+    fun supabaseObservabilityRepos_implementContracts() {
+        assertTrue(
+            AuditEventRepository::class.java.isAssignableFrom(SupabaseAuditEventRepository::class.java)
+        )
+        assertTrue(
+            SecurityEventRepository::class.java.isAssignableFrom(SupabaseSecurityEventRepository::class.java)
+        )
+        assertTrue(
+            ApplicationErrorRepository::class.java.isAssignableFrom(SupabaseApplicationErrorRepository::class.java)
+        )
+        assertTrue(
+            ObservabilityExportRepository::class.java.isAssignableFrom(SupabaseObservabilityExportRepository::class.java)
+        )
         assertTrue(
             AuditEventRepository::class.java.isAssignableFrom(ClientDeniedAuditEventRepository::class.java)
         )

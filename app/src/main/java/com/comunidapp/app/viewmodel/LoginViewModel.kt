@@ -83,6 +83,8 @@ class LoginViewModel(
                 }
                 .onFailure { error ->
                     AuthAnalytics.track("auth_error_shown")
+                    // M07: security event without email/password (ViewModel layer, not AuthRepository).
+                    com.comunidapp.app.domain.observability.ObservabilityInstrumentation.reportLoginFailure()
                     val appError = AuthErrorMapper.fromThrowable(error)
                     if (appError.code == AuthErrorCode.EMAIL_NOT_VERIFIED.name) {
                         _uiState.update {

@@ -93,6 +93,27 @@ class SupabaseFileDownloadRepository(
                 ?: if (request.ttlClass == FileSignedTtlClass.PUBLIC_RESOLUTION) 300 else 600
             val temporaryUrl = supabase.storage.from(bucket)
                 .createSignedUrl(path = path, expiresIn = expiresSeconds.seconds)
+            // M07: note signed URL issuance without recording URL or full path.
+            runCatching {
+                val cid = com.comunidapp.app.domain.observability.ObservabilityInstrumentation.correlationOrNew()
+                supabase.postgrest.rpc(
+                    "m07_client_note_data_access",
+                    buildJsonObject {
+                        put("p_event_key", "m05.signed_url.issued")
+                        put("p_correlation_id", cid)
+                        put("p_result", "SUCCESS")
+                        put("p_resource_id", request.assetId)
+                        put(
+                            "p_metadata",
+                            buildJsonObject {
+                                put("result", "SUCCESS")
+                                put("resource_id", request.assetId)
+                                put("file_type", asset.purpose.name)
+                            }
+                        )
+                    }
+                )
+            }
             FileSignedAccess(
                 assetId = asset.id,
                 temporaryUrl = temporaryUrl,

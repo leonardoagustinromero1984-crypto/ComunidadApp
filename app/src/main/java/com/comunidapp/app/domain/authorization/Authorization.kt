@@ -125,6 +125,8 @@ object AuthorizationService {
         return if (permission in effective) {
             AuthorizationDecision.Allowed
         } else {
+            com.comunidapp.app.domain.observability.ObservabilityInstrumentation
+                .reportPermissionDenied(permission.code)
             AuthorizationDecision.Denied("missing:${permission.code}")
         }
     }
