@@ -49,6 +49,12 @@ import com.comunidapp.app.data.repository.MockFileRetentionRepository
 import com.comunidapp.app.data.repository.MockFileUploadRepository
 import com.comunidapp.app.data.repository.MockAdministrativeAuditRepository
 import com.comunidapp.app.data.repository.MockModerationRepository
+import com.comunidapp.app.data.repository.MockNotificationDeliveryRepository
+import com.comunidapp.app.data.repository.MockNotificationInboxRepository
+import com.comunidapp.app.data.repository.MockNotificationInstallationRepository
+import com.comunidapp.app.data.repository.MockNotificationOutboxRepository
+import com.comunidapp.app.data.repository.MockNotificationPreferenceRepository
+import com.comunidapp.app.data.repository.MockNotificationRepositories
 import com.comunidapp.app.data.repository.MockOrganizationInvitationRepository
 import com.comunidapp.app.data.repository.MockOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.MockOrganizationPermissionRepository
@@ -60,6 +66,11 @@ import com.comunidapp.app.data.repository.MockPlatformRepository
 import com.comunidapp.app.data.repository.MockServiceRepository
 import com.comunidapp.app.data.repository.MockSupportRepository
 import com.comunidapp.app.data.repository.ModerationRepository
+import com.comunidapp.app.data.repository.NotificationDeliveryRepository
+import com.comunidapp.app.data.repository.NotificationInboxRepository
+import com.comunidapp.app.data.repository.NotificationInstallationRepository
+import com.comunidapp.app.data.repository.NotificationOutboxRepository
+import com.comunidapp.app.data.repository.NotificationPreferenceRepository
 import com.comunidapp.app.data.repository.OrganizationInvitationRepository
 import com.comunidapp.app.data.repository.OrganizationMembershipRepository
 import com.comunidapp.app.data.repository.OrganizationPermissionRepository
@@ -70,6 +81,8 @@ import com.comunidapp.app.data.repository.PlatformAdministrationRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.ServiceRepository
 import com.comunidapp.app.data.repository.SupportRepository
+import com.comunidapp.app.domain.notifications.NotificationRetryPolicy
+import java.time.Instant
 import com.comunidapp.app.data.repository.SupabaseAdministrativeAuditRepository
 import com.comunidapp.app.data.repository.SupabaseModerationRepository
 import com.comunidapp.app.data.repository.SupabaseOrganizationInvitationRepository
@@ -149,6 +162,57 @@ object DataProvider {
     val platformRepository: PlatformRepository by lazy {
         if (useSupabase) SupabasePlatformRepository() else MockPlatformRepository()
     }
+
+    /**
+     * M06 Etapa 2 — contratos/mocks deterministas (sin Supabase).
+     * Con useSupabase=true se preserva [platformRepository]/FCM legacy;
+     * estos repos de contrato permanecen mocks hasta Etapa 3 (sin implementación remota).
+     */
+    private val m06Stage2ContractMocks: MockNotificationRepositories by lazy {
+        MockNotificationRepositories.create(
+            clock = { Instant.now() },
+            retryPolicy = NotificationRetryPolicy()
+        )
+    }
+
+    /** Mock de contrato M06 Etapa 2 (bandeja). No-null en ambos flags. */
+    val notificationInboxRepository: NotificationInboxRepository
+        get() = m06Stage2ContractMocks.inbox
+
+    /** Mock de contrato M06 Etapa 2 (preferencias). */
+    val notificationPreferenceRepository: NotificationPreferenceRepository
+        get() = m06Stage2ContractMocks.preference
+
+    /** Mock de contrato M06 Etapa 2 (instalaciones / fingerprints). */
+    val notificationInstallationRepository: NotificationInstallationRepository
+        get() = m06Stage2ContractMocks.installation
+
+    /** Mock de contrato M06 Etapa 2 (deliveries). */
+    val notificationDeliveryRepository: NotificationDeliveryRepository
+        get() = m06Stage2ContractMocks.delivery
+
+    /** Mock de contrato M06 Etapa 2 (outbox). */
+    val notificationOutboxRepository: NotificationOutboxRepository
+        get() = m06Stage2ContractMocks.outbox
+
+    /** Acceso tipado a los mocks de etapa 2 (tests / inyección). */
+    val m06Stage2NotificationMocks: MockNotificationRepositories
+        get() = m06Stage2ContractMocks
+
+    val mockNotificationInboxRepository: MockNotificationInboxRepository
+        get() = m06Stage2ContractMocks.inbox
+
+    val mockNotificationPreferenceRepository: MockNotificationPreferenceRepository
+        get() = m06Stage2ContractMocks.preference
+
+    val mockNotificationInstallationRepository: MockNotificationInstallationRepository
+        get() = m06Stage2ContractMocks.installation
+
+    val mockNotificationDeliveryRepository: MockNotificationDeliveryRepository
+        get() = m06Stage2ContractMocks.delivery
+
+    val mockNotificationOutboxRepository: MockNotificationOutboxRepository
+        get() = m06Stage2ContractMocks.outbox
 
     val permissionRepository: PermissionRepository by lazy {
         if (useSupabase) SupabasePermissionRepository() else MockPermissionRepository()
