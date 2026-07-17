@@ -120,7 +120,6 @@ private fun requireManage(auth: ObservabilityAuthorizationContext): Observabilit
     val manageCtx = auth.copy(requestedAction = ObservabilityRequestedAction.MANAGE_ALERTS)
     val alerts = ObservabilityAuthorization.authorize(manageCtx)
     if (alerts == ObservabilityAccessDecision.ALLOWED) return alerts
-    // OBSERVABILITY_MANAGE also authorizes acknowledge/resolve/manual checks
     if (ObservabilityPermission.OBSERVABILITY_MANAGE in auth.permissions) {
         return ObservabilityAuthorization.authorize(
             auth.copy(requestedAction = ObservabilityRequestedAction.VIEW)
@@ -131,6 +130,11 @@ private fun requireManage(auth: ObservabilityAuthorizationContext): Observabilit
     }
     return alerts
 }
+
+private fun requireHealthExecute(auth: ObservabilityAuthorizationContext): ObservabilityAccessDecision =
+    ObservabilityAuthorization.authorize(
+        auth.copy(requestedAction = ObservabilityRequestedAction.EXECUTE_HEALTH)
+    )
 
 class OperationalObservabilityMockStore {
     val metrics = ConcurrentHashMap<String, PerformanceMetric>()
@@ -265,7 +269,7 @@ class MockOperationalObservabilityRepository(
         checkKey: String,
         correlationId: String
     ): AppResult<HealthCheck> {
-        if (requireManage(auth) != ObservabilityAccessDecision.ALLOWED) {
+        if (requireHealthExecute(auth) != ObservabilityAccessDecision.ALLOWED) {
             return opFail(ObservabilityErrorCode.OBS_HEALTH_EXECUTION_DENIED, AppErrorKind.FORBIDDEN)
         }
         if (checkKey !in OperationalMetricCatalog.healthCheckKeys) {

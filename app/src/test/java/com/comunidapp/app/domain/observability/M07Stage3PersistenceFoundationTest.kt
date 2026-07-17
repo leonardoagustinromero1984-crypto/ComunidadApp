@@ -84,16 +84,16 @@ class M07Stage3PersistenceFoundationTest {
     }
 
     @Test
-    fun migration029_catalogHas108KeysMatchingKotlin() {
+    fun migration029_catalogKeysAreSubsetOfKotlinAndStable108InSql() {
         val sql = migration029()
         val sqlKeys = Regex("'m0[0-7]\\.[a-z0-9_]+\\.[a-z0-9_]+'")
             .findAll(sql)
             .map { it.value.trim('\'') }
             .toSet()
         val kotlinKeys = ObservabilityEventCatalog.all().map { it.eventKey }.toSet()
-        assertEquals(108, kotlinKeys.size)
-        assertTrue("SQL catalog missing kotlin keys", sqlKeys.containsAll(kotlinKeys))
-        assertEquals(108, kotlinKeys.size)
+        assertEquals(108, sqlKeys.size)
+        assertTrue("SQL 029 keys must remain in Kotlin catalog", kotlinKeys.containsAll(sqlKeys))
+        assertTrue(kotlinKeys.size >= 108)
     }
 
     @Test

@@ -361,6 +361,8 @@ fun ProfileScreen(
                                 Text("Auditoría")
                             }
                         }
+                    }
+                    if (uiState.canViewObservability) {
                         item {
                             OutlinedButton(
                                 onClick = onNavigateToObservability,

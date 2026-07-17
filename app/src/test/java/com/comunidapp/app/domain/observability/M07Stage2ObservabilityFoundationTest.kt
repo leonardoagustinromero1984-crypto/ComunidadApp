@@ -330,9 +330,10 @@ class M07Stage2ObservabilityFoundationTest {
             ),
             staffAuth()
         ) as AppResult.Success
-        assertEquals(ObservabilityExportState.READY_SIMULATED, okExport.data.state)
-        assertNotNull(okExport.data.simulatedArtifactLabel)
-        assertFalse(okExport.data.simulatedArtifactLabel!!.contains("/"))
+        assertEquals(ObservabilityExportState.AUTHORIZED, okExport.data.state)
+        assertTrue(okExport.data.filePending)
+        assertTrue(okExport.data.simulatedArtifactLabel == null)
+        assertTrue(okExport.data.note?.contains("PENDIENTE") == true)
     }
 
     @Test

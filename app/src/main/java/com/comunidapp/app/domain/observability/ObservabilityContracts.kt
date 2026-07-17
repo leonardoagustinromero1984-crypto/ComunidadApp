@@ -213,7 +213,16 @@ data class ObservabilitySavedFilter(
 )
 
 enum class ObservabilityExportState {
-    REQUESTED, DENIED, READY_SIMULATED, FAILED
+    REQUESTED,
+    AUTHORIZED,
+    PROCESSING,
+    COMPLETED,
+    FAILED,
+    DENIED,
+    EXPIRED,
+    CANCELLED,
+    /** Etapa 3/4 legacy simulated label — prefer AUTHORIZED + file pending. */
+    READY_SIMULATED
 }
 
 data class ObservabilityExport(
@@ -224,8 +233,71 @@ data class ObservabilityExport(
     val eventKeys: List<String> = emptyList(),
     val correlationId: CorrelationId? = null,
     val requestedAt: Instant,
-    /** Simulated path only — never a real file handle in Etapa 2. */
+    /** Etapa 5: file artifact not generated safely — always pending when true. */
+    val filePending: Boolean = true,
+    val expiresAt: Instant? = null,
+    val note: String? = "EXPORTACION_DE_ARCHIVO_PENDIENTE",
+    /** Legacy mock label only — never a real download path or signed URL. */
     val simulatedArtifactLabel: String? = null
+)
+
+enum class RetentionDeleteMode {
+    HARD_DELETE, ANONYMIZE, KEEP_UNTIL_RESOLVED, NO_DELETE, LEGAL_REVIEW
+}
+
+enum class RetentionRunKind { PREVIEW, EXECUTE }
+
+enum class RetentionRunStatus {
+    PREVIEWED, EXPIRED, EXECUTED, DENIED, FAILED, BLOCKED_LEGAL_HOLD
+}
+
+data class ObservabilityRetentionPolicyRecord(
+    val id: String,
+    val policyKey: RetentionPolicyKey,
+    val targetTable: String,
+    val retentionDays: Int?,
+    val deleteMode: RetentionDeleteMode,
+    val enabled: Boolean,
+    val legalHold: Boolean,
+    val descriptionCode: String
+)
+
+data class ObservabilityRetentionRun(
+    val id: String,
+    val policyId: String,
+    val runKind: RetentionRunKind,
+    val status: RetentionRunStatus,
+    val estimatedCount: Long = 0,
+    val affectedCount: Long = 0,
+    val batchSize: Int = 100,
+    val correlationId: CorrelationId?,
+    val previewExpiresAt: Instant? = null,
+    val executedAt: Instant? = null,
+    val createdAt: Instant
+)
+
+data class RetentionPreviewResult(
+    val runId: String,
+    val status: RetentionRunStatus,
+    val estimatedCount: Long,
+    val targetTable: String,
+    val policyKey: RetentionPolicyKey,
+    val previewExpiresAt: Instant?,
+    val correlationId: CorrelationId?
+)
+
+data class RetentionExecuteResult(
+    val runId: String,
+    val status: RetentionRunStatus,
+    val affectedCount: Long,
+    val targetTable: String,
+    val correlationId: CorrelationId?
+)
+
+data class ObservabilityPermissionSectionInfo(
+    val sectionKey: String,
+    val requiredPermission: String,
+    val allowed: Boolean
 )
 
 data class CatalogEventDefinition(

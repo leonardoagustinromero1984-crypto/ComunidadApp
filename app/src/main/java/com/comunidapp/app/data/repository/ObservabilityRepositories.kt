@@ -464,9 +464,11 @@ class MockObservabilityExportRepository(
         val id = export.id.ifBlank { store.nextId("exp") }
         val ready = export.copy(
             id = id,
-            state = ObservabilityExportState.READY_SIMULATED,
+            state = ObservabilityExportState.AUTHORIZED,
             requestedAt = clock(),
-            simulatedArtifactLabel = "mock-export-$id.json"
+            filePending = true,
+            note = "EXPORTACION_DE_ARCHIVO_PENDIENTE",
+            simulatedArtifactLabel = null
         )
         store.exports[id] = ready
         return AppResult.Success(ready)
@@ -549,8 +551,11 @@ fun staffAuth(
         ObservabilityPermission.AUDIT_VIEW_SENSITIVE,
         ObservabilityPermission.SECURITY_EVENTS_VIEW,
         ObservabilityPermission.OBSERVABILITY_VIEW,
+        ObservabilityPermission.OBSERVABILITY_MANAGE,
         ObservabilityPermission.EXPORT_AUDIT_DATA,
         ObservabilityPermission.ALERT_MANAGE,
+        ObservabilityPermission.RETENTION_MANAGE,
+        ObservabilityPermission.HEALTH_CHECK_EXECUTE,
         ObservabilityPermission.ANALYTICS_VIEW
     ),
     orgs: Set<String> = emptySet()

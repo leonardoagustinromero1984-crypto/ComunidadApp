@@ -19,6 +19,9 @@ import com.comunidapp.app.data.repository.SupabaseSecurityEventRepository
 import com.comunidapp.app.data.repository.OperationalObservabilityRepository
 import com.comunidapp.app.data.repository.MockOperationalObservabilityRepository
 import com.comunidapp.app.data.repository.SupabaseOperationalObservabilityRepository
+import com.comunidapp.app.data.repository.RetentionRepository
+import com.comunidapp.app.data.repository.MockRetentionRepository
+import com.comunidapp.app.data.repository.SupabaseRetentionRepository
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -66,6 +69,12 @@ class M07DataProviderWiringTest {
         assertTrue(
             OperationalObservabilityRepository::class.java
                 .isAssignableFrom(SupabaseOperationalObservabilityRepository::class.java)
+        )
+        assertTrue(
+            RetentionRepository::class.java.isAssignableFrom(MockRetentionRepository::class.java)
+        )
+        assertTrue(
+            RetentionRepository::class.java.isAssignableFrom(SupabaseRetentionRepository::class.java)
         )
     }
 }

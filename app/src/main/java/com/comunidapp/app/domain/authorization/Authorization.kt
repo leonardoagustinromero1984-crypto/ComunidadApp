@@ -33,7 +33,16 @@ enum class PermissionCode(val code: String) {
     ROLES_VIEW("roles.view"),
     ROLES_ASSIGN("roles.assign"),
     ROLES_REVOKE("roles.revoke"),
-    AUDIT_VIEW("audit.view");
+    AUDIT_VIEW("audit.view"),
+    /** M07 Etapa 5 — permisos dedicados (reemplazan proxy audit.view en rutas M07). */
+    OBSERVABILITY_VIEW("observability.view"),
+    OBSERVABILITY_MANAGE("observability.manage"),
+    AUDIT_VIEW_SENSITIVE("audit.view_sensitive"),
+    SECURITY_EVENTS_VIEW("security.events.view"),
+    EXPORT_AUDIT_DATA("export.audit_data"),
+    ALERT_MANAGE("alert.manage"),
+    RETENTION_MANAGE("retention.manage"),
+    HEALTH_CHECK_EXECUTE("health.check.execute");
 
     companion object {
         fun fromCode(raw: String): PermissionCode? =
@@ -91,7 +100,15 @@ object RolePermissionMatrix {
         PermissionCode.ROLES_VIEW,
         PermissionCode.ROLES_ASSIGN,
         PermissionCode.ROLES_REVOKE,
-        PermissionCode.AUDIT_VIEW
+        PermissionCode.AUDIT_VIEW,
+        PermissionCode.OBSERVABILITY_VIEW,
+        PermissionCode.OBSERVABILITY_MANAGE,
+        PermissionCode.AUDIT_VIEW_SENSITIVE,
+        PermissionCode.SECURITY_EVENTS_VIEW,
+        PermissionCode.EXPORT_AUDIT_DATA,
+        PermissionCode.ALERT_MANAGE,
+        PermissionCode.RETENTION_MANAGE,
+        PermissionCode.HEALTH_CHECK_EXECUTE
     )
 
     private val SUPERADMIN: Set<PermissionCode> = ADMIN + setOf(

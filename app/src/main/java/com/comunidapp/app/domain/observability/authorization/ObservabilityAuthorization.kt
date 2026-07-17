@@ -29,7 +29,9 @@ enum class ObservabilityPermission {
     OBSERVABILITY_MANAGE,
     ANALYTICS_VIEW,
     EXPORT_AUDIT_DATA,
-    ALERT_MANAGE
+    ALERT_MANAGE,
+    RETENTION_MANAGE,
+    HEALTH_CHECK_EXECUTE
 }
 
 enum class ObservabilityRequestedAction {
@@ -37,6 +39,8 @@ enum class ObservabilityRequestedAction {
     VIEW_SENSITIVE,
     EXPORT,
     MANAGE_ALERTS,
+    MANAGE_RETENTION,
+    EXECUTE_HEALTH,
     WRITE_LOCAL,
     UNKNOWN
 }
@@ -79,7 +83,19 @@ object ObservabilityAuthorization {
                 }
             }
             ObservabilityRequestedAction.MANAGE_ALERTS -> {
-                if (ObservabilityPermission.ALERT_MANAGE !in ctx.permissions) {
+                if (ObservabilityPermission.ALERT_MANAGE !in ctx.permissions &&
+                    ObservabilityPermission.OBSERVABILITY_MANAGE !in ctx.permissions
+                ) {
+                    return ObservabilityAccessDecision.DENIED_PERMISSION
+                }
+            }
+            ObservabilityRequestedAction.MANAGE_RETENTION -> {
+                if (ObservabilityPermission.RETENTION_MANAGE !in ctx.permissions) {
+                    return ObservabilityAccessDecision.DENIED_PERMISSION
+                }
+            }
+            ObservabilityRequestedAction.EXECUTE_HEALTH -> {
+                if (ObservabilityPermission.HEALTH_CHECK_EXECUTE !in ctx.permissions) {
                     return ObservabilityAccessDecision.DENIED_PERMISSION
                 }
             }

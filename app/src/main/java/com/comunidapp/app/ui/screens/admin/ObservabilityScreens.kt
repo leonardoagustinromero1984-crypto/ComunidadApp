@@ -40,6 +40,8 @@ fun ObservabilityOverviewScreen(
     onNavigateToAudit: () -> Unit = {},
     onNavigateToErrors: () -> Unit = {},
     onNavigateToExports: () -> Unit = {},
+    onNavigateToRetention: () -> Unit = {},
+    onNavigateToPermissionsInfo: () -> Unit = {},
     viewModel: ObservabilityOverviewViewModel = viewModel(factory = ObservabilityOverviewViewModel.factory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -96,6 +98,12 @@ fun ObservabilityOverviewScreen(
                     TextButton(onClick = onNavigateToAudit) { Text("Auditoría") }
                     TextButton(onClick = onNavigateToErrors) { Text("Errores") }
                     TextButton(onClick = onNavigateToExports) { Text("Exportaciones") }
+                }
+            }
+            item {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedButton(onClick = onNavigateToRetention) { Text("Retención") }
+                    TextButton(onClick = onNavigateToPermissionsInfo) { Text("Permisos M07") }
                 }
             }
         }
@@ -267,6 +275,149 @@ fun ObservabilityIncidentsScreen(
                                 Text("Resolve")
                             }
                         }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ObservabilityRetentionScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: com.comunidapp.app.viewmodel.observability.ObservabilityRetentionViewModel =
+        viewModel(factory = com.comunidapp.app.viewmodel.observability.ObservabilityRetentionViewModel.factory())
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(uiState.phase) {
+        if (uiState.phase == AdministrativeScreenPhase.AccessDenied) onNavigateBack()
+    }
+    AdministrativePhaseHost(
+        title = "Retención M07",
+        phase = uiState.phase,
+        onNavigateBack = onNavigateBack,
+        emptyTitle = "Sin políticas",
+        emptyMessage = "No hay políticas de retención configuradas.",
+        errorMessage = uiState.errorMessage ?: "No pudimos cargar retención.",
+        onRetry = { viewModel.refresh() }
+    ) { contentModifier ->
+        LazyColumn(
+            modifier = contentModifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            item {
+                Text(
+                    "Preview y ejecución son acciones separadas. No se muestran datos a eliminar.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+                uiState.lastCorrelationId?.let {
+                    Text("Correlation: $it", style = MaterialTheme.typography.bodySmall)
+                }
+                uiState.infoMessage?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+            }
+            items(uiState.policies, key = { it.id }) { policy ->
+                Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 1.dp) {
+                    Column(
+                        Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(policy.policyKey.name, fontWeight = FontWeight.SemiBold)
+                        Text("Tabla: ${policy.targetTable}")
+                        Text("Modo: ${policy.deleteMode} · Días: ${policy.retentionDays ?: "—"}")
+                        Text("Legal hold: ${policy.legalHold}")
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            OutlinedButton(onClick = { viewModel.selectPolicy(policy.id) }) {
+                                Text("Seleccionar")
+                            }
+                            if (!policy.legalHold) {
+                                TextButton(onClick = { viewModel.setLegalHold(policy.id) }) {
+                                    Text("Hold")
+                                }
+                            } else {
+                                TextButton(onClick = { viewModel.releaseLegalHold(policy.id) }) {
+                                    Text("Release")
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            item {
+                val selected = uiState.selectedPolicyId
+                Text("Seleccionada: ${selected ?: "ninguna"}")
+                Button(
+                    onClick = { viewModel.previewSelected() },
+                    enabled = selected != null
+                ) { Text("Preview") }
+                uiState.preview?.let { preview ->
+                    Text("Estimados: ${preview.estimatedCount} · ${preview.targetTable}")
+                    Text("Expira: ${preview.previewExpiresAt}")
+                    if (!uiState.confirmExecute) {
+                        Button(onClick = { viewModel.requestExecuteConfirmation() }) {
+                            Text("Confirmar ejecución")
+                        }
+                    } else {
+                        Text("Confirmá explícitamente la ejecución.")
+                        Button(onClick = { viewModel.executeConfirmed() }) {
+                            Text("Ejecutar ahora")
+                        }
+                        OutlinedButton(onClick = { viewModel.cancelExecuteConfirmation() }) {
+                            Text("Cancelar")
+                        }
+                    }
+                }
+            }
+            item { Text("Historial de runs", fontWeight = FontWeight.SemiBold) }
+            items(uiState.runs, key = { it.id }) { run ->
+                Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 1.dp) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text("${run.runKind} · ${run.status}")
+                        Text("Estimados: ${run.estimatedCount} · Afectados: ${run.affectedCount}")
+                        Text("Correlation: ${run.correlationId?.value ?: "—"}")
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun ObservabilityPermissionsInfoScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: com.comunidapp.app.viewmodel.observability.ObservabilityPermissionsInfoViewModel =
+        viewModel(factory = com.comunidapp.app.viewmodel.observability.ObservabilityPermissionsInfoViewModel.factory())
+) {
+    val uiState by viewModel.uiState.collectAsState()
+    LaunchedEffect(uiState.phase) {
+        if (uiState.phase == AdministrativeScreenPhase.AccessDenied) onNavigateBack()
+    }
+    AdministrativePhaseHost(
+        title = "Permisos M07",
+        phase = uiState.phase,
+        onNavigateBack = onNavigateBack,
+        emptyTitle = "Sin secciones",
+        emptyMessage = "No hay mapeo de permisos.",
+        errorMessage = uiState.errorMessage ?: "No pudimos cargar permisos.",
+        onRetry = { viewModel.refresh() }
+    ) { contentModifier ->
+        LazyColumn(
+            modifier = contentModifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            item {
+                Text(
+                    "Solo informativo. La administración de roles continúa en M02.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            items(uiState.sections, key = { it.sectionKey }) { section ->
+                Surface(modifier = Modifier.fillMaxWidth(), tonalElevation = 1.dp) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(section.sectionKey, fontWeight = FontWeight.SemiBold)
+                        Text("Requerido: ${section.requiredPermission}")
+                        Text(if (section.allowed) "PERMITIDO" else "DENEGADO")
                     }
                 }
             }

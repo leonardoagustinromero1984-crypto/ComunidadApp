@@ -83,14 +83,25 @@ tasks.register<JacocoReport>("jacocoTestReport") {
     val debugTree = fileTree(layout.buildDirectory.dir("intermediates/javac/debug")) {
         exclude(fileFilter)
     }
-    val kotlinTree = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+    val kotlinTreeLegacy = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
         exclude(fileFilter)
     }
-    classDirectories.setFrom(files(debugTree, kotlinTree))
+    // AGP built-in Kotlin compiler output (current toolchain)
+    val kotlinTreeAgp = fileTree(
+        layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes")
+    ) {
+        exclude(fileFilter)
+    }
+    classDirectories.setFrom(files(debugTree, kotlinTreeLegacy, kotlinTreeAgp))
     sourceDirectories.setFrom(files("src/main/java"))
     executionData.setFrom(
         fileTree(layout.buildDirectory) {
-            include("**/*.exec", "**/jacoco/testDebugUnitTest.exec", "**/coverage_exec/**/*.ec")
+            include(
+                "**/*.exec",
+                "**/jacoco/testDebugUnitTest.exec",
+                "**/unit_test_code_coverage/**/*.exec",
+                "**/coverage_exec/**/*.ec"
+            )
         }
     )
 }

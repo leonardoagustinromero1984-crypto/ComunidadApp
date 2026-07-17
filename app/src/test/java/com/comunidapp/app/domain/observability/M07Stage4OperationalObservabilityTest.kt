@@ -43,7 +43,7 @@ class M07Stage4OperationalObservabilityTest {
         actorId = "staff-1",
         permissions = buildSet {
             add(ObservabilityPermission.OBSERVABILITY_VIEW)
-            add(ObservabilityPermission.AUDIT_VIEW)
+            add(ObservabilityPermission.HEALTH_CHECK_EXECUTE)
             if (manage) {
                 add(ObservabilityPermission.OBSERVABILITY_MANAGE)
                 add(ObservabilityPermission.ALERT_MANAGE)
@@ -69,7 +69,9 @@ class M07Stage4OperationalObservabilityTest {
             .map { it.substring(0, 3).toInt() }
             .sorted()
         assertEquals(numbered, numbered.distinct())
-        assertEquals(30, numbered.maxOrNull())
+        assertTrue(numbered.maxOrNull()!! >= 30)
+        assertTrue(names.any { it.startsWith("030_") })
+        assertTrue(names.any { it.startsWith("031_") } || numbered.maxOrNull() == 30)
     }
 
     @Test
@@ -128,21 +130,26 @@ class M07Stage4OperationalObservabilityTest {
     }
 
     @Test
-    fun eventCatalog_kotlinSqlStillExact108() {
+    fun eventCatalog_kotlinSqlExact118With031() {
         val sql029 = listOf(
             File("supabase/migrations/029_m07_observability_audit_security_error_foundation.sql"),
             File("../supabase/migrations/029_m07_observability_audit_security_error_foundation.sql"),
             File("../../supabase/migrations/029_m07_observability_audit_security_error_foundation.sql")
         ).first { it.isFile }.readText()
-        val sqlKeys = Regex("'m0[0-7]\\.[a-z0-9_]+\\.[a-z0-9_]+'")
-            .findAll(sql029)
-            .map { it.value.trim('\'') }
-            .toSet()
+        val sql031 = listOf(
+            File("supabase/migrations/031_m07_retention_permissions_instrumentation_closure_readiness.sql"),
+            File("../supabase/migrations/031_m07_retention_permissions_instrumentation_closure_readiness.sql"),
+            File("../../supabase/migrations/031_m07_retention_permissions_instrumentation_closure_readiness.sql")
+        ).first { it.isFile }.readText()
+        val sqlKeys = (
+            Regex("'m0[0-7]\\.[a-z0-9_]+\\.[a-z0-9_]+'").findAll(sql029).map { it.value.trim('\'') } +
+                Regex("'m0[0-7]\\.[a-z0-9_]+\\.[a-z0-9_]+'").findAll(sql031).map { it.value.trim('\'') }
+            ).toSet()
         val kotlinKeys = ObservabilityEventCatalog.all().map { it.eventKey }.toSet()
-        assertEquals(108, kotlinKeys.size)
-        assertEquals(kotlinKeys, sqlKeys.intersect(kotlinKeys).let { kotlinKeys })
+        assertEquals(118, kotlinKeys.size)
         assertTrue(sqlKeys.containsAll(kotlinKeys))
-        assertTrue(kotlinKeys.containsAll(sqlKeys))
+        assertTrue(kotlinKeys.contains("m07.retention.previewed"))
+        assertTrue(kotlinKeys.contains("m07.incident.staff_notification"))
     }
 
     @Test

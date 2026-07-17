@@ -29,6 +29,8 @@ import com.comunidapp.app.ui.screens.admin.ObservabilityHealthScreen
 import com.comunidapp.app.ui.screens.admin.ObservabilityIncidentsScreen
 import com.comunidapp.app.ui.screens.admin.ObservabilityMetricsScreen
 import com.comunidapp.app.ui.screens.admin.ObservabilityOverviewScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityPermissionsInfoScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityRetentionScreen
 import com.comunidapp.app.ui.screens.admin.PlatformAdminScreen
 import com.comunidapp.app.ui.screens.moderation.ModerationAppealDetailScreen
 import com.comunidapp.app.ui.screens.moderation.ModerationAppealQueueScreen
@@ -936,7 +938,11 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToIncidents = { navController.navigate(NavRoutes.OBSERVABILITY_INCIDENTS) },
                     onNavigateToAudit = { navController.navigate(NavRoutes.OBSERVABILITY_AUDIT) },
                     onNavigateToErrors = { navController.navigate(NavRoutes.OBSERVABILITY_ERRORS) },
-                    onNavigateToExports = { navController.navigate(NavRoutes.OBSERVABILITY_EXPORTS) }
+                    onNavigateToExports = { navController.navigate(NavRoutes.OBSERVABILITY_EXPORTS) },
+                    onNavigateToRetention = { navController.navigate(NavRoutes.OBSERVABILITY_RETENTION) },
+                    onNavigateToPermissionsInfo = {
+                        navController.navigate(NavRoutes.OBSERVABILITY_PERMISSIONS_INFO)
+                    }
                 )
             }
             composable(NavRoutes.OBSERVABILITY_METRICS) {
@@ -957,6 +963,12 @@ private fun MainScreen(accountType: AccountType) {
             }
             composable(NavRoutes.OBSERVABILITY_EXPORTS) {
                 AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_RETENTION) {
+                ObservabilityRetentionScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_PERMISSIONS_INFO) {
+                ObservabilityPermissionsInfoScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(NavRoutes.PLATFORM_ADMIN) {
                 PlatformAdminScreen(onNavigateBack = { navController.popBackStack() })

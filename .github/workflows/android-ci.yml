@@ -58,7 +58,14 @@ jobs:
           echo "- Assemble/test/lint: see job logs" >> "$GITHUB_STEP_SUMMARY"
           echo "- JaCoCo: informative only (non-blocking)" >> "$GITHUB_STEP_SUMMARY"
           echo "- Catalog Kotlin↔SQL: scripts/ci/m07_quality_checks.sh" >> "$GITHUB_STEP_SUMMARY"
-          echo "- Staging migrations 014–030: PENDIENTE (no remote credentials in CI)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Staging migrations 014–031: PENDIENTE (no remote credentials in CI)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- EXPORTACIÓN DE ARCHIVO PENDIENTE / INTEGRACIÓN M06 PENDIENTE" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f app/build/reports/m07-quality-summary.md ]; then
+            cat app/build/reports/m07-quality-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f app/build/reports/jacoco/jacocoTestReport/html/index.html ]; then
+            echo "- JaCoCo HTML report uploaded as artifact (informative)" >> "$GITHUB_STEP_SUMMARY"
+          fi
 
       - name: Upload unit test results
         if: always()

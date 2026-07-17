@@ -48,6 +48,7 @@ data class ProfileUiState(
     val canReviewVerification: Boolean = false,
     val canViewSupportStaff: Boolean = false,
     val canViewAudit: Boolean = false,
+    val canViewObservability: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -131,6 +132,10 @@ class ProfileViewModel(
                         canViewAudit = AuthorizationService.hasPermission(
                             authz,
                             com.comunidapp.app.domain.authorization.PermissionCode.AUDIT_VIEW
+                        ),
+                        canViewObservability = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.OBSERVABILITY_VIEW
                         )
                     )
                 }

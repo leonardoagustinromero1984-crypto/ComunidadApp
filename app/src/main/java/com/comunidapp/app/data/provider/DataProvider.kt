@@ -77,6 +77,9 @@ import com.comunidapp.app.data.repository.SupabaseObservabilityExportRepository
 import com.comunidapp.app.data.repository.OperationalObservabilityRepository
 import com.comunidapp.app.data.repository.MockOperationalObservabilityRepository
 import com.comunidapp.app.data.repository.SupabaseOperationalObservabilityRepository
+import com.comunidapp.app.data.repository.RetentionRepository
+import com.comunidapp.app.data.repository.MockRetentionRepository
+import com.comunidapp.app.data.repository.SupabaseRetentionRepository
 import com.comunidapp.app.data.repository.MockOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.MockOrganizationPermissionRepository
 import com.comunidapp.app.data.repository.MockOrganizationRepository
@@ -295,6 +298,14 @@ object DataProvider {
     val operationalObservabilityRepository: OperationalObservabilityRepository by lazy {
         if (useSupabase) SupabaseOperationalObservabilityRepository()
         else MockOperationalObservabilityRepository()
+    }
+
+    /**
+     * M07 Etapa 5 — retención (RPC-only / mock). Preview ≠ execute.
+     */
+    val retentionRepository: RetentionRepository by lazy {
+        if (useSupabase) SupabaseRetentionRepository()
+        else MockRetentionRepository()
     }
 
     /** Kept for tests expecting explicit client-denied audit writer. */

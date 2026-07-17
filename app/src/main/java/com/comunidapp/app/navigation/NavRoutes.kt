@@ -88,6 +88,8 @@ object NavRoutes {
     const val OBSERVABILITY_AUDIT = "observability_audit"
     const val OBSERVABILITY_ERRORS = "observability_errors"
     const val OBSERVABILITY_EXPORTS = "observability_exports"
+    const val OBSERVABILITY_RETENTION = "observability_retention"
+    const val OBSERVABILITY_PERMISSIONS_INFO = "observability_permissions_info"
 
     const val ARG_REPORT_ID = "reportId"
     const val ARG_CASE_ID = "caseId"

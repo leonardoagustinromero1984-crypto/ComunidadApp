@@ -121,6 +121,7 @@ object ObservabilityInstrumentation {
         if (errorCode !in setOf(
                 "OBS_UNKNOWN", "OBS_WRITE_FAILED", "OBS_CORRELATION_INVALID",
                 "OBS_METADATA_DENIED", "OBS_EVENT_UNKNOWN", "OBS_PERMISSION_DENIED",
+                "OBS_RETENTION_RUN_FAILED", "OBS_CI_QUALITY_CHECK_FAILED",
                 "M01_CONSENT_GATE_UNAVAILABLE", "M05_STORAGE_ERROR",
                 "M05_SIGNED_URL_ERROR", "M06_DEEP_LINK_DENIED"
             )
@@ -139,6 +140,33 @@ object ObservabilityInstrumentation {
                 fingerprint = "fp_${errorCode.hashCode().toUInt().toString(16)}"
             )
         }
+    }
+
+    /** M00/CI — aggregated quality outcome only (no secrets, no file contents). */
+    fun reportCiQualityCheck(result: String, jobName: String = "m07_quality_checks") {
+        val safeResult = result.take(32).replace(Regex("[^A-Za-z0-9_]"), "")
+        val safeJob = jobName.take(64).replace(Regex("[^A-Za-z0-9._-]"), "")
+        AppLog.info("M07CI", "quality_check result=$safeResult job=$safeJob")
+        if (safeResult == "FAILED") {
+            reportAllowlistedRemoteError(
+                errorCode = "OBS_CI_QUALITY_CHECK_FAILED",
+                module = "M00",
+                message = "QUALITY_CHECK_FAILED",
+                correlationId = null
+            )
+        }
+    }
+
+    /** Selective M07 operational signal — opaque resource only. */
+    fun reportRetentionAction(action: String, result: String) {
+        AppLog.info(
+            "M07Retention",
+            "action=${action.take(32)} result=${result.take(32)} cid=${correlationOrNew()}"
+        )
+    }
+
+    fun reportExportAction(result: String) {
+        AppLog.info("M07Export", "result=${result.take(32)} file_pending=true")
     }
 
     private fun SensitiveSafe(message: String): String =

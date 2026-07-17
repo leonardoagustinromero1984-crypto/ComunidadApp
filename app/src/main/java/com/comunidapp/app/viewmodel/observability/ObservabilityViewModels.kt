@@ -31,22 +31,36 @@ import kotlinx.coroutines.launch
 
 private fun staffAuth(
     userId: String?,
-    manage: Boolean
+    manage: Boolean,
+    extras: Set<ObservabilityPermission> = emptySet()
 ): ObservabilityAuthorizationContext = ObservabilityAuthorizationContext(
     actorId = userId,
     permissions = buildSet {
         add(ObservabilityPermission.OBSERVABILITY_VIEW)
-        add(ObservabilityPermission.AUDIT_VIEW)
         if (manage) {
             add(ObservabilityPermission.OBSERVABILITY_MANAGE)
             add(ObservabilityPermission.ALERT_MANAGE)
         }
+        addAll(extras)
     },
     organizationIds = emptySet(),
     isPlatformActor = true,
     requestedSensitivity = ObservabilitySensitivity.INTERNAL,
     requestedAction = ObservabilityRequestedAction.VIEW
 )
+
+private fun PermissionCode.toObsPermission(): ObservabilityPermission? = when (this) {
+    PermissionCode.OBSERVABILITY_VIEW -> ObservabilityPermission.OBSERVABILITY_VIEW
+    PermissionCode.OBSERVABILITY_MANAGE -> ObservabilityPermission.OBSERVABILITY_MANAGE
+    PermissionCode.AUDIT_VIEW_SENSITIVE -> ObservabilityPermission.AUDIT_VIEW_SENSITIVE
+    PermissionCode.SECURITY_EVENTS_VIEW -> ObservabilityPermission.SECURITY_EVENTS_VIEW
+    PermissionCode.EXPORT_AUDIT_DATA -> ObservabilityPermission.EXPORT_AUDIT_DATA
+    PermissionCode.ALERT_MANAGE -> ObservabilityPermission.ALERT_MANAGE
+    PermissionCode.RETENTION_MANAGE -> ObservabilityPermission.RETENTION_MANAGE
+    PermissionCode.HEALTH_CHECK_EXECUTE -> ObservabilityPermission.HEALTH_CHECK_EXECUTE
+    PermissionCode.AUDIT_VIEW -> ObservabilityPermission.AUDIT_VIEW
+    else -> null
+}
 
 data class ObservabilityOverviewUiState(
     val phase: AdministrativeScreenPhase = AdministrativeScreenPhase.Loading,
@@ -69,7 +83,10 @@ class ObservabilityOverviewViewModel(
         viewModelScope.launch {
             _uiState.update { ObservabilityOverviewUiState(phase = AdministrativeScreenPhase.Loading) }
             val gate = AdministrativeAccessGate.evaluate(
-                authRepository, permissionRepository, PermissionCode.AUDIT_VIEW
+                authRepository,
+                permissionRepository,
+                PermissionCode.OBSERVABILITY_VIEW,
+                extra = setOf(PermissionCode.OBSERVABILITY_MANAGE, PermissionCode.ALERT_MANAGE)
             )
             if (!gate.allowed) {
                 _uiState.update {
@@ -77,12 +94,14 @@ class ObservabilityOverviewViewModel(
                 }
                 return@launch
             }
-            when (val result = repo.getOperationalSummary(staffAuth(gate.userId, manage = true))) {
+            val canManage = AdministrativeAccessGate.hasExtra(gate, PermissionCode.OBSERVABILITY_MANAGE) ||
+                AdministrativeAccessGate.hasExtra(gate, PermissionCode.ALERT_MANAGE)
+            when (val result = repo.getOperationalSummary(staffAuth(gate.userId, manage = canManage))) {
                 is AppResult.Success -> _uiState.update {
                     it.copy(
                         phase = AdministrativeScreenPhase.Content,
                         summary = result.data,
-                        canManage = true
+                        canManage = canManage
                     )
                 }
                 is AppResult.Failure -> _uiState.update {
@@ -150,7 +169,7 @@ class ObservabilityMetricsViewModel(
             val filters = _uiState.value.filters
             _uiState.update { it.copy(phase = AdministrativeScreenPhase.Loading, errorMessage = null) }
             val gate = AdministrativeAccessGate.evaluate(
-                authRepository, permissionRepository, PermissionCode.AUDIT_VIEW
+                authRepository, permissionRepository, PermissionCode.OBSERVABILITY_VIEW
             )
             if (!gate.allowed) {
                 _uiState.update {
@@ -218,7 +237,10 @@ class ObservabilityHealthViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(phase = AdministrativeScreenPhase.Loading, errorMessage = null) }
             val gate = AdministrativeAccessGate.evaluate(
-                authRepository, permissionRepository, PermissionCode.AUDIT_VIEW
+                authRepository,
+                permissionRepository,
+                PermissionCode.OBSERVABILITY_VIEW,
+                extra = setOf(PermissionCode.HEALTH_CHECK_EXECUTE)
             )
             if (!gate.allowed) {
                 _uiState.update {
@@ -226,12 +248,13 @@ class ObservabilityHealthViewModel(
                 }
                 return@launch
             }
-            when (val result = repo.listHealthChecks(staffAuth(gate.userId, manage = true))) {
+            val canManual = AdministrativeAccessGate.hasExtra(gate, PermissionCode.HEALTH_CHECK_EXECUTE)
+            when (val result = repo.listHealthChecks(staffAuth(gate.userId, manage = false))) {
                 is AppResult.Success -> _uiState.update {
                     it.copy(
                         phase = ObservabilityUiErrorMapper.phaseForEmptyOrContent(result.data.isEmpty()),
                         checks = result.data,
-                        canRunManual = true
+                        canRunManual = canManual
                     )
                 }
                 is AppResult.Failure -> _uiState.update {
@@ -247,11 +270,17 @@ class ObservabilityHealthViewModel(
     fun runManual(checkKey: String) {
         viewModelScope.launch {
             val gate = AdministrativeAccessGate.evaluate(
-                authRepository, permissionRepository, PermissionCode.AUDIT_VIEW
+                authRepository,
+                permissionRepository,
+                PermissionCode.HEALTH_CHECK_EXECUTE
             )
             if (!gate.allowed || !_uiState.value.canRunManual) return@launch
             repo.runHealthCheckManual(
-                staffAuth(gate.userId, manage = true),
+                staffAuth(
+                    gate.userId,
+                    manage = false,
+                    extras = setOf(ObservabilityPermission.HEALTH_CHECK_EXECUTE)
+                ),
                 checkKey,
                 correlationIds.next().value
             )
@@ -310,7 +339,10 @@ class ObservabilityIncidentsViewModel(
             val filters = _uiState.value.filters
             _uiState.update { it.copy(phase = AdministrativeScreenPhase.Loading, errorMessage = null) }
             val gate = AdministrativeAccessGate.evaluate(
-                authRepository, permissionRepository, PermissionCode.AUDIT_VIEW
+                authRepository,
+                permissionRepository,
+                PermissionCode.OBSERVABILITY_VIEW,
+                extra = setOf(PermissionCode.ALERT_MANAGE, PermissionCode.OBSERVABILITY_MANAGE)
             )
             if (!gate.allowed) {
                 _uiState.update {
@@ -318,12 +350,14 @@ class ObservabilityIncidentsViewModel(
                 }
                 return@launch
             }
+            val canManage = AdministrativeAccessGate.hasExtra(gate, PermissionCode.ALERT_MANAGE) ||
+                AdministrativeAccessGate.hasExtra(gate, PermissionCode.OBSERVABILITY_MANAGE)
             val state = AlertIncidentState.entries.firstOrNull {
                 it.name.equals(filters.incidentStatus.trim(), ignoreCase = true)
             }
             when (
                 val result = repo.listIncidents(
-                    staffAuth(gate.userId, manage = true),
+                    staffAuth(gate.userId, manage = canManage),
                     state = state
                 )
             ) {
@@ -332,7 +366,7 @@ class ObservabilityIncidentsViewModel(
                         phase = ObservabilityUiErrorMapper.phaseForEmptyOrContent(result.data.isEmpty()),
                         incidents = result.data,
                         filters = filters,
-                        canManage = true
+                        canManage = canManage
                     )
                 }
                 is AppResult.Failure -> _uiState.update {
@@ -349,8 +383,27 @@ class ObservabilityIncidentsViewModel(
         viewModelScope.launch {
             if (!_uiState.value.canManage) return@launch
             val gate = AdministrativeAccessGate.evaluate(
-                authRepository, permissionRepository, PermissionCode.AUDIT_VIEW
+                authRepository,
+                permissionRepository,
+                PermissionCode.ALERT_MANAGE,
+                extra = setOf(PermissionCode.OBSERVABILITY_MANAGE)
             )
+            if (!gate.allowed &&
+                !AdministrativeAccessGate.hasExtra(gate, PermissionCode.OBSERVABILITY_MANAGE)
+            ) {
+                // Re-check manage permission alone
+                val manageGate = AdministrativeAccessGate.evaluate(
+                    authRepository, permissionRepository, PermissionCode.OBSERVABILITY_MANAGE
+                )
+                if (!manageGate.allowed) return@launch
+                repo.acknowledgeIncident(
+                    staffAuth(manageGate.userId, manage = true),
+                    incidentId,
+                    correlationIds.next().value
+                )
+                refresh()
+                return@launch
+            }
             if (!gate.allowed) return@launch
             repo.acknowledgeIncident(
                 staffAuth(gate.userId, manage = true),
@@ -365,11 +418,16 @@ class ObservabilityIncidentsViewModel(
         viewModelScope.launch {
             if (!_uiState.value.canManage) return@launch
             val gate = AdministrativeAccessGate.evaluate(
-                authRepository, permissionRepository, PermissionCode.AUDIT_VIEW
+                authRepository, permissionRepository, PermissionCode.ALERT_MANAGE
             )
-            if (!gate.allowed) return@launch
+            val manageGate = if (!gate.allowed) {
+                AdministrativeAccessGate.evaluate(
+                    authRepository, permissionRepository, PermissionCode.OBSERVABILITY_MANAGE
+                )
+            } else gate
+            if (!manageGate.allowed) return@launch
             repo.resolveIncident(
-                staffAuth(gate.userId, manage = true),
+                staffAuth(manageGate.userId, manage = true),
                 incidentId,
                 "MANUAL_RESOLVE",
                 correlationIds.next().value

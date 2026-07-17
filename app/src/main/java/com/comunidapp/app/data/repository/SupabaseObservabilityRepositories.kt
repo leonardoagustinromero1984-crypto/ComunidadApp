@@ -210,16 +210,24 @@ class SupabaseObservabilityExportRepository : ObservabilityExportRepository {
                 buildJsonObject {
                     put("p_scope", "PLATFORM_AUDIT")
                     put("p_sensitivity", export.sensitivity.name)
+                    put("p_reason", "STAFF_REQUEST")
                     put("p_correlation_id", corr)
                     put("p_filters", buildJsonObject {})
                 }
             )
-            val id = (element as? JsonPrimitive)?.contentOrNull ?: export.id
+            val obj = element as? JsonObject
+            val id = obj?.let { (it["id"] as? JsonPrimitive)?.contentOrNull }
+                ?: (element as? JsonPrimitive)?.contentOrNull
+                ?: export.id
+            val filePending = (obj?.get("file_pending") as? JsonPrimitive)?.contentOrNull
+                ?.toBooleanStrictOrNull() ?: true
             AppResult.Success(
                 export.copy(
                     id = id,
-                    state = ObservabilityExportState.READY_SIMULATED,
-                    simulatedArtifactLabel = "remote-export-$id"
+                    state = ObservabilityExportState.AUTHORIZED,
+                    filePending = filePending,
+                    note = "EXPORTACION_DE_ARCHIVO_PENDIENTE",
+                    simulatedArtifactLabel = null
                 )
             )
         }.getOrElse {
