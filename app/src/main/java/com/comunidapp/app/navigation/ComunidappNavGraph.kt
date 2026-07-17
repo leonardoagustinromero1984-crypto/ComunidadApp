@@ -15,9 +15,11 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
-import com.comunidapp.app.domain.notifications.authorization.NotificationDeepLinkAuthorization
+import com.comunidapp.app.domain.organization.OrganizationId
 import com.comunidapp.app.notifications.NotificationDeepLinkRouter
+import com.comunidapp.app.notifications.NotificationDeepLinkSessionResolver
 import com.comunidapp.app.notifications.NotificationPendingNavigationStore
 import com.comunidapp.app.ui.components.ComunidappBottomBar
 import com.comunidapp.app.ui.components.SessionLoadingScreen
@@ -250,16 +252,52 @@ private fun MainScreen(accountType: AccountType) {
     LaunchedEffect(Unit) {
         val pending = NotificationPendingNavigationStore.consume() ?: return@LaunchedEffect
         val userId = AuthProvider.repository.getCurrentUser()?.id
-        val context = NotificationDeepLinkAuthorization.DeepLinkOpenContext(
+        var permissionLookupFailed = false
+        val platformPermissions = if (userId != null) {
+            runCatching {
+                DataProvider.permissionRepository.getAuthorizationContext(userId).permissions
+            }.getOrElse {
+                permissionLookupFailed = true
+                emptySet()
+            }
+        } else {
+            emptySet()
+        }
+
+        // Nunca usar organizationId del payload como membresía probada.
+        var provenOrgId: String? = null
+        var orgPermissionCodes: Set<String> = emptySet()
+        val claimedOrgId = pending.deepLink.organizationId
+        if (userId != null && !claimedOrgId.isNullOrBlank()) {
+            val orgId = OrganizationId(claimedOrgId)
+            val membership = runCatching {
+                DataProvider.organizationMembershipRepository.getActiveMembership(orgId, userId)
+            }.getOrNull()
+            if (membership != null) {
+                provenOrgId = claimedOrgId
+                orgPermissionCodes = runCatching {
+                    DataProvider.organizationPermissionRepository
+                        .getAuthorizationContext(
+                            organizationId = orgId,
+                            userId = userId,
+                            accountStatus = com.comunidapp.app.domain.user.AccountStatus.ACTIVE
+                        )
+                        .permissions
+                        .map { it.code }
+                        .toSet()
+                }.getOrDefault(emptySet())
+            }
+        }
+
+        val context = NotificationDeepLinkSessionResolver.buildOpenContext(
             authenticatedUserId = userId,
-            platformPermissions = emptySet(),
-            organizationId = pending.deepLink.organizationId,
-            organizationPermissionCodes = emptySet(),
-            resourceExists = true,
-            permissionLookupFailed = false
+            platformPermissions = platformPermissions,
+            provenOrganizationId = provenOrgId,
+            organizationPermissionCodes = orgPermissionCodes,
+            link = pending.deepLink,
+            permissionLookupFailed = permissionLookupFailed
         )
         val resolved = NotificationDeepLinkRouter.resolve(pending.deepLink, context)
-        // Staff/org routes sin permisos resueltos caen a fallback seguro.
         navController.navigate(resolved.navRoute) {
             launchSingleTop = true
         }
