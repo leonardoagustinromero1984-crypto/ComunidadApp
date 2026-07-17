@@ -34,6 +34,10 @@ Deno.serve(async (req) => {
 
   const correlationId =
     req.headers.get("Idempotency-Key")?.trim() || crypto.randomUUID();
+  const corrSafe =
+    correlationId.replace(/[^A-Za-z0-9_-]/g, "").slice(0, 64) ||
+    crypto.randomUUID().replaceAll("-", "").slice(0, 32);
+  const startedAt = Date.now();
 
   try {
     const authHeader = req.headers.get("Authorization") ?? "";
@@ -120,6 +124,24 @@ Deno.serve(async (req) => {
         p_error_code: "storage",
         p_metadata: { result: "FAILURE", error_code: "storage" },
       }).catch(() => null);
+      await admin.rpc("m07_record_metric", {
+        p_metric_key: "m01.account.deletion_failure_count",
+        p_value_numeric: 1,
+        p_unit: "count",
+        p_dimensions: { module: "M01", result: "FAILURE" },
+        p_sample_count: 1,
+        p_correlation_id: corrSafe,
+        p_source: "EDGE",
+      }).catch(() => null);
+      await admin.rpc("m07_record_health_check", {
+        p_check_key: "edge.delete_account.readiness",
+        p_status: "UNHEALTHY",
+        p_severity: "ERROR",
+        p_latency_ms: Date.now() - startedAt,
+        p_details: { reason: "STORAGE_STAGE" },
+        p_correlation_id: corrSafe,
+        p_source: "EDGE",
+      }).catch(() => null);
       return json({ error: "storage_failed", correlation_id: correlationId }, 500);
     }
 
@@ -142,6 +164,24 @@ Deno.serve(async (req) => {
         p_error_code: "auth_delete",
         p_metadata: { result: "FAILURE", error_code: "auth_delete" },
       }).catch(() => null);
+      await admin.rpc("m07_record_metric", {
+        p_metric_key: "m01.account.deletion_failure_count",
+        p_value_numeric: 1,
+        p_unit: "count",
+        p_dimensions: { module: "M01", result: "FAILURE" },
+        p_sample_count: 1,
+        p_correlation_id: corrSafe,
+        p_source: "EDGE",
+      }).catch(() => null);
+      await admin.rpc("m07_record_health_check", {
+        p_check_key: "edge.delete_account.readiness",
+        p_status: "UNHEALTHY",
+        p_severity: "ERROR",
+        p_latency_ms: Date.now() - startedAt,
+        p_details: { reason: "AUTH_STAGE" },
+        p_correlation_id: corrSafe,
+        p_source: "EDGE",
+      }).catch(() => null);
       return json({ error: "auth_delete_failed", correlation_id: correlationId }, 500);
     }
 
@@ -154,7 +194,23 @@ Deno.serve(async (req) => {
       })
       .eq("id", requestId);
 
-    return json({ ok: true, correlation_id: correlationId, request_id: requestId });
+    const durationMs = Date.now() - startedAt;
+    await admin.rpc("m07_record_health_check", {
+      p_check_key: "edge.delete_account.readiness",
+      p_status: "HEALTHY",
+      p_severity: "INFO",
+      p_latency_ms: durationMs,
+      p_details: { reason: "OK" },
+      p_correlation_id: corrSafe,
+      p_source: "EDGE",
+    }).catch(() => null);
+
+    return json({
+      ok: true,
+      correlation_id: correlationId,
+      request_id: requestId,
+      duration_ms: durationMs,
+    });
   } catch (e) {
     console.error("delete-account unexpected", correlationId, String(e));
     return json({ error: "internal_error", correlation_id: correlationId }, 500);

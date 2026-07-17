@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.google.services)
+    jacoco
 }
 
 import java.util.Properties
@@ -39,6 +40,9 @@ android {
     }
 
     buildTypes {
+        debug {
+            enableUnitTestCoverage = true
+        }
         release {
             optimization {
                 enable = false
@@ -53,6 +57,42 @@ android {
         compose = true
         buildConfig = true
     }
+}
+
+jacoco {
+    toolVersion = "0.8.12"
+}
+
+tasks.register<JacocoReport>("jacocoTestReport") {
+    group = "verification"
+    description = "Generates JaCoCo coverage report for unit tests (informative baseline)."
+    dependsOn("testDebugUnitTest")
+    reports {
+        xml.required.set(true)
+        html.required.set(true)
+        csv.required.set(false)
+    }
+    val fileFilter = listOf(
+        "**/R.class",
+        "**/R$*.class",
+        "**/BuildConfig.*",
+        "**/Manifest*.*",
+        "**/*Test*.*",
+        "**/com/android/**"
+    )
+    val debugTree = fileTree(layout.buildDirectory.dir("intermediates/javac/debug")) {
+        exclude(fileFilter)
+    }
+    val kotlinTree = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+        exclude(fileFilter)
+    }
+    classDirectories.setFrom(files(debugTree, kotlinTree))
+    sourceDirectories.setFrom(files("src/main/java"))
+    executionData.setFrom(
+        fileTree(layout.buildDirectory) {
+            include("**/*.exec", "**/jacoco/testDebugUnitTest.exec", "**/coverage_exec/**/*.ec")
+        }
+    )
 }
 
 dependencies {

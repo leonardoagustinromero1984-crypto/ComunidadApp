@@ -74,6 +74,9 @@ import com.comunidapp.app.data.repository.SupabaseAuditEventRepository
 import com.comunidapp.app.data.repository.SupabaseSecurityEventRepository
 import com.comunidapp.app.data.repository.SupabaseApplicationErrorRepository
 import com.comunidapp.app.data.repository.SupabaseObservabilityExportRepository
+import com.comunidapp.app.data.repository.OperationalObservabilityRepository
+import com.comunidapp.app.data.repository.MockOperationalObservabilityRepository
+import com.comunidapp.app.data.repository.SupabaseOperationalObservabilityRepository
 import com.comunidapp.app.data.repository.MockOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.MockOrganizationPermissionRepository
 import com.comunidapp.app.data.repository.MockOrganizationRepository
@@ -283,6 +286,15 @@ object DataProvider {
 
     val correlationContextRepository: CorrelationContextRepository by lazy {
         m07Stage2ContractMocks.correlation
+    }
+
+    /**
+     * M07 Etapa 4 — métricas/health/alertas/overview.
+     * useSupabase=false: mock completo; useSupabase=true: RPC-only (sin write arbitrario de métricas).
+     */
+    val operationalObservabilityRepository: OperationalObservabilityRepository by lazy {
+        if (useSupabase) SupabaseOperationalObservabilityRepository()
+        else MockOperationalObservabilityRepository()
     }
 
     /** Kept for tests expecting explicit client-denied audit writer. */

@@ -80,18 +80,29 @@ Deno.serve(async (req) => {
 
     const accessToken = await getFcmAccessToken();
     const projectId = Deno.env.get("FIREBASE_PROJECT_ID")!;
+    const startedAt = Date.now();
     let delivered = 0;
     let failed = 0;
+    let retryable = 0;
+    let permanent = 0;
+    let invalidTokens = 0;
 
     for (const item of deliveries) {
       const result = await processDelivery(admin, accessToken, projectId, item);
       if (result === "DELIVERED") delivered += 1;
-      else failed += 1;
+      else {
+        failed += 1;
+        if (result === "FAILED_RETRYABLE") retryable += 1;
+        if (result === "FAILED_PERMANENT") permanent += 1;
+        if (result === "INVALID_TOKEN") invalidTokens += 1;
+      }
     }
 
-    // M07: observe edge push invocation (no tokens/URLs).
+    const durationMs = Date.now() - startedAt;
+    const corr = crypto.randomUUID().replaceAll("-", "").slice(0, 32);
+
+    // M07 Etapa 4: aggregated metrics + health readiness (no tokens/URLs/PII).
     try {
-      const corr = crypto.randomUUID().replaceAll("-", "").slice(0, 32);
       await admin.rpc("m07_best_effort_audit", {
         p_event_key: "m06.edge.push_invoked",
         p_action: "PUSH_INVOKE",
@@ -99,13 +110,52 @@ Deno.serve(async (req) => {
         p_correlation_id: corr,
         p_resource_type: "edge_push",
         p_resource_id: null,
-        p_metadata: { result: failed > 0 && delivered === 0 ? "FAILURE" : "SUCCESS" },
+        p_metadata: {
+          result: failed > 0 && delivered === 0 ? "FAILURE" : "SUCCESS",
+          duration_ms: String(durationMs),
+          attempt_count: String(deliveries.length),
+        },
       });
+      await admin.rpc("m07_record_metric", {
+        p_metric_key: "m06.delivery.success_rate",
+        p_value_numeric: deliveries.length === 0 ? 1 : delivered / deliveries.length,
+        p_unit: "ratio",
+        p_dimensions: { module: "M06", channel: "push", result: "AGGREGATE" },
+        p_sample_count: deliveries.length,
+        p_correlation_id: corr,
+        p_source: "EDGE",
+      }).catch(() => null);
+      await admin.rpc("m07_record_metric", {
+        p_metric_key: "m06.delivery.retryable_failure_count",
+        p_value_numeric: retryable,
+        p_unit: "count",
+        p_dimensions: { module: "M06", channel: "push" },
+        p_sample_count: 1,
+        p_correlation_id: corr,
+        p_source: "EDGE",
+      }).catch(() => null);
+      await admin.rpc("m07_record_health_check", {
+        p_check_key: "edge.push.readiness",
+        p_status: failed > 0 && delivered === 0 ? "DEGRADED" : "HEALTHY",
+        p_severity: "INFO",
+        p_latency_ms: durationMs,
+        p_details: { reason: "OK", processed: String(deliveries.length) },
+        p_correlation_id: corr,
+        p_source: "EDGE",
+      }).catch(() => null);
     } catch (_) {
       /* never fail push on observability */
     }
 
-    return json({ processed: deliveries.length, delivered, failed });
+    return json({
+      processed: deliveries.length,
+      delivered,
+      failed,
+      retryable,
+      permanent,
+      invalid_tokens: invalidTokens,
+      duration_ms: durationMs,
+    });
   } catch (e) {
     console.error("push_unhandled", sanitizeError(String(e)));
     return json({ error: "INTERNAL" }, 500);
@@ -149,6 +199,9 @@ async function processDelivery(
     permanent ? "FAILED_PERMANENT" : "FAILED_RETRYABLE",
     send.failureCode,
   );
+  if (send.failureCode === "INVALID_TOKEN" || send.failureCode === "UNREGISTERED") {
+    return "INVALID_TOKEN";
+  }
   return permanent ? "FAILED_PERMANENT" : "FAILED_RETRYABLE";
 }
 

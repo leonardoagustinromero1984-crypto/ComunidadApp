@@ -35,10 +35,30 @@ jobs:
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
 
+      - name: M07 local quality checks (catalog, migrations, secrets, SQL)
+        env:
+          ROOT: ${{ github.workspace }}
+        run: |
+          chmod +x scripts/ci/m07_quality_checks.sh
+          ROOT="${{ github.workspace }}" bash scripts/ci/m07_quality_checks.sh
+
       - name: Assemble, test, lint (mock / no secrets)
         # Sin SUPABASE_* → BuildConfig.SUPABASE_ENABLED=false (modo mock).
         # No se inyectan secretos reales de Supabase, Firebase ni pagos.
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --continue
+
+      - name: JaCoCo coverage report (informative baseline, non-blocking)
+        continue-on-error: true
+        run: ./gradlew :app:jacocoTestReport --continue
+
+      - name: Quality summary
+        if: always()
+        run: |
+          echo "## LeoVer CI quality summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Assemble/test/lint: see job logs" >> "$GITHUB_STEP_SUMMARY"
+          echo "- JaCoCo: informative only (non-blocking)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Catalog Kotlin↔SQL: scripts/ci/m07_quality_checks.sh" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Staging migrations 014–030: PENDIENTE (no remote credentials in CI)" >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload unit test results
         if: always()
@@ -48,6 +68,16 @@ jobs:
           path: |
             app/build/test-results/testDebugUnitTest/**
             app/build/reports/tests/testDebugUnitTest/**
+          if-no-files-found: ignore
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage
+          path: |
+            app/build/reports/jacoco/**
+            app/build/reports/coverage/**
           if-no-files-found: ignore
 
       - name: Upload lint reports

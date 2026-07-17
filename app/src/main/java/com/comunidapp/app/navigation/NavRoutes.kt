@@ -81,6 +81,13 @@ object NavRoutes {
     const val SUPPORT_ADMIN_TICKET = "support_admin_ticket/{ticketId}"
     const val ADMINISTRATIVE_AUDIT = "administrative_audit"
     const val ADMINISTRATIVE_OPS_HUB = "administrative_ops_hub"
+    const val OBSERVABILITY_OVERVIEW = "observability_overview"
+    const val OBSERVABILITY_METRICS = "observability_metrics"
+    const val OBSERVABILITY_HEALTH = "observability_health"
+    const val OBSERVABILITY_INCIDENTS = "observability_incidents"
+    const val OBSERVABILITY_AUDIT = "observability_audit"
+    const val OBSERVABILITY_ERRORS = "observability_errors"
+    const val OBSERVABILITY_EXPORTS = "observability_exports"
 
     const val ARG_REPORT_ID = "reportId"
     const val ARG_CASE_ID = "caseId"

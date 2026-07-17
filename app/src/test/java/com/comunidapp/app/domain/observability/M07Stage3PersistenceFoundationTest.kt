@@ -48,8 +48,9 @@ class M07Stage3PersistenceFoundationTest {
         val dir = migrationsDir()
         val names = dir.listFiles()?.map { it.name }?.sorted().orEmpty()
         assertTrue(names.contains("029_m07_observability_audit_security_error_foundation.sql"))
-        val m07Migrations = names.filter { it.contains("m07") }
-        assertEquals(listOf("029_m07_observability_audit_security_error_foundation.sql"), m07Migrations)
+        val m07Migrations = names.filter { it.contains("m07") }.sorted()
+        assertTrue(m07Migrations.contains("029_m07_observability_audit_security_error_foundation.sql"))
+        // Etapa 4 adds 030; this test only asserts 029 still present and 001–028 intact.
         (1..28).forEach { n ->
             val prefix = "%03d".format(n)
             assertTrue("missing $prefix", names.any { it.startsWith(prefix) })

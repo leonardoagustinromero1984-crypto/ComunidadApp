@@ -88,6 +88,7 @@ fun ProfileScreen(
     onNavigateToMySupport: () -> Unit = {},
     onNavigateToSupportStaff: () -> Unit = {},
     onNavigateToAudit: () -> Unit = {},
+    onNavigateToObservability: () -> Unit = {},
     onNavigateToSearchFriends: () -> Unit = {},
     onNavigateToAccountSecurity: () -> Unit = {},
     onNavigateToMyOrganizations: () -> Unit = {},
@@ -358,6 +359,17 @@ fun ProfileScreen(
                                 shape = RoundedCornerShape(14.dp)
                             ) {
                                 Text("Auditoría")
+                            }
+                        }
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToObservability,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Observabilidad operativa")
                             }
                         }
                     }

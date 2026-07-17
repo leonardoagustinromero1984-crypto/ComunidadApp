@@ -25,6 +25,10 @@ import com.comunidapp.app.ui.components.ComunidappBottomBar
 import com.comunidapp.app.ui.components.SessionLoadingScreen
 import com.comunidapp.app.ui.components.bottomNavItemsFor
 import com.comunidapp.app.ui.screens.admin.AdministrativeAuditScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityHealthScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityIncidentsScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityMetricsScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityOverviewScreen
 import com.comunidapp.app.ui.screens.admin.PlatformAdminScreen
 import com.comunidapp.app.ui.screens.moderation.ModerationAppealDetailScreen
 import com.comunidapp.app.ui.screens.moderation.ModerationAppealQueueScreen
@@ -379,6 +383,7 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToMySupport = { navController.navigate(NavRoutes.MY_SUPPORT_TICKETS) },
                     onNavigateToSupportStaff = { navController.navigate(NavRoutes.SUPPORT_ADMIN_QUEUE) },
                     onNavigateToAudit = { navController.navigate(NavRoutes.ADMINISTRATIVE_AUDIT) },
+                    onNavigateToObservability = { navController.navigate(NavRoutes.OBSERVABILITY_OVERVIEW) },
                     onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
                     onNavigateToAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
                     onNavigateToMyOrganizations = { navController.navigate(NavRoutes.MY_ORGANIZATIONS) },
@@ -921,6 +926,36 @@ private fun MainScreen(accountType: AccountType) {
                 )
             }
             composable(NavRoutes.ADMINISTRATIVE_AUDIT) {
+                AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_OVERVIEW) {
+                ObservabilityOverviewScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToMetrics = { navController.navigate(NavRoutes.OBSERVABILITY_METRICS) },
+                    onNavigateToHealth = { navController.navigate(NavRoutes.OBSERVABILITY_HEALTH) },
+                    onNavigateToIncidents = { navController.navigate(NavRoutes.OBSERVABILITY_INCIDENTS) },
+                    onNavigateToAudit = { navController.navigate(NavRoutes.OBSERVABILITY_AUDIT) },
+                    onNavigateToErrors = { navController.navigate(NavRoutes.OBSERVABILITY_ERRORS) },
+                    onNavigateToExports = { navController.navigate(NavRoutes.OBSERVABILITY_EXPORTS) }
+                )
+            }
+            composable(NavRoutes.OBSERVABILITY_METRICS) {
+                ObservabilityMetricsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_HEALTH) {
+                ObservabilityHealthScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_INCIDENTS) {
+                ObservabilityIncidentsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            // Reuse Etapa 3 audit list; deep links do not grant access (gate in screen/VM).
+            composable(NavRoutes.OBSERVABILITY_AUDIT) {
+                AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_ERRORS) {
+                AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_EXPORTS) {
                 AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(NavRoutes.PLATFORM_ADMIN) {
