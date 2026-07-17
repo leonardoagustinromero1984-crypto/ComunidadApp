@@ -8,6 +8,13 @@ import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.SupportRepository
+import com.comunidapp.app.domain.files.FileAssetOwner
+import com.comunidapp.app.domain.files.FileAssetPurpose
+import com.comunidapp.app.domain.files.FileAssetVisibility
+import com.comunidapp.app.domain.files.FileResourceRef
+import com.comunidapp.app.domain.files.FileResourceType
+import com.comunidapp.app.domain.files.FileUiErrorMapper
+import com.comunidapp.app.domain.files.FileUploadRequest
 import com.comunidapp.app.domain.support.SupportCategory
 import com.comunidapp.app.domain.support.SupportMessage
 import com.comunidapp.app.domain.support.SupportTicket
@@ -173,6 +180,7 @@ data class SupportTicketDetailUiState(
     val phase: AdministrativeScreenPhase = AdministrativeScreenPhase.Loading,
     val ticket: SupportTicket? = null,
     val messages: List<SupportMessage> = emptyList(),
+    val attachmentAssetIds: List<String> = emptyList(),
     val draft: String = "",
     val message: String? = null,
     val errorMessage: String? = null
@@ -250,6 +258,32 @@ class SupportTicketDetailViewModel(
                             message = result.error.userMessage
                         )
                     }
+                }
+            }
+        }
+    }
+
+    fun attachFile(uri: android.net.Uri) {
+        viewModelScope.launch {
+            val user = authRepository.getCurrentUser() ?: return@launch
+            when (val upload = DataProvider.fileUploadCoordinator.startUpload(
+                uriString = uri.toString(),
+                request = FileUploadRequest(
+                    purpose = FileAssetPurpose.SUPPORT_ATTACHMENT,
+                    owner = FileAssetOwner.User(user.id),
+                    resourceRef = FileResourceRef(FileResourceType.SUPPORT_TICKET, ticketId),
+                    originalFilename = "adjunto.pdf",
+                    declaredMimeType = "application/pdf",
+                    sizeBytes = 1L,
+                    requestedVisibility = FileAssetVisibility.RESOURCE_PARTICIPANTS
+                ),
+                actorUserId = user.id
+            )) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(attachmentAssetIds = it.attachmentAssetIds + upload.data.assetId)
+                }
+                is AppResult.Failure -> _uiState.update {
+                    it.copy(message = FileUiErrorMapper.message(upload.error))
                 }
             }
         }

@@ -1,6 +1,16 @@
 package com.comunidapp.app.data.provider
 
+import com.comunidapp.app.LeoverApplication
 import com.comunidapp.app.core.config.AppConfigProvider
+import com.comunidapp.app.data.files.AndroidContentFileMetadataReader
+import com.comunidapp.app.data.files.AndroidFileBytesReader
+import com.comunidapp.app.data.files.FileBytesReader
+import com.comunidapp.app.data.files.FileDisplayResolver
+import com.comunidapp.app.data.files.FileLocalMetadataReader
+import com.comunidapp.app.data.files.FileObjectUploader
+import com.comunidapp.app.data.files.FileUploadCoordinator
+import com.comunidapp.app.data.files.MockFileObjectUploader
+import com.comunidapp.app.data.files.SupabaseFileObjectUploader
 import com.comunidapp.app.data.remote.storage.ImageStorageService
 import com.comunidapp.app.data.remote.storage.OrganizationMediaStorageService
 import com.comunidapp.app.data.remote.storage.ProfileAvatarStorageService
@@ -86,6 +96,7 @@ import com.comunidapp.app.data.repository.SupabasePetRepository
 import com.comunidapp.app.data.repository.SupabaseShelterRepository
 import com.comunidapp.app.data.repository.SupabaseUserRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.viewmodel.files.FileSessionCleanup
 
 object DataProvider {
 
@@ -264,6 +275,35 @@ object DataProvider {
         } else {
             MockFileRetentionRepository(mockFileAssetRepository)
         }
+    }
+
+    val fileObjectUploader: FileObjectUploader by lazy {
+        if (useSupabase) SupabaseFileObjectUploader() else MockFileObjectUploader()
+    }
+
+    val fileLocalMetadataReader: FileLocalMetadataReader by lazy {
+        AndroidContentFileMetadataReader(LeoverApplication.instance.contentResolver)
+    }
+
+    val fileBytesReader: FileBytesReader by lazy {
+        AndroidFileBytesReader(LeoverApplication.instance.contentResolver)
+    }
+
+    val fileUploadCoordinator: FileUploadCoordinator by lazy {
+        FileUploadCoordinator(
+            uploadRepository = fileUploadRepository,
+            assetRepository = fileAssetRepository,
+            objectUploader = fileObjectUploader,
+            metadataReader = fileLocalMetadataReader,
+            bytesReader = fileBytesReader
+        ).also { FileSessionCleanup.register(coordinator = it) }
+    }
+
+    val fileDisplayResolver: FileDisplayResolver by lazy {
+        FileDisplayResolver(
+            assetRepository = fileAssetRepository,
+            downloadRepository = fileDownloadRepository
+        ).also { FileSessionCleanup.register(displayResolver = it) }
     }
 
     val storageService: ImageStorageService? by lazy {

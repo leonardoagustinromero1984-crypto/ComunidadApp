@@ -21,11 +21,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.domain.support.SupportTicketStatus
+import com.comunidapp.app.ui.files.FileUploadProgressSection
+import com.comunidapp.app.ui.files.PdfOrImageMimeTypes
+import com.comunidapp.app.ui.files.rememberPdfOrImageDocumentPicker
 import com.comunidapp.app.ui.screens.moderation.AdministrativePhaseHost
 import com.comunidapp.app.viewmodel.moderation.AdministrativeScreenPhase
 import com.comunidapp.app.viewmodel.moderation.SensitiveDataPresentation
 import com.comunidapp.app.viewmodel.support.SupportTicketAdminDetailViewModel
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun SupportTicketAdminDetailScreen(
@@ -36,6 +42,14 @@ fun SupportTicketAdminDetailScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val uploadState by DataProvider.fileUploadCoordinator.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val visibleAttachmentPicker = rememberPdfOrImageDocumentPicker { uri ->
+        uri?.let { viewModel.attachFile(it, internal = false) }
+    }
+    val internalAttachmentPicker = rememberPdfOrImageDocumentPicker { uri ->
+        uri?.let { viewModel.attachFile(it, internal = true) }
+    }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(uiState.phase) {
         if (uiState.phase == AdministrativeScreenPhase.AccessDenied) onNavigateBack()
@@ -87,6 +101,10 @@ fun SupportTicketAdminDetailScreen(
                     Button(onClick = { viewModel.sendVisibleMessage() }, modifier = Modifier.fillMaxWidth()) {
                         Text("Enviar respuesta")
                     }
+                    Button(
+                        onClick = { visibleAttachmentPicker.launch(PdfOrImageMimeTypes) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Adjuntar a respuesta") }
                 }
                 item {
                     OutlinedTextField(
@@ -100,6 +118,23 @@ fun SupportTicketAdminDetailScreen(
                     Button(onClick = { viewModel.sendInternalNote() }, modifier = Modifier.fillMaxWidth()) {
                         Text("Agregar nota interna")
                     }
+                    if (uiState.canViewSensitive) {
+                        Button(
+                            onClick = { internalAttachmentPicker.launch(PdfOrImageMimeTypes) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Adjuntar solo para staff") }
+                    }
+                    FileUploadProgressSection(
+                        state = uploadState,
+                        onCancel = {
+                            uploadState.sessionId?.let { id ->
+                                scope.launch { DataProvider.fileUploadCoordinator.cancel(id) }
+                            }
+                        },
+                        onRetry = {
+                            scope.launch { DataProvider.fileUploadCoordinator.retry() }
+                        }
+                    )
                 }
                 item {
                     Button(

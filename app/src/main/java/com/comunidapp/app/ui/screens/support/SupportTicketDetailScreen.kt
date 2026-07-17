@@ -21,9 +21,15 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.ui.files.FileUploadProgressSection
+import com.comunidapp.app.ui.files.PdfOrImageMimeTypes
+import com.comunidapp.app.ui.files.rememberPdfOrImageDocumentPicker
 import com.comunidapp.app.ui.screens.moderation.AdministrativePhaseHost
 import com.comunidapp.app.viewmodel.moderation.AdministrativeScreenPhase
 import com.comunidapp.app.viewmodel.support.SupportTicketDetailViewModel
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun SupportTicketDetailScreen(
@@ -34,6 +40,11 @@ fun SupportTicketDetailScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val uploadState by DataProvider.fileUploadCoordinator.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val attachmentPicker = rememberPdfOrImageDocumentPicker { uri ->
+        uri?.let(viewModel::attachFile)
+    }
     val snackbar = remember { SnackbarHostState() }
     LaunchedEffect(uiState.phase) {
         if (uiState.phase == AdministrativeScreenPhase.AccessDenied) onNavigateBack()
@@ -73,6 +84,20 @@ fun SupportTicketDetailScreen(
                 )
             }
             item {
+                Button(
+                    onClick = { attachmentPicker.launch(PdfOrImageMimeTypes) },
+                    enabled = uiState.phase != AdministrativeScreenPhase.Submitting,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Adjuntar archivo") }
+                FileUploadProgressSection(
+                    state = uploadState,
+                    onCancel = {
+                        uploadState.sessionId?.let { id ->
+                            scope.launch { DataProvider.fileUploadCoordinator.cancel(id) }
+                        }
+                    },
+                    onRetry = { scope.launch { DataProvider.fileUploadCoordinator.retry() } }
+                )
                 Button(
                     onClick = { viewModel.sendMessage() },
                     enabled = uiState.phase != AdministrativeScreenPhase.Submitting,

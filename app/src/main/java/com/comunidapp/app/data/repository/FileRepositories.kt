@@ -32,6 +32,7 @@ import com.comunidapp.app.domain.files.FileUploadSessionRules
 import com.comunidapp.app.domain.files.FileUploadSessionState
 import com.comunidapp.app.domain.files.FileValidationRules
 import com.comunidapp.app.domain.files.FileVersionStatus
+import com.comunidapp.app.domain.files.PreparedFileUpload
 import com.comunidapp.app.domain.files.authorization.FileAccessDecision
 import com.comunidapp.app.domain.files.authorization.FileAuthContext
 import com.comunidapp.app.domain.files.authorization.FileAuthorization
@@ -69,6 +70,13 @@ interface FileAssetRepository {
 }
 
 interface FileUploadRepository {
+    suspend fun prepareUploadSession(
+        request: FileUploadRequest,
+        createdByUserId: String,
+        nowEpochMs: Long,
+        clockExpiresAtEpochMs: Long? = null
+    ): AppResult<PreparedFileUpload>
+
     suspend fun createUploadSession(
         request: FileUploadRequest,
         createdByUserId: String,
@@ -266,12 +274,12 @@ class MockFileUploadRepository(
 
     fun assetRepo(): MockFileAssetRepository = assets
 
-    override suspend fun createUploadSession(
+    override suspend fun prepareUploadSession(
         request: FileUploadRequest,
         createdByUserId: String,
         nowEpochMs: Long,
         clockExpiresAtEpochMs: Long?
-    ): AppResult<FileUploadSession> {
+    ): AppResult<PreparedFileUpload> {
         FileValidationRules.validateUploadRequest(request)
             .getOrElse { return fileRepoFail(it.message ?: "VALIDATION") }
         val draft = when (
@@ -299,6 +307,9 @@ class MockFileUploadRepository(
         ).getOrElse { return fileRepoFail(it.message ?: "VALIDATION") }
         val versionId = "ver-${seq.incrementAndGet()}"
         val bucket = FilePurposePolicy.resolveLogicalBucket(request.purpose)
+        if (bucket == FileLogicalBucket.LEGACY_LEOVER_READ_ONLY) {
+            return fileRepoFail("LEGACY_BUCKET_DENIED", AppErrorKind.FORBIDDEN)
+        }
         val version = FileAssetVersionRules.validate(
             id = versionId,
             assetId = draft.id,
@@ -325,7 +336,37 @@ class MockFileUploadRepository(
             expiresAtEpochMs = clockExpiresAtEpochMs
         )
         sessions[sessionId] = session
-        return AppResult.Success(session)
+        val physicalBucket = M05SupabaseRpcSupport.logicalBucketToPhysical(bucket)
+        if (physicalBucket.equals("leover", ignoreCase = true)) {
+            return fileRepoFail("LEGACY_BUCKET_DENIED", AppErrorKind.FORBIDDEN)
+        }
+        return AppResult.Success(
+            PreparedFileUpload(
+                session = session,
+                physicalBucket = physicalBucket,
+                storagePath = path,
+                assetId = draft.id,
+                versionId = versionId,
+                logicalBucket = bucket
+            )
+        )
+    }
+
+    override suspend fun createUploadSession(
+        request: FileUploadRequest,
+        createdByUserId: String,
+        nowEpochMs: Long,
+        clockExpiresAtEpochMs: Long?
+    ): AppResult<FileUploadSession> = when (
+        val prepared = prepareUploadSession(
+            request = request,
+            createdByUserId = createdByUserId,
+            nowEpochMs = nowEpochMs,
+            clockExpiresAtEpochMs = clockExpiresAtEpochMs
+        )
+    ) {
+        is AppResult.Success -> AppResult.Success(prepared.data.session)
+        is AppResult.Failure -> prepared
     }
 
     override suspend fun validateUpload(sessionId: String): AppResult<FileUploadSession> {

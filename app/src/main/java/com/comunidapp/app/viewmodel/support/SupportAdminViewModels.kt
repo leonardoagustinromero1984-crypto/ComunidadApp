@@ -10,6 +10,13 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.data.repository.SupportRepository
 import com.comunidapp.app.domain.authorization.PermissionCode
+import com.comunidapp.app.domain.files.FileAssetOwner
+import com.comunidapp.app.domain.files.FileAssetPurpose
+import com.comunidapp.app.domain.files.FileAssetVisibility
+import com.comunidapp.app.domain.files.FileResourceRef
+import com.comunidapp.app.domain.files.FileResourceType
+import com.comunidapp.app.domain.files.FileUiErrorMapper
+import com.comunidapp.app.domain.files.FileUploadRequest
 import com.comunidapp.app.domain.support.SupportCategory
 import com.comunidapp.app.domain.support.SupportMessage
 import com.comunidapp.app.domain.support.SupportTicket
@@ -119,6 +126,8 @@ data class SupportTicketAdminDetailUiState(
     val canViewSensitive: Boolean = false,
     val draft: String = "",
     val internalDraft: String = "",
+    val requesterVisibleAttachmentAssetIds: List<String> = emptyList(),
+    val internalAttachmentAssetIds: List<String> = emptyList(),
     val confirmClose: Boolean = false,
     val message: String? = null,
     val errorMessage: String? = null
@@ -241,6 +250,50 @@ class SupportTicketAdminDetailViewModel(
             )
         }
         _uiState.update { it.copy(internalDraft = "") }
+    }
+
+    fun attachFile(uri: android.net.Uri, internal: Boolean) {
+        if (!_uiState.value.canManage || (internal && !_uiState.value.canViewSensitive)) {
+            _uiState.update { it.copy(message = "No tenés permiso para adjuntar este archivo.") }
+            return
+        }
+        viewModelScope.launch {
+            val actor = authRepository.getCurrentUser()?.id ?: return@launch
+            when (val upload = DataProvider.fileUploadCoordinator.startUpload(
+                uriString = uri.toString(),
+                request = FileUploadRequest(
+                    purpose = FileAssetPurpose.SUPPORT_ATTACHMENT,
+                    owner = FileAssetOwner.Platform(),
+                    resourceRef = FileResourceRef(FileResourceType.SUPPORT_TICKET, ticketId),
+                    originalFilename = "adjunto.pdf",
+                    declaredMimeType = "application/pdf",
+                    sizeBytes = 1L,
+                    requestedVisibility = if (internal) {
+                        FileAssetVisibility.AUTHORIZED_STAFF
+                    } else {
+                        FileAssetVisibility.RESOURCE_PARTICIPANTS
+                    }
+                ),
+                actorUserId = actor
+            )) {
+                is AppResult.Success -> _uiState.update {
+                    if (internal) {
+                        it.copy(
+                            internalAttachmentAssetIds =
+                                it.internalAttachmentAssetIds + upload.data.assetId
+                        )
+                    } else {
+                        it.copy(
+                            requesterVisibleAttachmentAssetIds =
+                                it.requesterVisibleAttachmentAssetIds + upload.data.assetId
+                        )
+                    }
+                }
+                is AppResult.Failure -> _uiState.update {
+                    it.copy(message = FileUiErrorMapper.message(upload.error))
+                }
+            }
+        }
     }
 
     fun clearMessage() = _uiState.update { it.copy(message = null) }

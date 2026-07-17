@@ -8,6 +8,12 @@ import com.comunidapp.app.data.remote.storage.StoragePaths
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.core.result.AppResult
+import com.comunidapp.app.domain.files.FileAssetOwner
+import com.comunidapp.app.domain.files.FileAssetPurpose
+import com.comunidapp.app.domain.files.FileAssetVisibility
+import com.comunidapp.app.domain.files.FileUploadRequest
+import com.comunidapp.app.domain.files.FileUiErrorMapper
 import com.comunidapp.app.domain.user.CompleteOnboardingCommand
 import com.comunidapp.app.domain.user.ProfileVisibility
 import com.comunidapp.app.domain.user.UserPrivacySettings
@@ -226,22 +232,28 @@ class ProfileOnboardingViewModel(
 
             var avatarPath = state.avatarPath
             state.pendingImageUri?.let { uri ->
-                val avatarStorage = DataProvider.profileAvatarStorage
-                if (avatarStorage != null) {
-                    avatarStorage.uploadAvatar(state.userId, uri)
-                        .onSuccess { avatarPath = it }
-                        .onFailure { error ->
-                            _uiState.update {
-                                it.copy(
-                                    isSubmitting = false,
-                                    errorMessage = error.message ?: "No se pudo subir la foto"
-                                )
-                            }
-                            return@launch
+                when (val upload = DataProvider.fileUploadCoordinator.startUpload(
+                    uriString = uri.toString(),
+                    request = FileUploadRequest(
+                        purpose = FileAssetPurpose.USER_AVATAR,
+                        owner = FileAssetOwner.User(state.userId),
+                        originalFilename = "avatar.jpg",
+                        declaredMimeType = "image/jpeg",
+                        sizeBytes = 1L,
+                        requestedVisibility = FileAssetVisibility.PUBLIC
+                    ),
+                    actorUserId = state.userId
+                )) {
+                    is AppResult.Success -> avatarPath = upload.data.storagePath
+                    is AppResult.Failure -> {
+                        _uiState.update {
+                            it.copy(
+                                isSubmitting = false,
+                                errorMessage = FileUiErrorMapper.message(upload.error)
+                            )
                         }
-                } else {
-                    // Mock / sin storage: avatar opcional; no bloquea completar.
-                    avatarPath = StoragePaths.userAvatar(state.userId)
+                        return@launch
+                    }
                 }
             }
 

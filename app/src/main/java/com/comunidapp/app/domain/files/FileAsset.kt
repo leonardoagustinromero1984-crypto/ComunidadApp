@@ -70,6 +70,46 @@ data class FileUploadSession(
     val failureCode: String? = null
 )
 
+data class PreparedFileUpload(
+    val session: FileUploadSession,
+    val physicalBucket: String,
+    val storagePath: String,
+    val assetId: String,
+    val versionId: String,
+    val logicalBucket: FileLogicalBucket
+)
+
+data class FileLocalMetadata(
+    val originalFilename: String,
+    val declaredMimeType: String?,
+    val sizeBytes: Long,
+    val sourceUriString: String
+)
+
+enum class FileUploadPhase {
+    Idle,
+    Validating,
+    Preparing,
+    Uploading,
+    Completing,
+    Ready,
+    Failed,
+    Cancelled
+}
+
+data class FileUploadUiState(
+    val phase: FileUploadPhase = FileUploadPhase.Idle,
+    val progressPercent: Int = 0,
+    val sessionId: String? = null,
+    val assetId: String? = null,
+    val previewUri: String? = null,
+    val temporaryDisplayUrl: String? = null,
+    val userMessage: String? = null,
+    val canRetry: Boolean = false,
+    val canCancel: Boolean = false,
+    val submittingLocked: Boolean = false
+)
+
 data class FileAccessRequest(
     val assetId: String,
     val actorUserId: String,

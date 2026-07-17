@@ -9,6 +9,7 @@ object AdministrativeSessionCleanup {
     private var clearedGeneration: Long = 0L
 
     fun clear() {
+        com.comunidapp.app.viewmodel.files.FileSessionCleanup.clear()
         clearedGeneration += 1L
     }
 

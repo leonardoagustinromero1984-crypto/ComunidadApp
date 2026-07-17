@@ -9,6 +9,14 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.OrganizationPermissionRepository
 import com.comunidapp.app.data.repository.OrganizationRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.core.result.AppResult
+import com.comunidapp.app.domain.files.FileAssetOwner
+import com.comunidapp.app.domain.files.FileAssetPurpose
+import com.comunidapp.app.domain.files.FileAssetVisibility
+import com.comunidapp.app.domain.files.FileResourceRef
+import com.comunidapp.app.domain.files.FileResourceType
+import com.comunidapp.app.domain.files.FileUiErrorMapper
+import com.comunidapp.app.domain.files.FileUploadRequest
 import com.comunidapp.app.domain.organization.Organization
 import com.comunidapp.app.domain.organization.OrganizationId
 import com.comunidapp.app.domain.organization.OrganizationType
@@ -164,6 +172,7 @@ data class EditOrganizationUiState(
     val logoPath: String? = null,
     val logoUrl: String? = null,
     val pendingLogoUri: android.net.Uri? = null,
+    val documentAssetIds: List<String> = emptyList(),
     val isSaving: Boolean = false,
     val isRequestingVerification: Boolean = false,
     val errorMessage: String? = null,
@@ -285,19 +294,33 @@ class EditOrganizationViewModel(
             _uiState.update { it.copy(isSaving = true, errorMessage = null, saveSuccess = false) }
             var logoPath = state.logoPath
             state.pendingLogoUri?.let { uri ->
-                val media = DataProvider.organizationMediaStorage
-                if (media != null) {
-                    media.uploadLogo(state.organizationId, uri)
-                        .onSuccess { path -> logoPath = path }
-                        .onFailure { error ->
-                            _uiState.update {
-                                it.copy(
-                                    isSaving = false,
-                                    errorMessage = error.message ?: "No se pudo subir el logo"
-                                )
-                            }
-                            return@launch
+                val actorId = authRepository.getCurrentUser()?.id.orEmpty()
+                when (val upload = DataProvider.fileUploadCoordinator.startUpload(
+                    uriString = uri.toString(),
+                    request = FileUploadRequest(
+                        purpose = FileAssetPurpose.ORGANIZATION_LOGO,
+                        owner = FileAssetOwner.Organization(state.organizationId),
+                        resourceRef = FileResourceRef(
+                            FileResourceType.ORGANIZATION,
+                            state.organizationId
+                        ),
+                        originalFilename = "logo.jpg",
+                        declaredMimeType = "image/jpeg",
+                        sizeBytes = 1L,
+                        requestedVisibility = FileAssetVisibility.PUBLIC
+                    ),
+                    actorUserId = actorId
+                )) {
+                    is AppResult.Success -> logoPath = upload.data.storagePath
+                    is AppResult.Failure -> {
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                errorMessage = FileUiErrorMapper.message(upload.error)
+                            )
                         }
+                        return@launch
+                    }
                 }
             }
             organizationRepository.updateMyOrganization(
@@ -332,6 +355,42 @@ class EditOrganizationViewModel(
                         isSaving = false,
                         errorMessage = error.message ?: "No se pudo guardar"
                     )
+                }
+            }
+        }
+    }
+
+    fun attachDocument(uri: android.net.Uri, verificationDocument: Boolean = false) {
+        val state = _uiState.value
+        if (!state.canEdit || state.isSaving) return
+        viewModelScope.launch {
+            val actorId = authRepository.getCurrentUser()?.id.orEmpty()
+            val purpose = if (verificationDocument) {
+                FileAssetPurpose.ORGANIZATION_VERIFICATION_DOCUMENT
+            } else {
+                FileAssetPurpose.ORGANIZATION_DOCUMENT
+            }
+            when (val upload = DataProvider.fileUploadCoordinator.startUpload(
+                uriString = uri.toString(),
+                request = FileUploadRequest(
+                    purpose = purpose,
+                    owner = FileAssetOwner.Organization(state.organizationId),
+                    resourceRef = FileResourceRef(
+                        FileResourceType.ORGANIZATION,
+                        state.organizationId
+                    ),
+                    originalFilename = "documento.pdf",
+                    declaredMimeType = "application/pdf",
+                    sizeBytes = 1L,
+                    requestedVisibility = FileAssetVisibility.ORGANIZATION_PRIVATE
+                ),
+                actorUserId = actorId
+            )) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(documentAssetIds = it.documentAssetIds + upload.data.assetId)
+                }
+                is AppResult.Failure -> _uiState.update {
+                    it.copy(errorMessage = FileUiErrorMapper.message(upload.error))
                 }
             }
         }

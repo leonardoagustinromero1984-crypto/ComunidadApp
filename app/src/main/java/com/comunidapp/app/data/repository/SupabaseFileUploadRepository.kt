@@ -7,6 +7,7 @@ import com.comunidapp.app.data.repository.M04SupabaseRpcSupport.failureFromThrow
 import com.comunidapp.app.data.repository.M04SupabaseRpcSupport.runRpc
 import com.comunidapp.app.data.repository.M05SupabaseRpcSupport.parseSession
 import com.comunidapp.app.domain.files.FileNameSanitizer
+import com.comunidapp.app.domain.files.PreparedFileUpload
 import com.comunidapp.app.domain.files.FileUploadRequest
 import com.comunidapp.app.domain.files.FileUploadSession
 import com.comunidapp.app.domain.files.FileUploadSessionState
@@ -19,12 +20,12 @@ import kotlinx.serialization.json.put
 
 class SupabaseFileUploadRepository : FileUploadRepository {
 
-    override suspend fun createUploadSession(
+    override suspend fun prepareUploadSession(
         request: FileUploadRequest,
         createdByUserId: String,
         nowEpochMs: Long,
         clockExpiresAtEpochMs: Long?
-    ): AppResult<FileUploadSession> {
+    ): AppResult<PreparedFileUpload> {
         val safeFilename = FileNameSanitizer.sanitize(request.originalFilename)
             .getOrElse { return failureFromThrowable(it) }
         return runRpc {
@@ -44,8 +45,47 @@ class SupabaseFileUploadRepository : FileUploadRepository {
                 }
             )
             val root = decodeObject(element) ?: error("CREATE_UPLOAD_EMPTY")
-            parseSession(root["session"]?.let(::decodeObject) ?: error("CREATE_UPLOAD_SESSION_EMPTY"))
+            val session = parseSession(
+                root["session"]?.let(::decodeObject) ?: error("CREATE_UPLOAD_SESSION_EMPTY")
+            )
+            val version = root["version"]?.let(::decodeObject)
+                ?: error("CREATE_UPLOAD_VERSION_EMPTY")
+            val physicalBucket = version["storage_bucket"]
+                ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                ?: error("CREATE_UPLOAD_BUCKET_EMPTY")
+            if (physicalBucket.equals("leover", ignoreCase = true)) {
+                error("LEGACY_BUCKET_DENIED")
+            }
+            val storagePath = version["storage_path"]
+                ?.let { (it as? kotlinx.serialization.json.JsonPrimitive)?.content }
+                ?: error("CREATE_UPLOAD_PATH_EMPTY")
+            val logicalBucket = M05SupabaseRpcSupport.physicalBucketToLogical(physicalBucket)
+            PreparedFileUpload(
+                session = session,
+                physicalBucket = physicalBucket,
+                storagePath = storagePath,
+                assetId = session.assetId,
+                versionId = session.versionId,
+                logicalBucket = logicalBucket
+            )
         }
+    }
+
+    override suspend fun createUploadSession(
+        request: FileUploadRequest,
+        createdByUserId: String,
+        nowEpochMs: Long,
+        clockExpiresAtEpochMs: Long?
+    ): AppResult<FileUploadSession> = when (
+        val prepared = prepareUploadSession(
+            request,
+            createdByUserId,
+            nowEpochMs,
+            clockExpiresAtEpochMs
+        )
+    ) {
+        is AppResult.Success -> AppResult.Success(prepared.data.session)
+        is AppResult.Failure -> prepared
     }
 
     override suspend fun validateUpload(sessionId: String): AppResult<FileUploadSession> =

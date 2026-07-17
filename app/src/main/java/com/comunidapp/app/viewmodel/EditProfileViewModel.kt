@@ -8,6 +8,12 @@ import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.core.result.AppResult
+import com.comunidapp.app.domain.files.FileAssetOwner
+import com.comunidapp.app.domain.files.FileAssetPurpose
+import com.comunidapp.app.domain.files.FileAssetVisibility
+import com.comunidapp.app.domain.files.FileUploadRequest
+import com.comunidapp.app.domain.files.FileUiErrorMapper
 import com.comunidapp.app.domain.user.UpdateMyProfileCommand
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -123,29 +129,32 @@ class EditProfileViewModel(
             var avatarPath = state.avatarPath
             var imageUrl = state.profileImageUrl
             state.pendingImageUri?.let { uri ->
-                val avatarStorage = DataProvider.profileAvatarStorage
-                if (avatarStorage != null) {
-                    avatarStorage.uploadAvatar(state.userId, uri)
-                        .onSuccess { path ->
-                            avatarPath = path
-                            avatarStorage.createSignedUrl(path)
-                                .onSuccess { imageUrl = it }
+                val upload = DataProvider.fileUploadCoordinator.startUpload(
+                    uriString = uri.toString(),
+                    request = FileUploadRequest(
+                        purpose = FileAssetPurpose.USER_AVATAR,
+                        owner = FileAssetOwner.User(state.userId),
+                        originalFilename = "avatar.jpg",
+                        declaredMimeType = "image/jpeg",
+                        sizeBytes = 1L,
+                        requestedVisibility = FileAssetVisibility.PUBLIC
+                    ),
+                    actorUserId = state.userId
+                )
+                when (upload) {
+                    is AppResult.Success -> {
+                        avatarPath = upload.data.storagePath
+                        imageUrl = null
+                    }
+                    is AppResult.Failure -> {
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                errorMessage = FileUiErrorMapper.message(upload.error)
+                            )
                         }
-                        .onFailure { error ->
-                            _uiState.update {
-                                it.copy(
-                                    isSaving = false,
-                                    errorMessage = error.message ?: "No se pudo subir la foto"
-                                )
-                            }
-                            return@launch
-                        }
-                } else {
-                    // Mock: conservar URL local/legacy si hay storage genérico.
-                    DataProvider.storageService?.uploadImage(
-                        com.comunidapp.app.data.remote.storage.StoragePaths.userAvatar(state.userId),
-                        uri
-                    )?.onSuccess { imageUrl = it }
+                        return@launch
+                    }
                 }
             }
 

@@ -25,12 +25,18 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.domain.moderation.ModerationActionType
 import com.comunidapp.app.domain.moderation.ModerationCaseStatus
 import com.comunidapp.app.domain.moderation.ModerationTargetRef
 import com.comunidapp.app.domain.moderation.ModerationTargetType
 import com.comunidapp.app.viewmodel.moderation.AdministrativeScreenPhase
 import com.comunidapp.app.viewmodel.moderation.ModerationCaseDetailViewModel
+import com.comunidapp.app.ui.files.FileUploadProgressSection
+import com.comunidapp.app.ui.files.PdfOrImageMimeTypes
+import com.comunidapp.app.ui.files.rememberPdfOrImageDocumentPicker
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 
 @Composable
 fun ModerationCaseDetailScreen(
@@ -41,6 +47,11 @@ fun ModerationCaseDetailScreen(
     )
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val uploadState by DataProvider.fileUploadCoordinator.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
+    val evidencePicker = rememberPdfOrImageDocumentPicker { uri ->
+        uri?.let(viewModel::attachEvidence)
+    }
     val snackbar = remember { SnackbarHostState() }
     var note by remember { mutableStateOf("") }
     var targetId by remember { mutableStateOf("") }
@@ -126,6 +137,23 @@ fun ModerationCaseDetailScreen(
                     enabled = note.isNotBlank() && uiState.canViewSensitive,
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Agregar nota") }
+                if (uiState.canViewSensitive) {
+                    Button(
+                        onClick = { evidencePicker.launch(PdfOrImageMimeTypes) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Adjuntar evidencia") }
+                    FileUploadProgressSection(
+                        state = uploadState,
+                        onCancel = {
+                            uploadState.sessionId?.let { id ->
+                                scope.launch { DataProvider.fileUploadCoordinator.cancel(id) }
+                            }
+                        },
+                        onRetry = {
+                            scope.launch { DataProvider.fileUploadCoordinator.retry() }
+                        }
+                    )
+                }
             }
             if (uiState.canApplyActions) {
                 OutlinedTextField(

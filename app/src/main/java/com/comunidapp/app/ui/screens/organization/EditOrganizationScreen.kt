@@ -29,10 +29,16 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.rememberCoroutineScope
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.viewmodel.EditOrganizationViewModel
+import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.ui.files.FileUploadProgressSection
+import com.comunidapp.app.ui.files.PdfOrImageMimeTypes
+import com.comunidapp.app.ui.files.rememberPdfOrImageDocumentPicker
+import kotlinx.coroutines.launch
 
 @Composable
 fun EditOrganizationScreen(
@@ -41,10 +47,15 @@ fun EditOrganizationScreen(
     viewModel: EditOrganizationViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val uploadState by DataProvider.fileUploadCoordinator.uiState.collectAsState()
+    val scope = rememberCoroutineScope()
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri -> viewModel.onLogoSelected(uri) }
+    val documentPicker = rememberPdfOrImageDocumentPicker { uri ->
+        uri?.let { viewModel.attachDocument(it) }
+    }
 
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
@@ -114,6 +125,23 @@ fun EditOrganizationScreen(
                 ) {
                     Text("Cambiar logo")
                 }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = { documentPicker.launch(PdfOrImageMimeTypes) },
+                    enabled = !uiState.isSaving,
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text("Adjuntar documento")
+                }
+                FileUploadProgressSection(
+                    state = uploadState,
+                    onCancel = {
+                        uploadState.sessionId?.let { id ->
+                            scope.launch { DataProvider.fileUploadCoordinator.cancel(id) }
+                        }
+                    },
+                    onRetry = { scope.launch { DataProvider.fileUploadCoordinator.retry() } }
+                )
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = uiState.description,

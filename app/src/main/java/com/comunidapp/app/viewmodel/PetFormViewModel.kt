@@ -15,6 +15,14 @@ import com.comunidapp.app.data.remote.storage.StoragePaths
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PetRepository
+import com.comunidapp.app.core.result.AppResult
+import com.comunidapp.app.domain.files.FileAssetOwner
+import com.comunidapp.app.domain.files.FileAssetPurpose
+import com.comunidapp.app.domain.files.FileAssetVisibility
+import com.comunidapp.app.domain.files.FileResourceRef
+import com.comunidapp.app.domain.files.FileResourceType
+import com.comunidapp.app.domain.files.FileUiErrorMapper
+import com.comunidapp.app.domain.files.FileUploadRequest
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -219,30 +227,45 @@ class PetFormViewModel(
                     pet = pet.copy(id = petId)
 
                     state.pendingImageUri?.let { uri ->
-                        val storage = DataProvider.storageService
-                        if (storage != null) {
-                            storage.uploadImage(StoragePaths.petPhoto(state.ownerId, petId), uri)
-                                .onSuccess { url ->
-                                    pet = pet.copy(photoUrl = url)
-                                    petRepository.updatePet(pet)
+                        when (val upload = DataProvider.fileUploadCoordinator.startUpload(
+                            uriString = uri.toString(),
+                            request = FileUploadRequest(
+                                purpose = FileAssetPurpose.PET_AVATAR,
+                                owner = FileAssetOwner.User(state.ownerId),
+                                resourceRef = FileResourceRef(FileResourceType.PET, petId),
+                                originalFilename = "pet.jpg",
+                                declaredMimeType = "image/jpeg",
+                                sizeBytes = 1L,
+                                requestedVisibility = FileAssetVisibility.PUBLIC
+                            ),
+                            actorUserId = state.ownerId
+                        )) {
+                            is AppResult.Success -> {
+                                pet = pet.copy(photoUrl = upload.data.assetId)
+                                petRepository.updatePet(pet)
+                            }
+                            is AppResult.Failure -> {
+                                _uiState.update {
+                                    it.copy(
+                                        isSaving = false,
+                                        errorMessage = FileUiErrorMapper.message(upload.error)
+                                    )
                                 }
-                                .onFailure { error ->
-                                    _uiState.update {
-                                        it.copy(
-                                            isSaving = false,
-                                            errorMessage = error.message ?: "No se pudo subir la foto"
-                                        )
-                                    }
-                                    return@launch
-                                }
-                        } else {
-                            pet = pet.copy(photoUrl = uri.toString())
-                            petRepository.updatePet(pet)
+                                return@launch
+                            }
                         }
                     }
 
                     loadedPet = pet
-                    _uiState.update { it.copy(isSaving = false, saveSuccess = true, petId = petId) }
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            saveSuccess = true,
+                            petId = petId,
+                            photoUrl = pet.photoUrl,
+                            pendingImageUri = null
+                        )
+                    }
                 }
                 .onFailure { error ->
                     _uiState.update {

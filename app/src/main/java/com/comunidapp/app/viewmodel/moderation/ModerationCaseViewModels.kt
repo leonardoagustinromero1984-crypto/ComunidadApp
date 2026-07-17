@@ -11,6 +11,13 @@ import com.comunidapp.app.data.repository.ModerationCaseDetail
 import com.comunidapp.app.data.repository.ModerationRepository
 import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.domain.authorization.PermissionCode
+import com.comunidapp.app.domain.files.FileAssetOwner
+import com.comunidapp.app.domain.files.FileAssetPurpose
+import com.comunidapp.app.domain.files.FileAssetVisibility
+import com.comunidapp.app.domain.files.FileResourceRef
+import com.comunidapp.app.domain.files.FileResourceType
+import com.comunidapp.app.domain.files.FileUiErrorMapper
+import com.comunidapp.app.domain.files.FileUploadRequest
 import com.comunidapp.app.domain.moderation.ModerationActionType
 import com.comunidapp.app.domain.moderation.ModerationCase
 import com.comunidapp.app.domain.moderation.ModerationCaseStatus
@@ -146,6 +153,7 @@ data class ModerationCaseDetailUiState(
     val canViewSensitive: Boolean = false,
     val canManageCases: Boolean = false,
     val canApplyActions: Boolean = false,
+    val evidenceAssetIds: List<String> = emptyList(),
     val confirmApplyAction: Boolean = false,
     val message: String? = null,
     val errorMessage: String? = null
@@ -269,6 +277,36 @@ class ModerationCaseDetailViewModel(
                 )
             )
             moderationRepository.addInternalNote(caseId, body, actor, clock())
+        }
+    }
+
+    fun attachEvidence(uri: android.net.Uri) {
+        if (!_uiState.value.canManageCases || !_uiState.value.canViewSensitive) {
+            _uiState.update { it.copy(message = "No tenés permiso para adjuntar evidencia.") }
+            return
+        }
+        viewModelScope.launch {
+            val actor = authRepository.getCurrentUser()?.id ?: return@launch
+            when (val upload = DataProvider.fileUploadCoordinator.startUpload(
+                uriString = uri.toString(),
+                request = FileUploadRequest(
+                    purpose = FileAssetPurpose.MODERATION_EVIDENCE,
+                    owner = FileAssetOwner.Platform(),
+                    resourceRef = FileResourceRef(FileResourceType.MODERATION_CASE, caseId),
+                    originalFilename = "evidencia.pdf",
+                    declaredMimeType = "application/pdf",
+                    sizeBytes = 1L,
+                    requestedVisibility = FileAssetVisibility.AUTHORIZED_STAFF
+                ),
+                actorUserId = actor
+            )) {
+                is AppResult.Success -> _uiState.update {
+                    it.copy(evidenceAssetIds = it.evidenceAssetIds + upload.data.assetId)
+                }
+                is AppResult.Failure -> _uiState.update {
+                    it.copy(message = FileUiErrorMapper.message(upload.error))
+                }
+            }
         }
     }
 
