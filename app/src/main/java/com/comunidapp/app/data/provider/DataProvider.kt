@@ -57,7 +57,19 @@ import com.comunidapp.app.data.repository.MockNotificationInstallationRepository
 import com.comunidapp.app.data.repository.MockNotificationOutboxRepository
 import com.comunidapp.app.data.repository.MockNotificationPreferenceRepository
 import com.comunidapp.app.data.repository.MockNotificationRepositories
+import com.comunidapp.app.data.repository.MockObservabilityRepositories
 import com.comunidapp.app.data.repository.MockOrganizationInvitationRepository
+import com.comunidapp.app.data.repository.AuditEventRepository
+import com.comunidapp.app.data.repository.SecurityEventRepository
+import com.comunidapp.app.data.repository.ApplicationErrorRepository
+import com.comunidapp.app.data.repository.PerformanceMetricRepository
+import com.comunidapp.app.data.repository.HealthCheckRepository
+import com.comunidapp.app.data.repository.AnalyticsEventRepository
+import com.comunidapp.app.data.repository.AlertRepository
+import com.comunidapp.app.data.repository.ObservabilityExportRepository
+import com.comunidapp.app.data.repository.EventCatalogRepository
+import com.comunidapp.app.data.repository.CorrelationContextRepository
+import com.comunidapp.app.data.repository.ClientDeniedAuditEventRepository
 import com.comunidapp.app.data.repository.MockOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.MockOrganizationPermissionRepository
 import com.comunidapp.app.data.repository.MockOrganizationRepository
@@ -217,6 +229,58 @@ object DataProvider {
 
     val mockNotificationOutboxRepository: MockNotificationOutboxRepository
         get() = m06Stage2ContractMocks.outbox
+
+    /**
+     * M07 Etapa 2 — contratos locales. Sin backend Supabase.
+     * useSupabase=false → mocks deterministas no nulos.
+     * useSupabase=true → mocks locales + audit client-denied explícito (hasta Etapa 3).
+     */
+    private val m07Stage2ContractMocks: MockObservabilityRepositories by lazy {
+        MockObservabilityRepositories.create(clock = { Instant.now() })
+    }
+
+    val m07Stage2ObservabilityMocks: MockObservabilityRepositories
+        get() = m07Stage2ContractMocks
+
+    val auditEventRepository: AuditEventRepository by lazy {
+        if (useSupabase) ClientDeniedAuditEventRepository() else m07Stage2ContractMocks.audit
+    }
+
+    val securityEventRepository: SecurityEventRepository by lazy {
+        m07Stage2ContractMocks.security
+    }
+
+    val applicationErrorRepository: ApplicationErrorRepository by lazy {
+        m07Stage2ContractMocks.errors
+    }
+
+    val performanceMetricRepository: PerformanceMetricRepository by lazy {
+        m07Stage2ContractMocks.metrics
+    }
+
+    val healthCheckRepository: HealthCheckRepository by lazy {
+        m07Stage2ContractMocks.health
+    }
+
+    val analyticsEventRepository: AnalyticsEventRepository by lazy {
+        m07Stage2ContractMocks.analytics
+    }
+
+    val alertRepository: AlertRepository by lazy {
+        m07Stage2ContractMocks.alerts
+    }
+
+    val observabilityExportRepository: ObservabilityExportRepository by lazy {
+        m07Stage2ContractMocks.exports
+    }
+
+    val eventCatalogRepository: EventCatalogRepository by lazy {
+        m07Stage2ContractMocks.catalog
+    }
+
+    val correlationContextRepository: CorrelationContextRepository by lazy {
+        m07Stage2ContractMocks.correlation
+    }
 
     val permissionRepository: PermissionRepository by lazy {
         if (useSupabase) SupabasePermissionRepository() else MockPermissionRepository()
