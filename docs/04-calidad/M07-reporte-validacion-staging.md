@@ -1,250 +1,259 @@
 # M07 — Reporte de validación staging
 
-**Fecha:** 2026-07-17  
+**Fecha:** 2026-07-18  
 **Producto:** LeoVer  
-**Rama:** `m07/etapa-6-validacion-staging-cierre-final`  
-**Commit base:** `a02acb15bc78be6b9c405d563f2de2030da70abd`  
+**Rama staging:** `m07/validacion-staging-014-032`  
+**Rama oficial local consolidada:** `m07/validacion-local-y-staging-014-032`  
+**Rama de corrección (conservada):** `m07/correccion-020-citext-validacion-local`  
+**Commit local validado:** `80379b1201b3a31e94a572130a44cf07304a87ac`  
 **Entorno objetivo:** staging no productivo  
-**Actor técnico:** Auto (Cursor), validación local Etapa 6  
+**Actor técnico:** Auto (Cursor)  
 **Estado general:** **PENDIENTE DE VALIDACIÓN REMOTA**  
 **Release:** **RELEASE BLOQUEADO**
 
 ---
 
-## 1. Acceso y evidencia
+## 0. Estado declarado (obligatorio)
 
-| Campo | Valor |
-|---|---|
-| caso | Determinar acceso autorizado a staging |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | Auto (Cursor) |
-| resultado | **NO EJECUTADO** |
-| evidencia | Ausencia de `supabase/config.toml` linkeado; sin project ref autorizado; sin credenciales staging en repo/CI |
-| observaciones | No se consultó historial remoto; no se generó backup; no se aplicó ninguna migración; producción no utilizada. No se simulan resultados. |
+```text
+VALIDACIÓN SUPABASE LOCAL PASS
+PENDIENTE DE VALIDACIÓN REMOTA
+RELEASE BLOQUEADO
+USERNAME NO REVALIDADO — STAGING PENDIENTE
+EXPORTACIÓN DE ARCHIVO PENDIENTE
+INTEGRACIÓN M06 PENDIENTE
+```
+
+**No es STAGING PASS.** Apply remoto: **NO** ejecutado. Producción: **NO** tocada. M08: **NO** iniciado. Merge a `main`: **NO**.
 
 ---
 
-## 2. Historial remoto de migraciones
+## 1. Consolidación local previa
+
+| Paso | Resultado |
+|---|---|
+| Fast-forward `m07/validacion-local-y-staging-014-032` ← corrección | **OK** (`78281e6` → `80379b1`) |
+| HEAD oficial | `80379b1201b3a31e94a572130a44cf07304a87ac` |
+| Rama staging creada | `m07/validacion-staging-014-032` @ mismo commit |
+| Working tree al crear rama | limpio |
+
+---
+
+## 2. Evidencia local PASS (resumen)
+
+| Evidencia | Valor |
+|---|---|
+| Docker / CLI | 29.6.1 / 2.109.1 |
+| 2× `db reset --local` | APPLY OK 001–032 |
+| Historial | 32 versiones, max 032, sin dupes |
+| Catálogos | 118 / 28 / 14 |
+| Permisos M07 | 8 |
+| RLS / grants / DEFINER | PASS |
+| Incidentes / retención / export | PASS (`AUTHORIZED` + `filePending`) |
+| `supabase test db` | NOTESTS (sin pgTAP) |
+| Android | 544 tests · assemble/lint/jacoco/quality PASS |
+| Migración 033 | no creada |
+
+### Correcciones incluidas en el commit validado
+
+| ID | Migración / ámbito | Corrección |
+|---|---|---|
+| L01 | 020 | 10× `citext` → `extensions.citext`; `SET search_path = public` conservado |
+| L02 | 029 | BOM UTF-8 eliminado |
+| L03 | 029 | delimitadores `$$` truncados restaurados |
+| L04 | 031 | `DROP FUNCTION` antes de cambiar retorno a `jsonb` |
+
+Config local Windows (no remota): puertos `5532x`; analytics/studio locales off.
+
+AuthRepository / domain/auth / UsernameValidators: **intactos**.
+
+---
+
+## 3. Auditoría de acceso staging (sanitizada)
+
+| Elemento | Estado |
+|---|---|
+| `supabase/.temp` / `project-ref` | **AUSENTE** (sin CLI link) |
+| `.supabase` | **AUSENTE** |
+| `supabase/.env` | **AUSENTE** |
+| `.env` / `.env.local` / `.env.staging` | **AUSENTE** |
+| `gradle.properties` keys SUPABASE | **AUSENTE** |
+| `local.properties` | **PRESENTE** (local, no commiteado) |
+| Keys en `local.properties` | `sdk.dir`, `SUPABASE_URL`, `SUPABASE_ANON_KEY` |
+| `SUPABASE_ANON_KEY` | **PRESENTE** (cliente Android) |
+| service_role en `local.properties` | **AUSENTE** |
+| Env vars `SUPABASE_ACCESS_TOKEN` / `SUPABASE_DB_URL` / `SUPABASE_DB_PASSWORD` / `SUPABASE_PROJECT_REF` | **AUSENTE** |
+| CI (`.github/workflows`) secretos Supabase | **AUSENTE** (CI en modo mock; nota staging PENDIENTE) |
+| Documentación flavors staging/prod | ADR-0005: **sin flavors** staging/production aún |
+| `supabase/config.toml` | solo `project_id` local `ComunidadApp`; **sin** project ref remoto |
+
+### Project ref detectado (enmascarado)
 
 | Campo | Valor |
 |---|---|
-| caso | Verificar historial remoto `014`–`032` |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia | Sin proyecto staging linkeado |
-| observaciones | Revisar historial real antes de aplicar; no reejecutar ni editar migraciones ya aplicadas. |
+| Origen | `local.properties` → `SUPABASE_URL` host `*.supabase.co` |
+| Longitud ref | 20 |
+| Últimos 4 caracteres | `mizz` |
+| Identidad de entorno | **NO VERIFICADA** (no hay etiqueta staging/prod) |
+| staging ≠ producción | **NO CONFIRMABLE** con evidencia actual |
 
-Secuencia pendiente (local lista; remota no aplicada):
+No se imprimen URL completa, anon key, JWT ni connection strings.
+
+---
+
+## 4. Clasificación
+
+```text
+B. STAGING CONFIGURADO PERO NO VERIFICADO
+```
+
+**Motivo:** existe configuración cliente (`SUPABASE_URL` + anon en `local.properties`), pero:
+
+1. no hay evidencia inequívoca de que el proyecto sea staging;
+2. no hay evidencia inequívoca de que no sea producción;
+3. no hay `supabase link` / access token / DB password para operaciones de migración remota;
+4. CI no inyecta credenciales remotas.
+
+### Acciones bloqueadas por clasificación B
+
+- no `supabase login`
+- no `supabase link`
+- no `db push` / `--linked`
+- no `migration repair`
+- no reset remoto
+- no SQL remoto
+- no adivinar credenciales
+- no tocar ningún proyecto Supabase
+
+---
+
+## 5. Historial remoto
+
+| Campo | Valor |
+|---|---|
+| Consulta `supabase migration list --linked` | **NO EJECUTADA** (sin link verificado) |
+| Versión máxima remota | **DESCONOCIDA** |
+| Migraciones remotas | **DESCONOCIDAS** |
+| Pendientes estimadas 014–032 | **19 archivos locales listos**; remoto desconocido → asumir pendientes hasta historial real |
+| Divergencias / dupes remotos | **NO EVALUABLES** |
+| `extensions.citext` remoto | **NO VERIFICADO** |
+| Backup / snapshot | **PENDIENTE** (obligatorio antes de apply) |
+
+Secuencia local candidata (aplicar solo lo que el historial remoto marque como pendiente):
 
 ```text
 014 → 015 → 016 → 017 → 018 → 019 → 020 → 021 → 022 → 023 → 024 → 025 → 026 → 027 → 028 → 029 → 030 → 031 → 032
 ```
 
-`032` existe por defectos bloqueantes D1–D3 (gates `audit.view`); no edita 029–031.
-
 ---
 
-## 3. Backup / recuperación
+## 6. Riesgos
 
-| Campo | Valor |
+| Riesgo | Mitigación |
 |---|---|
-| caso | Crear backup o punto de recuperación previo |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia | Acceso remoto ausente |
-| observaciones | Condición obligatoria antes de la primera migración pendiente. |
+| Aplicar a producción por error | Exigir confirmación escrita staging ≠ prod + ref distinto |
+| Reaplicar migración ya presente | Leer historial remoto; no repair sin evidencia |
+| 020 citext / 029 BOM / 031 DROP no aplicados remotamente | Apply ordenado del commit `80379b1` |
+| Sin backup | STOP — no apply |
+| Client anon sin privilegios de migración | Requiere access token + link staging del propietario |
 
 ---
 
-## 4. Aplicación de migraciones
+## 7. Plan de apply (documentado — NO ejecutado)
 
-| Campo | Valor |
+Ver procedimiento detallado: `docs/04-calidad/M07-procedimiento-apply-staging-014-032.md`.
+
+Orden resumido:
+
+1. Verificar staging ≠ producción (autorización escrita + ref).
+2. Backup/snapshot previo.
+3. `supabase migration list --linked` (solo tras link staging verificado).
+4. Confirmar 001–013 remotas.
+5. Determinar pendientes reales entre 014–032.
+6. Detectar contenido previo distinto en 014–032 ya aplicadas.
+7. No reaplicar existentes; no repair sin autorización.
+8. Apply solo pendientes.
+9. Verificar historial post-apply.
+10. Validaciones SQL + smoke Android.
+11. Registrar rollback.
+12. Mantener release bloqueado hasta PASS completo.
+
+### Comandos potenciales (pendientes — no ejecutados)
+
+```text
+# Solo tras staging verificado y link existente autorizado:
+supabase migration list --linked
+supabase db push --linked --dry-run
+# Si la CLI 2.109.1 no admite --dry-run en db push: documentar y NO sustituir por apply real.
+supabase db push --linked
+```
+
+**Apply ejecutado en esta sesión:** NO  
+**Dry-run ejecutable ahora:** NO (falta link staging verificado)  
+**Backup disponible:** PENDIENTE (acción del propietario)
+
+---
+
+## 8. Plan de validación post-apply (pendiente)
+
+| Área | Criterio |
 |---|---|
-| caso | Aplicar pendientes 014–032 en orden |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia | Sin autorización remota |
-| observaciones | Aplicar solo pendientes reales tras backup e historial. |
+| Catálogos | 118 / 28 / 14 sin dupes; igual Kotlin |
+| Permisos | 8 M07; gates 032; usuario común denegado |
+| RLS / grants / DEFINER | como local PASS |
+| Incidentes / retención / export | como local; deuda filePending |
+| M06 | `m07.incident.staff_notification` catalogado; sin envío simulado |
+| Username | revalidar sin corregir en M07 |
+| Smoke Android | build/tests contra staging autorizado |
 
 ---
 
-## 5. Catálogos remotos (118 / 28 / 14)
+## 9. Plan de rollback (pendiente de propietario)
 
-| Campo | Valor |
+| Opción | Notas |
 |---|---|
-| caso | Verificar igualdad Kotlin↔SQL en staging |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | Quality script PASSED: 118 eventos, 28 métricas, 14 health |
-| observaciones | Confirmar drift=0 post-apply remoto. |
+| Restaurar snapshot/backup pre-apply | Preferida |
+| Point-in-time recovery (si plan Supabase lo permite) | Registrar ID/hora |
+| No “desaplicar” migraciones a mano | Evitar repair destructivo |
+
+Sin backup registrado: **apply prohibido**.
 
 ---
 
-## 6. Permisos y proxy audit.view
+## 10. Acciones necesarias del propietario del proyecto
 
-| Campo | Valor |
-|---|---|
-| caso | Usuario común denegado; gates dedicados; sin audit.view M07 |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | 031 seed permisos; 032 quita OR `audit.view` en list/health/evaluate; UI dedicada |
-| observaciones | Probar JWT authenticated común + staff plataforma + rol org M03. |
+1. Confirmar por escrito el project ref de **staging** y que **≠ producción** (ref prod enmascarado o declaración formal).  
+2. Proveer acceso CLI autorizado (`SUPABASE_ACCESS_TOKEN` o login del owner) **sin** commitear secretos.  
+3. Ejecutar `supabase link` solo al staging verificado (fuera de esta sesión automatizada).  
+4. Crear backup/snapshot y registrar ID.  
+5. Ejecutar procedimiento `M07-procedimiento-apply-staging-014-032.md`.  
+6. Devolver evidencias sanitizadas para actualizar este reporte a PASS/FAIL remoto.
 
 ---
 
-## 7. Auditoría / security / errores
+## 11. Matriz remota (estado)
 
-| Campo | Valor |
-|---|---|
-| caso | Append-only, metadata, denegaciones, fingerprints |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | Migraciones 029–032 + tests unitarios |
-| observaciones | Validar RPC con JWT; sin service role en Android. |
+Todos los casos remotos de las secciones históricas (acceso, historial, backup, apply, catálogos, permisos, auditoría, métricas, health, incidentes, retención, export, M06, UI, Edge, username):
+
+**NO EJECUTADO** — bloqueados por clasificación **B**.
 
 ---
 
-## 8. Métricas y health
-
-| Campo | Valor |
-|---|---|
-| caso | 28 métricas / 14 health; MANUAL con health.check.execute |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | 030 + 032 D2 |
-| observaciones | Confirmar `m07_record_metric` solo service_role. |
-
----
-
-## 9. Incidentes y alertas
-
-| Campo | Valor |
-|---|---|
-| caso | Transiciones OPEN→ACK→RESOLVED; evaluate sin audit.view |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | 030 + 032 D3 |
-| observaciones | No simular notificación M06. |
-
----
-
-## 10. Retención y legal hold
-
-| Campo | Valor |
-|---|---|
-| caso | Preview/execute/legal hold/silos |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | 031 + tests Stage 5 |
-| observaciones | Deep link no debe ejecutar retención. |
-
----
-
-## 11. Exportaciones
-
-| Campo | Valor |
-|---|---|
-| caso | AUTHORIZED + filePending; sin signed URL |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | **EXPORTACIÓN DE ARCHIVO PENDIENTE** documentada |
-| observaciones | No exigir archivo real para PASS de foundation si deuda permanece. |
-
----
-
-## 12. Integración M06
-
-| Campo | Valor |
-|---|---|
-| caso | Notificación staff incidente M07 |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | **INTEGRACIÓN M06 PENDIENTE**; clave catalogada sin envío |
-| observaciones | No implementar solo para eliminar deuda. |
-
----
-
-## 13. UI / deep links
-
-| Campo | Valor |
-|---|---|
-| caso | Rutas observability_* gates y deep links |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | NavGraph + screens dedicadas Etapa 6 |
-| observaciones | staging UI permanece PENDIENTE sin evidencia. |
-
----
-
-## 14. Edge Functions
-
-| Campo | Valor |
-|---|---|
-| caso | Push / delete-account sin secretos en respuestas/logs |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **NO EJECUTADO** |
-| evidencia local | Revisión estática heredada M06/M07 |
-| observaciones | Validar secretos FCM solo server-side en entorno real. |
-
----
-
-## 15. Username (post-staging)
-
-| Campo | Valor |
-|---|---|
-| caso | Revalidar verificación de username tras apply remoto |
-| entorno | staging no productivo |
-| fecha | 2026-07-17 |
-| actor técnico | NO EJECUTADO |
-| resultado | **USERNAME NO REVALIDADO — STAGING PENDIENTE** |
-| evidencia | Staging no aplicado; AuthRepository / domain/auth / UsernameValidators intactos |
-| observaciones | No corregir en M07. Si persiste tras staging → rama autenticación separada. Si desaparece → documentar dependencia remota. |
-
----
-
-## 16. Condición de release
-
-Sin staging PASS demostrable:
+## 12. Condición de release
 
 ```text
 RELEASE BLOQUEADO
 ```
 
-El foundation M07 puede considerarse cerrado **localmente** con evidencia de build/tests/quality/JaCoCo, pero el release de producto permanece bloqueado hasta validación remota.
+Foundation M07 cerrado **localmente**. Release de producto bloqueado hasta validación remota PASS demostrable.
 
 ---
 
-## 17. Limitaciones de este reporte
+## 13. Limitaciones de este reporte
 
-- Todos los casos remotos son **NO EJECUTADO**.  
 - No se inventaron resultados de staging.  
 - No se usó producción.  
 - No se inició M08.  
-- No se hizo merge a `main`.
+- No se hizo merge a `main`.  
+- No se crearon links nuevos.  
+- No se ejecutó `supabase login`.
