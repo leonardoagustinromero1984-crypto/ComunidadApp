@@ -184,6 +184,39 @@ class AuthViewModelsTest {
     }
 
     @Test
+    fun email_verification_otp_eight_digits_succeeds() = runTest(dispatcher) {
+        val email = "otpvm@email.com"
+        repo.register("O", email, "password1", com.comunidapp.app.domain.auth.ConsentMetadata.forRegistration())
+        val vm = EmailVerificationViewModel(repo)
+        vm.confirmWithOtp(email, "12345678")
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.isVerified)
+        assertNull(vm.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun email_verification_otp_five_digits_rejected_without_calling_success() = runTest(dispatcher) {
+        val email = "otpshort@email.com"
+        repo.register("O", email, "password1", com.comunidapp.app.domain.auth.ConsentMetadata.forRegistration())
+        val vm = EmailVerificationViewModel(repo)
+        vm.confirmWithOtp(email, "12345")
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.isVerified)
+        assertNotNull(vm.uiState.value.errorMessage)
+        assertFalse(vm.uiState.value.errorMessage!!.contains("12345"))
+    }
+
+    @Test
+    fun email_verification_clears_error_on_edit() = runTest(dispatcher) {
+        val vm = EmailVerificationViewModel(repo)
+        vm.confirmWithOtp("x@email.com", "12")
+        advanceUntilIdle()
+        assertNotNull(vm.uiState.value.errorMessage)
+        vm.clearOtpFeedback()
+        assertNull(vm.uiState.value.errorMessage)
+    }
+
+    @Test
     fun email_masking() {
         assertEquals("m***a@email.com", EmailMasking.mask("maria@email.com"))
         assertFalse(EmailMasking.mask("maria@email.com").contains("maria@"))

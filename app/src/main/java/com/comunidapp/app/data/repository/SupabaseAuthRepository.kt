@@ -12,6 +12,7 @@ import com.comunidapp.app.domain.auth.AuthErrorMapper
 import com.comunidapp.app.domain.auth.ConsentMetadata
 import com.comunidapp.app.domain.auth.LegalDocumentConfig
 import com.comunidapp.app.domain.auth.validation.AuthValidators
+import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
 import com.comunidapp.app.notifications.PushTokenRegistrar
 import io.github.jan.supabase.auth.OtpType
 import io.github.jan.supabase.auth.auth
@@ -398,10 +399,12 @@ class SupabaseAuthRepository(
 
     override suspend fun verifyEmailOtp(email: String, otpCode: String): Result<Unit> {
         val normalizedEmail = AuthValidators.normalizeEmail(email)
-        val token = otpCode.trim()
-        if (token.length < 6) {
+        val token = EmailOtpValidators.validate(otpCode).getOrElse { err ->
             return Result.failure(
-                AuthErrorMapper.toException(AuthErrorCode.RECOVERY_LINK_INVALID, "otp too short")
+                AuthErrorMapper.toException(
+                    AuthErrorCode.RECOVERY_LINK_INVALID,
+                    err.message ?: "otp invalid"
+                )
             )
         }
         return try {

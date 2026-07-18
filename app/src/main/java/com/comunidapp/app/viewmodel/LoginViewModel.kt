@@ -15,6 +15,7 @@ import com.comunidapp.app.domain.auth.SignInCommand
 import com.comunidapp.app.domain.auth.SignUpCommand
 import com.comunidapp.app.domain.auth.validation.AuthValidationException
 import com.comunidapp.app.domain.auth.validation.AuthValidators
+import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -415,15 +416,21 @@ class EmailVerificationViewModel(
         }
     }
 
+    fun clearOtpFeedback() {
+        _uiState.update { it.copy(errorMessage = null, successMessage = null) }
+    }
+
     fun confirmWithOtp(email: String, otpCode: String) {
         if (_uiState.value.isLoading) return
-        if (otpCode.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Ingresá el código de 6 dígitos") }
+        val validated = EmailOtpValidators.validate(otpCode)
+        if (validated.isFailure) {
+            _uiState.update { it.copy(errorMessage = EmailOtpValidators.PROMPT_MESSAGE) }
             return
         }
+        val code = validated.getOrThrow()
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null, successMessage = null) }
-            authRepository.verifyEmailOtp(email, otpCode)
+            authRepository.verifyEmailOtp(email, code)
                 .onSuccess {
                     AuthAnalytics.track("email_verification_completed")
                     _uiState.update {

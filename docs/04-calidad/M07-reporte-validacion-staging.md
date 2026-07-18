@@ -24,9 +24,12 @@ RELEASE BLOQUEADO
 USERNAME NO REVALIDADO — STAGING PENDIENTE
 EXPORTACIÓN DE ARCHIVO PENDIENTE
 INTEGRACIÓN M06 PENDIENTE
+EMAIL OTP 8 DÍGITOS — PENDIENTE DE REVALIDACIÓN CON APK NUEVO
 ```
 
 **No es STAGING PASS completo** hasta ejecutar y cerrar la matriz SQL remota.
+
+Smoke Auth email: defecto OTP 6 vs 8 reproducido; corrección en rama `m07/fix-email-otp-length` — ver `docs/04-calidad/M07-defecto-email-otp-longitud.md`.
 
 Guía de ejecución: `docs/04-calidad/M07-ejecucion-matriz-sql-staging-001-033.md`
 Script: `scripts/sql/m07_validate_staging_001_033.sql`

@@ -42,7 +42,11 @@ class M07Stage6FinalValidationTest {
         assertEquals(nums, nums.distinct())
         assertTrue(names.any { it.startsWith("031_") })
         assertTrue(names.any { it.startsWith("032_") })
-        assertEquals(32, nums.map { it.toInt() }.maxOrNull())
+        val max = nums.map { it.toInt() }.maxOrNull()
+        assertTrue("expected highest migration 032 or 033, got $max", max == 32 || max == 33)
+        if (max == 33) {
+            assertTrue(names.any { it.startsWith("033_") })
+        }
         val sql032 = migration("032_")
         assertTrue(sql032.contains("D1:"))
         assertTrue(sql032.contains("health.check.execute"))

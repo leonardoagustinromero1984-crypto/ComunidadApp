@@ -40,6 +40,16 @@ class AuthErrorMapperTest {
     fun maps_recovery_expired() {
         val error = AuthErrorMapper.fromThrowable(Exception("otp_expired"))
         assertEquals(AuthErrorCode.RECOVERY_LINK_EXPIRED.name, error.code)
+        assertTrue(error.userMessage.contains("expiró") || error.userMessage.contains("expir"))
+        assertFalse(error.userMessage.contains("12345678"))
+    }
+
+    @Test
+    fun maps_invalid_otp_token() {
+        val error = AuthErrorMapper.fromThrowable(Exception("Invalid OTP token"))
+        assertEquals(AuthErrorCode.RECOVERY_LINK_INVALID.name, error.code)
+        assertTrue(error.userMessage.contains("código") || error.userMessage.contains("enlace"))
+        assertFalse(error.userMessage.contains("Invalid OTP"))
     }
 
     @Test

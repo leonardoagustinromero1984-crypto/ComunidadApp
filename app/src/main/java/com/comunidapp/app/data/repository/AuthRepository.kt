@@ -11,6 +11,7 @@ import com.comunidapp.app.domain.auth.AuthErrorMapper
 import com.comunidapp.app.domain.auth.AuthException
 import com.comunidapp.app.domain.auth.ConsentMetadata
 import com.comunidapp.app.domain.auth.validation.AuthValidators
+import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -438,12 +439,11 @@ class MockAuthRepository : AuthRepository {
     override suspend fun verifyEmailOtp(email: String, otpCode: String): Result<Unit> {
         delay(30)
         val normalizedEmail = AuthValidators.normalizeEmail(email)
-        val code = otpCode.trim()
-        if (code.length < 6) {
+        EmailOtpValidators.validate(otpCode).getOrElse { err ->
             return Result.failure(
                 AuthErrorMapper.toException(
                     AuthErrorCode.RECOVERY_LINK_INVALID,
-                    "otp too short"
+                    err.message ?: "otp invalid"
                 )
             )
         }
@@ -454,6 +454,7 @@ class MockAuthRepository : AuthRepository {
                     "account not found"
                 )
             )
+        // Mock: cualquier código de longitud válida confirma (no registrar el OTP).
         MockAuthDatabase.setEmailVerified(normalizedEmail, true)
         return Result.success(Unit)
     }

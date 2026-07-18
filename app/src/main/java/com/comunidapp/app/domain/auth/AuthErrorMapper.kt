@@ -114,11 +114,16 @@ object AuthErrorMapper {
 
             raw.contains("Email link is invalid or has expired", ignoreCase = true) ||
                 raw.contains("otp_expired", ignoreCase = true) ||
+                raw.contains("Token has expired", ignoreCase = true) ||
                 raw.contains("Código inválido o expirado", ignoreCase = true) ->
                 AuthErrorCode.RECOVERY_LINK_EXPIRED
 
             raw.contains("invalid", ignoreCase = true) &&
-                (raw.contains("link", ignoreCase = true) || raw.contains("token", ignoreCase = true)) ->
+                (raw.contains("link", ignoreCase = true) ||
+                    raw.contains("token", ignoreCase = true) ||
+                    raw.contains("otp", ignoreCase = true) ||
+                    raw.contains("código", ignoreCase = true) ||
+                    raw.contains("codigo", ignoreCase = true)) ->
                 AuthErrorCode.RECOVERY_LINK_INVALID
 
             raw.contains("session", ignoreCase = true) &&
@@ -175,7 +180,7 @@ object AuthErrorMapper {
         AuthErrorCode.INVALID_EMAIL ->
             "Revisá el email ingresado."
         AuthErrorCode.RECOVERY_LINK_INVALID ->
-            "El enlace de recuperación no es válido."
+            "El enlace o código no es válido."
         AuthErrorCode.RECOVERY_LINK_EXPIRED ->
             "El enlace o código expiró. Solicitá uno nuevo."
         AuthErrorCode.SESSION_EXPIRED ->
