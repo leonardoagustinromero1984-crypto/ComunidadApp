@@ -3,12 +3,13 @@
 **Fecha:** 2026-07-18  
 **Producto:** LeoVer  
 **Rama staging:** `m07/validacion-staging-014-032`  
+**Rama lint 033:** `m07/correccion-lint-staging-033`  
 **Rama oficial local consolidada:** `m07/validacion-local-y-staging-014-032`  
-**Rama de corrección (conservada):** `m07/correccion-020-citext-validacion-local`  
-**Commit local validado:** `80379b1201b3a31e94a572130a44cf07304a87ac`  
+**Commit local validado (001–032):** `80379b1201b3a31e94a572130a44cf07304a87ac`  
+**Project ref staging (últimos 4):** `mizz`  
 **Entorno objetivo:** staging no productivo  
 **Actor técnico:** Auto (Cursor)  
-**Estado general:** **PENDIENTE DE VALIDACIÓN REMOTA**  
+**Estado general:** **PENDIENTE DE VALIDACIÓN REMOTA** (033 lista, no aplicada)  
 **Release:** **RELEASE BLOQUEADO**
 
 ---
@@ -17,6 +18,8 @@
 
 ```text
 VALIDACIÓN SUPABASE LOCAL PASS
+VALIDACIÓN LOCAL 001–033 PASS
+CORRECCIÓN 033 LISTA PARA STAGING
 PENDIENTE DE VALIDACIÓN REMOTA
 RELEASE BLOQUEADO
 USERNAME NO REVALIDADO — STAGING PENDIENTE
@@ -24,7 +27,28 @@ EXPORTACIÓN DE ARCHIVO PENDIENTE
 INTEGRACIÓN M06 PENDIENTE
 ```
 
-**No es STAGING PASS.** Apply remoto: **NO** ejecutado. Producción: **NO** tocada. M08: **NO** iniciado. Merge a `main`: **NO**.
+**No es STAGING PASS.** Apply remoto 033: **NO**. Producción: **NO** tocada. M08: **NO**. Merge a `main`: **NO**.
+
+Detalle lint: `docs/04-calidad/M07-reporte-correccion-lint-033.md`.
+
+---
+
+## 0.1 Apply remoto 001–032 y lint (actualización)
+
+| Hecho | Resultado |
+|---|---|
+| Reset/apply remoto 001–032 | **PASS** (confirmado por propietario; exit 0) |
+| Historial remoto vs local 001–032 | **alineado** |
+| Backup previo | `...\LeoVerBackups\2026-07-18_pre_M07` (fuera del repo) |
+| `db lint` remoto post-032 | **FAIL** — 7 errores (L05–L11) |
+| Migración 033 | creada; validada local 2× reset + 2× lint exit 0 |
+| Apply remoto 033 | **PENDIENTE** |
+
+### Errores lint corregidos en 033
+
+L05 `is_username_available` · L06 `add_reputation_points` · L07 `complete_profile_onboarding` · L08 `org_hash_invitation_token` · L08b `_resolve_invitation_by_token` (STABLE→VOLATILE) · L09 `invite_organization_member` · L10 `m06_claim_outbox` · L11 `m06_claim_push_deliveries`.
+
+Warnings (~22): backlog (actor no leído; IMMUTABLE/STABLE mismatch; etc.) — no bloquean `--fail-on error`.
 
 ---
 
