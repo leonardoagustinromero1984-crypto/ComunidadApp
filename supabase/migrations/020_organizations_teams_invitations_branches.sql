@@ -52,7 +52,7 @@ alter table public.organization_audit_log
 create table if not exists public.organization_invitations (
     id uuid primary key default gen_random_uuid(),
     organization_id uuid not null references public.organizations (id) on delete cascade,
-    invited_email citext null,
+    invited_email extensions.citext null,
     invited_user_id uuid null references auth.users (id) on delete set null,
     role_code text not null,
     status text not null default 'PENDING',
@@ -212,7 +212,7 @@ as $$
 declare
     actor uuid := auth.uid();
     v_role text := upper(trim(coalesce(p_role_code, '')));
-    v_email citext := nullif(lower(trim(coalesce(p_invited_email, ''))), '')::citext;
+    v_email extensions.citext := nullif(lower(trim(coalesce(p_invited_email, ''))), '')::extensions.citext;
     v_user uuid := p_invited_user_id;
     v_expires timestamptz := coalesce(p_expires_at, timezone('utc', now()) + interval '7 days');
     raw_token text;
@@ -335,13 +335,13 @@ set search_path = public
 as $$
 declare
     actor uuid := auth.uid();
-    actor_email citext;
+    actor_email extensions.citext;
 begin
     if actor is null then
         raise exception 'NOT_AUTHENTICATED';
     end if;
 
-    select u.email::citext into actor_email
+    select u.email::extensions.citext into actor_email
     from auth.users u
     where u.id = actor;
 
@@ -411,7 +411,7 @@ as $$
 declare
     actor uuid := auth.uid();
     inv public.organization_invitations;
-    actor_email citext;
+    actor_email extensions.citext;
     new_membership public.organization_memberships;
     existing public.organization_memberships;
 begin
@@ -439,7 +439,7 @@ begin
         raise exception 'ORGANIZATION_BLOCKED';
     end if;
 
-    select u.email::citext into actor_email from auth.users u where u.id = actor;
+    select u.email::extensions.citext into actor_email from auth.users u where u.id = actor;
 
     if inv.invited_user_id is not null and inv.invited_user_id <> actor then
         raise exception 'INVITATION_INVALID';
@@ -536,7 +536,7 @@ as $$
 declare
     actor uuid := auth.uid();
     inv public.organization_invitations;
-    actor_email citext;
+    actor_email extensions.citext;
 begin
     if actor is null then
         raise exception 'NOT_AUTHENTICATED';
@@ -556,7 +556,7 @@ begin
         raise exception 'INVITATION_INVALID';
     end if;
 
-    select u.email::citext into actor_email from auth.users u where u.id = actor;
+    select u.email::extensions.citext into actor_email from auth.users u where u.id = actor;
 
     if inv.invited_user_id is not null and inv.invited_user_id <> actor then
         raise exception 'INVITATION_INVALID';
@@ -1508,7 +1508,7 @@ create policy organization_invitations_select
                     invited_user_id is null
                     and invited_email is not null
                     and invited_email = (
-                        select u.email::citext from auth.users u where u.id = auth.uid()
+                        select u.email::extensions.citext from auth.users u where u.id = auth.uid()
                     )
                 )
             )

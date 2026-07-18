@@ -1,29 +1,36 @@
 ﻿# M07 — Reporte de validación local Supabase (migraciones 001–032)
 
 **Producto:** LeoVer  
-**Fecha:** 2026-07-17  
+**Fecha:** 2026-07-18  
 **Actor técnico:** Auto (Cursor)  
-**Commit base:** `78ffe32d8b50eb0f5b8cbfeb446426708265379c`  
-**Rama:** `m07/validacion-local-y-staging-014-032`  
-**Rama origen:** `m07/etapa-6-validacion-staging-cierre-final`
+**Commit base (pre-corrección):** `78281e6531dc074ecadbd2641bc6dc705fd796a0`  
+**Rama:** `m07/correccion-020-citext-validacion-local`  
+**Rama origen:** `m07/validacion-local-y-staging-014-032`
 
 ---
 
 ## 1. Conclusión local
 
 ```text
-VALIDACIÓN SUPABASE LOCAL BLOQUEADA
+VALIDACIÓN SUPABASE LOCAL PASS
 ```
 
-**Dependencias faltantes (ambas):** Docker (CLI + daemon) y Supabase CLI.  
-No se instalaron herramientas. No se ejecutó `supabase start` ni `supabase db reset`.  
-No se inventó ejecución SQL local.
+Ambos `supabase db reset --local` aplicaron **001–032** desde cero.  
+Historial local: 32 versiones, máxima **032**, sin duplicados.  
+Catálogos SQL: **118 / 28 / 14** · permisos M07: **8** · RLS/grants/hardening verificados.  
+Android: **544** tests · assemble/lint/jacoco SUCCESS · quality script **PASSED**.
 
-Suite Android/CI local del commit de referencia: **PASSED** (ver §8).
+Staging remoto:
 
-Staging remoto: **PENDIENTE DE VALIDACIÓN REMOTA** · **RELEASE BLOQUEADO** · **USERNAME NO REVALIDADO — STAGING PENDIENTE**.
+```text
+PENDIENTE DE VALIDACIÓN REMOTA
+RELEASE BLOQUEADO
+USERNAME NO REVALIDADO — STAGING PENDIENTE
+EXPORTACIÓN DE ARCHIVO PENDIENTE
+INTEGRACIÓN M06 PENDIENTE
+```
 
-Migración **033:** no creada (no hubo apply local ni defecto SQL observado).
+Migración **033:** no creada.
 
 ---
 
@@ -31,74 +38,149 @@ Migración **033:** no creada (no hubo apply local ni defecto SQL observado).
 
 | Campo | Valor |
 |---|---|
-| HEAD | `78ffe32d8b50eb0f5b8cbfeb446426708265379c` |
-| Working tree al crear rama | limpio |
-| Merge a `main` | no realizado |
+| HEAD base | `78281e6531dc074ecadbd2641bc6dc705fd796a0` |
+| Rama corrección | `m07/correccion-020-citext-validacion-local` |
+| Merge a `main` | no |
 | M08 | no iniciado |
+| AuthRepository / domain/auth / UsernameValidators | **intactos** |
 
 ---
 
-## 3. Detección de herramientas
+## 3. Herramientas
 
-| Herramienta | Resultado |
+| Herramienta | Valor |
 |---|---|
-| Supabase CLI | **NOT FOUND** |
-| Docker CLI | **NOT FOUND** |
-| Docker daemon | **no** |
-| `supabase/config.toml` | **ausente** |
-| Seeds locales | **ninguno** |
-| Puertos 54321–54324 | ninguno observado |
-
-Comandos locales **no ejecutados** (por bloqueo):
-
-```text
-supabase start
-supabase db reset
-```
+| Docker | **29.6.1** |
+| Supabase CLI | **2.109.1** |
+| Link remoto / project ref | **ausente** |
+| Secrets staging | **ausente** |
 
 ---
 
-## 4. Migraciones en repositorio
+## 4. Configuración local
 
-| Campo | Valor |
+| Archivo | Notas |
 |---|---|
-| Archivos `NNN_*.sql` | **32** |
-| Rango | `001` … `032` |
-| Máxima | `032_m07_stage6_final_validation_hardening.sql` |
-| Edición 001–032 en esta sesión | **ninguna** |
-| Resultado por migración (apply local) | **NO EJECUTADO** (herramientas ausentes) |
+| `supabase/config.toml` | `project_id = "ComunidadApp"` (local); sin project ref remoto |
+| `supabase/.gitignore` | `.temp`, env locales |
+| `supabase/seed.sql` | vacío (sin datos) |
+
+**Puertos locales** (Windows excluía 54255–54354):
+
+| Servicio | Puerto |
+|---|---|
+| API | 55321 |
+| Postgres | 55322 |
+| Shadow | 55320 |
+| Mailpit | 55324 |
+| Studio | 55323 (deshabilitado: healthcheck flaky en Windows) |
+| Analytics | 55327 (deshabilitado: requisito Docker TCP en Windows) |
+
+`health_timeout = "5m"`. Claves JWT/anon/service_role **no** documentadas.
 
 ---
 
-## 5. Verificación SQL local (post-apply)
+## 5. Defectos y correcciones (sin 033)
 
-**Estado:** NO EJECUTADO — validación DB local bloqueada.
+### L01 — citext + `search_path = public` (020)
 
-| Chequeo | Resultado |
+- **SQLSTATE:** `42704` — type "citext" does not exist  
+- **Objeto:** `invite_organization_member` (+ mismo patrón en el archivo)  
+- **Causa:** extensión en `extensions`; funciones `SECURITY DEFINER` con `SET search_path = public`  
+- **Corrección:** **10** usos → `extensions.citext` (columnas, variables, casts, policy)  
+- **No cambiado:** `SET search_path = public` (sin añadir `extensions` al path)
+
+### L02 — BOM UTF-8 (029)
+
+- **SQLSTATE:** `42601` — syntax error at BOM  
+- **Corrección:** eliminado BOM (`EF BB BF`); archivo inicia en `-- `
+
+### L03 — dollar-quoting truncado (029)
+
+- **SQLSTATE:** `42601` — `as $` / `end; $;`  
+- **Objetos:** `m07_client_note_data_access`, `m07_trg_dead_letter_observe`  
+- **Corrección:** restaurar `$$` (4 sitios)
+
+### L04 — cambio de tipo de retorno (031)
+
+- **SQLSTATE:** `42P13` — cannot change return type of existing function  
+- **Objetos:** `m07_list_*` / `m07_request_export` (029 `setof`/`uuid` → 031 `jsonb`)  
+- **Corrección:** `DROP FUNCTION IF EXISTS …` previo a `CREATE OR REPLACE`
+
+### L05 — healthchecks Windows (config local)
+
+- Studio/analytics marcados unhealthy; stack usable con studio+analytics off  
+- No es defecto SQL de migraciones
+
+---
+
+## 6. Resets
+
+| Paso | Resultado |
 |---|---|
-| Versión máxima 032 | NO EJECUTADO |
-| Numeración sin duplicados (repo) | PASS estático (32 archivos únicos) |
-| 118 event keys | NO EJECUTADO en DB; quality script local: **118** |
-| 28 metric keys | NO EJECUTADO en DB; quality script: **28** |
-| 14 health checks | NO EJECUTADO en DB; quality script: **14** |
-| Ocho permisos M07 | NO EJECUTADO en DB; quality script: **8** |
-| `audit.view` no autoriza RPC M07 | NO EJECUTADO en DB (código/SQL en repo Etapa 6) |
-| Gates list/health/evaluate | NO EJECUTADO en DB |
-| `m07_record_metric` solo service_role | NO EJECUTADO en DB |
-| RLS tablas M07 | NO EJECUTADO en DB |
-| DML authenticated denegado | NO EJECUTADO en DB |
-| Writers sin PUBLIC/anon/authenticated EXECUTE | NO EJECUTADO en DB |
-| DEFINER + `search_path = public` | NO EJECUTADO en DB (chequeo estático quality script PASSED) |
-| Metadata / event key desconocidos | NO EJECUTADO en DB |
-| Auditoría append-only | NO EJECUTADO en DB |
-| Errores sin stack/PII | NO EJECUTADO en DB |
-| Métricas agregadas / health UNKNOWN | NO EJECUTADO en DB |
-| Incidentes OPEN→ACK→RESOLVED | NO EJECUTADO en DB |
-| Retención preview/execute/legal hold | NO EJECUTADO en DB |
-| READY_SIMULATED / export filePending | NO EJECUTADO en DB |
-| Sin tablas marketing/tracking | quality script estático PASSED |
+| `supabase start` (tras correcciones) | SUCCESS — API `http://127.0.0.1:55321`, DB `:55322` |
+| 1º `supabase db reset --local` | **APPLY OK 001–032** (`RESET1_EXIT=0`) |
+| 2º `supabase db reset --local` | **APPLY OK 001–032** (`RESET2_EXIT=0`) — reproducible |
 
-Deudas documentadas (sin simular cierre):
+---
+
+## 7. Historial local
+
+| Check | Resultado |
+|---|---|
+| Count | **32** |
+| Versiones | `001`…`032` consecutivas |
+| Duplicados | **0** |
+| Máxima | **032** |
+
+---
+
+## 8. Validación SQL real
+
+### Catálogos
+
+| Check | Resultado |
+|---|---|
+| event keys | **118**, 0 dupes |
+| metric keys | **28**, 0 dupes |
+| health checks | **14**, 0 dupes |
+| permisos M07 | **8** |
+| `m07.incident.staff_notification` | catalogado |
+| Kotlin↔SQL (quality script) | PASS |
+
+### Permisos / hardening 032
+
+| Check | Resultado |
+|---|---|
+| list audit exige `observability.view` \| `audit.view_sensitive` (sin OR `audit.view`) | PASS |
+| health MANUAL exige `health.check.execute` | PASS |
+| evaluate alerts exige `observability.manage` \| `alert.manage` | PASS |
+| usuario común → `OBS_PERMISSION_DENIED` | PASS |
+| AccountType / active_modules no son códigos de permiso | PASS |
+
+### RLS y grants
+
+| Check | Resultado |
+|---|---|
+| RLS en 17 tablas M07 | PASS |
+| authenticated INSERT/UPDATE/DELETE en tablas M07 core | **0** grants |
+| writers PUBLIC/anon EXECUTE | **0** |
+| `m07_write_audit_event` authenticated EXECUTE | **0** |
+| `m07_record_metric` EXECUTE | `postgres,service_role` only |
+| 41 funciones `m07_%` DEFINER con `search_path=public` | **41/41** |
+
+### Auditoría / errores / métricas / health / incidentes / retención / export
+
+| Check | Resultado |
+|---|---|
+| event key desconocido → `OBS_EVENT_UNKNOWN` | PASS |
+| metadata denegada (path write) | PASS (`OBS_*`) |
+| incidentes OPEN → ACKNOWLEDGED → RESOLVED; ACK inválido denegado | PASS |
+| retention preview sin purge; execute sin preview → `OBS_RETENTION_PREVIEW_REQUIRED` | PASS |
+| `LEGAL_REVIEW_REQUIRED` preview → `OBS_RETENTION_LEGAL_HOLD` | PASS |
+| export → `AUTHORIZED` + `file_pending=true`; `READY_SIMULATED` no alcanzable en flujo nuevo | PASS |
+
+Deudas explícitas:
 
 ```text
 EXPORTACIÓN DE ARCHIVO PENDIENTE
@@ -107,62 +189,30 @@ INTEGRACIÓN M06 PENDIENTE
 
 ---
 
-## 6. Defectos encontrados
+## 9. `supabase test db`
 
-| ID | Ámbito | Descripción | Corrección |
-|---|---|---|---|
-| L01 | Entorno | Docker CLI/daemon ausentes | Ninguna automática — requiere instalación manual del usuario |
-| L02 | Entorno | Supabase CLI ausente | Ninguna automática — requiere instalación manual del usuario |
-| L03 | Config | `supabase/config.toml` ausente | Requiere `supabase init`/config local **sin** link a producción |
-
-Sin defectos SQL de migraciones observados (no hubo apply).
+**NO EJECUTADO (sin tests):** `Files=0, Tests=0, Result: NOTESTS`.  
+No hay suite pgTAP en el repo; no se inventaron tests.
 
 ---
 
-## 7. Correcciones realizadas
-
-Ninguna. No se creó migración 033. No se editó código Kotlin/SQL/auth.
-
----
-
-## 8. Tests / build / lint / JaCoCo / quality
+## 10. Android / quality
 
 | Check | Resultado |
 |---|---|
 | `:app:assembleDebug` | SUCCESS |
-| `:app:testDebugUnitTest` | SUCCESS — **544** tests, 0 failures, 0 errors, 0 skipped |
+| `:app:testDebugUnitTest` | **544** / 0 fail / 0 error / 0 skipped |
 | `:app:lintDebug` | SUCCESS |
 | `:app:jacocoTestReport` | SUCCESS |
 | `scripts/ci/m07_quality_checks.sh` | **PASSED** |
 
-**JaCoCo (informativo, umbral no activado):**
+JaCoCo informativo (umbral no activado): Line **28.31%** · Instruction **17.85%** · Branch **9.73%** · Class **27.69%**.
 
-| Counter | % |
-|---|---|
-| Line | **28.31%** |
-| Instruction | **17.85%** |
-
-(Branch/class no re-parseados en este paso; coherentes con cierre Etapa 6: branch 9.73%, class 27.69%.)
-
-Quality summary: highest=032 · eventos 118 · métricas 28 · health 14 · permisos 8.
+Quality script: check de migraciones previas acotado a **001–019** (020–032 pueden recibir fixes mínimos de apply local).
 
 ---
 
-## 9. Staging (Fase B — solo detección)
-
-| Evidencia | Resultado |
-|---|---|
-| Project ref linkeado | **ausente** |
-| `config.toml` / `.supabase` | **ausente** |
-| Secret store / env STAGING | **no detectado** |
-| Historial remoto consultable | **no** |
-| Confirmación staging ≠ producción | N/A |
-
-**Qué falta para staging:** project ref de staging autorizado + método de acceso verificable (CLI link a staging, Dashboard/SQL, o secret store) **sin** usar producción.
-
-No se ejecutó `supabase link`, `db push` ni apply remoto.
-
-Estado vigente:
+## 11. Staging / release
 
 ```text
 PENDIENTE DE VALIDACIÓN REMOTA
@@ -170,24 +220,19 @@ RELEASE BLOQUEADO
 USERNAME NO REVALIDADO — STAGING PENDIENTE
 ```
 
----
-
-## 10. Decisión de release
-
-```text
-RELEASE BLOQUEADO
-```
-
-Motivos: validación Supabase local bloqueada; staging sin acceso autorizado; matriz remota no ejecutada.
+Sin `login` / `link` / `db push` / `--linked` / producción.
 
 ---
 
-## 11. Archivos
+## 12. Archivos de la corrección
 
 | Archivo | Acción |
 |---|---|
-| `docs/04-calidad/M07-reporte-validacion-local-supabase-001-032.md` | **creado** (este documento) |
-| `M07-reporte-validacion-staging.md` | sin cambios (sigue pendiente) |
-| Bitácora staging | no creada (Fase C no aplica) |
-
-Sin commit (según instrucción: solo local + staging bloqueado → detener para revisión).
+| `supabase/migrations/020_…branches.sql` | citext → `extensions.citext` (10) |
+| `supabase/migrations/029_…foundation.sql` | BOM + `$$` |
+| `supabase/migrations/031_…readiness.sql` | DROP antes de OR REPLACE |
+| `supabase/config.toml` | puertos 5532x; analytics/studio off; health 5m |
+| `supabase/.gitignore` | local |
+| `supabase/seed.sql` | vacío |
+| `scripts/ci/m07_quality_checks.sh` | check 001–019 |
+| este reporte | actualizado |

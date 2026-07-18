@@ -1,4 +1,4 @@
-﻿-- LeoVer — M07 Etapa 3: foundation audit_events / security_events / application_errors / export requests
+-- LeoVer — M07 Etapa 3: foundation audit_events / security_events / application_errors / export requests
 -- Unique new migration. Does not edit 001–028.
 -- Deny-by-default, append-only writes via SECURITY DEFINER, minimal grants.
 
@@ -800,7 +800,7 @@ create or replace function public.m07_client_note_data_access(
   p_error_code text default null,
   p_metadata jsonb default '{}'::jsonb
 ) returns uuid
-language plpgsql security definer set search_path = public as $
+language plpgsql security definer set search_path = public as $$
 declare
   v_key text := trim(p_event_key);
   v_id uuid;
@@ -840,14 +840,14 @@ begin
   exception when others then
     raise exception using errcode = 'P0001', message = 'OBS_WRITE_FAILED';
   end;
-end; $;
+end; $$;
 
 revoke all on function public.m07_client_note_data_access(text,text,text,text,text,jsonb) from public, anon;
 grant execute on function public.m07_client_note_data_access(text,text,text,text,text,jsonb) to authenticated, service_role;
 
 -- Trigger: dead-letter insert → M07 error/audit best-effort (no sensitive payload)
 create or replace function public.m07_trg_dead_letter_observe()
-returns trigger language plpgsql security definer set search_path = public as $
+returns trigger language plpgsql security definer set search_path = public as $$
 begin
   begin
     perform public.m07_write_application_error(
@@ -861,7 +861,7 @@ begin
   exception when others then null;
   end;
   return new;
-end; $;
+end; $$;
 
 drop trigger if exists trg_m07_dead_letter_observe on public.notification_dead_letters;
 create trigger trg_m07_dead_letter_observe

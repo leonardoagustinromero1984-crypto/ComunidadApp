@@ -184,7 +184,14 @@ comment on column public.observability_export_requests.file_pending is
 
 -- ---------------------------------------------------------------------------
 -- Replace M07 RPC permission gates (CREATE OR REPLACE; 029/030 files untouched)
+-- DROP required: PostgreSQL cannot change return type via CREATE OR REPLACE
+-- (029 returned setof/uuid; 031 returns jsonb for list/export RPCs).
 -- ---------------------------------------------------------------------------
+
+drop function if exists public.m07_list_audit_events(int, int, uuid, text);
+drop function if exists public.m07_list_security_events(int, int);
+drop function if exists public.m07_list_application_errors(int, int);
+drop function if exists public.m07_request_export(text, text, text, uuid, jsonb, text);
 
 create or replace function public.m07_list_audit_events(
   p_limit int default 50, p_offset int default 0,
