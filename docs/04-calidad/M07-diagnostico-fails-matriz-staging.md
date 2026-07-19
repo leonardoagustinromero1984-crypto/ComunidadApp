@@ -1,12 +1,34 @@
 # M07 — Diagnóstico de FAIL matriz SQL staging
 
-**Fecha:** 2026-07-19  
-**Producto:** LeoVer  
-**Rama:** `m07/diagnostico-matriz-staging-fails`  
-**Matriz origen:** `scripts/sql/m07_validate_staging_001_033.sql`  
-**Script diagnóstico:** `scripts/sql/m07_diagnose_staging_matrix_fails.sql` (read-only)  
-**Entorno:** staging / pruebas (ref …`mizz`)  
+**Fecha:** 2026-07-19
+**Producto:** LeoVer
+**Rama:** `m07/diagnostico-matriz-staging-fails`
+**Matriz origen:** `scripts/sql/m07_validate_staging_001_033.sql`
+**Script diagnóstico:** `scripts/sql/m07_diagnose_staging_matrix_fails.sql` (read-only)
+**Entorno:** staging / pruebas (ref …`mizz`)
 **Cambios remotos en esta tarea:** **NO**
+**Diagnóstico remoto:** **PENDIENTE** (re-ejecutar script v2 corregido)
+
+---
+
+## 0. Incidente script v1 (SQL Editor)
+
+| Hecho | Valor |
+|---|---|
+| Error | `ERROR 42704: role "PUBLIC" does not exist` |
+| Causa | `has_function_privilege('PUBLIC', ...)` — PUBLIC es **pseudorol**, no rol resoluble |
+| Corrección (v2) | `aclexplode(coalesce(proacl, acldefault('f', proowner)))` con `acl.grantee = 0` |
+| Columnas ACL | `public_execute` · `anon_execute_direct` · `anon_execute_effective` · `anon_execute_via_public` |
+| Clasificación preliminar | **sin cambio** hasta nueva evidencia remota del CSV v2 |
+
+Estado:
+
+```text
+MATRIZ SQL STAGING FAIL — 3 RESULTADOS EN DIAGNÓSTICO
+VALIDACIÓN STAGING PENDIENTE
+RELEASE BLOQUEADO
+MIGRACIÓN 034 NO CREADA
+```
 
 ---
 
