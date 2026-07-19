@@ -20,17 +20,19 @@ SMOKE TEST APK STAGING PASS
 EMAIL OTP 8 DÍGITOS — PASS
 DEFECTO OTP CERRADO
 USERNAME REVALIDADO — PASS
-MATRIZ SQL STAGING FAIL — 3 RESULTADOS PENDIENTES DE DIAGNÓSTICO
+MATRIZ SQL STAGING FAIL — 3 RESULTADOS EN DIAGNÓSTICO
 VALIDACIÓN STAGING PENDIENTE
 RELEASE BLOQUEADO
 EXPORTACIÓN DE ARCHIVO PENDIENTE
 INTEGRACIÓN M06 PENDIENTE
 ```
 
-**No es STAGING PASS.** Falta cerrar el diagnóstico de la matriz SQL (3 FAIL).
+**No es STAGING PASS.** Tres FAIL de matriz en diagnóstico (script read-only); ver `docs/04-calidad/M07-diagnostico-fails-matriz-staging.md`.
 
 Guía matriz: `docs/04-calidad/M07-ejecucion-matriz-sql-staging-001-033.md`
-Script: `scripts/sql/m07_validate_staging_001_033.sql`
+Script matriz: `scripts/sql/m07_validate_staging_001_033.sql`
+Diagnóstico FAIL: `docs/04-calidad/M07-ejecucion-diagnostico-fails-matriz.md`
+Script diagnóstico: `scripts/sql/m07_diagnose_staging_matrix_fails.sql`
 Smoke APK: `docs/04-calidad/M07-smoke-test-apk-staging.md`
 Defecto OTP: `docs/04-calidad/M07-defecto-email-otp-longitud.md`
 
@@ -76,8 +78,12 @@ AuthRepository / domain/auth / UsernameValidators: solo cambios intencionales de
 
 | Hecho | Resultado |
 |---|---|
-| Script preparado | `scripts/sql/m07_validate_staging_001_033.sql` |
-| Ejecución / cierre | **FAIL** — **3** resultados pendientes de diagnóstico |
+| Script matriz | `scripts/sql/m07_validate_staging_001_033.sql` |
+| Resultado reportado | 261 filas · 249 PASS · **3 FAIL** · 3 NOT_EXECUTED · 5 BACKLOG |
+| FAIL | `internal_writers_anon_execute`; `org_hash_invitation_token` DEFINER; `org_hash_invitation_token` search_path |
+| Diagnóstico | script read-only `m07_diagnose_staging_matrix_fails.sql` — **pendiente de ejecución manual** |
+| Clasificación preliminar | anon EXECUTE → DEFECTO_REAL (probable `_resolve_invitation_by_token`); org_hash ×2 → FALSO_POSITIVO de matriz |
+| Migración 034 | **NO** creada; pendiente de decisión post-CSV |
 | Declarar STAGING PASS | **NO** |
 
 ---
