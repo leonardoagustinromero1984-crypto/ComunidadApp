@@ -35,7 +35,7 @@ resolve_python() {
 
 PYTHON="$(resolve_python || true)"
 
-echo "== Migration numbering 001–033 =="
+echo "== Migration numbering 001–034 =="
 nums=$(ls "$MIG" | grep -E '^[0-9]{3}_' | sed 's/_.*//' | sort)
 dupes=$(echo "$nums" | uniq -d || true)
 if [[ -n "${dupes}" ]]; then
@@ -54,8 +54,8 @@ for n in $nums; do
 done
 highest=$(echo "$nums" | tail -n1)
 echo "Highest migration: $highest"
-if [[ "$highest" != "032" && "$highest" != "033" ]]; then
-  echo "Expected highest migration 032 or 033, got $highest"
+if [[ "$highest" != "032" && "$highest" != "033" && "$highest" != "034" ]]; then
+  echo "Expected highest migration 032, 033 or 034, got $highest"
   FAIL=1
 fi
 echo "- Migrations: highest=$highest" >> "$SUMMARY"

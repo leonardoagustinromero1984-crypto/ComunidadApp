@@ -2,37 +2,48 @@
 
 **Fecha:** 2026-07-19
 **Producto:** LeoVer
-**Rama:** `m07/diagnostico-matriz-staging-fails`
-**Matriz origen:** `scripts/sql/m07_validate_staging_001_033.sql`
+**Rama diagnóstico:** `m07/diagnostico-matriz-staging-fails` @ `9aefed3`
+**Rama corrección:** `m07/fix-matrix-security-034`
+**Matriz origen (histórica):** `scripts/sql/m07_validate_staging_001_033.sql`
+**Matriz corregida:** `scripts/sql/m07_validate_staging_001_034.sql`
 **Script diagnóstico:** `scripts/sql/m07_diagnose_staging_matrix_fails.sql` (read-only)
 **Entorno:** staging / pruebas (ref …`mizz`)
-**Cambios remotos en esta tarea:** **NO**
-**Diagnóstico remoto:** **PENDIENTE** (re-ejecutar script v2 corregido)
+**Apply remoto 034:** **NO** (pendiente)
 
 ---
 
-## 0. Incidente script v1 (SQL Editor)
+## 0. Evidencia remota definitiva
 
-| Hecho | Valor |
+Función: `public._resolve_invitation_by_token(p_token text)`
+
+| Campo | Valor |
 |---|---|
-| Error | `ERROR 42704: role "PUBLIC" does not exist` |
-| Causa | `has_function_privilege('PUBLIC', ...)` — PUBLIC es **pseudorol**, no rol resoluble |
-| Corrección (v2) | `aclexplode(coalesce(proacl, acldefault('f', proowner)))` con `acl.grantee = 0` |
-| Columnas ACL | `public_execute` · `anon_execute_direct` · `anon_execute_effective` · `anon_execute_via_public` |
-| Clasificación preliminar | **sin cambio** hasta nueva evidencia remota del CSV v2 |
+| owner | postgres |
+| SECURITY DEFINER | true |
+| PUBLIC EXECUTE | **false** |
+| anon_execute_direct | **true** |
+| anon_execute_effective | **true** |
+| authenticated_execute | **true** |
+| service_role_execute | **true** |
 
-Estado:
+Conclusión remota:
 
-```text
-MATRIZ SQL STAGING FAIL — 3 RESULTADOS EN DIAGNÓSTICO
-VALIDACIÓN STAGING PENDIENTE
-RELEASE BLOQUEADO
-MIGRACIÓN 034 NO CREADA
-```
+- `anon` tenía **grant DIRECTO** (no herencia vía PUBLIC).
+- Helper interno SECURITY DEFINER: no debe ejecutarse desde `anon` ni exponerse a `authenticated`.
+- `service_role` conserva EXECUTE; owner `postgres` conserva privilegios implícitos.
+
+`org_hash_invitation_token`:
+
+| Campo | Valor |
+|---|---|
+| SECURITY | **INVOKER** |
+| search_path | **unset** |
+| digest | `extensions.digest` calificado |
+| tablas | no accede / no modifica |
 
 ---
 
-## 1. Resultados originales (matriz)
+## 1. Resultados originales (matriz 001–033) — no ocultar
 
 | check_name | expected | actual | status |
 |---|---|---|---|
@@ -44,142 +55,35 @@ Resumen matriz reportado: 261 filas · 249 PASS · 3 FAIL · 3 NOT_EXECUTED · 5
 
 ---
 
-## 2. Cómo los calcula la matriz
+## 2. Clasificación definitiva
 
-### Writers internos (`v_internal`)
-
-```text
-m07_write_audit_event
-m07_validate_metadata
-m07_validate_metric_dimensions
-m07_sanitize_health_details
-m07_latest_metric_value
-m06_claim_outbox
-m06_claim_push_deliveries
-m07_record_metric
-_resolve_invitation_by_token
-```
-
-`internal_writers_anon_execute` cuenta filas en `information_schema.routine_privileges` con:
-
-- `specific_schema = 'public'`
-- `grantee = 'anon'`
-- `privilege_type = 'EXECUTE'`
-- `routine_name` ∈ lista anterior
-
-Es **grant directo** a `anon` (no herencia vía PUBLIC).
-
-### Inventario DEFINER (`v_names`)
-
-Incluye, entre otras, `org_hash_invitation_token` y exige a **todas**:
-
-- `SECURITY DEFINER`
-- `SET search_path = public`
-
-sin excepción para helpers puros.
-
----
-
-## 3. FAIL 1 — `internal_writers_anon_execute`
-
-### Función probable
-
-`public._resolve_invitation_by_token(text)`
-
-### Evidencia de migraciones
-
-| Migración | Grants |
-|---|---|
-| 020 | `revoke all ... from public` **solo** (no `anon`) |
-| 033 (recreate VOLATILE) | igual: `revoke all ... from public` **solo** |
-
-Resto de writers internos típicos: `revoke ... from public, anon, authenticated`.
-
-En proyectos Supabase, `ALTER DEFAULT PRIVILEGES` / defaults suelen otorgar EXECUTE a `anon`. Si solo se revoca `PUBLIC`, **`anon` puede conservar EXECUTE directo**.
-
-### Finalidad
-
-Resolver invitación por token en claro (hash → fila; puede marcar EXPIRED). Es **SECURITY DEFINER** interno, no RPC pública.
-
-### Clasificación preliminar
-
-**DEFECTO_REAL** (gap de grants / hardening de superficie).
-
-- Matriz: **correcta** al exigir 0 EXECUTE anon en internos.
-- Riesgo: probing de tokens por rol `anon` (sin sesión).
-- Fix típico (futuro, no ahora): `REVOKE ALL ON FUNCTION ... FROM anon, authenticated;` en migración **034** autorizada.
-- Nested callers DEFINER del mismo owner siguen pudiendo ejecutar.
-
-Confirmar con sección **C** del script diagnóstico.
-
----
-
-## 4. FAIL 2 y 3 — `org_hash_invitation_token`
-
-### Definición
-
-| Origen | Forma |
-|---|---|
-| 020 | `language sql immutable` — `digest(...)` sin schema |
-| 033 L08 | misma forma; `extensions.digest(...)` calificado |
-
-**No** es `SECURITY DEFINER`. **No** declara `search_path`.
-
-### Análisis
-
-| Pregunta | Respuesta |
-|---|---|
-| ¿Necesita SECURITY DEFINER? | **No** — solo calcula hash; no lee/escribe tablas. |
-| ¿INVOKER es más seguro? | **Sí** — evita privilegios elevados innecesarios. |
-| ¿Objetos no calificados? | Tras 033: **`extensions.digest`** calificado. |
-| ¿Necesita `SET search_path = public`? | **No** para corrección funcional; opcional. |
-| ¿La matriz impone expectativa sin respaldo? | **Sí** — metió el helper en `v_names` con regla DEFINER+search_path genérica. |
-
-Callers: `invite_organization_member`, `_resolve_invitation_by_token` (DEFINER + `search_path=public`).
-
-### Clasificación preliminar
-
-| Check | Clasificación |
-|---|---|
-| `..._security_definer` → INVOKER | **FALSO_POSITIVO** (matriz) |
-| `..._search_path` → `<unset>` | **FALSO_POSITIVO** (matriz); a lo sumo **HARDENING_NO_BLOQUEANTE** si se desea `SET search_path = public` |
-
-**No** convertir a DEFINER “para pasar el test”.
-
----
-
-## 5. Resumen de clasificaciones
-
-| FAIL | Clasificación | Matriz incorrecta | 034 necesaria |
-|---|---|---|---|
-| `internal_writers_anon_execute` | DEFECTO_REAL (grants) | No | **Pendiente** — sí si se confirma `_resolve...` con anon |
-| `org_hash_..._security_definer` | FALSO_POSITIVO | **Sí** | **No** (no forzar DEFINER) |
-| `org_hash_..._search_path` | FALSO_POSITIVO | **Sí** | **No** (opcional hardening) |
-
----
-
-## 6. Riesgos
-
-| Riesgo | Nivel | Nota |
+| FAIL | Clasificación | Acción |
 |---|---|---|
-| Anon ejecuta `_resolve_invitation_by_token` | Medio-bajo | Probing de tokens; corregir con REVOKE en 034 |
-| Forzar DEFINER en org_hash | Alto si se hace mal | Superficie innecesaria; **evitar** |
-| Declarar STAGING PASS ahora | — | **Prohibido** hasta decisión post-CSV |
+| `internal_writers_anon_execute` | **DEFECTO REAL** | Migración **034** (REVOKE anon/authenticated; GRANT service_role) |
+| `org_hash_…_security_definer` | **FALSO POSITIVO** de matriz | Matriz 001–034 espera INVOKER |
+| `org_hash_…_search_path` | **FALSO POSITIVO** de matriz | No exigir `search_path=public` |
+
+No convertir `org_hash_invitation_token` a SECURITY DEFINER.
+No agregar `search_path` solo para satisfacer el test.
 
 ---
 
-## 7. Siguiente paso manual
+## 3. Decisión 034
 
-1. Ejecutar guía `docs/04-calidad/M07-ejecucion-diagnostico-fails-matriz.md`.
-2. Pegar `scripts/sql/m07_diagnose_staging_matrix_fails.sql` en SQL Editor.
-3. Descargar CSV / copiar resultados (secciones A–F).
-4. Confirmar función en C.
-5. Decidir: ajustar matriz (org_hash) ± migración 034 solo para REVOKE anon.
+Crear `supabase/migrations/034_m07_internal_invitation_helper_grants.sql`:
 
-Estado:
+- `REVOKE ALL` desde PUBLIC, anon, authenticated
+- `GRANT EXECUTE` a service_role
+- Sin cambio de firma, cuerpo, search_path ni security mode
+
+Estado post-decisión (local validado; remoto pendiente):
 
 ```text
-MATRIZ SQL STAGING FAIL — 3 RESULTADOS EN DIAGNÓSTICO
+CORRECCIÓN 034 VALIDADA LOCALMENTE
+APPLY 034 STAGING PENDIENTE
+MATRIZ SQL STAGING PENDIENTE DE REEJECUCIÓN
 VALIDACIÓN STAGING PENDIENTE
 RELEASE BLOQUEADO
 ```
+
+Detalle: `docs/04-calidad/M07-reporte-correccion-matriz-034.md`.

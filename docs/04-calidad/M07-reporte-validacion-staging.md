@@ -20,17 +20,21 @@ SMOKE TEST APK STAGING PASS
 EMAIL OTP 8 DÍGITOS — PASS
 DEFECTO OTP CERRADO
 USERNAME REVALIDADO — PASS
-MATRIZ SQL STAGING FAIL — 3 RESULTADOS EN DIAGNÓSTICO
+CORRECCIÓN 034 VALIDADA LOCALMENTE
+APPLY 034 STAGING PENDIENTE
+MATRIZ SQL STAGING PENDIENTE DE REEJECUCIÓN
 VALIDACIÓN STAGING PENDIENTE
 RELEASE BLOQUEADO
 EXPORTACIÓN DE ARCHIVO PENDIENTE
 INTEGRACIÓN M06 PENDIENTE
 ```
 
-**No es STAGING PASS.** Tres FAIL de matriz en diagnóstico (script read-only); ver `docs/04-calidad/M07-diagnostico-fails-matriz-staging.md`.
+**No es STAGING PASS.** Corrección 034 validada solo en local; apply remoto y reejecución de matriz en staging pendientes.
+Ver `docs/04-calidad/M07-reporte-correccion-matriz-034.md` y `docs/04-calidad/M07-diagnostico-fails-matriz-staging.md`.
 
-Guía matriz: `docs/04-calidad/M07-ejecucion-matriz-sql-staging-001-033.md`
-Script matriz: `scripts/sql/m07_validate_staging_001_033.sql`
+Guía matriz (histórica 001–033): `docs/04-calidad/M07-ejecucion-matriz-sql-staging-001-033.md`
+Script matriz histórica: `scripts/sql/m07_validate_staging_001_033.sql`
+Script matriz 001–034: `scripts/sql/m07_validate_staging_001_034.sql`
 Diagnóstico FAIL: `docs/04-calidad/M07-ejecucion-diagnostico-fails-matriz.md`
 Script diagnóstico: `scripts/sql/m07_diagnose_staging_matrix_fails.sql`
 Smoke APK: `docs/04-calidad/M07-smoke-test-apk-staging.md`
@@ -78,12 +82,13 @@ AuthRepository / domain/auth / UsernameValidators: solo cambios intencionales de
 
 | Hecho | Resultado |
 |---|---|
-| Script matriz | `scripts/sql/m07_validate_staging_001_033.sql` |
-| Resultado reportado | 261 filas · 249 PASS · **3 FAIL** · 3 NOT_EXECUTED · 5 BACKLOG |
-| FAIL | `internal_writers_anon_execute`; `org_hash_invitation_token` DEFINER; `org_hash_invitation_token` search_path |
-| Diagnóstico | script read-only `m07_diagnose_staging_matrix_fails.sql` — **pendiente de ejecución manual** |
-| Clasificación preliminar | anon EXECUTE → DEFECTO_REAL (probable `_resolve_invitation_by_token`); org_hash ×2 → FALSO_POSITIVO de matriz |
-| Migración 034 | **NO** creada; pendiente de decisión post-CSV |
+| Matriz histórica 001–033 (staging) | 261 filas · 249 PASS · **3 FAIL** · 3 NOT_EXECUTED · 5 BACKLOG (no ocultar) |
+| FAIL originales | `internal_writers_anon_execute`; org_hash DEFINER; org_hash search_path |
+| Evidencia remota definitiva | `_resolve…`: PUBLIC=false · anon_direct=**true** · service_role=true |
+| Clasificación definitiva | 1 DEFECTO REAL + 2 FALSOS POSITIVOS de matriz |
+| Migración 034 | creada y **validada localmente**; **apply staging pendiente** |
+| Matriz local 001–034 | 266 · 258 PASS · **0 FAIL** · 3 NOT_EXECUTED · 5 BACKLOG |
+| Matriz SQL staging reejecución | **PENDIENTE** |
 | Declarar STAGING PASS | **NO** |
 
 ---
@@ -94,14 +99,14 @@ AuthRepository / domain/auth / UsernameValidators: solo cambios intencionales de
 RELEASE BLOQUEADO
 ```
 
-Smoke Auth/OTP/perfil: **PASS**. Matriz SQL: **pendiente**. Validación staging general: **PENDIENTE**.
+OTP 8 dígitos / username / smoke APK: **PASS**. Apply 034 remoto: **PENDIENTE**. Matriz staging: **PENDIENTE DE REEJECUCIÓN**. Validación staging general: **PENDIENTE**.
 
 ---
 
 ## 2. Limitaciones
 
-- No se inventaron PASS de matriz SQL.
-- No se aplicaron migraciones nuevas.
+- No se inventaron PASS de matriz SQL staging.
+- No se aplicó 034 en remoto (`db push` / reset / repair: no).
 - No se tocó producción.
 - No se inició M08.
 - No se hizo merge a `main`.
