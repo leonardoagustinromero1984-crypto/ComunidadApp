@@ -1,72 +1,76 @@
-# M07 — Defecto: longitud OTP de correo en Android
+﻿# M07 â€” Defecto: longitud OTP de correo en Android
 
-**Fecha:** 2026-07-18  
-**Producto:** LeoVer  
-**Rama:** `m07/fix-email-otp-length`  
-**Entorno de evidencia:** APK smoke vs Supabase staging (ref …`mizz`)  
+**Fecha apertura:** 2026-07-18
+**Fecha cierre manual:** 2026-07-19
+**Producto:** LeoVer
+**Rama fix:** `m07/fix-email-otp-length`
+**Commit fix:** `b2189b9`
+**Rama cierre smoke:** `m07/cierre-smoke-apk-otp`
+**Entorno:** staging / pruebas (project ref terminado en `mizz`)
 **Base remota modificada:** **NO**
 
 ---
 
-## Defecto
+## Estado
 
-Supabase staging envía un OTP de correo de **8 dígitos**. La UI Android truncaba la entrada a **6** (`filter { isDigit() }.take(6)`), por lo que el usuario no podía completar la confirmación.
+```text
+EMAIL OTP 8 DÃGITOS â€” PASS
+DEFECTO OTP CERRADO
+```
 
-## Evidencia
+---
+
+## Defecto (histÃ³rico)
+
+Supabase staging envÃ­a un OTP de correo de **8 dÃ­gitos**. La UI Android truncaba la entrada a **6** (`filter { it.isDigit() }.take(6)`), por lo que el usuario no podÃ­a completar la confirmaciÃ³n.
+
+## Evidencia inicial
 
 - Smoke test manual del APK contra staging.
-- Campo “Código de 6 dígitos” + `take(6)`.
-- Confirmación de correo: **FAIL**.
+- Campo â€œCÃ³digo de 6 dÃ­gitosâ€ + `.take(6)`.
+- ConfirmaciÃ³n de correo: **FAIL**.
 - No es defecto de migraciones SQL ni de Auth remoto.
 
-## Comportamiento anterior
+## Causa original
 
-- Solo 6 dígitos aceptados en UI.
-- Texto y label fijados a “6 dígitos”.
-- Confirmar habilitado con `length >= 6` (pero el 7º/8º nunca entraban).
-- Validación de repositorio: `length < 6` → error; sin tope superior explícito en UI.
+- Truncado en UI: `.take(6)`.
+- Backend (Supabase Auth staging) enviaba OTP de **8** dÃ­gitos.
+- Textos/labels hardcodeados a â€œ6 dÃ­gitosâ€.
 
-## Comportamiento corregido
+## Comportamiento corregido (b2189b9)
 
-- Solo números.
-- Longitud admitida: **6–10** dígitos (compatibilidad 6 + OTP 8 de staging).
-- Pegar 8 dígitos no trunca.
-- Sin verificación automática al llegar a 6.
-- Confirmar habilitado solo con longitud válida.
-- Texto genérico: “Ingresá el código que recibiste por correo”.
-- Código normalizado (`trim`) enviado completo a Supabase `verifyEmailOtp`.
+- Solo nÃºmeros.
+- Longitud admitida: **6â€“10** dÃ­gitos.
+- Pegar 8 dÃ­gitos **no** trunca.
+- Sin verificaciÃ³n automÃ¡tica al llegar a 6.
+- Confirmar habilitado solo con longitud vÃ¡lida.
+- Texto genÃ©rico: â€œIngresÃ¡ el cÃ³digo que recibiste por correoâ€.
+- OTP completo (tras `trim`) enviado a Supabase `verifyEmailOtp`.
 - Errores se limpian al editar.
 - OTP no se registra en logs/analytics/mensajes de error.
 
-## Archivos modificados
+## Pruebas automÃ¡ticas
 
-| Archivo | Cambio |
+- `EmailOtpValidatorsTest`, repo, ViewModel, `AuthErrorMapperTest`.
+- Suite: **â‰¥559** tests, 0 failures (verificaciÃ³n en cierre smoke).
+- `assembleDebug` / `testDebugUnitTest` / `lintDebug`: **PASS**.
+
+## ValidaciÃ³n manual con APK nuevo
+
+| Ãtem | Resultado |
 |---|---|
-| `domain/auth/validation/EmailOtpValidators.kt` | Nuevo validador 6–10 |
-| `ui/.../ForgotPasswordScreen.kt` (`EmailVerificationScreen`) | Campo hasta 10; textos; teclado numérico |
-| `viewmodel/LoginViewModel.kt` (`EmailVerificationViewModel`) | Validación + `clearOtpFeedback` |
-| `data/repository/AuthRepository.kt` (Mock) | Usa `EmailOtpValidators` |
-| `data/repository/SupabaseAuthRepository.kt` | Usa `EmailOtpValidators` |
-| `domain/auth/AuthErrorMapper.kt` | Mensajes OTP inválido/expirado |
-| Tests domain/repo/viewmodel/error mapper | Casos 5/6/8/10/11, pegado, trim |
-| `docs/04-calidad/M07-defecto-email-otp-longitud.md` | Este documento |
-| `docs/04-calidad/M07-reporte-validacion-staging.md` | Nota smoke OTP |
+| APK | `apk/Leover-debug.apk` (18/07/2026 ~20:36) |
+| OTP 8 dÃ­gitos recibido | PASS |
+| Ingreso/pegado 8 dÃ­gitos | PASS (sin truncar) |
+| ConfirmaciÃ³n correo | PASS |
+| Login posterior | PASS |
+| Base remota tocada por el fix | **NO** |
+| Migraciones remotas | siguen **001â€“033** |
 
-## Pruebas
-
-- `EmailOtpValidatorsTest`: 5 inválido; 6/8/10 OK; 11 bloqueado; letras; trim; pegado 8.
-- `MockAuthRepositoryTest`: 8 dígitos con espacios; rechazo 5 y 11.
-- `AuthViewModelsTest`: éxito 8; rechazo 5 sin filtrar OTP en mensaje; clear error.
-- `AuthErrorMapperTest`: `otp_expired`; `Invalid OTP token` sin filtrar código.
+Detalle smoke: `docs/04-calidad/M07-smoke-test-apk-staging.md`.
 
 ## Resultado
 
-Corrección Android lista en rama dedicada.  
-**APK nuevo:** generado en `apk/Leover-debug.apk` (18/07/2026).  
-**Validación manual staging:** **PENDIENTE** con ese APK.
-
-```text
-EMAIL OTP 8 DÍGITOS — PENDIENTE DE REVALIDACIÓN CON APK NUEVO
-```
-
-Migraciones / Auth Supabase / producción: **sin cambios**.
+**Defecto OTP cerrado.**
+Migraciones / Auth Supabase / producciÃ³n: **sin cambios**.
+Matriz SQL staging: **sigue pendiente de diagnÃ³stico** (no bloquea el cierre de este defecto).

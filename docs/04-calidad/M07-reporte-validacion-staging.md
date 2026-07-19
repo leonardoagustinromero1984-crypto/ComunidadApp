@@ -1,14 +1,12 @@
-# M07 — Reporte de validación staging
+﻿# M07 â€” Reporte de validaciÃ³n staging
 
-**Fecha:** 2026-07-18
+**Fecha:** 2026-07-19
 **Producto:** LeoVer
-**Rama activa:** `m07/correccion-lint-staging-033`
-**Commit:** `9f5cd74150b2f058b0ac40e9ec0f3609e8c3fdcb` (base lint 033)
-**Rama oficial local consolidada:** `m07/validacion-local-y-staging-014-032`
-**Commit local validado (001–032):** `80379b1201b3a31e94a572130a44cf07304a87ac`
-**Project ref staging (últimos 4):** `mizz`
+**Rama docs smoke:** `m07/cierre-smoke-apk-otp`
+**Commit fix OTP:** `b2189b974528f41d0a3b7519be200033395f69d4` (`b2189b9`)
+**Rama lint 033:** `m07/correccion-lint-staging-033`
+**Project ref staging (Ãºltimos 4):** `mizz`
 **Entorno objetivo:** staging no productivo
-**Actor técnico:** Auto (Cursor)
 **Release:** **RELEASE BLOQUEADO**
 
 ---
@@ -16,132 +14,88 @@
 ## 0. Estado declarado (obligatorio)
 
 ```text
-APPLY STAGING 001–033 PASS
+APPLY STAGING 001â€“033 PASS
 DB LINT STAGING PASS
-MATRIZ SQL STAGING PENDIENTE DE EJECUCIÓN
-VALIDACIÓN LOCAL 001–033 PASS
+SMOKE TEST APK STAGING PASS
+EMAIL OTP 8 DÃGITOS â€” PASS
+DEFECTO OTP CERRADO
+USERNAME REVALIDADO â€” PASS
+MATRIZ SQL STAGING FAIL â€” 3 RESULTADOS PENDIENTES DE DIAGNÃ“STICO
+VALIDACIÃ“N STAGING PENDIENTE
 RELEASE BLOQUEADO
-USERNAME NO REVALIDADO — STAGING PENDIENTE
-EXPORTACIÓN DE ARCHIVO PENDIENTE
-INTEGRACIÓN M06 PENDIENTE
-EMAIL OTP 8 DÍGITOS — PENDIENTE DE REVALIDACIÓN CON APK NUEVO
+EXPORTACIÃ“N DE ARCHIVO PENDIENTE
+INTEGRACIÃ“N M06 PENDIENTE
 ```
 
-**No es STAGING PASS completo** hasta ejecutar y cerrar la matriz SQL remota.
+**No es STAGING PASS.** Falta cerrar el diagnÃ³stico de la matriz SQL (3 FAIL).
 
-Smoke Auth email: defecto OTP 6 vs 8 reproducido; corrección en rama `m07/fix-email-otp-length` — ver `docs/04-calidad/M07-defecto-email-otp-longitud.md`.
-
-Guía de ejecución: `docs/04-calidad/M07-ejecucion-matriz-sql-staging-001-033.md`
+GuÃ­a matriz: `docs/04-calidad/M07-ejecucion-matriz-sql-staging-001-033.md`
 Script: `scripts/sql/m07_validate_staging_001_033.sql`
-Detalle lint 033: `docs/04-calidad/M07-reporte-correccion-lint-033.md`
+Smoke APK: `docs/04-calidad/M07-smoke-test-apk-staging.md`
+Defecto OTP: `docs/04-calidad/M07-defecto-email-otp-longitud.md`
 
 ---
 
-## 0.1 Evidencia remota confirmada (propietario)
+## 0.1 Evidencia remota (apply / lint)
 
 | Hecho | Resultado |
 |---|---|
-| Reset/apply remoto 001–032 | **PASS** |
-| Migración 033 aplicada | **PASS** |
-| `migration list` Local/Remote | **alineado 001–033** (exit 0) |
-| Máxima versión remota | **033** |
-| Migraciones faltantes / duplicadas | **0 / 0** |
-| Backup pre-033 | disponible fuera del repo (`LeoVerBackups`, pre-M07 / pre-033) |
-| `supabase db lint --linked --level warning --fail-on error` | **exit 0** |
-| Errores lint remotos | **0** |
-| Warnings lint remotos | **~22** no bloqueantes → **BACKLOG** |
-| Producción | **NO** tocada |
-| AuthRepository / domain/auth / UsernameValidators | **intactos** |
-| M08 | **NO** iniciado |
-| `main` | **NO** modificado |
-| Matriz SQL remota final | **PENDIENTE DE EJECUCIÓN MANUAL** (no ejecutada desde Cursor) |
-
-### Errores lint corregidos en 033 (ya aplicados)
-
-L05 `is_username_available` · L06 `add_reputation_points` · L07 `complete_profile_onboarding` · L08 `org_hash_invitation_token` · L08b `_resolve_invitation_by_token` (STABLE→VOLATILE) · L09 `invite_organization_member` · L10 `m06_claim_outbox` · L11 `m06_claim_push_deliveries`.
+| Apply remoto 001â€“033 | **PASS** |
+| `migration list` Local/Remote | alineado 001â€“033 |
+| `db lint` remoto | **PASS** â€” 0 errores Â· ~22 warnings backlog |
+| ProducciÃ³n | **NO** tocada |
+| M08 / `main` | **NO** |
 
 ---
 
-## 1. Consolidación local previa
+## 0.2 Smoke APK + OTP (2026-07-19)
 
-| Paso | Resultado |
+| Hecho | Resultado |
 |---|---|
-| Fast-forward `m07/validacion-local-y-staging-014-032` ← corrección | **OK** |
-| Rama lint | `m07/correccion-lint-staging-033` @ `9f5cd74` |
-| Working tree al preparar matriz | limpio (precheck) |
+| APK | `apk/Leover-debug.apk` (18/07/2026) |
+| Commit fix OTP | `b2189b9` |
+| OTP 8 dÃ­gitos revalidado | **PASS** |
+| Registro | **PASS** |
+| ConfirmaciÃ³n correo | **PASS** |
+| Login posterior | **PASS** |
+| Logout | **PASS** |
+| Username Ãºnico | **PASS** |
+| Username duplicado rechazado | **PASS** |
+| Perfil completo | **PASS** |
+| Persistencia perfil | **PASS** |
+| Smoke APK | **PASS** |
+| Base remota por fix OTP | **NO** modificada |
+| Tests Android (cierre) | **â‰¥559**, 0 failures |
+| `assembleDebug` / `testDebugUnitTest` / `lintDebug` | **PASS** (verificaciÃ³n en cierre) |
+
+AuthRepository / domain/auth / UsernameValidators: solo cambios intencionales del fix OTP en `b2189b9`.
 
 ---
 
-## 2. Evidencia local PASS (resumen)
+## 0.3 Matriz SQL
 
-| Evidencia | Valor |
+| Hecho | Resultado |
 |---|---|
-| 2× `db reset --local` 001–033 | APPLY OK |
-| 2× `db lint --local --fail-on error` | exit 0 · 0 errors |
-| Historial local | 33 · max 033 · 0 dupes |
-| Catálogos | 118 / 28 / 14 · permisos 8 |
-| Android | 544 tests · quality PASS |
-
-AuthRepository / domain/auth / UsernameValidators: **intactos**.
+| Script preparado | `scripts/sql/m07_validate_staging_001_033.sql` |
+| EjecuciÃ³n / cierre | **FAIL** â€” **3** resultados pendientes de diagnÃ³stico |
+| Declarar STAGING PASS | **NO** |
 
 ---
 
-## 3. Auditoría de acceso staging (sanitizada)
-
-| Elemento | Estado |
-|---|---|
-| Project ref (últimos 4) | `mizz` |
-| Identidad staging ≠ prod | confirmada por propietario (producción real aún no existe) |
-| URL / keys / tokens en este reporte | **NO** expuestos |
-
----
-
-## 4. Matriz SQL remota final (preparación)
-
-| Artefacto | Estado |
-|---|---|
-| `scripts/sql/m07_validate_staging_001_033.sql` | **CREADO** |
-| Guía `M07-ejecucion-matriz-sql-staging-001-033.md` | **CREADA** |
-| Ejecución remota desde Cursor | **NO** |
-| Ejecución manual SQL Editor | **PENDIENTE** |
-
-Cobertura del script (grupos):
-
-`HISTORY` · `CATALOG` · `FIX_033` · `DEFINER` · `RLS` · `GRANTS` · `PERMS` · `AUDIT` · `METRICS` · `HEALTH` · `INCIDENTS` · `RETENTION` · `EXPORT` · `LINT` · `META`
-
-Comandos destructivos en script: **NO**
-Secrets en script: **NO**
-
----
-
-## 5. Historial remoto (confirmado)
-
-| Campo | Valor |
-|---|---|
-| Versiones | **33** |
-| Máxima | **033** |
-| Duplicadas | **0** |
-| Faltantes 001–033 | **0** |
-| Local/Remote | **alineado** |
-
----
-
-## 6. Condición de release
+## 1. CondiciÃ³n de release
 
 ```text
 RELEASE BLOQUEADO
 ```
 
-Apply + lint staging: **PASS**. Cierre STAGING general: **pendiente de matriz SQL**.
+Smoke Auth/OTP/perfil: **PASS**. Matriz SQL: **pendiente**. ValidaciÃ³n staging general: **PENDIENTE**.
 
 ---
 
-## 7. Limitaciones de este reporte
+## 2. Limitaciones
 
-- Matriz SQL **no** ejecutada remotamente en esta preparación.
-- No se inventaron filas PASS/FAIL de la matriz.
-- No se usó producción.
-- No se inició M08.
+- No se inventaron PASS de matriz SQL.
+- No se aplicaron migraciones nuevas.
+- No se tocÃ³ producciÃ³n.
+- No se iniciÃ³ M08.
 - No se hizo merge a `main`.
-- No se creó migración 034.
-- No se ejecutó `db push` / `db reset --linked` / repair.
