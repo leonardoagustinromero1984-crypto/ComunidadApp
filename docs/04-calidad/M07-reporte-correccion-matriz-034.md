@@ -1,12 +1,22 @@
 # M07 — Reporte corrección matriz y migración 034
 
-**Fecha:** 2026-07-19
-**Producto:** LeoVer
-**Rama:** `m07/fix-matrix-security-034`
-**Migración:** `supabase/migrations/034_m07_internal_invitation_helper_grants.sql`
-**Matriz histórica:** `scripts/sql/m07_validate_staging_001_033.sql` (conservada)
+**Fecha:** 2026-07-19  
+**Producto:** LeoVer  
+**Rama origen fix:** `m07/fix-matrix-security-034` @ `e4574fa`  
+**Migración:** `supabase/migrations/034_m07_internal_invitation_helper_grants.sql`  
+**Matriz histórica:** `scripts/sql/m07_validate_staging_001_033.sql` (conservada)  
 **Matriz nueva:** `scripts/sql/m07_validate_staging_001_034.sql`
-**Apply remoto 034:** **NO** (pendiente)
+
+---
+
+## Estado
+
+```text
+CORRECCIÓN 034 STAGING PASS
+DEFECTO DE GRANTS CERRADO
+```
+
+Sin migración **035**.
 
 ---
 
@@ -33,7 +43,7 @@
 | authenticated (efectivo) | **true** |
 | service_role | true |
 
-## Grants corregidos (034 + validación local)
+## Grants posteriores (post-034 remoto + matriz)
 
 | Rol | EXECUTE |
 |---|---|
@@ -43,40 +53,41 @@
 | authenticated (efectivo) | **false** |
 | service_role | **true** |
 
-## Migración 034
+---
 
-Mínima: REVOKE PUBLIC/anon/authenticated + GRANT service_role. No edita 001–033.
-
-## Matriz 001–034
-
-Cambios vs 001–033:
-
-- Historial: 34 versiones / máxima 034 / 0 duplicadas / 0 faltantes
-- Writers internos: `_resolve…` sin EXECUTE anon/authenticated
-- `org_hash_invitation_token`: INVOKER + `extensions.digest` + sin table access + grants (service_role)
-- Sin convertir NOT_EXECUTED/BACKLOG legítimos a PASS
-
-## Validación local
+## Apply remoto 034
 
 | Paso | Resultado |
 |---|---|
-| Reset 1 001–034 | **PASS** (`RESET1_EXIT=0`) |
-| Lint 1 (`--fail-on error`) | **PASS** (`LINT1_EXIT=0`, 0 errores) |
-| Reset 2 001–034 | **PASS** (`RESET2_EXIT=0`) |
-| Lint 2 | **PASS** (`LINT2_EXIT=0`, 0 errores) |
-| Historial local | **34** / max **034** / dup **0** |
-| Matriz local 001–034 | total=**266** · PASS=**258** · FAIL=**0** · NOT_EXECUTED=**3** · BACKLOG=**5** · `runner_summary` **PASS** |
-| Android `testDebugUnitTest` | **559** tests · **0** failures |
-| `assembleDebug` / `lintDebug` | **PASS** (`GRADLE_EXIT=0`) |
+| Backup previo | schema.sql · data.sql · roles.sql |
+| Dry-run | **solo** `034_m07_internal_invitation_helper_grants.sql` |
+| Apply | **PASS** (exit 0) |
+| Historial | 034 registrado · Local/Remote 001–034 · 34 / max 034 · 0 dup · 0 faltantes |
+| `db lint` remoto | **PASS** — exit 0 · 0 errores · warnings backlog |
+| Matriz remota 001–034 | **PASS** — 0 FAIL (ver resultado CSV) |
 
-## Clasificación de los 3 FAIL originales
+---
 
-| Check | Clasificación |
+## Clasificación de los 3 FAIL originales (001–033)
+
+| Check | Clasificación | Cierre |
+|---|---|---|
+| `internal_writers_anon_execute` | DEFECTO REAL | 034 + matriz remota PASS |
+| `org_hash_…_security_definer` | FALSO POSITIVO | matriz 001–034 espera INVOKER |
+| `org_hash_…_search_path` | FALSO POSITIVO | no exigir search_path |
+
+---
+
+## Validación local (previa al apply)
+
+| Paso | Resultado |
 |---|---|
-| `internal_writers_anon_execute` | DEFECTO REAL → 034 |
-| `org_hash_…_security_definer` | FALSO POSITIVO → matriz corregida |
-| `org_hash_…_search_path` | FALSO POSITIVO → matriz corregida |
+| Reset ×2 001–034 | **PASS** |
+| Lint ×2 (`--fail-on error`) | **PASS** |
+| Matriz local 001–034 | 0 FAIL · `runner_summary` PASS |
+| Android 559 / assemble / lint | **PASS** |
 
-## Apply remoto
+## Matriz remota final
 
-**PENDIENTE** — no `db push`, no reset remoto, no migration repair en esta tarea.
+Ver `docs/04-calidad/M07-resultado-matriz-sql-staging-001-034.md`:  
+CSV 267 / 259 PASS / **0 FAIL**; `runner_summary` PASS.
