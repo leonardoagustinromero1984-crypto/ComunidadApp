@@ -30,6 +30,15 @@ import com.comunidapp.app.data.repository.FeedRepository
 import com.comunidapp.app.data.repository.LostFoundRepository
 import com.comunidapp.app.data.repository.ShelterRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.core.result.AppResult
+import com.comunidapp.app.domain.files.FileAssetOwner
+import com.comunidapp.app.domain.files.FileAssetPurpose
+import com.comunidapp.app.domain.files.FileAssetVisibility
+import com.comunidapp.app.domain.files.FileResourceRef
+import com.comunidapp.app.domain.files.FileResourceType
+import com.comunidapp.app.domain.files.FileUiErrorMapper
+import com.comunidapp.app.domain.files.FileUploadRequest
+import com.comunidapp.app.domain.files.PreparedFileUpload
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -152,14 +161,12 @@ class PublishViewModel(
                         }
                         return@launch
                     }
+                    // M03: AccountType no implica organización ni shelter_id institucional.
+                    // Vinculación real vía OrganizationResourceLink (Etapa 3+).
                     val adoption = AdoptionPost(
                         id = "",
                         publisherId = author.id,
-                        shelterId = if (author.accountType == com.comunidapp.app.data.model.AccountType.SHELTER) {
-                            author.id
-                        } else {
-                            null
-                        },
+                        shelterId = null,
                         shelterName = author.name,
                         name = name.trim(),
                         species = species,
@@ -174,12 +181,25 @@ class PublishViewModel(
                         .onSuccess { adoptionId ->
                             var finalAdoption = adoption.copy(id = adoptionId)
                             imageUri?.let { uri ->
-                                DataProvider.storageService?.uploadImage(
-                                    StoragePaths.adoptionImage(adoptionId),
-                                    uri
-                                )?.onSuccess { url ->
-                                    finalAdoption = finalAdoption.copy(photoUrl = url)
-                                    adoptionRepository.updateAdoptionPost(finalAdoption)
+                                when (val upload = uploadMedia(
+                                    uri,
+                                    FileAssetPurpose.ADOPTION_MEDIA,
+                                    author.id,
+                                    adoptionId,
+                                    FileResourceType.ADOPTION
+                                )) {
+                                    is AppResult.Success -> {
+                                        finalAdoption = finalAdoption.copy(photoUrl = upload.data.assetId)
+                                        adoptionRepository.updateAdoptionPost(finalAdoption)
+                                    }
+                                    is AppResult.Failure -> {
+                                        _formState.update {
+                                            PublishFormState(
+                                                errorMessage = FileUiErrorMapper.message(upload.error)
+                                            )
+                                        }
+                                        return@launch
+                                    }
                                 }
                             }
                             publishFeedPost(
@@ -245,18 +265,24 @@ class PublishViewModel(
                     )
                     lostFoundRepository.addLostFoundPost(lostPost)
                         .onSuccess { lostId ->
-                            val storage = DataProvider.storageService
-                            if (storage != null) {
-                                storage.uploadImage(StoragePaths.lostFoundImage(lostId), imageUri)
-                                    .onSuccess { url ->
-                                        lostFoundRepository.updateLostFoundPost(
-                                            lostPost.copy(id = lostId, photoUrl = url)
+                            when (val upload = uploadMedia(
+                                imageUri,
+                                FileAssetPurpose.LOST_FOUND_MEDIA,
+                                author.id,
+                                lostId,
+                                FileResourceType.LOST_FOUND_CASE
+                            )) {
+                                is AppResult.Success -> lostFoundRepository.updateLostFoundPost(
+                                    lostPost.copy(id = lostId, photoUrl = upload.data.assetId)
+                                )
+                                is AppResult.Failure -> {
+                                    _formState.update {
+                                        PublishFormState(
+                                            errorMessage = FileUiErrorMapper.message(upload.error)
                                         )
                                     }
-                            } else {
-                                lostFoundRepository.updateLostFoundPost(
-                                    lostPost.copy(id = lostId, photoUrl = imageUri.toString())
-                                )
+                                    return@launch
+                                }
                             }
                             publishFeedPost(
                                 author = author,
@@ -315,22 +341,25 @@ class PublishViewModel(
             .onSuccess { postId ->
                 var finalPost = post.copy(id = postId)
                 if (imageUri != null) {
-                    val storage = DataProvider.storageService
-                    if (storage != null) {
-                        storage.uploadImage(StoragePaths.postImage(postId), imageUri)
-                            .onSuccess { url ->
-                                finalPost = finalPost.copy(imageUrl = url)
-                                feedRepository.updateFeedPost(finalPost)
+                    when (val upload = uploadMedia(
+                        imageUri,
+                        FileAssetPurpose.POST_MEDIA,
+                        author.id,
+                        postId,
+                        FileResourceType.POST
+                    )) {
+                        is AppResult.Success -> {
+                            finalPost = finalPost.copy(imageUrl = upload.data.assetId)
+                            feedRepository.updateFeedPost(finalPost)
+                        }
+                        is AppResult.Failure -> {
+                            _formState.update {
+                                PublishFormState(
+                                    errorMessage = FileUiErrorMapper.message(upload.error)
+                                )
                             }
-                            .onFailure { error ->
-                                _formState.update {
-                                    PublishFormState(errorMessage = error.message ?: "Error al subir imagen")
-                                }
-                                return
-                            }
-                    } else {
-                        finalPost = finalPost.copy(imageUrl = imageUri.toString())
-                        feedRepository.updateFeedPost(finalPost)
+                            return
+                        }
                     }
                 }
                 _formState.update { PublishFormState(isSuccess = true) }
@@ -341,6 +370,27 @@ class PublishViewModel(
                 }
             }
     }
+
+    private suspend fun uploadMedia(
+        uri: Uri,
+        purpose: FileAssetPurpose,
+        actorUserId: String,
+        resourceId: String,
+        resourceType: FileResourceType
+    ): AppResult<PreparedFileUpload> =
+        DataProvider.fileUploadCoordinator.startUpload(
+            uriString = uri.toString(),
+            request = FileUploadRequest(
+                purpose = purpose,
+                owner = FileAssetOwner.User(actorUserId),
+                resourceRef = FileResourceRef(resourceType, resourceId),
+                originalFilename = "media.jpg",
+                declaredMimeType = "image/jpeg",
+                sizeBytes = 1L,
+                requestedVisibility = FileAssetVisibility.PUBLIC
+            ),
+            actorUserId = actorUserId
+        )
 
     fun publishFosterHome(
         location: String,

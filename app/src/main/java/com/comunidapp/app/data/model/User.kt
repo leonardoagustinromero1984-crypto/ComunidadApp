@@ -21,11 +21,25 @@ data class User(
     val profilePrivate: Boolean = true,
     val createdAt: Long? = null,
     val updatedAt: Long? = null,
-    val petIds: List<String> = emptyList()
+    val petIds: List<String> = emptyList(),
+    // M02 Etapa 3 — bridge hacia UserProfile
+    val username: String? = null,
+    val displayName: String? = null,
+    val avatarPath: String? = null,
+    val city: String? = null,
+    val province: String? = null,
+    val countryCode: String? = null,
+    val locale: String? = null,
+    val timezone: String? = null,
+    val onboardingStatus: String = "NOT_STARTED",
+    val accountStatus: String = "ACTIVE"
 ) {
     val resolvedModules: Set<LeoverModule>
         get() = resolveActiveModules(accountType, activeModules)
 
     val isProfilePublic: Boolean
         get() = !profilePrivate
+
+    val resolvedDisplayName: String
+        get() = displayName?.takeIf { it.isNotBlank() } ?: name
 }

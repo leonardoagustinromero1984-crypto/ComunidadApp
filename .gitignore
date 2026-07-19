@@ -8,6 +8,13 @@
 .cxx/
 local.properties
 
+# Entornos y secretos
+.env
+.env.*
+!.env.example
+!**/.env.example
+supabase/.env
+
 # IDE
 .idea/
 *.ipr

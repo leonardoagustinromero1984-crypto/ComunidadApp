@@ -38,6 +38,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.domain.auth.EmailMasking
+import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.PasswordTextField
 import com.comunidapp.app.viewmodel.EmailVerificationViewModel
@@ -231,7 +233,7 @@ fun EmailVerificationScreen(
                 textAlign = TextAlign.Center
             )
             Text(
-                text = email,
+                text = EmailMasking.mask(email),
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.primary,
                 textAlign = TextAlign.Center
@@ -239,10 +241,10 @@ fun EmailVerificationScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = if (isRemoteBackend) {
-                    "Ingresá el código de 6 dígitos que te enviamos por email. " +
+                    "${EmailOtpValidators.PROMPT_MESSAGE}. " +
                         "Si el link no abre la app, este código es la forma más confiable de confirmar."
                 } else {
-                    "Modo demo: ingresá cualquier código de 6 dígitos o tocá \"Ya confirmé con el link\"."
+                    "Modo demo: ${EmailOtpValidators.PROMPT_MESSAGE} o tocá \"Ya confirmé con el link\"."
                 },
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -253,18 +255,26 @@ fun EmailVerificationScreen(
             OutlinedTextField(
                 value = otpCode,
                 onValueChange = { value ->
-                    otpCode = value.filter { it.isDigit() }.take(6)
+                    val sanitized = EmailOtpValidators.sanitizeInput(value)
+                    if (sanitized != otpCode) {
+                        viewModel.clearOtpFeedback()
+                    }
+                    otpCode = sanitized
                 },
-                label = { Text("Código de 6 dígitos") },
+                label = { Text("Código") },
                 modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                supportingText = {
+                    Text("Solo números · ${EmailOtpValidators.MIN_LENGTH}–${EmailOtpValidators.MAX_LENGTH} dígitos")
+                }
             )
             Spacer(modifier = Modifier.height(16.dp))
 
             Button(
                 onClick = { viewModel.confirmWithOtp(email, otpCode) },
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading && otpCode.length >= 6
+                enabled = !uiState.isLoading && EmailOtpValidators.isValid(otpCode)
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)

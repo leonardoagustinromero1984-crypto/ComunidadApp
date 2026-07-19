@@ -557,6 +557,13 @@ object InMemoryDataStore {
         return Result.success(Unit)
     }
 
+    fun deleteDeviceTokens(userId: String): Result<Unit> {
+        _deviceTokens.update { current ->
+            current.filterNot { it.startsWith("$userId:") }.toSet()
+        }
+        return Result.success(Unit)
+    }
+
     fun observeSavedPosts(userId: String): StateFlow<Set<String>> =
         _savedPosts
             .map { keys -> keys.filter { it.endsWith("_$userId") }.map { it.substringBeforeLast('_') }.toSet() }

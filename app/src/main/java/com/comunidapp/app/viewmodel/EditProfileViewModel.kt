@@ -3,13 +3,18 @@ package com.comunidapp.app.viewmodel
 import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.provider.DataProvider
-import com.comunidapp.app.data.remote.storage.StoragePaths
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.core.result.AppResult
+import com.comunidapp.app.domain.files.FileAssetOwner
+import com.comunidapp.app.domain.files.FileAssetPurpose
+import com.comunidapp.app.domain.files.FileAssetVisibility
+import com.comunidapp.app.domain.files.FileUploadRequest
+import com.comunidapp.app.domain.files.FileUiErrorMapper
+import com.comunidapp.app.domain.user.UpdateMyProfileCommand
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -22,11 +27,14 @@ data class EditProfileUiState(
     val userId: String = "",
     val name: String = "",
     val bio: String = "",
+    val city: String = "",
+    val province: String = "",
+    val countryCode: String = "",
     val locationText: String = "",
     val phone: String = "",
-    val accountType: AccountType = AccountType.PERSON,
     val profilePrivate: Boolean = true,
     val profileImageUrl: String? = null,
+    val avatarPath: String? = null,
     val pendingImageUri: Uri? = null,
     val errorMessage: String? = null,
     val saveSuccess: Boolean = false
@@ -55,13 +63,16 @@ class EditProfileViewModel(
                 EditProfileUiState(
                     isLoading = false,
                     userId = profile.id,
-                    name = profile.name,
+                    name = profile.resolvedDisplayName,
                     bio = profile.bio.orEmpty(),
+                    city = profile.city.orEmpty(),
+                    province = profile.province.orEmpty(),
+                    countryCode = profile.countryCode.orEmpty(),
                     locationText = profile.locationText.orEmpty(),
                     phone = profile.phone.orEmpty(),
-                    accountType = profile.accountType,
                     profilePrivate = profile.profilePrivate,
-                    profileImageUrl = profile.profileImageUrl
+                    profileImageUrl = profile.profileImageUrl,
+                    avatarPath = profile.avatarPath
                 )
             }
         }
@@ -79,12 +90,20 @@ class EditProfileViewModel(
         _uiState.update { it.copy(locationText = value, errorMessage = null) }
     }
 
-    fun onPhoneChange(value: String) {
-        _uiState.update { it.copy(phone = value, errorMessage = null) }
+    fun onCityChange(value: String) {
+        _uiState.update { it.copy(city = value, errorMessage = null) }
     }
 
-    fun onAccountTypeChange(value: AccountType) {
-        _uiState.update { it.copy(accountType = value, errorMessage = null) }
+    fun onProvinceChange(value: String) {
+        _uiState.update { it.copy(province = value, errorMessage = null) }
+    }
+
+    fun onCountryCodeChange(value: String) {
+        _uiState.update { it.copy(countryCode = value.uppercase(), errorMessage = null) }
+    }
+
+    fun onPhoneChange(value: String) {
+        _uiState.update { it.copy(phone = value, errorMessage = null) }
     }
 
     fun onProfilePrivateChange(value: Boolean) {
@@ -107,61 +126,92 @@ class EditProfileViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null, saveSuccess = false) }
 
+            var avatarPath = state.avatarPath
             var imageUrl = state.profileImageUrl
             state.pendingImageUri?.let { uri ->
-                val storage = DataProvider.storageService
-                if (storage == null) {
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            errorMessage = "No se pudo subir la foto. Storage no disponible."
-                        )
+                val upload = DataProvider.fileUploadCoordinator.startUpload(
+                    uriString = uri.toString(),
+                    request = FileUploadRequest(
+                        purpose = FileAssetPurpose.USER_AVATAR,
+                        owner = FileAssetOwner.User(state.userId),
+                        originalFilename = "avatar.jpg",
+                        declaredMimeType = "image/jpeg",
+                        sizeBytes = 1L,
+                        requestedVisibility = FileAssetVisibility.PUBLIC
+                    ),
+                    actorUserId = state.userId
+                )
+                when (upload) {
+                    is AppResult.Success -> {
+                        avatarPath = upload.data.storagePath
+                        imageUrl = null
                     }
-                    return@launch
-                }
-                storage.uploadImage(StoragePaths.userAvatar(state.userId), uri)
-                    .onSuccess { imageUrl = it }
-                    .onFailure { error ->
+                    is AppResult.Failure -> {
                         _uiState.update {
                             it.copy(
                                 isSaving = false,
-                                errorMessage = error.message ?: "No se pudo subir la foto"
+                                errorMessage = FileUiErrorMapper.message(upload.error)
                             )
                         }
                         return@launch
                     }
+                }
             }
 
-            val updatedUser = baseUser.copy(
-                name = state.name.trim(),
-                bio = state.bio.trim().ifBlank { null },
-                locationText = state.locationText.trim().ifBlank { null },
-                phone = state.phone.trim().ifBlank { null },
-                accountType = state.accountType,
-                profilePrivate = state.profilePrivate,
-                profileImageUrl = imageUrl
-            )
-
-            userRepository.updateUser(updatedUser)
-                .onSuccess {
-                    loadedUser = updatedUser
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            saveSuccess = true,
-                            profileImageUrl = imageUrl,
-                            pendingImageUri = null
+            userRepository.updateMyProfile(
+                state.userId,
+                UpdateMyProfileCommand(
+                    displayName = state.name.trim(),
+                    bio = state.bio.trim().ifBlank { null },
+                    city = state.city.trim().ifBlank {
+                        state.locationText.trim().ifBlank { null }
+                    },
+                    province = state.province.trim().ifBlank { null },
+                    countryCode = state.countryCode.trim().ifBlank { null },
+                    avatarPath = avatarPath
+                )
+            ).onSuccess { updated ->
+                loadedUser = baseUser.copy(
+                    name = updated.displayName,
+                    displayName = updated.displayName,
+                    bio = updated.bio,
+                    city = updated.city,
+                    province = updated.province,
+                    countryCode = updated.countryCode,
+                    avatarPath = updated.avatarPath,
+                    profileImageUrl = imageUrl ?: updated.avatarUrl
+                )
+                if (state.profilePrivate != baseUser.profilePrivate) {
+                    val privacy = userRepository.getPrivacySettings(state.userId).getOrNull()
+                        ?: com.comunidapp.app.domain.user.UserPrivacySettings()
+                    userRepository.updatePrivacySettings(
+                        state.userId,
+                        privacy.copy(
+                            profileVisibility = if (state.profilePrivate) {
+                                com.comunidapp.app.domain.user.ProfileVisibility.PRIVATE
+                            } else {
+                                com.comunidapp.app.domain.user.ProfileVisibility.PUBLIC
+                            }
                         )
-                    }
+                    )
                 }
-                .onFailure { error ->
-                    _uiState.update {
-                        it.copy(
-                            isSaving = false,
-                            errorMessage = error.message ?: "No se pudo guardar el perfil"
-                        )
-                    }
+                _uiState.update {
+                    it.copy(
+                        isSaving = false,
+                        saveSuccess = true,
+                        profileImageUrl = imageUrl,
+                        avatarPath = avatarPath,
+                        pendingImageUri = null
+                    )
                 }
+            }.onFailure { error ->
+                _uiState.update {
+                    it.copy(
+                        isSaving = false,
+                        errorMessage = error.message ?: "No se pudo guardar el perfil"
+                    )
+                }
+            }
         }
     }
 

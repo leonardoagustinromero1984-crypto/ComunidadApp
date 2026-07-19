@@ -5,7 +5,6 @@ import com.comunidapp.app.data.model.LostFoundPost
 import com.comunidapp.app.data.model.LostFoundStatus
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.Pet
-import com.comunidapp.app.data.model.User
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
 import kotlinx.coroutines.delay
@@ -13,96 +12,6 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.isActive
 import kotlin.coroutines.coroutineContext
-
-class UserSupabaseDataSource {
-
-    suspend fun getUser(userId: String): User? {
-        return try {
-            supabase.from(SupabaseTables.USERS)
-                .select {
-                    filter { eq("id", userId) }
-                }
-                .decodeSingleOrNull<UserRow>()
-                ?.let(::parseUser)
-        } catch (_: Exception) {
-            null
-        }
-    }
-
-    suspend fun createUser(user: User): Result<Unit> {
-        return try {
-            val row = user.toUserRow()
-            supabase.from(SupabaseTables.USERS).insert(row)
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun updateUser(user: User): Result<Unit> {
-        return try {
-            supabase.from(SupabaseTables.USERS).update(user.toUserUpdateRow()) {
-                filter { eq("id", user.id) }
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    suspend fun updateEmailVerified(userId: String, verified: Boolean): Result<Unit> {
-        return try {
-            supabase.from(SupabaseTables.USERS).update(
-                UserEmailVerifiedUpdateRow(
-                    emailVerified = verified,
-                    updatedAt = nowIso()
-                )
-            ) {
-                filter { eq("id", userId) }
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
-
-    fun observeUser(userId: String): Flow<User?> = pollingFlow {
-        getUser(userId)
-    }
-
-suspend fun fetchUsers(limit: Int = 100): List<User> {
-        return try {
-            supabase.from(SupabaseTables.USERS)
-                .select {
-                    order("created_at", Order.DESCENDING)
-                    limit(limit.toLong())
-                }
-                .decodeList<UserRow>()
-                .map(::parseUser)
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    suspend fun searchUsers(query: String, excludeUserId: String): List<User> {
-        if (query.isBlank()) return emptyList()
-        return try {
-            supabase.from(SupabaseTables.USERS)
-                .select {
-                    filter {
-                        ilike("name", "%$query%")
-                        neq("id", excludeUserId)
-                    }
-                }
-                .decodeList<UserRow>()
-                .map(::parseUser)
-        } catch (_: Exception) {
-            emptyList()
-        }
-    }
-
-    fun observeUsers(): Flow<List<User>> = pollingFlow { fetchUsers() }
-}
 
 class PetSupabaseDataSource {
 

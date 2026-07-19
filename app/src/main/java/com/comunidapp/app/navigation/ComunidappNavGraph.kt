@@ -3,6 +3,7 @@ package com.comunidapp.app.navigation
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
@@ -14,10 +15,40 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.domain.organization.OrganizationId
+import com.comunidapp.app.notifications.NotificationDeepLinkRouter
+import com.comunidapp.app.notifications.NotificationDeepLinkSessionResolver
+import com.comunidapp.app.notifications.NotificationPendingNavigationStore
 import com.comunidapp.app.ui.components.ComunidappBottomBar
 import com.comunidapp.app.ui.components.SessionLoadingScreen
 import com.comunidapp.app.ui.components.bottomNavItemsFor
-import com.comunidapp.app.ui.screens.admin.AdminModerationScreen
+import com.comunidapp.app.ui.screens.admin.AdministrativeAuditScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityHealthScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityIncidentsScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityMetricsScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityOverviewScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityPermissionsInfoScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityRetentionScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityAuditListScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityErrorsListScreen
+import com.comunidapp.app.ui.screens.admin.ObservabilityExportsScreen
+import com.comunidapp.app.ui.screens.admin.PlatformAdminScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationAppealDetailScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationAppealQueueScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationCaseDetailScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationCaseQueueScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationQueueScreen
+import com.comunidapp.app.ui.screens.moderation.ModerationReportDetailScreen
+import com.comunidapp.app.ui.screens.moderation.MyModerationAppealsScreen
+import com.comunidapp.app.ui.screens.support.CreateSupportTicketScreen
+import com.comunidapp.app.ui.screens.support.MySupportTicketsScreen
+import com.comunidapp.app.ui.screens.support.SupportQueueScreen
+import com.comunidapp.app.ui.screens.support.SupportTicketAdminDetailScreen
+import com.comunidapp.app.ui.screens.support.SupportTicketDetailScreen
+import com.comunidapp.app.ui.screens.verification.OrganizationVerificationQueueScreen
+import com.comunidapp.app.ui.screens.verification.OrganizationVerificationReviewScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.MyAdoptionsScreen
 import com.comunidapp.app.ui.screens.search.SearchScreen
@@ -32,6 +63,8 @@ import com.comunidapp.app.ui.screens.login.EmailVerificationScreen
 import com.comunidapp.app.ui.screens.login.ForgotPasswordScreen
 import com.comunidapp.app.ui.screens.login.LoginScreen
 import com.comunidapp.app.ui.screens.login.RegisterScreen
+import com.comunidapp.app.ui.screens.legal.PrivacyDraftScreen
+import com.comunidapp.app.ui.screens.legal.TermsDraftScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundMapScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundScreen
 import com.comunidapp.app.ui.screens.pets.AddPetScreen
@@ -40,11 +73,29 @@ import com.comunidapp.app.ui.screens.pets.MyPetsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
 import com.comunidapp.app.ui.screens.profile.EditProfileScreen
 import com.comunidapp.app.ui.screens.profile.FriendRequestsScreen
+import com.comunidapp.app.ui.screens.profile.NotificationPreferencesScreen
 import com.comunidapp.app.ui.screens.profile.NotificationsScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
 import com.comunidapp.app.ui.screens.profile.SearchFriendsScreen
 import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
+import com.comunidapp.app.ui.screens.organization.CreateOrganizationScreen
+import com.comunidapp.app.ui.screens.organization.EditOrganizationScreen
+import com.comunidapp.app.ui.screens.organization.MyOrganizationsScreen
+import com.comunidapp.app.ui.screens.organization.OrganizationBranchesScreen
+import com.comunidapp.app.ui.screens.organization.OrganizationManageScreen
+import com.comunidapp.app.ui.screens.organization.OrganizationTeamScreen
+import com.comunidapp.app.ui.screens.organization.PublicOrganizationScreen
+import com.comunidapp.app.ui.screens.onboarding.ProfileOnboardingScreen
+import com.comunidapp.app.ui.screens.security.AccountAccessBlockedScreen
+import com.comunidapp.app.ui.screens.security.AccountSecurityScreen
+import com.comunidapp.app.ui.screens.security.LegalConsentRequiredScreen
+import com.comunidapp.app.ui.screens.security.PasswordResetActiveScreen
 import com.comunidapp.app.viewmodel.UserPublicProfileViewModel
+import com.comunidapp.app.viewmodel.EditOrganizationViewModel
+import com.comunidapp.app.viewmodel.OrganizationBranchesViewModel
+import com.comunidapp.app.viewmodel.OrganizationManageViewModel
+import com.comunidapp.app.viewmodel.OrganizationTeamViewModel
+import com.comunidapp.app.viewmodel.PublicOrganizationViewModel
 import com.comunidapp.app.viewmodel.ChatStartViewModel
 import com.comunidapp.app.viewmodel.ChatThreadViewModel
 import com.comunidapp.app.ui.screens.publish.PublishAdoptionScreen
@@ -74,6 +125,43 @@ fun ComunidappNavGraph(
 
     when (sessionState) {
         SessionState.Loading -> SessionLoadingScreen()
+        SessionState.LegalConsentRequired -> {
+            val consentNav = rememberNavController()
+            NavHost(navController = consentNav, startDestination = NavRoutes.LEGAL_CONSENT_REQUIRED) {
+                composable(NavRoutes.LEGAL_CONSENT_REQUIRED) {
+                    LegalConsentRequiredScreen(
+                        sessionViewModel = sessionViewModel,
+                        onNavigateToTerms = { consentNav.navigate(NavRoutes.LEGAL_TERMS) },
+                        onNavigateToPrivacy = { consentNav.navigate(NavRoutes.LEGAL_PRIVACY) }
+                    )
+                }
+                composable(NavRoutes.LEGAL_TERMS) {
+                    TermsDraftScreen(onNavigateBack = { consentNav.popBackStack() })
+                }
+                composable(NavRoutes.LEGAL_PRIVACY) {
+                    PrivacyDraftScreen(onNavigateBack = { consentNav.popBackStack() })
+                }
+            }
+        }
+        SessionState.PasswordResetActive -> {
+            PasswordResetActiveScreen(
+                onSuccess = { /* session becomes LoggedOut → login */ },
+                onInvalidLink = { sessionViewModel.clearPasswordResetActive() },
+                sessionViewModel = sessionViewModel
+            )
+        }
+        SessionState.ProfileSetupRequired -> {
+            ProfileOnboardingScreen(
+                onComplete = { sessionViewModel.onProfileSetupCompleted() }
+            )
+        }
+        SessionState.AccountAccessBlocked -> {
+            val blockedStatus by sessionViewModel.blockedAccountStatus.collectAsState()
+            AccountAccessBlockedScreen(
+                accountStatus = blockedStatus,
+                sessionViewModel = sessionViewModel
+            )
+        }
         SessionState.LoggedOut, SessionState.LoggedIn -> {
             key(sessionState) {
                 RootNavHost(
@@ -122,8 +210,16 @@ private fun RootNavHost(
                         popUpTo(NavRoutes.REGISTER) { inclusive = true }
                     }
                 },
-                onNavigateBack = { rootNavController.popBackStack() }
+                onNavigateBack = { rootNavController.popBackStack() },
+                onNavigateToTerms = { rootNavController.navigate(NavRoutes.LEGAL_TERMS) },
+                onNavigateToPrivacy = { rootNavController.navigate(NavRoutes.LEGAL_PRIVACY) }
             )
+        }
+        composable(NavRoutes.LEGAL_TERMS) {
+            TermsDraftScreen(onNavigateBack = { rootNavController.popBackStack() })
+        }
+        composable(NavRoutes.LEGAL_PRIVACY) {
+            PrivacyDraftScreen(onNavigateBack = { rootNavController.popBackStack() })
         }
         composable(NavRoutes.FORGOT_PASSWORD) {
             ForgotPasswordScreen(
@@ -161,6 +257,60 @@ private fun MainScreen(accountType: AccountType) {
     val currentRoute = navBackStackEntry?.destination?.route
     val bottomNavRoutes = bottomNavItemsFor(accountType).map { it.route }
     val showBottomBar = currentRoute in bottomNavRoutes
+
+    LaunchedEffect(Unit) {
+        val pending = NotificationPendingNavigationStore.consume() ?: return@LaunchedEffect
+        val userId = AuthProvider.repository.getCurrentUser()?.id
+        var permissionLookupFailed = false
+        val platformPermissions = if (userId != null) {
+            runCatching {
+                DataProvider.permissionRepository.getAuthorizationContext(userId).permissions
+            }.getOrElse {
+                permissionLookupFailed = true
+                emptySet()
+            }
+        } else {
+            emptySet()
+        }
+
+        // Nunca usar organizationId del payload como membresía probada.
+        var provenOrgId: String? = null
+        var orgPermissionCodes: Set<String> = emptySet()
+        val claimedOrgId = pending.deepLink.organizationId
+        if (userId != null && !claimedOrgId.isNullOrBlank()) {
+            val orgId = OrganizationId(claimedOrgId)
+            val membership = runCatching {
+                DataProvider.organizationMembershipRepository.getActiveMembership(orgId, userId)
+            }.getOrNull()
+            if (membership != null) {
+                provenOrgId = claimedOrgId
+                orgPermissionCodes = runCatching {
+                    DataProvider.organizationPermissionRepository
+                        .getAuthorizationContext(
+                            organizationId = orgId,
+                            userId = userId,
+                            accountStatus = com.comunidapp.app.domain.user.AccountStatus.ACTIVE
+                        )
+                        .permissions
+                        .map { it.code }
+                        .toSet()
+                }.getOrDefault(emptySet())
+            }
+        }
+
+        val context = NotificationDeepLinkSessionResolver.buildOpenContext(
+            authenticatedUserId = userId,
+            platformPermissions = platformPermissions,
+            provenOrganizationId = provenOrgId,
+            organizationPermissionCodes = orgPermissionCodes,
+            link = pending.deepLink,
+            permissionLookupFailed = permissionLookupFailed
+        )
+        val resolved = NotificationDeepLinkRouter.resolve(pending.deepLink, context)
+        navController.navigate(resolved.navRoute) {
+            launchSingleTop = true
+        }
+    }
 
     Scaffold(
         bottomBar = {
@@ -225,15 +375,42 @@ private fun MainScreen(accountType: AccountType) {
                 ProfileScreen(
                     onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                     onNavigateToMyPets = { navController.navigate(NavRoutes.MY_PETS) },
-onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
+                    onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
                     onNavigateToChat = { navController.navigate(NavRoutes.CHAT) },
                     onNavigateToFriendRequests = { navController.navigate(NavRoutes.FRIEND_REQUESTS) },
                     onNavigateToNotifications = { navController.navigate(NavRoutes.NOTIFICATIONS) },
                     onNavigateToModeration = { navController.navigate(NavRoutes.ADMIN_MODERATION) },
+                    onNavigateToPlatformAdmin = { navController.navigate(NavRoutes.PLATFORM_ADMIN) },
+                    onNavigateToCases = { navController.navigate(NavRoutes.MODERATION_CASES) },
+                    onNavigateToAppealsStaff = { navController.navigate(NavRoutes.MODERATION_APPEALS) },
+                    onNavigateToMyAppeals = { navController.navigate(NavRoutes.MY_MODERATION_APPEALS) },
+                    onNavigateToVerification = { navController.navigate(NavRoutes.ORG_VERIFICATION_QUEUE) },
+                    onNavigateToMySupport = { navController.navigate(NavRoutes.MY_SUPPORT_TICKETS) },
+                    onNavigateToSupportStaff = { navController.navigate(NavRoutes.SUPPORT_ADMIN_QUEUE) },
+                    onNavigateToAudit = { navController.navigate(NavRoutes.ADMINISTRATIVE_AUDIT) },
+                    onNavigateToObservability = { navController.navigate(NavRoutes.OBSERVABILITY_OVERVIEW) },
                     onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
+                    onNavigateToAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
+                    onNavigateToMyOrganizations = { navController.navigate(NavRoutes.MY_ORGANIZATIONS) },
                     onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
                     onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
                 )
+            }
+            composable(NavRoutes.ACCOUNT_SECURITY) {
+                AccountSecurityScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAccountDeleted = {
+                        navController.popBackStack(NavRoutes.PROFILE, inclusive = false)
+                    },
+                    onNavigateToTerms = { navController.navigate(NavRoutes.LEGAL_TERMS) },
+                    onNavigateToPrivacy = { navController.navigate(NavRoutes.LEGAL_PRIVACY) }
+                )
+            }
+            composable(NavRoutes.LEGAL_TERMS) {
+                TermsDraftScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.LEGAL_PRIVACY) {
+                PrivacyDraftScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(NavRoutes.SEARCH_FRIENDS) {
                 SearchFriendsScreen(
@@ -245,6 +422,142 @@ onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
                 EditProfileScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onSaveSuccess = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MY_ORGANIZATIONS) {
+                MyOrganizationsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreateOrganization = { navController.navigate(NavRoutes.CREATE_ORGANIZATION) },
+                    onManageOrganization = { id ->
+                        navController.navigate(NavRoutes.manageOrganization(id))
+                    },
+                    onEditOrganization = { id ->
+                        navController.navigate(NavRoutes.editOrganization(id))
+                    },
+                    onOpenPublic = { slug ->
+                        navController.navigate(NavRoutes.publicOrganization(slug))
+                    }
+                )
+            }
+            composable(NavRoutes.CREATE_ORGANIZATION) {
+                CreateOrganizationScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreated = { organizationId ->
+                        navController.navigate(NavRoutes.editOrganization(organizationId)) {
+                            popUpTo(NavRoutes.MY_ORGANIZATIONS)
+                        }
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.EDIT_ORGANIZATION,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_ORGANIZATION_ID) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val organizationId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_ORGANIZATION_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                EditOrganizationScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaveSuccess = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "edit_org_$organizationId",
+                        factory = EditOrganizationViewModel.factory(organizationId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.MANAGE_ORGANIZATION,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_ORGANIZATION_ID) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val organizationId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_ORGANIZATION_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                OrganizationManageScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onEditProfile = {
+                        navController.navigate(NavRoutes.editOrganization(organizationId))
+                    },
+                    onManageTeam = {
+                        navController.navigate(NavRoutes.organizationTeam(organizationId))
+                    },
+                    onManageBranches = {
+                        navController.navigate(NavRoutes.organizationBranches(organizationId))
+                    },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "manage_org_$organizationId",
+                        factory = OrganizationManageViewModel.factory(organizationId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.ORGANIZATION_TEAM,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_ORGANIZATION_ID) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val organizationId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_ORGANIZATION_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                OrganizationTeamScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onLeftOrganization = {
+                        navController.popBackStack(NavRoutes.MY_ORGANIZATIONS, false)
+                    },
+                    onClosedOrganization = {
+                        navController.popBackStack(NavRoutes.MY_ORGANIZATIONS, false)
+                    },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "team_org_$organizationId",
+                        factory = OrganizationTeamViewModel.factory(organizationId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.ORGANIZATION_BRANCHES,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_ORGANIZATION_ID) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val organizationId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_ORGANIZATION_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                OrganizationBranchesScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "branches_org_$organizationId",
+                        factory = OrganizationBranchesViewModel.factory(organizationId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.PUBLIC_ORGANIZATION,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_SLUG) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val slug = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_SLUG).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                PublicOrganizationScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "public_org_$slug",
+                        factory = PublicOrganizationViewModel.factory(slug)
+                    )
                 )
             }
             composable(
@@ -478,10 +791,190 @@ onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
                 )
             }
             composable(NavRoutes.NOTIFICATIONS) {
-                NotificationsScreen(onNavigateBack = { navController.popBackStack() })
+                NotificationsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToPreferences = {
+                        navController.navigate(NavRoutes.NOTIFICATION_PREFERENCES)
+                    }
+                )
+            }
+            composable(NavRoutes.NOTIFICATION_PREFERENCES) {
+                NotificationPreferencesScreen(
+                    onNavigateBack = { navController.popBackStack() }
+                )
             }
             composable(NavRoutes.ADMIN_MODERATION) {
-                AdminModerationScreen(onNavigateBack = { navController.popBackStack() })
+                ModerationQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onReportClick = { id -> navController.navigate(NavRoutes.moderationReportDetail(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.MODERATION_REPORT_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_REPORT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val reportId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_REPORT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ModerationReportDetailScreen(
+                    reportId = reportId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MODERATION_CASES) {
+                ModerationCaseQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCaseClick = { id -> navController.navigate(NavRoutes.moderationCaseDetail(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.MODERATION_CASE_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_CASE_ID) { type = NavType.StringType })
+            ) { entry ->
+                val caseId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CASE_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ModerationCaseDetailScreen(
+                    caseId = caseId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MODERATION_APPEALS) {
+                ModerationAppealQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAppealClick = { id -> navController.navigate(NavRoutes.moderationAppealDetail(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.MODERATION_APPEAL_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_APPEAL_ID) { type = NavType.StringType })
+            ) { entry ->
+                val appealId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_APPEAL_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ModerationAppealDetailScreen(
+                    appealId = appealId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MY_MODERATION_APPEALS) {
+                MyModerationAppealsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.ORG_VERIFICATION_QUEUE) {
+                OrganizationVerificationQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onReviewClick = { id -> navController.navigate(NavRoutes.orgVerificationReview(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.ORG_VERIFICATION_REVIEW,
+                arguments = listOf(navArgument(NavRoutes.ARG_REVIEW_ID) { type = NavType.StringType })
+            ) { entry ->
+                val reviewId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_REVIEW_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                OrganizationVerificationReviewScreen(
+                    reviewId = reviewId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MY_SUPPORT_TICKETS) {
+                MySupportTicketsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onTicketClick = { id -> navController.navigate(NavRoutes.supportTicketDetail(id)) },
+                    onCreateClick = { navController.navigate(NavRoutes.CREATE_SUPPORT_TICKET) }
+                )
+            }
+            composable(NavRoutes.CREATE_SUPPORT_TICKET) {
+                CreateSupportTicketScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreated = { id ->
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.supportTicketDetail(id))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.SUPPORT_TICKET_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_TICKET_ID) { type = NavType.StringType })
+            ) { entry ->
+                val ticketId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_TICKET_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                SupportTicketDetailScreen(
+                    ticketId = ticketId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.SUPPORT_ADMIN_QUEUE) {
+                SupportQueueScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onTicketClick = { id -> navController.navigate(NavRoutes.supportAdminTicket(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.SUPPORT_ADMIN_TICKET,
+                arguments = listOf(navArgument(NavRoutes.ARG_TICKET_ID) { type = NavType.StringType })
+            ) { entry ->
+                val ticketId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_TICKET_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                SupportTicketAdminDetailScreen(
+                    ticketId = ticketId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.ADMINISTRATIVE_AUDIT) {
+                AdministrativeAuditScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_OVERVIEW) {
+                ObservabilityOverviewScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onNavigateToMetrics = { navController.navigate(NavRoutes.OBSERVABILITY_METRICS) },
+                    onNavigateToHealth = { navController.navigate(NavRoutes.OBSERVABILITY_HEALTH) },
+                    onNavigateToIncidents = { navController.navigate(NavRoutes.OBSERVABILITY_INCIDENTS) },
+                    onNavigateToAudit = { navController.navigate(NavRoutes.OBSERVABILITY_AUDIT) },
+                    onNavigateToErrors = { navController.navigate(NavRoutes.OBSERVABILITY_ERRORS) },
+                    onNavigateToExports = { navController.navigate(NavRoutes.OBSERVABILITY_EXPORTS) },
+                    onNavigateToRetention = { navController.navigate(NavRoutes.OBSERVABILITY_RETENTION) },
+                    onNavigateToPermissionsInfo = {
+                        navController.navigate(NavRoutes.OBSERVABILITY_PERMISSIONS_INFO)
+                    }
+                )
+            }
+            composable(NavRoutes.OBSERVABILITY_METRICS) {
+                ObservabilityMetricsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_HEALTH) {
+                ObservabilityHealthScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_INCIDENTS) {
+                ObservabilityIncidentsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            // M07 Etapa 6: dedicated screens — no AdministrativeAuditScreen / audit.view proxy
+            composable(NavRoutes.OBSERVABILITY_AUDIT) {
+                ObservabilityAuditListScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_ERRORS) {
+                ObservabilityErrorsListScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_EXPORTS) {
+                ObservabilityExportsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_RETENTION) {
+                ObservabilityRetentionScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.OBSERVABILITY_PERMISSIONS_INFO) {
+                ObservabilityPermissionsInfoScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(NavRoutes.PLATFORM_ADMIN) {
+                PlatformAdminScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(
                 route = NavRoutes.CHAT_START,

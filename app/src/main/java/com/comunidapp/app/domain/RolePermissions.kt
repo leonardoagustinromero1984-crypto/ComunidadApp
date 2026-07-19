@@ -70,7 +70,8 @@ object RolePermissions {
         ModulePermissions.canManageMultiplePets(user)
 
     fun canModerateContent(user: User): Boolean =
-        ModulePermissions.canModerateContent(user)
+        // D-M02-08 / D-M02-03: AccountType y modules no conceden. Ver PermissionRepository.
+        false
 
     fun businessPanelTitle(accountType: AccountType): String = when (accountType) {
         AccountType.VET -> "Mi consultorio"

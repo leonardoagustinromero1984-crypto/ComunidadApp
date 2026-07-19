@@ -1,0 +1,2 @@
+-- Local empty seed for supabase db reset.
+-- No staging/production data.

@@ -14,10 +14,12 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.CommunityRepository
 import com.comunidapp.app.data.repository.FeedRepository
 import com.comunidapp.app.data.repository.FriendRepository
+import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.ProfilePrivacy
+import com.comunidapp.app.domain.authorization.AuthorizationService
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -26,6 +28,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 data class ProfileUiState(
     val isLoading: Boolean = true,
@@ -36,6 +39,16 @@ data class ProfileUiState(
     val badges: List<UserBadge> = emptyList(),
     val pendingFriendRequests: Int = 0,
     val unreadNotifications: Int = 0,
+    /** D-M02-08: solo con permiso real moderation.view */
+    val canViewModeration: Boolean = false,
+    /** Roles/admin: roles.view o users.change_status */
+    val canViewPlatformAdmin: Boolean = false,
+    val canViewCases: Boolean = false,
+    val canReviewAppeals: Boolean = false,
+    val canReviewVerification: Boolean = false,
+    val canViewSupportStaff: Boolean = false,
+    val canViewAudit: Boolean = false,
+    val canViewObservability: Boolean = false,
     val errorMessage: String? = null
 )
 
@@ -47,7 +60,8 @@ class ProfileViewModel(
     private val feedRepository: FeedRepository = DataProvider.feedRepository,
     private val friendRepository: FriendRepository = DataProvider.friendRepository,
     private val communityRepository: CommunityRepository = DataProvider.communityRepository,
-    private val platformRepository: PlatformRepository = DataProvider.platformRepository
+    private val platformRepository: PlatformRepository = DataProvider.platformRepository,
+    private val permissionRepository: PermissionRepository = DataProvider.permissionRepository
 ) : ViewModel() {
 
     val uiState: StateFlow<ProfileUiState> = authRepository.observeAuthState()
@@ -70,8 +84,14 @@ class ProfileViewModel(
                 combine(
                     profileCore,
                     userRepository.observeUsers(),
-                    platformRepository.observeNotifications(authUser.id)
-                ) { core, users, notifications ->
+                    platformRepository.observeNotifications(authUser.id),
+                    flow {
+                        emit(permissionRepository.refresh(authUser.id))
+                        permissionRepository.observeAuthorizationContext(authUser.id).collect {
+                            emit(it)
+                        }
+                    }
+                ) { core, users, notifications, authz ->
                     val user = core.profile ?: authUser
                     val friendIds = ProfilePrivacy.friendIdsFor(authUser.id, core.connections)
                     val friends = users.filter { it.id in friendIds }
@@ -87,7 +107,36 @@ class ProfileViewModel(
                         friends = friends,
                         badges = core.badges.ifEmpty { user.badges },
                         pendingFriendRequests = pendingFriendRequests,
-                        unreadNotifications = notifications.count { it.isUnread }
+                        unreadNotifications = notifications.count { it.isUnread },
+                        canViewModeration = AuthorizationService.canViewModeration(authz),
+                        canViewPlatformAdmin = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.ROLES_VIEW
+                        ) || AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.USERS_CHANGE_STATUS
+                        ),
+                        canViewCases = AuthorizationService.canViewModeration(authz),
+                        canReviewAppeals = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.MODERATION_REVIEW_APPEALS
+                        ),
+                        canReviewVerification = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.ORGANIZATIONS_REVIEW_VERIFICATION
+                        ),
+                        canViewSupportStaff = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.SUPPORT_VIEW
+                        ),
+                        canViewAudit = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.AUDIT_VIEW
+                        ),
+                        canViewObservability = AuthorizationService.hasPermission(
+                            authz,
+                            com.comunidapp.app.domain.authorization.PermissionCode.OBSERVABILITY_VIEW
+                        )
                     )
                 }
             }
@@ -99,7 +148,12 @@ class ProfileViewModel(
         )
 
     fun logout() {
-        authRepository.logout()
+        viewModelScope.launch {
+            runCatching { authRepository.logout() }
+            permissionRepository.invalidate()
+            com.comunidapp.app.domain.organization.OrganizationContextProvider.clear()
+            com.comunidapp.app.viewmodel.moderation.AdministrativeSessionCleanup.clear()
+        }
     }
 
     private data class ProfileCore(

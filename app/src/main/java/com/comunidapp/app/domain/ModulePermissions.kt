@@ -53,7 +53,9 @@ object ModulePermissions {
         LeoverModule.LOST_FOUND in activeModules(user)
 
     fun canModerateContent(user: User): Boolean =
-        LeoverModule.ADMIN in activeModules(user)
+        // D-M02-08: active_modules / LeoverModule.ADMIN no otorgan moderación.
+        // Usar AuthorizationService / PermissionRepository (moderation.view).
+        false
 
     // Compatibilidad con chequeos basados solo en AccountType
     fun canPublishContent(accountType: AccountType): Boolean =

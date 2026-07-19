@@ -80,7 +80,18 @@ fun ProfileScreen(
     onNavigateToFriendRequests: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
     onNavigateToModeration: () -> Unit = {},
+    onNavigateToPlatformAdmin: () -> Unit = {},
+    onNavigateToCases: () -> Unit = {},
+    onNavigateToAppealsStaff: () -> Unit = {},
+    onNavigateToMyAppeals: () -> Unit = {},
+    onNavigateToVerification: () -> Unit = {},
+    onNavigateToMySupport: () -> Unit = {},
+    onNavigateToSupportStaff: () -> Unit = {},
+    onNavigateToAudit: () -> Unit = {},
+    onNavigateToObservability: () -> Unit = {},
     onNavigateToSearchFriends: () -> Unit = {},
+    onNavigateToAccountSecurity: () -> Unit = {},
+    onNavigateToMyOrganizations: () -> Unit = {},
     onFriendClick: (String) -> Unit = {},
     onPetClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
@@ -202,6 +213,18 @@ fun ProfileScreen(
 
                     item {
                         OutlinedButton(
+                            onClick = onNavigateToMyOrganizations,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Mis organizaciones")
+                        }
+                    }
+
+                    item {
+                        OutlinedButton(
                             onClick = onNavigateToChat,
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -235,15 +258,135 @@ fun ProfileScreen(
                         }
                     }
 
+                    if (uiState.canViewModeration) {
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToModeration,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Moderación")
+                            }
+                        }
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToCases,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Casos")
+                            }
+                        }
+                    }
+
+                    if (uiState.canReviewAppeals) {
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToAppealsStaff,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Apelaciones")
+                            }
+                        }
+                    }
+
                     item {
                         OutlinedButton(
-                            onClick = onNavigateToModeration,
+                            onClick = onNavigateToMyAppeals,
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp),
                             shape = RoundedCornerShape(14.dp)
                         ) {
-                            Text("Moderación")
+                            Text("Mis apelaciones")
+                        }
+                    }
+
+                    if (uiState.canReviewVerification) {
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToVerification,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Verificación")
+                            }
+                        }
+                    }
+
+                    item {
+                        OutlinedButton(
+                            onClick = onNavigateToMySupport,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Soporte")
+                        }
+                    }
+
+                    if (uiState.canViewSupportStaff) {
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToSupportStaff,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Soporte staff")
+                            }
+                        }
+                    }
+
+                    if (uiState.canViewAudit) {
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToAudit,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Auditoría")
+                            }
+                        }
+                    }
+                    if (uiState.canViewObservability) {
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToObservability,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Observabilidad operativa")
+                            }
+                        }
+                    }
+
+                    if (uiState.canViewPlatformAdmin) {
+                        item {
+                            OutlinedButton(
+                                onClick = onNavigateToPlatformAdmin,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp),
+                                shape = RoundedCornerShape(14.dp)
+                            ) {
+                                Text("Administración")
+                            }
                         }
                     }
 
@@ -287,6 +430,18 @@ fun ProfileScreen(
                                 post = post,
                                 modifier = Modifier.padding(horizontal = 16.dp)
                             )
+                        }
+                    }
+
+                    item {
+                        OutlinedButton(
+                            onClick = onNavigateToAccountSecurity,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Seguridad de la cuenta")
                         }
                     }
 

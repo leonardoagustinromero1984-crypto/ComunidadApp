@@ -17,6 +17,7 @@ import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.ProfilePrivacy
 import com.comunidapp.app.data.model.NotificationType
+import com.comunidapp.app.domain.user.toBridgeUser
 import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -71,7 +72,18 @@ class UserPublicProfileViewModel(
                 }
                 combine(
                     connectionsFlow,
-                    userRepository.observeUser(userId).catch { emit(null) },
+                    kotlinx.coroutines.flow.flow {
+                        val viewerId = currentUser?.id
+                        if (viewerId == null) {
+                            emit(null)
+                            return@flow
+                        }
+                        while (true) {
+                            val public = userRepository.getPublicProfile(viewerId, userId).getOrNull()
+                            emit(public?.toBridgeUser())
+                            kotlinx.coroutines.delay(4_000)
+                        }
+                    }.catch { emit(null) },
                     petRepository.observePets(),
                     feedRepository.observeFeedPosts(),
                     combine(_actionMessage, _actionInProgress) { message, inProgress ->

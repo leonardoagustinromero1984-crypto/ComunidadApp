@@ -1,0 +1,99 @@
+name: Android CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: android-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build-test-lint:
+    name: Assemble, unit tests, lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+
+      - name: M07 local quality checks (catalog, migrations, secrets, SQL)
+        env:
+          ROOT: ${{ github.workspace }}
+        run: |
+          chmod +x scripts/ci/m07_quality_checks.sh
+          ROOT="${{ github.workspace }}" bash scripts/ci/m07_quality_checks.sh
+
+      - name: Assemble, test, lint (mock / no secrets)
+        # Sin SUPABASE_* → BuildConfig.SUPABASE_ENABLED=false (modo mock).
+        # No se inyectan secretos reales de Supabase, Firebase ni pagos.
+        run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug --continue
+
+      - name: JaCoCo coverage report (informative baseline, non-blocking)
+        continue-on-error: true
+        run: ./gradlew :app:jacocoTestReport --continue
+
+      - name: Quality summary
+        if: always()
+        run: |
+          echo "## LeoVer CI quality summary" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Assemble/test/lint: see job logs" >> "$GITHUB_STEP_SUMMARY"
+          echo "- JaCoCo: informative only (non-blocking)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Catalog Kotlin↔SQL: scripts/ci/m07_quality_checks.sh" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Staging migrations 014–032: PENDIENTE (no remote credentials in CI)" >> "$GITHUB_STEP_SUMMARY"
+          echo "- EXPORTACIÓN DE ARCHIVO PENDIENTE / INTEGRACIÓN M06 PENDIENTE" >> "$GITHUB_STEP_SUMMARY"
+          if [ -f app/build/reports/m07-quality-summary.md ]; then
+            cat app/build/reports/m07-quality-summary.md >> "$GITHUB_STEP_SUMMARY"
+          fi
+          if [ -f app/build/reports/jacoco/jacocoTestReport/html/index.html ]; then
+            echo "- JaCoCo HTML report uploaded as artifact (informative)" >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: |
+            app/build/test-results/testDebugUnitTest/**
+            app/build/reports/tests/testDebugUnitTest/**
+          if-no-files-found: ignore
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: jacoco-coverage
+          path: |
+            app/build/reports/jacoco/**
+            app/build/reports/coverage/**
+          if-no-files-found: ignore
+
+      - name: Upload lint reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: lint-reports
+          path: |
+            app/build/reports/lint-results-debug.html
+            app/build/reports/lint-results-debug.xml
+            app/build/intermediates/lint_intermediate_text_report/debug/**/lint-results-debug.txt
+          if-no-files-found: ignore
