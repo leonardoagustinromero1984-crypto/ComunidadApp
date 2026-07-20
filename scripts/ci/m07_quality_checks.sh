@@ -65,7 +65,7 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   base="${M07_BASE_COMMIT:-a02acb15bc78be6b9c405d563f2de2030da70abd}"
   if git -C "$ROOT" cat-file -e "$base^{commit}" 2>/dev/null; then
     # 020–032 may receive minimal apply fixes during M07 local validation (citext, BOM, DROP FUNCTION).
-    changed=$(git -C "$ROOT" diff --name-only "$base" -- supabase/migrations/ | grep -E 'migrations/0(0[1-9]|1[0-9])_' || true)
+    changed=$(git -C "$ROOT" diff --ignore-cr-at-eol --name-only "$base"..HEAD -- supabase/migrations/ | grep -E 'migrations/0(0[1-9]|1[0-9])_' || true)
     if [[ -n "$changed" ]]; then
       echo "Prior migrations 001–019 edited:"
       echo "$changed"
