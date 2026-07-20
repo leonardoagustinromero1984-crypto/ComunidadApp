@@ -142,4 +142,5 @@ M02: mismos strings en `PermissionCode`; ADMIN → read+view_history; SUPERADMIN
 
 ## 12. Siguiente etapa
 
-**Etapa 3 — esquema/migración y RLS** (solo tras aprobación). No iniciada.
+**Etapa 3A — freeze esquema/RLS:** ver `docs/02-arquitectura/M08-etapa-3-freeze-esquema-rls.md` (aprobable).  
+**Etapa 3B — SQL 035 ejecutable:** solo tras aprobación explícita del freeze. **No iniciada.**

@@ -218,6 +218,17 @@ Eventos de producto a cablear (Etapa 5+): transferencia pendiente/aceptada, co-r
 - [x] Sin migración 035.
 - [x] Sin cambios Android/Supabase/main.
 
+### Etapa 3A (freeze)
+
+Diseño físico y RLS congelados en:
+
+- `docs/02-arquitectura/M08-etapa-3-freeze-esquema-rls.md`
+- `docs/02-arquitectura/M08-esquema-propuesto-migracion-035.md`
+- `docs/04-calidad/M08-matriz-rls-y-permisos.md`
+- `docs/04-calidad/M08-plan-validacion-migracion-035.md`
+
+**Migración 035 aún no creada.**
+
 ---
 
 ## 18. Documentos relacionados
