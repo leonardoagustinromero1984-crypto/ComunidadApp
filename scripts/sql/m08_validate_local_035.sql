@@ -39,7 +39,7 @@ begin
 end;
 $$;
 
--- 1) Historial local 001–035
+-- 1) Historial local 001–035 (036 permitido tras Etapa 3C)
 do $$
 declare
   v_count int;
@@ -71,8 +71,17 @@ begin
     end if;
   end loop;
 
-  perform pg_temp.m08_pf('migration_history_count_35', v_count = 35, format('count=%s', v_count));
-  perform pg_temp.m08_pf('migration_history_max_035', v_max = '035', format('max=%s', v_max));
+  -- Tras 3C: count puede ser 35 (solo 035) o 36 (con 036). Max 035 o 036.
+  perform pg_temp.m08_pf(
+    'migration_history_count_35',
+    v_count = 35 or v_count = 36,
+    format('count=%s (35 or 36 after 3C)', v_count)
+  );
+  perform pg_temp.m08_pf(
+    'migration_history_max_035',
+    v_max = '035' or v_max = '036',
+    format('max=%s (035 or 036 after 3C)', v_max)
+  );
   perform pg_temp.m08_pf('migration_history_no_dupes', v_dupes = 0, format('dupes=%s', v_dupes));
   perform pg_temp.m08_pf('migration_history_no_missing_001_035', v_missing = 0, format('missing=%s', v_missing));
 end;

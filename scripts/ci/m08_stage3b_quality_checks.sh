@@ -31,23 +31,23 @@ require_file "$ROOT/scripts/sql/m08_validate_local_035.sql"
 require_file "$ROOT/docs/02-arquitectura/M08-etapa-3b-migracion-035-local.md"
 require_file "$ROOT/docs/04-calidad/M08-reporte-validacion-local-035.md"
 
-echo "== Migration max 035 / no 036 =="
+echo "== Migration max 035 or 036 (post-3C) / no 037; 035 file required =="
 highest=$(ls "$MIG" | grep -E '^[0-9]{3}_' | sed 's/_.*//' | sort | tail -n1)
 echo "Highest migration: $highest"
-if [[ "$highest" != "035" ]]; then
-  echo "Expected highest 035, got $highest"
+if [[ "$highest" != "035" && "$highest" != "036" ]]; then
+  echo "Expected highest 035 or 036, got $highest"
   FAIL=1
 fi
-if ls "$MIG"/036_* >/dev/null 2>&1; then
-  echo "FORBIDDEN: supabase/migrations/036_* exists"
+if ls "$MIG"/037_* >/dev/null 2>&1; then
+  echo "FORBIDDEN: supabase/migrations/037_* exists"
   FAIL=1
 fi
 count=$(ls "$MIG"/*.sql 2>/dev/null | wc -l | tr -d ' ')
-if [[ "$count" != "35" ]]; then
-  echo "Expected 35 migration sql files, got $count"
+if [[ "$count" != "35" && "$count" != "36" ]]; then
+  echo "Expected 35 or 36 migration sql files, got $count"
   FAIL=1
 else
-  echo "OK migration count=35"
+  echo "OK migration count=$count"
 fi
 
 echo "== 001–034 untouched (content hash vs git if available) =="

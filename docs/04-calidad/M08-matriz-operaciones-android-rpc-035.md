@@ -1,71 +1,48 @@
-# M08 — Matriz operaciones Android ↔ RPC 035 (cierre 4A)
+# M08 â€” Matriz operaciones Android â†” RPC 035/036 (post-3C)
 
 **Producto:** LeoVer
-**Etapa:** 4A cerrada con bloqueo SQL
-**Conclusión:**
+**Etapa:** 3C SQL listo; 4B adapter pendiente
+**ConclusiÃ³n:**
 
 ```text
-M08 ETAPA 4A — BLOQUEADA POR CONTRATOS SQL FALTANTES
-REQUIERE ETAPA 3C — FORWARD-FIX 036
+M08 ETAPA 3C â€” FORWARD-FIX 036 VALIDADO LOCALMENTE
+STAGING NO AUTORIZADO
+REQUIERE ETAPA 4B â€” REPOSITORIOS Y ADAPTADOR LEGACY
 ```
 
-Estados: `CUBIERTO` | `REQUIERE ADAPTADOR ANDROID` | `CONTRATO SQL FALTANTE` | `BLOQUEANTE` | `FUERA DE ALCANCE` | `DECISIÓN PENDIENTE BLOQUEANTE PARA PERFIL PÚBLICO`
+Estados: `CUBIERTO` | `REQUIERE ADAPTADOR ANDROID` | `FUERA DE ALCANCE` | `PERFIL PÃšBLICO OCULTO (decisiÃ³n)`
 
 ---
 
 ## Matriz
 
-| Operación | Método / UI | Contrato 035 | Estado | Prueba unitaria | Integración local | Smoke staging | No regresión |
-|---|---|---|---|---|---|---|---|
-| Listar mis mascotas | `observePetsForOwner` / MyPets | SELECT RLS; filtro owner incorrecto | **REQUIERE ADAPTADOR ANDROID** (+ list RPC 036) | list sin owner filter | multi-resp | MyPets | count |
-| Perfil propio | ProfileVM filter owner | RLS + filter | **REQUIERE ADAPTADOR ANDROID** | | | | |
-| Perfil público | UserPublicProfile filter owner | fin SELECT-all | **DECISIÓN PENDIENTE BLOQUEANTE PARA PERFIL PÚBLICO** | | | | |
-| Get by id | `getPet` / Detail | SELECT + RLS | **CUBIERTO** (+ DTO) | decode | | open detail | |
-| Create | `createPet` insert | `m08_create_pet_with_principal` | **REQUIERE ADAPTADOR ANDROID** | RPC | create | create | |
-| Update básicos | `updatePet` | **sin RPC** | **CONTRATO SQL FALTANTE / BLOQUEANTE** → `m08_update_pet_profile` | | | | |
-| Update salud | `updatePet` | **sin RPC** | **CONTRATO SQL FALTANTE / BLOQUEANTE** → `m08_update_pet_health` | | | | |
-| Microchip | vía update | **sin RPC** | **BLOQUEANTE** (en profile RPC) | conflict ACTIVE | | | |
-| Delete / archive | `deletePet` | `m08_archive_pet` | **REQUIERE ADAPTADOR ANDROID** | map delete→archive | | | |
-| Deceased | — | `m08_mark_pet_deceased` | **CUBIERTO** (sin UI) | | | | |
-| Restore | — | `m08_restore_pet` | **CUBIERTO** (sin UI) | chip conflict | | | |
-| Avatar | update photo_url | `m08_set_pet_avatar_asset` | **REQUIERE ADAPTADOR ANDROID** | purpose | | | |
-| Galería | — | M05 only | **FUERA DE ALCANCE** | | | | |
-| Capacidades / canManage | `ownerId == uid` | helpers; falta contexto | **CONTRATO SQL FALTANTE** → `m08_get_pet_access_context` | | | | |
-| Principal organización | — | XOR / owner null | **REQUIERE ADAPTADOR ANDROID** | nullable owner | | | |
-| Co-responsable | — | assign/revoke | **FUERA DE ALCANCE** UI 4B | | | | |
-| Autorizado | — | grant/revoke | **FUERA DE ALCANCE** UI 4B | | | | |
-| Listado accesible + relación | — | SELECT RLS insuficiente para caps | **CONTRATO SQL FALTANTE** → `m08_list_accessible_pets` | | | | |
+| OperaciÃ³n | MÃ©todo / UI | Contrato SQL | Estado |
+|---|---|---|---|
+| Listar mis mascotas | `observePetsForOwner` | `m08_list_accessible_pets` | **REQUIERE ADAPTADOR ANDROID** |
+| Perfil propio | ProfileVM | list/context + RLS | **REQUIERE ADAPTADOR ANDROID** |
+| Perfil pÃºblico | UserPublicProfile | ocultar ajenas | **PERFIL PÃšBLICO OCULTO (decisiÃ³n)** |
+| Get by id | `getPet` | SELECT RLS | **REQUIERE ADAPTADOR ANDROID** (DTO) |
+| Create | `createPet` | `m08_create_pet_with_principal` | **REQUIERE ADAPTADOR ANDROID** |
+| Update bÃ¡sicos | `updatePet` | `m08_update_pet_profile` | **REQUIERE ADAPTADOR ANDROID** |
+| Update salud | `updatePet` | `m08_update_pet_health` | **REQUIERE ADAPTADOR ANDROID** |
+| Microchip | vÃ­a profile RPC | soft-unique ACTIVE | **REQUIERE ADAPTADOR ANDROID** |
+| Delete / archive | `deletePet` | `m08_archive_pet` | **REQUIERE ADAPTADOR ANDROID** |
+| Deceased | â€” | `m08_mark_pet_deceased` | **CUBIERTO** SQL (sin UI) |
+| Restore | â€” | `m08_restore_pet` | **CUBIERTO** SQL (sin UI) |
+| Avatar | photo_url legacy | `m08_set_pet_avatar_asset` | **REQUIERE ADAPTADOR ANDROID** |
+| GalerÃ­a | â€” | M05 | **FUERA DE ALCANCE** |
+| Capacidades | ownerId==uid | `m08_get_pet_access_context` | **REQUIERE ADAPTADOR ANDROID** |
+| Principal org | â€” | owner_id null | **REQUIERE ADAPTADOR ANDROID** |
+| Co-responsable / autorizado UI | â€” | RPC 035 | **FUERA DE ALCANCE** UI 4B |
 
----
+## Contratos 036 (implementados)
 
-## Contratos 036 congelados (archivo aún no creado)
-
-1. `m08_update_pet_profile` — `pet.update`
-2. `m08_update_pet_health` — `pet.manage_health`
+1. `m08_update_pet_profile` â€” `pet.update`
+2. `m08_update_pet_health` â€” `pet.manage_health`
 3. `m08_get_pet_access_context`
 4. `m08_list_accessible_pets`
-5. `m08_list_public_profile_pets` — **solo si** se aprueba vitrina pública (recomendación 4A: diferir; ocultar por defecto)
+5. `m08_list_public_profile_pets` â€” **no creada**; ocultar por defecto
 
----
+## CondiciÃ³n staging
 
-## Operaciones cubiertas por 035 (con adaptador Android)
-
-- Create (RPC)
-- Get by id (SELECT RLS)
-- Archive / restore / deceased (RPC)
-- Avatar asset (RPC)
-- Transfers / responsibilities / authorizations (RPC, fuera UI 4B)
-- Detect duplicates (RPC)
-
-## Bloqueantes sin 036
-
-- Update básicos / salud / microchip
-- Access context / capabilities para UI
-- Listado accesible enriquecido
-- Perfil público (decisión + posible RPC)
-
----
-
-## Condición staging
-
-**NO autorizado** hasta Etapa 3C (036 local PASS) + Etapa 4B (adapter PASS) + apply explícito 035+036.
+**NO autorizado** hasta Etapa 4B (adapter PASS) + apply explÃ­cito 035+036.

@@ -43,12 +43,18 @@ class M07Stage6FinalValidationTest {
         assertTrue(names.any { it.startsWith("031_") })
         assertTrue(names.any { it.startsWith("032_") })
         val max = nums.map { it.toInt() }.maxOrNull()
-        assertTrue("expected highest migration 032–034, got $max", max != null && max in 32..34)
+        assertTrue("expected highest migration 032–036, got $max", max != null && max in 32..36)
         if (max!! >= 33) {
             assertTrue(names.any { it.startsWith("033_") })
         }
         if (max >= 34) {
             assertTrue(names.any { it.startsWith("034_") })
+        }
+        if (max >= 35) {
+            assertTrue(names.any { it.startsWith("035_") })
+        }
+        if (max >= 36) {
+            assertTrue(names.any { it.startsWith("036_") })
         }
         val sql032 = migration("032_")
         assertTrue(sql032.contains("D1:"))
