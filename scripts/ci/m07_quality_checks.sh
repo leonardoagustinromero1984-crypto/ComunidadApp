@@ -54,8 +54,8 @@ for n in $nums; do
 done
 highest=$(echo "$nums" | tail -n1)
 echo "Highest migration: $highest"
-if [[ "$highest" != "032" && "$highest" != "033" && "$highest" != "034" ]]; then
-  echo "Expected highest migration 032, 033 or 034, got $highest"
+if [[ "$highest" != "032" && "$highest" != "033" && "$highest" != "034" && "$highest" != "035" ]]; then
+  echo "Expected highest migration 032–035, got $highest"
   FAIL=1
 fi
 echo "- Migrations: highest=$highest" >> "$SUMMARY"

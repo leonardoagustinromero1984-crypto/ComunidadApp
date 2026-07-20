@@ -59,7 +59,7 @@ Detalle DDL conceptual: `M08-esquema-propuesto-migracion-035.md`.
 Matriz RLS: `M08-matriz-rls-y-permisos.md`.  
 Validación: `M08-plan-validacion-migracion-035.md`.
 
-**owner_id (F5):** proyección legacy. Persona principal ⇒ `owner_id = person_id`. Org pura ⇒ `owner_id NULL`. Mutación solo en `m08_create_pet_with_principal`, `m08_accept_pet_transfer` (y backfill). Trigger `_m08_pets_guard_owner_id` BEFORE UPDATE OF owner_id: permite cambio solo si `current_setting('m08.rpc', true) = '1'` (seteado al inicio del RPC DEFINER).
+**owner_id (F5):** proyección legacy. Persona principal ⇒ `owner_id = person_id`. Org pura ⇒ `owner_id NULL`. Mutación solo vía RPC DEFINER (`m08_create_pet_with_principal`, `m08_accept_pet_transfer`, `_m08_sync_owner_id_from_principal`) y backfill. Trigger `_m08_pets_guard_owner_id` BEFORE UPDATE OF owner_id: **bloquea si `current_user ∈ {authenticated, anon}`**; RPCs DEFINER actualizan como owner de tabla. Complementado con `REVOKE INSERT/UPDATE/DELETE` a authenticated/anon. **No** se usa GUC `m08.rpc` (falsificable por cliente).
 
 **microchip (F6):** normalización = trim, quitar `[\s\-_]`, uppercase (igual Etapa 2). Vacío → NULL. Índice único parcial solo ACTIVE. DECEASED/ARCHIVED no bloquean reuso de chip. Pre-backfill reporta duplicados ACTIVE; 035 falla o deja índice diferido según plan de validación.
 
@@ -82,7 +82,7 @@ Validación: `M08-plan-validacion-migracion-035.md`.
 |---|---|
 | Romper clientes que asumen SELECT-all pets | Staging + Android smoke; policies dual-read durante transición documentada |
 | Duplicados microchip legacy | Precheck + reporte; no índice hasta limpio o exclusión explícita |
-| Recursión trigger owner_id | GUC `m08.rpc` + solo RPC |
+| Recursión trigger owner_id | `current_user` + REVOKE writes (sin GUC) |
 | CASCADE clínica al DELETE | Preferir ARCHIVE/DECEASED; restringir DELETE RLS |
 | Org principal sin membership | RPC exige org operativa + permiso org |
 

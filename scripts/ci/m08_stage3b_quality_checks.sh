@@ -98,16 +98,14 @@ done
 echo "OK frozen markers"
 
 echo "== No remote / linked ops in stage3b scripts =="
-for f in \
-  "$ROOT/scripts/ci/m08_stage3b_quality_checks.sh" \
-  "$ROOT/scripts/sql/m08_validate_local_035.sql"
-do
-  if grep -Eiq 'db push|--linked|migration repair|supabase\.co|eyJ|service_role.*eyJ' "$f"; then
-    echo "FORBIDDEN remote/linked/secret pattern in $f"
-    FAIL=1
-  fi
-done
-echo "OK no remote patterns"
+# Scan validation SQL only (this gate file intentionally names forbidden tokens).
+if grep -Eiq 'db push|--linked|migration repair|supabase\.co|eyJ|service_role.*eyJ' \
+  "$ROOT/scripts/sql/m08_validate_local_035.sql"; then
+  echo "FORBIDDEN remote/linked/secret pattern in scripts/sql/m08_validate_local_035.sql"
+  FAIL=1
+else
+  echo "OK no remote patterns in validation SQL"
+fi
 
 echo "== Legacy Android / UI not modified by this gate presence =="
 require_file "$ROOT/app/src/main/java/com/comunidapp/app/data/repository/SupabaseRepositories.kt"
