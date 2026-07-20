@@ -1,7 +1,12 @@
 # M08 — Plan de validación migración 035
 
 **Producto:** LeoVer  
-**Etapa:** 3A freeze (plan); ejecución en **3B/local/staging** tras crear SQL.
+**Etapa:** 3A freeze (plan); **3B ejecutado en local** — ver `M08-reporte-validacion-local-035.md`.
+
+```text
+STAGING NO AUTORIZADO
+REQUIERE ETAPA 4 — REPOSITORIOS Y COMPATIBILIDAD LEGACY
+```
 
 ---
 
@@ -9,27 +14,30 @@
 
 | Check | PASS | FAIL |
 |---|---|---|
-| Archivo `035_*.sql` único | 1 archivo, número 035 | gap/dup |
-| `db reset --local` ×2 | exit 0 | error apply |
+| Archivo `035_*.sql` único | `035_m08_pets_responsibilities_and_rls.sql` | gap/dup |
+| `db reset` local ×2 | exit 0 | error apply |
 | `db lint --local --fail-on error` | exit 0 | errors |
+| Matriz `m08_validate_local_035.sql` | 0 FAIL | cualquier FAIL |
 | Backfill principals | count = pets con owner legacy | mismatch |
 | Soft-unique microchip | crea OK | dups ACTIVE |
 | RLS | matriz casos OK | fuga SELECT-all |
 | Grants | sin PUBLIC EXECUTE en DEFINER internos | grant residual |
 | Tests Android | ≥584, 0 fail | regressions |
-| Staging apply | solo con auth | push accidental |
+| Staging apply | **bloqueado hasta Etapa 4** | push accidental |
 
 ---
 
 ## 2. Local — orden
 
 1. `supabase stop` / `start` (o ignore-health-check si storage flaky).  
-2. `supabase db reset --local` (001–035).  
-3. Lint.  
-4. Repetir reset+lint (reproducibilidad).  
-5. Scripts SQL de verificación (read-only asserts).  
-6. `m08_stage2` + futuros `m08_stage3b` quality.  
+2. `supabase db reset` (001–035) — **sin** `--linked`.
+3. Lint.
+4. Repetir reset+lint (reproducibilidad).
+5. `scripts/sql/m08_validate_local_035.sql` vía `psql` local.
+6. `m08_stage2` + `m08_stage3_freeze` + `m08_stage3b` quality.
 7. Gradle: test / assemble / lint / jacoco **secuencial**.
+
+**Estado 3B:** pasos 2–5 PASS en local (ver reporte).
 
 ---
 

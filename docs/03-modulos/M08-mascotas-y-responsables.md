@@ -2,10 +2,20 @@
 
 **Producto:** LeoVer  
 **Módulo:** M08 — Mascotas y responsables  
-**Versión:** 1.0 (Etapa 1 — especificación)  
+**Versión:** 1.2 (Etapa 3B — migración 035 validada localmente)
 **Fecha:** 2026-07-19  
 **Fuente superior:** D01 Mapa de Módulos · Documento Maestro Integral  
-**Estado:** ESPECIFICACIÓN APROBABLE PARA ETAPA 1 (sin implementación)
+**Estado:**
+
+```text
+M08 ETAPA 3B — MIGRACIÓN 035 VALIDADA LOCALMENTE
+STAGING NO AUTORIZADO
+REQUIERE ETAPA 4 — REPOSITORIOS Y COMPATIBILIDAD LEGACY
+```
+
+SQL: `supabase/migrations/035_m08_pets_responsibilities_and_rls.sql`
+Detalle: `docs/02-arquitectura/M08-etapa-3b-migracion-035-local.md`
+UI / `SupabasePetRepository`: **sin cambios** hasta Etapa 4.
 
 ---
 

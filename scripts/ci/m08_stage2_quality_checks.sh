@@ -35,20 +35,20 @@ if ! grep -q 'PET_READ("pet.read")' "$ROOT/app/src/main/java/com/comunidapp/app/
   FAIL=1
 fi
 
-echo "== Migration numbering (max 034, no 035) =="
+echo "== Migration numbering (max 034 freeze-era or 035 after Etapa 3B; no 036) =="
 MIG="$ROOT/supabase/migrations"
 highest=$(ls "$MIG" | grep -E '^[0-9]{3}_' | sed 's/_.*//' | sort | tail -n1)
 echo "Highest migration: $highest"
-if [[ "$highest" != "034" ]]; then
-  echo "Expected highest migration 034, got $highest"
+if [[ "$highest" != "034" && "$highest" != "035" ]]; then
+  echo "Expected highest migration 034 or 035, got $highest"
   FAIL=1
 fi
-if ls "$MIG"/035_* >/dev/null 2>&1; then
-  echo "Migration 035 must not exist"
+if ls "$MIG"/036_* >/dev/null 2>&1; then
+  echo "Migration 036 must not exist"
   FAIL=1
 fi
 
-echo "== public.pets / migrations 001-034 untouched in this gate (presence only) =="
+echo "== public.pets / migrations presence (001–034 intact; 035 allowed post-3B) =="
 require_file "$ROOT/supabase/migrations/001_initial_schema.sql"
 if ! grep -q 'create table if not exists public.pets' "$ROOT/supabase/migrations/001_initial_schema.sql"; then
   echo "public.pets definition missing from 001"

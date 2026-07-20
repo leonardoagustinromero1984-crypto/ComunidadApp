@@ -49,28 +49,28 @@ do
 done
 echo "OK markers"
 
-echo "== Migration max 034 / no 035 file =="
+echo "== Freeze docs still authoritative (Etapa 3A); 035 may exist after Etapa 3B =="
 MIG="$ROOT/supabase/migrations"
 highest=$(ls "$MIG" | grep -E '^[0-9]{3}_' | sed 's/_.*//' | sort | tail -n1)
 echo "Highest migration: $highest"
-if [[ "$highest" != "034" ]]; then
-  echo "Expected highest 034, got $highest"
+# Etapa 3A freeze required max 034. Etapa 3B adds 035. Gate accepts 034 (freeze-only) or 035 (post-3B).
+if [[ "$highest" != "034" && "$highest" != "035" ]]; then
+  echo "Expected highest 034 or 035, got $highest"
   FAIL=1
 fi
-if ls "$MIG"/035_* >/dev/null 2>&1; then
-  echo "FORBIDDEN: supabase/migrations/035_* exists"
+if ls "$MIG"/036_* >/dev/null 2>&1; then
+  echo "FORBIDDEN: supabase/migrations/036_* exists"
   FAIL=1
 fi
-
-echo "== No new executable SQL under migrations (035 absent already) =="
-# Ensure this branch did not add any *.sql outside docs (migrations folder unchanged vs expected 34)
 count=$(ls "$MIG"/*.sql 2>/dev/null | wc -l | tr -d ' ')
-if [[ "$count" != "34" ]]; then
-  echo "Expected 34 migration sql files, got $count"
+echo "migration sql count=$count"
+if [[ "$count" != "34" && "$count" != "35" ]]; then
+  echo "Expected 34 (3A) or 35 (3B) migration sql files, got $count"
   FAIL=1
 else
-  echo "OK migration count=34"
+  echo "OK migration count=$count"
 fi
+# Document adjustment: 3A originally forbade 035 file; 3B supersedes that prohibition once freeze docs remain.
 
 echo "== App / UI / supabase config not required changed for 3A (presence of legacy UI) =="
 require_file "$ROOT/app/src/main/java/com/comunidapp/app/ui/screens/pets/MyPetsScreen.kt"

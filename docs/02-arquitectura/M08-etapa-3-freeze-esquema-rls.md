@@ -4,19 +4,16 @@
 **Rama:** `m08/etapa-3-freeze-esquema-rls`  
 **Fecha:** 2026-07-19  
 **Base Etapa 2:** `d9547ac`  
-**Tipo:** documental (sin SQL ejecutable, sin `035_*.sql`)
+**Tipo:** documental Etapa 3A; **SQL ejecutable creado en Etapa 3B** (`035_m08_pets_responsibilities_and_rls.sql`).
 
 ```text
 M08 ETAPA 3A — FREEZE DE ESQUEMA Y RLS APROBABLE
+M08 ETAPA 3B — MIGRACIÓN 035 VALIDADA LOCALMENTE (ver M08-etapa-3b-migracion-035-local.md)
+STAGING NO AUTORIZADO — REQUIERE ETAPA 4
 ```
 
----
-
-## 1. Alcance
-
-Congelar el diseño físico de la futura migración **035** (nombre tentativo `035_m08_pets_responsibilities_foundation.sql`): tablas, constraints, índices, triggers, backfill, RLS, grants, RPC, seeds M02, catálogos M07/M06, rollback y validación.
-
-**Prohibido en 3A:** crear archivo bajo `supabase/migrations/`, alterar `app/`, UI, o aplicar remoto.
+**Prohibido en 3A:** crear archivo bajo `supabase/migrations/`.
+**3B:** creó y validó localmente `supabase/migrations/035_m08_pets_responsibilities_and_rls.sql` — **sin** apply remoto.
 
 ---
 
