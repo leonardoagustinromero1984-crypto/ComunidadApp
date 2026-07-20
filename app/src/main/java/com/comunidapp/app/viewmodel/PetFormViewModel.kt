@@ -11,7 +11,6 @@ import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.data.model.VaccinationRecord
 import com.comunidapp.app.data.provider.DataProvider
-import com.comunidapp.app.data.remote.storage.StoragePaths
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PetRepository
@@ -35,7 +34,7 @@ data class PetFormUiState(
     val isDeleting: Boolean = false,
     val isEditMode: Boolean = false,
     val petId: String = "",
-    val ownerId: String = "",
+    val ownerId: String? = null,
     val name: String = "",
     val species: PetSpecies = PetSpecies.DOG,
     val sex: PetSex = PetSex.UNKNOWN,
@@ -88,7 +87,8 @@ class PetFormViewModel(
             val petIdToEdit = editPetId?.takeIf { it.isNotBlank() }
             if (petIdToEdit != null) {
                 val pet = petRepository.fetchPetById(petIdToEdit)
-                if (pet == null || pet.ownerId != authUser.id) {
+                val context = petRepository.getPetAccessContext(petIdToEdit).getOrNull()
+                if (pet == null || context == null || !context.canUpdate) {
                     _uiState.update {
                         it.copy(isLoading = false, errorMessage = "Mascota no encontrada")
                     }
@@ -191,10 +191,18 @@ class PetFormViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null, saveSuccess = false) }
 
+            val authUser = authRepository.getCurrentUser()
+            if (authUser == null) {
+                _uiState.update {
+                    it.copy(isSaving = false, errorMessage = "No hay sesión activa")
+                }
+                return@launch
+            }
+
             val vaccinations = buildFinalVaccinations(state)
             var pet = Pet(
                 id = state.petId,
-                ownerId = state.ownerId,
+                ownerId = state.ownerId?.takeIf { it.isNotBlank() },
                 name = state.name.trim(),
                 species = state.species,
                 sex = state.sex,
@@ -213,7 +221,9 @@ class PetFormViewModel(
                 lastVetVisit = state.lastVetVisit.takeIf { it.isNotBlank() },
                 healthNotes = state.healthNotes.trim().ifBlank { null },
                 reminders = loadedPet?.reminders.orEmpty(),
-                createdAt = loadedPet?.createdAt
+                createdAt = loadedPet?.createdAt,
+                avatarFileAssetId = loadedPet?.avatarFileAssetId,
+                status = loadedPet?.status ?: "ACTIVE"
             )
 
             val petIdResult = if (state.isEditMode) {
@@ -231,18 +241,31 @@ class PetFormViewModel(
                             uriString = uri.toString(),
                             request = FileUploadRequest(
                                 purpose = FileAssetPurpose.PET_AVATAR,
-                                owner = FileAssetOwner.User(state.ownerId),
+                                owner = FileAssetOwner.User(authUser.id),
                                 resourceRef = FileResourceRef(FileResourceType.PET, petId),
                                 originalFilename = "pet.jpg",
                                 declaredMimeType = "image/jpeg",
                                 sizeBytes = 1L,
                                 requestedVisibility = FileAssetVisibility.PUBLIC
                             ),
-                            actorUserId = state.ownerId
+                            actorUserId = authUser.id
                         )) {
                             is AppResult.Success -> {
-                                pet = pet.copy(photoUrl = upload.data.assetId)
-                                petRepository.updatePet(pet)
+                                val assetId = upload.data.assetId
+                                petRepository.setPetAvatarAsset(petId, assetId)
+                                    .onSuccess { updated ->
+                                        pet = updated
+                                    }
+                                    .onFailure { err ->
+                                        _uiState.update {
+                                            it.copy(
+                                                isSaving = false,
+                                                errorMessage = err.message
+                                                    ?: "No se pudo vincular el avatar"
+                                            )
+                                        }
+                                        return@launch
+                                    }
                             }
                             is AppResult.Failure -> {
                                 _uiState.update {

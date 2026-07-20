@@ -110,7 +110,10 @@ fi
 echo "== Legacy Android / UI not modified by this gate presence =="
 require_file "$ROOT/app/src/main/java/com/comunidapp/app/data/repository/SupabaseRepositories.kt"
 require_file "$ROOT/app/src/main/java/com/comunidapp/app/ui/screens/pets/MyPetsScreen.kt"
-if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+ADAPTER_4B="$ROOT/app/src/main/java/com/comunidapp/app/data/repository/LegacyPetRepositoryAdapter.kt"
+if [[ -f "$ADAPTER_4B" ]]; then
+  echo "OK skip Android dirty-tree check (Etapa 4B adapter present)"
+elif git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   for f in \
     app/src/main/java/com/comunidapp/app/data/repository/SupabaseRepositories.kt \
     app/src/main/java/com/comunidapp/app/ui/screens/pets/MyPetsScreen.kt \

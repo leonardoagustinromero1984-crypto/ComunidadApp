@@ -84,7 +84,12 @@ class UserPublicProfileViewModel(
                             kotlinx.coroutines.delay(4_000)
                         }
                     }.catch { emit(null) },
-                    petRepository.observePets(),
+                    // LeoVer M08 privacy: never list all pets; own profile uses accessible list.
+                    if (currentUser?.id == userId) {
+                        petRepository.observePetsForOwner(userId)
+                    } else {
+                        flowOf(emptyList())
+                    },
                     feedRepository.observeFeedPosts(),
                     combine(_actionMessage, _actionInProgress) { message, inProgress ->
                         message to inProgress
@@ -143,7 +148,8 @@ class UserPublicProfileViewModel(
         return PublicProfileUiState(
             isLoading = false,
             user = user,
-            pets = if (canView) pets.filter { it.ownerId == userId } else emptyList(),
+            // Foreign pets stay hidden (no public profile pets RPC). Own profile already scoped.
+            pets = if (canView && viewerId == userId) pets else emptyList(),
             posts = if (canView) posts.filter { it.authorId == userId } else emptyList(),
             relation = relation,
             connectionId = connection?.id,

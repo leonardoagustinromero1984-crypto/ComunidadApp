@@ -87,7 +87,7 @@ data class UserRow(
 @Serializable
 data class PetRow(
     val id: String,
-    @SerialName("owner_id") val ownerId: String,
+    @SerialName("owner_id") val ownerId: String? = null,
     val name: String,
     @SerialName("photo_url") val photoUrl: String? = null,
     val species: String,
@@ -112,7 +112,12 @@ data class PetRow(
     @SerialName("location_text") val locationText: String? = null,
     val reminders: List<PetReminderDto> = emptyList(),
     @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null
+    @SerialName("updated_at") val updatedAt: String? = null,
+    val status: String = "ACTIVE",
+    @SerialName("deceased_at") val deceasedAt: String? = null,
+    @SerialName("archived_at") val archivedAt: String? = null,
+    @SerialName("microchip_normalized") val microchipNormalized: String? = null,
+    @SerialName("avatar_file_asset_id") val avatarFileAssetId: String? = null
 )
 
 @Serializable
@@ -227,7 +232,7 @@ fun User.toUserRow(now: Instant = Instant.now()): UserRow = UserRow(
 
 fun parsePet(row: PetRow): Pet = Pet(
     id = row.id,
-    ownerId = row.ownerId,
+    ownerId = row.ownerId?.takeIf { it.isNotBlank() },
     name = row.name,
     photoUrl = row.photoUrl,
     species = enumValueOrDefault(row.species, PetSpecies.OTHER),
@@ -252,12 +257,17 @@ fun parsePet(row: PetRow): Pet = Pet(
     locationText = row.locationText,
     reminders = row.reminders.map { PetReminder(it.id, it.title, it.date, it.type) },
     createdAt = row.createdAt.toEpochMillis(),
-    updatedAt = row.updatedAt.toEpochMillis()
+    updatedAt = row.updatedAt.toEpochMillis(),
+    status = row.status.ifBlank { "ACTIVE" },
+    deceasedAt = row.deceasedAt.toEpochMillis(),
+    archivedAt = row.archivedAt.toEpochMillis(),
+    avatarFileAssetId = row.avatarFileAssetId,
+    microchipNormalized = row.microchipNormalized
 )
 
 fun Pet.toPetRow(now: Instant = Instant.now()): PetRow = PetRow(
     id = id,
-    ownerId = ownerId,
+    ownerId = ownerId?.takeIf { it.isNotBlank() },
     name = name,
     photoUrl = photoUrl,
     species = species.name,
@@ -282,7 +292,12 @@ fun Pet.toPetRow(now: Instant = Instant.now()): PetRow = PetRow(
     locationText = locationText,
     reminders = reminders.map { PetReminderDto(it.id, it.title, it.date, it.type) },
     createdAt = (createdAt?.let { Instant.ofEpochMilli(it) } ?: now).toString(),
-    updatedAt = now.toString()
+    updatedAt = now.toString(),
+    status = status,
+    deceasedAt = deceasedAt?.let { Instant.ofEpochMilli(it).toString() },
+    archivedAt = archivedAt?.let { Instant.ofEpochMilli(it).toString() },
+    microchipNormalized = microchipNormalized,
+    avatarFileAssetId = avatarFileAssetId
 )
 
 fun parseFeedPost(row: PostRow): FeedPost = FeedPost(

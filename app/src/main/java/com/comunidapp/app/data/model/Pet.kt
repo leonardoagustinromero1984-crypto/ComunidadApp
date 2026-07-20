@@ -15,7 +15,8 @@ data class PetReminder(
 
 data class Pet(
     val id: String,
-    val ownerId: String,
+    /** Null when principal is organization-only; never empty string. */
+    val ownerId: String? = null,
     val name: String,
     val photoUrl: String? = null,
     val species: PetSpecies,
@@ -40,5 +41,10 @@ data class Pet(
     val locationText: String? = null,
     val reminders: List<PetReminder> = emptyList(),
     val createdAt: Long? = null,
-    val updatedAt: Long? = null
+    val updatedAt: Long? = null,
+    val status: String = "ACTIVE",
+    val deceasedAt: Long? = null,
+    val archivedAt: Long? = null,
+    val avatarFileAssetId: String? = null,
+    val microchipNormalized: String? = null
 )

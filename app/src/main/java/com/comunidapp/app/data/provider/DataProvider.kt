@@ -34,10 +34,19 @@ import com.comunidapp.app.data.repository.LostFoundRepository
 import com.comunidapp.app.data.repository.MockAdoptionRepository
 import com.comunidapp.app.data.repository.MockFeedRepository
 import com.comunidapp.app.data.repository.MockLostFoundRepository
+import com.comunidapp.app.data.repository.LegacyPetRepositoryAdapter
 import com.comunidapp.app.data.repository.MockPetRepository
 import com.comunidapp.app.data.repository.MockShelterRepository
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
+import com.comunidapp.app.data.repository.SupabasePetAuthorizationRepository
+import com.comunidapp.app.data.repository.SupabasePetDomainRepository
+import com.comunidapp.app.data.repository.SupabasePetResponsibilityRepository
+import com.comunidapp.app.data.repository.SupabasePetTransferRepository
+import com.comunidapp.app.domain.pets.PetAuthorizationRepository
+import com.comunidapp.app.domain.pets.PetDomainRepository
+import com.comunidapp.app.domain.pets.PetResponsibilityRepository
+import com.comunidapp.app.domain.pets.PetTransferRepository
 import com.comunidapp.app.data.repository.AdministrativeAuditRepository
 import com.comunidapp.app.data.repository.FileAccessRepository
 import com.comunidapp.app.data.repository.FileAssetRepository
@@ -132,7 +141,6 @@ import com.comunidapp.app.data.repository.SupabaseLostFoundRepository
 import com.comunidapp.app.data.repository.SupabaseNotificationInboxRepository
 import com.comunidapp.app.data.repository.SupabaseNotificationInstallationRepository
 import com.comunidapp.app.data.repository.SupabaseNotificationPreferenceRepository
-import com.comunidapp.app.data.repository.SupabasePetRepository
 import com.comunidapp.app.data.repository.SupabaseShelterRepository
 import com.comunidapp.app.data.repository.SupabaseUserRepository
 import com.comunidapp.app.data.repository.UserRepository
@@ -147,7 +155,24 @@ object DataProvider {
     }
 
     val petRepository: PetRepository by lazy {
-        if (useSupabase) SupabasePetRepository() else MockPetRepository()
+        if (useSupabase) LegacyPetRepositoryAdapter() else MockPetRepository()
+    }
+
+    /** LeoVer M08 domain repos (optional; wired when useSupabase). */
+    val petDomainRepository: PetDomainRepository? by lazy {
+        if (useSupabase) SupabasePetDomainRepository() else null
+    }
+
+    val petResponsibilityRepository: PetResponsibilityRepository? by lazy {
+        if (useSupabase) SupabasePetResponsibilityRepository() else null
+    }
+
+    val petAuthorizationRepository: PetAuthorizationRepository? by lazy {
+        if (useSupabase) SupabasePetAuthorizationRepository() else null
+    }
+
+    val petTransferRepository: PetTransferRepository? by lazy {
+        if (useSupabase) SupabasePetTransferRepository() else null
     }
 
     val feedRepository: FeedRepository by lazy {

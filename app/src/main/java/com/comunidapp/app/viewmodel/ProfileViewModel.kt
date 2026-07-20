@@ -102,7 +102,7 @@ class ProfileViewModel(
                     ProfileUiState(
                         isLoading = false,
                         user = user,
-                        pets = core.pets.filter { it.ownerId == authUser.id },
+                        pets = core.pets,
                         posts = core.posts.filter { it.authorId == authUser.id },
                         friends = friends,
                         badges = core.badges.ifEmpty { user.badges },

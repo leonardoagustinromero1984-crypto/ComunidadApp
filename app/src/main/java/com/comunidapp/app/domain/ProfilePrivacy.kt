@@ -65,7 +65,8 @@ object ProfilePrivacy {
     ): List<Pet> {
         if (viewerId == null) return emptyList()
         return pets.filter { pet ->
-            val owner = usersById[pet.ownerId] ?: return@filter false
+            val ownerKey = pet.ownerId ?: return@filter false
+            val owner = usersById[ownerKey] ?: return@filter false
             canViewUserContent(owner, viewerId, friendIds)
         }
     }

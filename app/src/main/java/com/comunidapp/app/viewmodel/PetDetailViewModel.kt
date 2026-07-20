@@ -7,6 +7,7 @@ import com.comunidapp.app.data.model.ClinicalRecordType
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.PetClinicalRecord
 import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.data.remote.supabase.m08.PetAccessContext
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PetRepository
@@ -31,6 +32,7 @@ class PetDetailViewModel(
     private val petId: String = savedStateHandle["petId"] ?: ""
 
     private val currentUserId = MutableStateFlow<String?>(null)
+    private val accessContext = MutableStateFlow<PetAccessContext?>(null)
 
     val pet: StateFlow<Pet?> = if (petId.isBlank()) {
         flowOf(null)
@@ -45,8 +47,9 @@ class PetDetailViewModel(
             platformRepository.observeClinicalRecords(petId)
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    val canManage: StateFlow<Boolean> = combine(pet, currentUserId) { pet, userId ->
-        pet != null && userId != null && pet.ownerId == userId
+    /** Capability-based manage gate via PetAccessContext (not legacy owner equality). */
+    val canManage: StateFlow<Boolean> = combine(accessContext, currentUserId) { ctx, userId ->
+        userId != null && ctx != null && (ctx.canUpdate || ctx.canArchive)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     private val _deleteSuccess = MutableStateFlow(false)
@@ -64,6 +67,11 @@ class PetDetailViewModel(
     init {
         viewModelScope.launch {
             currentUserId.value = authRepository.getCurrentUser()?.id
+            if (petId.isNotBlank()) {
+                petRepository.getPetAccessContext(petId)
+                    .onSuccess { accessContext.value = it }
+                    .onFailure { /* keep canManage false */ }
+            }
         }
     }
 

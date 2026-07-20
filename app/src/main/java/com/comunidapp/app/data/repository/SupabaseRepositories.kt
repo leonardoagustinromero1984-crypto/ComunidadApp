@@ -6,13 +6,11 @@ import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.LostFoundPost
 import com.comunidapp.app.data.model.LostFoundStatus
 import com.comunidapp.app.data.model.LostFoundType
-import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.remote.supabase.AdoptionSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.LostFoundSupabaseDataSource
-import com.comunidapp.app.data.remote.supabase.PetSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.SocialSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.PostSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.UserSupabaseDataSource
@@ -82,42 +80,14 @@ class SupabaseUserRepository(
     ) = dataSource.updatePrivacySettings(userId, settings)
 }
 
+/**
+ * Legacy direct-table pet repository (pre-M08). Kept for reference only.
+ * DataProvider wires [LegacyPetRepositoryAdapter] when useSupabase.
+ */
+@Deprecated("Use LegacyPetRepositoryAdapter (M08 Etapa 4B)")
 class SupabasePetRepository(
-    private val dataSource: PetSupabaseDataSource = PetSupabaseDataSource()
-) : PetRepository {
-
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
-    private val _pets = MutableStateFlow<List<Pet>>(emptyList())
-    override fun observePets(): StateFlow<List<Pet>> = _pets.asStateFlow()
-
-    init {
-        scope.launch {
-            dataSource.observePets().collect { pets ->
-                _pets.value = pets
-            }
-        }
-    }
-
-    override fun observePetsForOwner(ownerId: String): Flow<List<Pet>> =
-        dataSource.observePetsForOwner(ownerId)
-
-    override fun observePet(petId: String): Flow<Pet?> = dataSource.observePet(petId)
-
-    override fun getPetsByOwner(ownerId: String): List<Pet> =
-        _pets.value.filter { it.ownerId == ownerId }
-
-    override fun getPetById(petId: String): Pet? =
-        _pets.value.find { it.id == petId }
-
-    override suspend fun fetchPetById(petId: String): Pet? =
-        dataSource.getPet(petId) ?: getPetById(petId)
-
-    override suspend fun createPet(pet: Pet) = dataSource.createPet(pet)
-
-    override suspend fun updatePet(pet: Pet) = dataSource.updatePet(pet)
-
-    override suspend fun deletePet(petId: String) = dataSource.deletePet(petId)
-}
+    private val adapter: LegacyPetRepositoryAdapter = LegacyPetRepositoryAdapter()
+) : PetRepository by adapter
 
 class SupabaseFeedRepository(
     private val dataSource: PostSupabaseDataSource = PostSupabaseDataSource(),

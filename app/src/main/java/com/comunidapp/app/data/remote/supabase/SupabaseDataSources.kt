@@ -63,41 +63,29 @@ class PetSupabaseDataSource {
     fun observePetsForOwner(ownerId: String): Flow<List<Pet>> =
         pollingFlow { fetchPetsByOwner(ownerId) }
 
-    suspend fun createPet(pet: Pet): Result<String> {
-        return try {
-            val row = if (pet.id.isBlank()) {
-                pet.toPetRow().copy(id = java.util.UUID.randomUUID().toString())
-            } else {
-                pet.toPetRow()
-            }
-            supabase.from(SupabaseTables.PETS).insert(row)
-            Result.success(row.id)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    /** @deprecated M08 Etapa 4B — use LegacyPetRepositoryAdapter / m08_* RPCs. */
+    suspend fun createPet(pet: Pet): Result<String> =
+        Result.failure(
+            UnsupportedOperationException(
+                "PET_DIRECT_INSERT_FORBIDDEN: use m08_create_pet_with_principal via LegacyPetRepositoryAdapter"
+            )
+        )
 
-    suspend fun updatePet(pet: Pet): Result<Unit> {
-        return try {
-            supabase.from(SupabaseTables.PETS).update(pet.toPetRow()) {
-                filter { eq("id", pet.id) }
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    /** @deprecated M08 Etapa 4B — use m08_update_pet_profile / m08_update_pet_health. */
+    suspend fun updatePet(pet: Pet): Result<Unit> =
+        Result.failure(
+            UnsupportedOperationException(
+                "PET_DIRECT_UPDATE_FORBIDDEN: use m08_update_pet_profile / m08_update_pet_health"
+            )
+        )
 
-    suspend fun deletePet(petId: String): Result<Unit> {
-        return try {
-            supabase.from(SupabaseTables.PETS).delete {
-                filter { eq("id", petId) }
-            }
-            Result.success(Unit)
-        } catch (e: Exception) {
-            Result.failure(e)
-        }
-    }
+    /** @deprecated M08 Etapa 4B — use m08_archive_pet. */
+    suspend fun deletePet(petId: String): Result<Unit> =
+        Result.failure(
+            UnsupportedOperationException(
+                "PET_DIRECT_DELETE_FORBIDDEN: use m08_archive_pet via LegacyPetRepositoryAdapter"
+            )
+        )
 }
 
 class PostSupabaseDataSource {

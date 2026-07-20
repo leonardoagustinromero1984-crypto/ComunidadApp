@@ -1,22 +1,22 @@
-# M08 â€” Mascotas y responsables
+# M08 — Mascotas y responsables
 
 **Producto:** LeoVer
-**MÃ³dulo:** M08 â€” Mascotas y responsables
-**VersiÃ³n:** 1.3 (Etapa 3C â€” forward-fix 036 validado localmente)
+**Módulo:** M08 — Mascotas y responsables
+**Versión:** 1.4 (Etapa 4B — repositorios y adaptador legacy listos localmente)
 **Fecha:** 2026-07-20
-**Fuente superior:** D01 Mapa de MÃ³dulos Â· Documento Maestro Integral
+**Fuente superior:** D01 Mapa de Módulos · Documento Maestro Integral
 **Estado:**
 
 ```text
-M08 ETAPA 3C â€” FORWARD-FIX 036 VALIDADO LOCALMENTE
+M08 ETAPA 4B — REPOSITORIOS Y ADAPTADOR LEGACY LISTOS LOCALMENTE
 STAGING NO AUTORIZADO
-REQUIERE ETAPA 4B â€” REPOSITORIOS Y ADAPTADOR LEGACY
+REQUIERE ETAPA 4C — INTEGRACIÓN LOCAL Y SMOKE APK
 ```
 
 SQL: `035_m08_pets_responsibilities_and_rls.sql` + `036_m08_pet_repository_compatibility_rpcs.sql`
-Detalle 3C: `docs/02-arquitectura/M08-etapa-3c-forward-fix-036-local.md`
-UI / `SupabasePetRepository`: **sin cambios** hasta Etapa 4B.
-Perfil pÃºblico: mascotas ajenas ocultas (sin SELECT-all / sin vitrina pÃºblica en 036).
+Detalle 4B: `docs/02-arquitectura/M08-etapa-4b-repositorios-adaptador-legacy.md`
+Android: `LegacyPetRepositoryAdapter` + package `data/remote/supabase/m08/` (DataProvider).
+Perfil público: mascotas ajenas ocultas (sin SELECT-all / sin vitrina pública).
 
 ---
 

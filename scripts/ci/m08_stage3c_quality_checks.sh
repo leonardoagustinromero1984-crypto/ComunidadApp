@@ -152,7 +152,10 @@ else
 fi
 
 echo "== Android / UI / repositories not modified =="
-if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+ADAPTER_4B="$ROOT/app/src/main/java/com/comunidapp/app/data/repository/LegacyPetRepositoryAdapter.kt"
+if [[ -f "$ADAPTER_4B" ]]; then
+  echo "OK skip Android dirty-tree check (Etapa 4B adapter present)"
+elif git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   for f in \
     app/src/main/java/com/comunidapp/app/data/repository/SupabaseRepositories.kt \
     app/src/main/java/com/comunidapp/app/data/remote/supabase/SupabaseMappers.kt \
