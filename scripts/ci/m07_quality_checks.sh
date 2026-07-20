@@ -65,7 +65,7 @@ if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   base="${M07_BASE_COMMIT:-a02acb15bc78be6b9c405d563f2de2030da70abd}"
   if git -C "$ROOT" cat-file -e "$base^{commit}" 2>/dev/null; then
     # 020–032 may receive minimal apply fixes during M07 local validation (citext, BOM, DROP FUNCTION).
-    changed=$(git -C "$ROOT" diff --name-only "$base" -- supabase/migrations/ | grep -E 'migrations/0(0[1-9]|1[0-9])_' || true)
+    changed=$(git -C "$ROOT" diff --ignore-cr-at-eol --name-only "$base"..HEAD -- supabase/migrations/ | grep -E 'migrations/0(0[1-9]|1[0-9])_' || true)
     if [[ -n "$changed" ]]; then
       echo "Prior migrations 001–019 edited:"
       echo "$changed"
@@ -178,13 +178,13 @@ fi
 
 echo "== Writers / PUBLIC EXECUTE + RLS retention =="
 text=$(tr '[:upper:]' '[:lower:]' < "$sql031f")
-echo "$text" | grep -q 'revoke all on function' || { echo 'missing revoke all on function'; FAIL=1; }
-echo "$text" | grep -q 'enable row level security' || { echo 'missing RLS'; FAIL=1; }
+grep -Fq -- 'revoke all on function' <<< "$text" || { echo 'missing revoke all on function'; FAIL=1; }
+grep -Fq -- 'enable row level security' <<< "$text" || { echo 'missing RLS'; FAIL=1; }
 for t in observability_retention_policies observability_retention_runs observability_retention_run_items; do
-  echo "$text" | grep -q "$t" || { echo "missing table $t"; FAIL=1; }
+  grep -Fq -- "$t" <<< "$text" || { echo "missing table $t"; FAIL=1; }
 done
 for b in marketing_events firebase_analytics crashlytics opentelemetry sentry_events; do
-  if echo "$text" | grep -q "$b"; then echo "forbidden $b"; FAIL=1; fi
+  if grep -Fq -- "$b" <<< "$text"; then echo "forbidden $b"; FAIL=1; fi
 done
 # No PUBLIC EXECUTE grants on retention RPCs
 if grep -Ei 'grant execute on function public\.m07_(preview|execute)_retention_run[^;]*\bto public\b' "$sql031f"; then
@@ -210,7 +210,7 @@ if [[ "$begins" -lt 1 || "$commits" -lt 1 ]]; then
   echo "031 missing begin/commit"
   FAIL=1
 fi
-if printf '%s\n' "$lc" | grep -q 'analytics_events'; then
+if grep -Fq -- 'analytics_events' <<< "$lc"; then
   echo "analytics table forbidden"
   FAIL=1
 fi
