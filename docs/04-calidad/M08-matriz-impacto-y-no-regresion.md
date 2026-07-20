@@ -94,11 +94,13 @@ Registrar impactos esperados de M08 sobre superficies existentes y pruebas futur
 
 | Antes de… | Condición |
 |---|---|
-| Etapa 2 | Etapa 1 merged o aprobada en rama |
-| Etapa 3 | Contratos + permisos revisados; número migración freeze |
+| Etapa 2 | Etapa 1 en rama aprobada (`b3d4710`) |
+| Etapa 3 | Contratos Etapa 2 en verde + quality `m08_stage2_quality_checks.sh` PASS; número migración freeze |
 | Etapa 4 | 035 aplicada local ×2 + lint |
 | Etapa 5 | Repos compat verdes |
 | Etapa 7 / cierre M08 | Esta matriz 100% checkeada + staging PASS documentado |
+
+**Etapa 2 (contratos):** no modifica UI ni `public.pets`; añade `domain/pets` + tests puros. Ver `docs/02-arquitectura/M08-etapa-2-contratos-y-permisos.md`.
 
 ---
 

@@ -42,7 +42,23 @@ enum class PermissionCode(val code: String) {
     EXPORT_AUDIT_DATA("export.audit_data"),
     ALERT_MANAGE("alert.manage"),
     RETENTION_MANAGE("retention.manage"),
-    HEALTH_CHECK_EXECUTE("health.check.execute");
+    HEALTH_CHECK_EXECUTE("health.check.execute"),
+
+    /** M08 — catálogo pet.* (seed SQL Etapa 3; capacidades de dominio en PetCapability). */
+    PET_READ("pet.read"),
+    PET_CREATE("pet.create"),
+    PET_UPDATE("pet.update"),
+    PET_MANAGE_RESPONSIBILITIES("pet.manage_responsibilities"),
+    PET_MANAGE_AUTHORIZATIONS("pet.manage_authorizations"),
+    PET_INITIATE_TRANSFER("pet.initiate_transfer"),
+    PET_ACCEPT_TRANSFER("pet.accept_transfer"),
+    PET_CANCEL_TRANSFER("pet.cancel_transfer"),
+    PET_MARK_DECEASED("pet.mark_deceased"),
+    PET_ARCHIVE("pet.archive"),
+    PET_RESTORE("pet.restore"),
+    PET_MANAGE_MEDIA("pet.manage_media"),
+    PET_VIEW_HISTORY("pet.view_history"),
+    PET_MANAGE_HEALTH("pet.manage_health");
 
     companion object {
         fun fromCode(raw: String): PermissionCode? =
@@ -108,11 +124,26 @@ object RolePermissionMatrix {
         PermissionCode.EXPORT_AUDIT_DATA,
         PermissionCode.ALERT_MANAGE,
         PermissionCode.RETENTION_MANAGE,
-        PermissionCode.HEALTH_CHECK_EXECUTE
+        PermissionCode.HEALTH_CHECK_EXECUTE,
+        // M08 staff support (deny-by-default para USER; no AccountType)
+        PermissionCode.PET_READ,
+        PermissionCode.PET_VIEW_HISTORY
     )
 
     private val SUPERADMIN: Set<PermissionCode> = ADMIN + setOf(
-        PermissionCode.ORGANIZATIONS_REVOKE_VERIFICATION
+        PermissionCode.ORGANIZATIONS_REVOKE_VERIFICATION,
+        PermissionCode.PET_CREATE,
+        PermissionCode.PET_UPDATE,
+        PermissionCode.PET_MANAGE_RESPONSIBILITIES,
+        PermissionCode.PET_MANAGE_AUTHORIZATIONS,
+        PermissionCode.PET_INITIATE_TRANSFER,
+        PermissionCode.PET_ACCEPT_TRANSFER,
+        PermissionCode.PET_CANCEL_TRANSFER,
+        PermissionCode.PET_MARK_DECEASED,
+        PermissionCode.PET_ARCHIVE,
+        PermissionCode.PET_RESTORE,
+        PermissionCode.PET_MANAGE_MEDIA,
+        PermissionCode.PET_MANAGE_HEALTH
     )
 
     fun permissionsFor(roles: Set<PlatformRoleCode>): Set<PermissionCode> {

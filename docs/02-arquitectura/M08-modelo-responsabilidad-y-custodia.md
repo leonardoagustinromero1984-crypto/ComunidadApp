@@ -205,12 +205,16 @@ Si custody ORGANIZATION sin user principal “dueño” físico: REQUIERE DECISI
 
 ---
 
-## 9. Decisiones pendientes (explícitas)
+## 9. Decisiones pendientes (Etapa 1 → resueltas en Etapa 2)
 
-1. ¿`owner_id` NOT NULL se mantiene siempre o admite null bajo custody org puro?  
-2. ¿Invites de co-responsable reutilizan patrón `organization_invitations` o tabla propia?  
-3. ¿Capacidades de autorizado: catálogo cerrado v1 cuántas?  
-4. ¿Bridge `adoptions.pet_id` / `lost_found_posts.pet_id` en M08 o se difiere a M12/M14?
+| # | Tema | Decisión Etapa 2 |
+|---|---|---|
+| 1 | `owner_id` bajo custody org puro | Principal canónico Persona\|Organización; `owner_id` es proyección legacy y **podrá ser nullable** en migración futura; invariante de principal único vive en el grafo. Sin DDL aún. |
+| 2 | Invitaciones co-responsable | Reutilizar **patrón conceptual M03** (no sistema de tokens paralelo). Adaptador/persistencia en etapas posteriores. |
+| 3 | Capabilities | Catálogo explícito `PetCapability` / `PermissionCode.PET_*`; rol aporta defaults; autorización explícita no supera política ni otorga ownership. |
+| 4 | Bridge adopciones/perdidos | `pet_id` **opcional** en transición; no obligatorio mientras existan registros legacy sin mascota formal. Sin cambios M12/M14 ahora. |
+
+Detalle de contratos: `docs/02-arquitectura/M08-etapa-2-contratos-y-permisos.md`.
 
 ---
 

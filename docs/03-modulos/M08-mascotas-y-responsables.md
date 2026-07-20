@@ -181,17 +181,18 @@ Sin secretos ni PII completa en metadata (allowlist).
 
 ---
 
-## 15. Permisos (propuesta)
+## 15. Permisos (catálogo Etapa 2)
 
-Códigos tentativos (confirmar en Etapa 2, seed vía migración futura):
+Códigos tipados (`PetCapability` / `PermissionCode`):
 
-- `pet.view` / `pet.create` / `pet.update` / `pet.archive`
-- `pet.transfer_request` / `pet.transfer_accept`
+- `pet.read` / `pet.create` / `pet.update`
 - `pet.manage_responsibilities` / `pet.manage_authorizations`
-- `pet.mark_deceased`
-- `pet.manage_org` (ámbito org)
+- `pet.initiate_transfer` / `pet.accept_transfer` / `pet.cancel_transfer`
+- `pet.mark_deceased` / `pet.archive` / `pet.restore`
+- `pet.manage_media` / `pet.view_history` / `pet.manage_health`
 
 No reutilizar `AccountType` ni `active_modules` como autorización.
+Seed SQL / `has_permission` remoto: **Etapa 3**.
 
 ---
 

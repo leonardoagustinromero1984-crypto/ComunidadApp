@@ -89,6 +89,11 @@ Android espeja esto en `Pet` + CRUD. No hay tabla de responsibilities.
 | D13 | Fotos | M05 canónico; `photo_url` compat lectura |
 | D14 | M07/M06 | Catalogar y notificar en etapas 2–5 |
 | D15 | Migración | **Futura 035** (o número siguiente al freeze); **no creada en Etapa 1** |
+| D16 | `owner_id` org pura | Proyección legacy nullable en schema futuro (Etapa 2 formaliza; Etapa 3 DDL) |
+| D17 | Invitaciones | Patrón conceptual M03; sin token system paralelo (Etapa 2) |
+| D18 | Capabilities | Catálogo `pet.*` tipado; roles ≠ permisos directos (Etapa 2) |
+| D19 | Bridge adopt/LF | `pet_id` opcional futuro; no obligatorio en M08 inicial (Etapa 2) |
+
 
 ---
 
@@ -109,8 +114,8 @@ Android espeja esto en `Pet` + CRUD. No hay tabla de responsibilities.
 
 | Etapa | Contenido | Estado |
 |---|---|---|
-| **1** | Auditoría y diseño (estos docs) | **EN CURSO / cierre documental** |
-| **2** | Contratos dominio Kotlin + permisos + catálogo eventos | No iniciada |
+| **1** | Auditoría y diseño (estos docs) | **CERRADA documentalmente** (`b3d4710`) |
+| **2** | Contratos dominio Kotlin + permisos + catálogo eventos | **Cerrada en contratos/permisos** — ver `M08-etapa-2-contratos-y-permisos.md` |
 | **3** | Esquema/migración + RLS + RPC | No iniciada · **sin 035 aquí** |
 | **4** | Repos + compatibilidad legacy (`owner_id` sync) | No iniciada |
 | **5** | UI responsables y transferencias | No iniciada |
