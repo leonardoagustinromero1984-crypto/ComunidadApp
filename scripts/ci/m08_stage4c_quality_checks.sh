@@ -32,7 +32,7 @@ require_file "$ROOT/scripts/sql/m08_validate_local_035.sql"
 require_file "$ROOT/scripts/sql/m08_validate_local_036.sql"
 require_file "$ROOT/scripts/sql/m08_prepare_local_smoke_fixtures.sql"
 require_file "$ROOT/app/src/main/java/com/comunidapp/app/data/repository/LegacyPetRepositoryAdapter.kt"
-require_file "$ROOT/app/src/debug/res/xml/network_security_config.xml"
+require_file "$ROOT/app/src/local/res/xml/network_security_config.xml"
 
 echo "== Migration max 036 / no 037 =="
 highest=$(ls "$MIG" | grep -E '^[0-9]{3}_' | sed 's/_.*//' | sort | tail -n1)
@@ -92,10 +92,10 @@ if grep -q '10.0.2.2' "$MAIN_NSC"; then
 fi
 echo "OK release cleartext OFF"
 
-echo "== Debug cleartext limited to local hosts =="
-DBG_NSC="$ROOT/app/src/debug/res/xml/network_security_config.xml"
-grep -q '10.0.2.2' "$DBG_NSC" || { echo "MISSING 10.0.2.2 in debug NSC"; FAIL=1; }
-grep -q 'cleartextTrafficPermitted="true"' "$DBG_NSC" || { echo "MISSING debug cleartext allow"; FAIL=1; }
+echo "== Local flavor cleartext limited to local hosts =="
+LOCAL_NSC="$ROOT/app/src/local/res/xml/network_security_config.xml"
+grep -q '10.0.2.2' "$LOCAL_NSC" || { echo "MISSING 10.0.2.2 in local NSC"; FAIL=1; }
+grep -q 'cleartextTrafficPermitted="true"' "$LOCAL_NSC" || { echo "MISSING local cleartext allow"; FAIL=1; }
 
 echo "== No service_role in Android main/debug sources =="
 # Same policy as stage4b: allow deny-list/sanitization catalogs and explanatory comments only.

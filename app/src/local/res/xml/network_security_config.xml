@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  LeoVer M08 Etapa 4C — solo debug.
+  LeoVer M08 — solo flavor local.
   Cleartext permitido únicamente hacia host de Supabase local (emulador/dispositivo).
-  Release conserva cleartext OFF (src/main).
+  Staging/production usan src/main (cleartext OFF + HTTPS).
 -->
 <network-security-config>
     <base-config cleartextTrafficPermitted="false" />

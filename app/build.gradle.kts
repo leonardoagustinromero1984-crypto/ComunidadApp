@@ -14,9 +14,40 @@ if (localPropertiesFile.exists()) {
     localPropertiesFile.inputStream().use { localProperties.load(it) }
 }
 
-val supabaseUrl = localProperties.getProperty("SUPABASE_URL").orEmpty().trim()
-val supabaseAnonKey = localProperties.getProperty("SUPABASE_ANON_KEY").orEmpty().trim()
-val supabaseEnabled = supabaseUrl.isNotBlank() && supabaseAnonKey.isNotBlank()
+fun prop(key: String): String =
+    localProperties.getProperty(key).orEmpty().trim()
+
+fun escapeBc(value: String): String =
+    value.replace("\\", "\\\\").replace("\"", "\\\"")
+
+fun firstNonBlank(vararg keys: String): String =
+    keys.map { prop(it) }.firstOrNull { it.isNotBlank() }.orEmpty()
+
+// LOCAL (dev / emulador) — SUPABASE_URL + SUPABASE_ANON_KEY
+val localUrl = prop("SUPABASE_URL")
+val localKey = prop("SUPABASE_ANON_KEY")
+
+// STAGING (remoto LeoVer) — never service_role; prefer publishable, fallback anon legacy
+val stagingUrl = prop("SUPABASE_STAGING_URL")
+val stagingKey = firstNonBlank(
+    "SUPABASE_STAGING_PUBLISHABLE_KEY",
+    "SUPABASE_STAGING_ANON_KEY"
+)
+
+// PRODUCTION (futuro) — placeholders only until production exists
+val productionUrl = prop("SUPABASE_PRODUCTION_URL")
+val productionKey = firstNonBlank(
+    "SUPABASE_PRODUCTION_PUBLISHABLE_KEY",
+    "SUPABASE_PRODUCTION_ANON_KEY"
+)
+
+fun isForbiddenLocalHost(url: String): Boolean {
+    val u = url.lowercase()
+    return u.contains("localhost") ||
+        u.contains("127.0.0.1") ||
+        u.contains("10.0.2.2") ||
+        u.startsWith("http://")
+}
 
 android {
     namespace = "com.comunidapp.app"
@@ -32,11 +63,43 @@ android {
         targetSdk = 36
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-        buildConfigField("Boolean", "SUPABASE_ENABLED", supabaseEnabled.toString())
-        buildConfigField("String", "SUPABASE_URL", "\"${supabaseUrl.replace("\"", "\\\"")}\"")
-        buildConfigField("String", "SUPABASE_ANON_KEY", "\"${supabaseAnonKey.replace("\"", "\\\"")}\"")
+    }
+
+    flavorDimensions += "environment"
+    productFlavors {
+        create("local") {
+            dimension = "environment"
+            applicationIdSuffix = ".local"
+            versionNameSuffix = "-local"
+            resValue("string", "app_name", "LeoVer Local")
+            val enabled = localUrl.isNotBlank() && localKey.isNotBlank()
+            buildConfigField("Boolean", "SUPABASE_ENABLED", enabled.toString())
+            buildConfigField("String", "SUPABASE_URL", "\"${escapeBc(localUrl)}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(localKey)}\"")
+            buildConfigField("String", "LEOVER_ENV", "\"local\"")
+        }
+        create("staging") {
+            dimension = "environment"
+            applicationIdSuffix = ".staging"
+            versionNameSuffix = "-staging"
+            resValue("string", "app_name", "LeoVer Staging")
+            val enabled = stagingUrl.isNotBlank() && stagingKey.isNotBlank()
+            buildConfigField("Boolean", "SUPABASE_ENABLED", enabled.toString())
+            buildConfigField("String", "SUPABASE_URL", "\"${escapeBc(stagingUrl)}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(stagingKey)}\"")
+            buildConfigField("String", "LEOVER_ENV", "\"staging\"")
+        }
+        create("production") {
+            dimension = "environment"
+            // No suffix — future production id
+            resValue("string", "app_name", "LeoVer")
+            val enabled = productionUrl.isNotBlank() && productionKey.isNotBlank()
+            buildConfigField("Boolean", "SUPABASE_ENABLED", enabled.toString())
+            buildConfigField("String", "SUPABASE_URL", "\"${escapeBc(productionUrl)}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(productionKey)}\"")
+            buildConfigField("String", "LEOVER_ENV", "\"production\"")
+        }
     }
 
     buildTypes {
@@ -56,6 +119,55 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+        resValues = true
+    }
+}
+
+// Solo construir staging/production cuando la tarea lo pide (evita que
+// assembleDebug/testDebugUnitTest fallen sin credenciales staging).
+androidComponents {
+    beforeVariants { variant ->
+        val envFlavor = variant.productFlavors
+            .firstOrNull { it.first == "environment" }
+            ?.second
+            ?: return@beforeVariants
+        val tasks = gradle.startParameter.taskNames.joinToString(" ").lowercase()
+        val enableStaging = tasks.contains("staging") ||
+            project.hasProperty("enableStagingBuild")
+        val enableProduction = tasks.contains("production") ||
+            project.hasProperty("enableProductionBuild")
+        when (envFlavor) {
+            "staging" -> variant.enable = enableStaging
+            "production" -> variant.enable = enableProduction
+        }
+    }
+}
+
+// Staging assemble must use HTTPS remote — never local hosts / cleartext.
+tasks.configureEach {
+    val n = name
+    if (n.startsWith("assembleStaging") || n.startsWith("bundleStaging") ||
+        n.startsWith("packageStaging") || n.startsWith("installStaging")
+    ) {
+        doFirst {
+            if (stagingUrl.isBlank() || stagingKey.isBlank()) {
+                throw GradleException(
+                    "Staging credentials missing. Set SUPABASE_STAGING_URL and " +
+                        "SUPABASE_STAGING_PUBLISHABLE_KEY (or SUPABASE_STAGING_ANON_KEY) in local.properties."
+                )
+            }
+            if (!stagingUrl.startsWith("https://")) {
+                throw GradleException("SUPABASE_STAGING_URL must use HTTPS.")
+            }
+            if (isForbiddenLocalHost(stagingUrl)) {
+                throw GradleException(
+                    "SUPABASE_STAGING_URL must not use localhost / 127.0.0.1 / 10.0.2.2 / http."
+                )
+            }
+            if (stagingKey.contains("service_role", ignoreCase = true)) {
+                throw GradleException("service_role is forbidden in Android staging credentials.")
+            }
+        }
     }
 }
 
@@ -66,7 +178,7 @@ jacoco {
 tasks.register<JacocoReport>("jacocoTestReport") {
     group = "verification"
     description = "Generates JaCoCo coverage report for unit tests (informative baseline)."
-    dependsOn("testDebugUnitTest")
+    dependsOn("testLocalDebugUnitTest")
     reports {
         xml.required.set(true)
         html.required.set(true)
@@ -80,15 +192,16 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         "**/*Test*.*",
         "**/com/android/**"
     )
-    val debugTree = fileTree(layout.buildDirectory.dir("intermediates/javac/debug")) {
+    val debugTree = fileTree(layout.buildDirectory.dir("intermediates/javac/localDebug")) {
         exclude(fileFilter)
     }
-    val kotlinTreeLegacy = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/debug")) {
+    val kotlinTreeLegacy = fileTree(layout.buildDirectory.dir("tmp/kotlin-classes/localDebug")) {
         exclude(fileFilter)
     }
-    // AGP built-in Kotlin compiler output (current toolchain)
     val kotlinTreeAgp = fileTree(
-        layout.buildDirectory.dir("intermediates/built_in_kotlinc/debug/compileDebugKotlin/classes")
+        layout.buildDirectory.dir(
+            "intermediates/built_in_kotlinc/localDebug/compileLocalDebugKotlin/classes"
+        )
     ) {
         exclude(fileFilter)
     }
@@ -98,7 +211,7 @@ tasks.register<JacocoReport>("jacocoTestReport") {
         fileTree(layout.buildDirectory) {
             include(
                 "**/*.exec",
-                "**/jacoco/testDebugUnitTest.exec",
+                "**/jacoco/testLocalDebugUnitTest.exec",
                 "**/unit_test_code_coverage/**/*.exec",
                 "**/coverage_exec/**/*.ec"
             )
@@ -141,14 +254,19 @@ dependencies {
     debugImplementation(libs.androidx.compose.ui.tooling)
 }
 
-val copyDebugApk = tasks.register<Copy>("copyDebugApk") {
-    from(layout.buildDirectory.file("outputs/apk/debug/app-debug.apk"))
+val copyLocalDebugApk = tasks.register<Copy>("copyLocalDebugApk") {
+    from(layout.buildDirectory.file("outputs/apk/local/debug/app-local-debug.apk"))
     into(rootProject.layout.projectDirectory.dir("apk"))
-    rename { "Leover-debug.apk" }
+    rename { "LeoVer-local-debug.apk" }
+}
+
+val copyStagingDebugApk = tasks.register<Copy>("copyStagingDebugApk") {
+    from(layout.buildDirectory.file("outputs/apk/staging/debug/app-staging-debug.apk"))
+    into(rootProject.layout.projectDirectory.dir("apk"))
+    rename { "LeoVer-M08-Staging-debug.apk" }
 }
 
 afterEvaluate {
-    tasks.named("assembleDebug") {
-        finalizedBy(copyDebugApk)
-    }
+    tasks.findByName("assembleLocalDebug")?.finalizedBy(copyLocalDebugApk)
+    tasks.findByName("assembleStagingDebug")?.finalizedBy(copyStagingDebugApk)
 }

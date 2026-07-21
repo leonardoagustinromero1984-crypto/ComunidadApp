@@ -23,7 +23,7 @@ class AppConfigProviderTest {
         val config = AppConfigProvider.get()
         assertNotNull(config.appVersionName)
         assertTrue(config.appVersionCode >= 0)
-        assertEquals(AppEnvironment.DEBUG, config.environment)
+        assertEquals(AppEnvironment.LOCAL, config.environment)
         assertTrue(config.isDebug)
     }
 

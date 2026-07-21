@@ -46,7 +46,12 @@ object AppConfigProvider {
 
     private fun resolve(overrides: FeatureFlagOverrides): AppConfig {
         val isDebug = BuildConfig.DEBUG
-        val environment = if (isDebug) AppEnvironment.DEBUG else AppEnvironment.RELEASE
+        val environment = when (BuildConfig.LEOVER_ENV.lowercase()) {
+            "local" -> AppEnvironment.LOCAL
+            "staging" -> AppEnvironment.STAGING
+            "production" -> AppEnvironment.PRODUCTION
+            else -> if (isDebug) AppEnvironment.LOCAL else AppEnvironment.PRODUCTION
+        }
         val url = BuildConfig.SUPABASE_URL.trim().ifBlank { null }
         val hasKey = BuildConfig.SUPABASE_ANON_KEY.trim().isNotBlank()
         val credentialsOk = !url.isNullOrBlank() && hasKey && BuildConfig.SUPABASE_ENABLED
@@ -54,6 +59,11 @@ object AppConfigProvider {
 
         val missingMessage = when {
             credentialsOk -> null
+            environment == AppEnvironment.STAGING ->
+                "Supabase staging no configurado: completá SUPABASE_STAGING_URL y " +
+                    "SUPABASE_STAGING_PUBLISHABLE_KEY (o ANON) en local.properties."
+            environment == AppEnvironment.PRODUCTION ->
+                "Supabase production no configurado: modo mock."
             url.isNullOrBlank() && !hasKey ->
                 "Supabase no configurado: modo mock. Completá SUPABASE_URL y SUPABASE_ANON_KEY en local.properties."
             else ->

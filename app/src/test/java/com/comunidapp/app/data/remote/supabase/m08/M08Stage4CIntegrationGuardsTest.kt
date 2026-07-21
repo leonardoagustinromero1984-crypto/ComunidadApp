@@ -77,13 +77,13 @@ class M08Stage4CIntegrationGuardsTest {
     }
 
     @Test
-    fun debugCleartextOnlyInDebugSourceSet() {
+    fun cleartextOnlyInLocalFlavorSourceSet() {
         val main = File(repoRoot(), "app/src/main/res/xml/network_security_config.xml").readText()
-        val debug = File(repoRoot(), "app/src/debug/res/xml/network_security_config.xml").readText()
+        val local = File(repoRoot(), "app/src/local/res/xml/network_security_config.xml").readText()
         assertTrue(main.contains("cleartextTrafficPermitted=\"false\""))
         assertFalse(main.contains("10.0.2.2"))
-        assertTrue(debug.contains("10.0.2.2"))
-        assertTrue(debug.contains("cleartextTrafficPermitted=\"true\""))
+        assertTrue(local.contains("10.0.2.2"))
+        assertTrue(local.contains("cleartextTrafficPermitted=\"true\""))
     }
 
     @Test

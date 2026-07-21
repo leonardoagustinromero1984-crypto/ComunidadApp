@@ -1,18 +1,18 @@
 package com.comunidapp.app.core.config
 
 /**
- * Ambiente de ejecución liviano (sin product flavors complejos).
- * Staging se incorporará cuando exista infraestructura real (ADR-0005).
+ * Ambiente de ejecución LeoVer (product flavors: local / staging / production).
  */
 enum class AppEnvironment {
-    DEBUG,
-    RELEASE
+    LOCAL,
+    STAGING,
+    PRODUCTION
 }
 
 data class LoggingConfig(
     val enabled: Boolean,
     val verbose: Boolean,
-    val minTag: String = "Leover"
+    val minTag: String = "LeoVer"
 )
 
 /** Snapshot de flags activas expuesto por [AppConfig] (sin I/O). */
@@ -40,9 +40,4 @@ data class AppConfig(
     val missingConfigMessage: String?
 ) {
     val isMockMode: Boolean get() = !useRemoteBackend
-
-    companion object {
-        const val ENV_STAGING_FUTURE =
-            "Staging se añadirá con buildType/flavor cuando exista proyecto Supabase de staging."
-    }
 }

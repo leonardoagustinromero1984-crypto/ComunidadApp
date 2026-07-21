@@ -14,9 +14,9 @@ sdk.dir=C\:\\Users\\TU_USUARIO\\AppData\\Local\\Android\\Sdk
 # URL del proyecto (ejemplo ficticio; se expone solo el host en AppConfig)
 SUPABASE_URL=https://TU_PROJECT_REF.supabase.co
 
-# Clave anon/public (ejemplo ficticio; no uses service_role aquí)
+# Clave anon/public (placeholder ficticio; no uses credenciales privilegiadas aquí)
 # Nunca loguear esta clave. No va a AppConfig.
-SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.EJEMPLO_ANON_KEY_FICTICIA
+SUPABASE_ANON_KEY=<LOCAL_ANON_KEY>
 
 # ---------------------------------------------------------------------------
 # M08 Etapa 4C — Supabase LOCAL (solo debug / smoke APK)
@@ -29,8 +29,21 @@ SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.EJEMPLO_ANON_KEY_FICTICIA
 # SUPABASE_ANON_KEY=<anon_from_supabase_status_env>
 # ---------------------------------------------------------------------------
 
-# Ambientes: hoy solo debug/release (buildTypes). Staging se añadirá cuando
-# exista un proyecto Supabase de staging (sin inventar flavors ahora).
+# ---------------------------------------------------------------------------
+# M08 Etapa 4D — STAGING (placeholders ficticios)
+# Solo HTTPS remoto. Nunca localhost, 127.0.0.1 ni 10.0.2.2.
+# Usar una publishable key; el fallback ANON es solo compatibilidad legacy.
+# ---------------------------------------------------------------------------
+SUPABASE_STAGING_URL=https://<STAGING_PROJECT_REF>.supabase.co
+SUPABASE_STAGING_PUBLISHABLE_KEY=<STAGING_PUBLISHABLE_KEY>
+# SUPABASE_STAGING_ANON_KEY=<STAGING_ANON_KEY>
+
+# ---------------------------------------------------------------------------
+# PRODUCTION futura (placeholders ficticios; no habilita despliegue)
+# ---------------------------------------------------------------------------
+SUPABASE_PRODUCTION_URL=https://<PRODUCTION_PROJECT_REF>.supabase.co
+SUPABASE_PRODUCTION_PUBLISHABLE_KEY=<PRODUCTION_PUBLISHABLE_KEY>
+# SUPABASE_PRODUCTION_ANON_KEY=<PRODUCTION_ANON_KEY>
 
 # Secrets de Edge Functions (FCM push) NO van en este archivo.
 # Ver: supabase/.env.example y docs/leover-push-fcm-setup.md
