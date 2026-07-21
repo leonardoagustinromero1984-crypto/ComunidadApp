@@ -70,7 +70,11 @@ import com.comunidapp.app.ui.screens.lostfound.LostFoundScreen
 import com.comunidapp.app.ui.screens.pets.AddPetScreen
 import com.comunidapp.app.ui.screens.pets.EditPetScreen
 import com.comunidapp.app.ui.screens.pets.MyPetsScreen
+import com.comunidapp.app.ui.screens.pets.PetAuthorizationsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
+import com.comunidapp.app.ui.screens.pets.PetResponsibilitiesScreen
+import com.comunidapp.app.ui.screens.pets.PetTransferDetailScreen
+import com.comunidapp.app.ui.screens.pets.PetTransfersScreen
 import com.comunidapp.app.ui.screens.profile.EditProfileScreen
 import com.comunidapp.app.ui.screens.profile.FriendRequestsScreen
 import com.comunidapp.app.ui.screens.profile.NotificationPreferencesScreen
@@ -112,7 +116,10 @@ import com.comunidapp.app.ui.screens.publish.PublishScreen
 import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.ui.screens.shelters.ShelterDetailScreen
 import com.comunidapp.app.ui.screens.sumate.SumateScreen
+import com.comunidapp.app.viewmodel.PetAuthorizationsViewModel
 import com.comunidapp.app.viewmodel.PetFormViewModel
+import com.comunidapp.app.viewmodel.PetResponsibilitiesViewModel
+import com.comunidapp.app.viewmodel.PetTransfersViewModel
 import com.comunidapp.app.viewmodel.SessionState
 import com.comunidapp.app.viewmodel.SessionViewModel
 
@@ -669,7 +676,95 @@ private fun MainScreen(accountType: AccountType) {
                 PetDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onNavigateToEdit = { id -> navController.navigate(NavRoutes.editPet(id)) },
-                    onDeleteSuccess = { navController.popBackStack() }
+                    onDeleteSuccess = { navController.popBackStack() },
+                    onNavigateToResponsibilities = { id ->
+                        navController.navigate(NavRoutes.petResponsibilities(id))
+                    },
+                    onNavigateToAuthorizations = { id ->
+                        navController.navigate(NavRoutes.petAuthorizations(id))
+                    },
+                    onNavigateToTransfers = { id ->
+                        navController.navigate(NavRoutes.petTransfers(id))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.PET_RESPONSIBILITIES,
+                arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
+            ) { backStackEntry ->
+                val petId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                PetResponsibilitiesScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "pet_responsibilities_$petId",
+                        factory = PetResponsibilitiesViewModel.factory(petId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.PET_AUTHORIZATIONS,
+                arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
+            ) { backStackEntry ->
+                val petId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                PetAuthorizationsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "pet_authorizations_$petId",
+                        factory = PetAuthorizationsViewModel.factory(petId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.PET_TRANSFERS,
+                arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
+            ) { backStackEntry ->
+                val petId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                PetTransfersScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenTransferDetail = { transferId ->
+                        navController.navigate(NavRoutes.petTransferDetail(petId, transferId))
+                    },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "pet_transfers_$petId",
+                        factory = PetTransfersViewModel.factory(petId)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.PET_TRANSFER_DETAIL,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType },
+                    navArgument(NavRoutes.ARG_TRANSFER_ID) { type = NavType.StringType }
+                )
+            ) { backStackEntry ->
+                val petId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                val transferId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_TRANSFER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                PetTransferDetailScreen(
+                    transferId = transferId,
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "pet_transfer_detail_$petId",
+                        factory = PetTransfersViewModel.factory(petId)
+                    )
                 )
             }
             composable(NavRoutes.PUBLISH_GENERAL) {

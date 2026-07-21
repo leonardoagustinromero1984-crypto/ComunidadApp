@@ -48,10 +48,14 @@ fun PetDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (String) -> Unit = {},
     onDeleteSuccess: () -> Unit = {},
+    onNavigateToResponsibilities: (String) -> Unit = {},
+    onNavigateToAuthorizations: (String) -> Unit = {},
+    onNavigateToTransfers: (String) -> Unit = {},
     viewModel: PetDetailViewModel = viewModel()
 ) {
     val pet by viewModel.pet.collectAsState()
     val canManage by viewModel.canManage.collectAsState()
+    val canViewGovernance by viewModel.canViewGovernance.collectAsState()
     val clinicalRecords by viewModel.clinicalRecords.collectAsState()
     val clinicalTitle by viewModel.clinicalTitle.collectAsState()
     val clinicalNote by viewModel.clinicalNote.collectAsState()
@@ -135,6 +139,14 @@ fun PetDetailScreen(
                 Text(text = data.description, style = MaterialTheme.typography.bodyLarge)
                 Spacer(modifier = Modifier.height(16.dp))
                 PetHealthSection(pet = data)
+                if (canViewGovernance) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    PetGovernanceSection(
+                        onOpenResponsibilities = { onNavigateToResponsibilities(data.id) },
+                        onOpenAuthorizations = { onNavigateToAuthorizations(data.id) },
+                        onOpenTransfers = { onNavigateToTransfers(data.id) }
+                    )
+                }
                 Spacer(modifier = Modifier.height(16.dp))
                 ClinicalRecordsSection(
                     records = clinicalRecords,
@@ -175,6 +187,36 @@ fun PetDetailScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+/** M08 Etapa 5 — accesos a responsables, autorizaciones y transferencias. */
+@Composable
+private fun PetGovernanceSection(
+    onOpenResponsibilities: () -> Unit,
+    onOpenAuthorizations: () -> Unit,
+    onOpenTransfers: () -> Unit
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = "Responsables y permisos",
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            TextButton(onClick = onOpenResponsibilities) {
+                Text("Responsables y custodias")
+            }
+            TextButton(onClick = onOpenAuthorizations) {
+                Text("Personas autorizadas")
+            }
+            TextButton(onClick = onOpenTransfers) {
+                Text("Transferencias de responsabilidad")
             }
         }
     }

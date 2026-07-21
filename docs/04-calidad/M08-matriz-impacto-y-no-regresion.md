@@ -1,10 +1,10 @@
 # M08 — Matriz de impacto y no regresión
 
-**Producto:** LeoVer  
-**Fecha:** 2026-07-19  
-**Etapa:** 1 (documental)  
-**Base de código:** `main` @ `2d5d0a8`  
-**Migración 035:** no creada
+**Producto:** LeoVer
+**Fecha:** 2026-07-19 (actualizada 2026-07-21 — Etapa 5)
+**Etapa:** 5 (UI responsables y transferencias)
+**Base de código:** rama `m08/etapa-5-ui-responsables-transferencias`
+**Migraciones:** 035/036 aplicadas en staging; **sin 037**; producción no modificada
 
 ---
 
@@ -66,6 +66,25 @@ Registrar impactos esperados de M08 sobre superficies existentes y pruebas futur
 - [ ] Event keys pet.* en catálogo (si introducidos).
 - [ ] Deep link PET no roto.
 - [ ] Metadata allowlist respetada.
+
+### Etapa 5 — impacto UI (2026-07-21)
+
+Superficies tocadas por Etapa 5 y su no regresión:
+
+| Superficie | Cambio Etapa 5 | No regresión |
+|---|---|---|
+| `NavRoutes` / `ComunidappNavGraph` | 4 rutas nuevas (responsabilidades/autorizaciones/transferencias/detalle) | Rutas y deep links preexistentes sin modificar; guardas estáticas en `M08Stage5StaticGuardsTest` |
+| `PetDetailScreen` / `PetDetailViewModel` | Sección "Responsables y permisos" gateada por `canViewGovernance` (contexto de acceso) | Resto de la pantalla intacto; sin autorización por `ownerId` |
+| DTO `PetStatusHistoryM08Row` | `SerialName` alineados a columnas 035 (`reason`/`changed_by`/`changed_at`) | Lectura de historial deja de fallar por columnas inexistentes; sin cambio de esquema |
+| `PetTransferRepository.cancel` | Parámetro `reason` opcional con default | Firmas existentes compatibles (default = comportamiento previo) |
+| `M08PetErrorMapper` | Códigos nuevos, específicos antes que genéricos | Mensajes existentes conservados |
+| Migraciones / backend | **Sin cambios** (001–036 intactas, sin 037) | `m08_stage5_quality_checks.sh` verifica inventario y git diff |
+
+Checklist adicional previo al cierre de Etapa 5 en calidad:
+
+- [x] Suite unit tests en verde ≥ 632 (nuevas suites Etapa 5 incluidas) — **689 PASS** (2026-07-21).
+- [x] `scripts/ci/m08_stage5_quality_checks.sh` PASS — registrado 2026-07-21.
+- [ ] Smoke integral M08 en staging (incluye re-verificar M08-SMOKE-001) — **PENDIENTE**.
 
 ---
 

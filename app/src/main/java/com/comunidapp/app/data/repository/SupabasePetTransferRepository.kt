@@ -66,9 +66,15 @@ class SupabasePetTransferRepository(
         }
     }
 
-    override suspend fun cancel(transferId: PetTransferId, atEpochMs: Long): Result<Unit> {
+    override suspend fun cancel(
+        transferId: PetTransferId,
+        atEpochMs: Long,
+        reason: String?
+    ): Result<Unit> {
         return try {
-            remote.cancelTransfer(CancelPetTransferParams(transferId.value))
+            remote.cancelTransfer(
+                CancelPetTransferParams(transferId.value, reason = reason?.takeIf { it.isNotBlank() })
+            )
             Result.success(Unit)
         } catch (e: Exception) {
             petFailure(e.message ?: "PET_TRANSFER_CANCEL_FAILED")

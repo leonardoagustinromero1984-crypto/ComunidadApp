@@ -2,18 +2,26 @@
 
 **Producto:** LeoVer
 **Módulo:** M08 — Mascotas y responsables
-**Versión:** 1.7 (Etapa 4D — backend staging + APK distribuible; smoke manual pendiente)
+**Versión:** 1.8 (Etapa 5 — UI de responsables, autorizaciones y transferencias)
 **Fecha:** 2026-07-21
 **Fuente superior:** D01 Mapa de Módulos · Documento Maestro Integral
 **Estado:**
 
 ```text
-M08 ETAPA 4D — BACKEND STAGING Y APK DISTRIBUIBLE LISTOS
-SMOKE APK STAGING MANUAL — PENDIENTE
+M08 ETAPA 5 — UI RESPONSABLES Y TRANSFERENCIAS LISTA
+SMOKE INTEGRAL M08 — PENDIENTE
+DEFECTOS ETAPA 4D — BACKLOG
 PRODUCCIÓN NO MODIFICADA
 ```
 
 Marcadores de calidad de etapas anteriores (conservados):
+
+```text
+M08 ETAPA 4D — BACKEND STAGING Y APK DISTRIBUIBLE LISTOS
+SMOKE MANUAL — PARCIAL CON DEFECTOS REGISTRADOS
+DEFECTOS FUNCIONALES — BACKLOG
+M08 ETAPA 5 — AUTORIZADA
+```
 ```text
 M08 ETAPA 4B — REPOSITORIOS Y ADAPTADOR LEGACY LISTOS LOCALMENTE
 STAGING NO AUTORIZADO
@@ -28,6 +36,9 @@ SQL: `035_m08_pets_responsibilities_and_rls.sql` + `036_m08_pet_repository_compa
 Detalle 4B: `docs/02-arquitectura/M08-etapa-4b-repositorios-adaptador-legacy.md`
 Detalle 4C: `docs/02-arquitectura/M08-etapa-4c-integracion-local-smoke-apk.md`
 Detalle 4D: `docs/02-arquitectura/M08-etapa-4d-staging-apk-distribuible.md`
+Detalle 5: `docs/02-arquitectura/M08-etapa-5-ui-responsables-transferencias.md`
+Backlog defectos 4D: `docs/04-calidad/M08-backlog-defectos-smoke-staging.md`
+Reporte Etapa 5: `docs/04-calidad/M08-reporte-validacion-etapa-5.md`
 Checklist smoke: `docs/04-calidad/M08-checklist-smoke-apk-local.md`
 Checklist smoke staging: `docs/04-calidad/M08-checklist-smoke-apk-staging.md`
 Plan despliegue staging: `docs/04-calidad/M08-plan-despliegue-staging-035-036.md`
@@ -256,6 +267,17 @@ DiseÃ±o fÃ­sico y RLS congelados en:
 - `docs/04-calidad/M08-plan-validacion-migracion-035.md`
 
 **MigraciÃ³n 035 aÃºn no creada.**
+
+### Etapa 5 (UI responsables, autorizaciones y transferencias)
+
+- [x] Rutas `PET_RESPONSIBILITIES` / `PET_AUTHORIZATIONS` / `PET_TRANSFERS` / `PET_TRANSFER_DETAIL` con codificación URL.
+- [x] Entrada "Responsables y permisos" en PetDetail condicionada por `PetAccessContext.canRead` (no por `ownerId`).
+- [x] ViewModels tipados (`PetResponsibilitiesViewModel`, `PetAuthorizationsViewModel`, `PetTransfersViewModel`) con estados Loading/Content/Empty/Error, gating por capacidades de backend y protección anti doble envío.
+- [x] Pantallas Compose Material3: principal PERSON/ORGANIZATION, co-responsables, custodios temporales, otorgar/revocar autorizaciones (allowlist sin transfer/deceased/archive/manage_responsibilities), transferencias pendientes/historial con aceptar/rechazar/cancelar y estados terminales no editables.
+- [x] Búsqueda de personas controlada vía `UserRepository.searchPublicProfiles` (sin listar todos los usuarios) y destino organización por ID.
+- [x] Correcciones Android-only: `SerialName` de `pet_status_history` (`reason`/`changed_by`/`changed_at`), motivo de cancelación de transferencia, códigos nuevos en `M08PetErrorMapper`.
+- [x] Tests unitarios de ViewModels + guardas estáticas; script `scripts/ci/m08_stage5_quality_checks.sh`.
+- [ ] Smoke integral M08 en staging (pendiente; incluye verificación de M08-SMOKE-001).
 
 ---
 

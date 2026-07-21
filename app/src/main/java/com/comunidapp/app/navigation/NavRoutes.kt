@@ -29,6 +29,12 @@ object NavRoutes {
     const val SHELTER_DETAIL = "shelter_detail/{shelterId}"
     const val PET_DETAIL = "pet_detail/{petId}"
 
+    // M08 Etapa 5 — gobierno de responsables, autorizaciones y transferencias
+    const val PET_RESPONSIBILITIES = "pet_responsibilities/{petId}"
+    const val PET_AUTHORIZATIONS = "pet_authorizations/{petId}"
+    const val PET_TRANSFERS = "pet_transfers/{petId}"
+    const val PET_TRANSFER_DETAIL = "pet_transfer_detail/{petId}/{transferId}"
+
     const val EDIT_PROFILE = "edit_profile"
     const val SEARCH_FRIENDS = "search_friends"
     const val USER_PROFILE = "user_profile/{userId}"
@@ -102,6 +108,7 @@ object NavRoutes {
     const val ARG_ADOPTION_ID = "adoptionId"
     const val ARG_SHELTER_ID = "shelterId"
     const val ARG_PET_ID = "petId"
+    const val ARG_TRANSFER_ID = "transferId"
     const val ARG_EMAIL = "email"
     const val ARG_USER_ID = "userId"
     const val ARG_SERVICE_ID = "serviceId"
@@ -113,6 +120,15 @@ object NavRoutes {
     fun serviceDetail(serviceId: String) =
         "service_detail/${java.net.URLEncoder.encode(serviceId, Charsets.UTF_8.name())}"
     fun petDetail(petId: String) = "pet_detail/$petId"
+    fun petResponsibilities(petId: String) =
+        "pet_responsibilities/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
+    fun petAuthorizations(petId: String) =
+        "pet_authorizations/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
+    fun petTransfers(petId: String) =
+        "pet_transfers/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
+    fun petTransferDetail(petId: String, transferId: String) =
+        "pet_transfer_detail/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}/" +
+            java.net.URLEncoder.encode(transferId, Charsets.UTF_8.name())
     fun emailVerification(email: String) = "email_verification/$email"
     fun editPet(petId: String) = "edit_pet/$petId"
     fun userProfile(userId: String) =

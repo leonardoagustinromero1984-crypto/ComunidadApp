@@ -52,6 +52,14 @@ class PetDetailViewModel(
         userId != null && ctx != null && (ctx.canUpdate || ctx.canArchive)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
+    /**
+     * M08 Etapa 5: entrada "Responsables y permisos" solo con lectura confirmada
+     * por el backend (canRead del PetAccessContext), nunca por ownerId.
+     */
+    val canViewGovernance: StateFlow<Boolean> = combine(accessContext, currentUserId) { ctx, userId ->
+        userId != null && ctx != null && ctx.canRead
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     private val _deleteSuccess = MutableStateFlow(false)
     val deleteSuccess: StateFlow<Boolean> = _deleteSuccess.asStateFlow()
 

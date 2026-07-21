@@ -53,7 +53,8 @@ interface PetTransferRepository {
     suspend fun getPending(petId: PetId): PetTransfer?
     suspend fun accept(transferId: PetTransferId, atEpochMs: Long): Result<Unit>
     suspend fun reject(transferId: PetTransferId, atEpochMs: Long): Result<Unit>
-    suspend fun cancel(transferId: PetTransferId, atEpochMs: Long): Result<Unit>
+    /** [reason] opcional (Etapa 5): se propaga a `p_reason` del RPC de cancelación. */
+    suspend fun cancel(transferId: PetTransferId, atEpochMs: Long, reason: String? = null): Result<Unit>
     suspend fun expire(transferId: PetTransferId, atEpochMs: Long): Result<Unit>
     suspend fun listHistory(petId: PetId): List<PetTransfer>
 }

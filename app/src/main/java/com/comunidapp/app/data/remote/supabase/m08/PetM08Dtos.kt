@@ -301,8 +301,10 @@ data class PetStatusHistoryM08Row(
     @SerialName("pet_id") val petId: String,
     @SerialName("previous_status") val previousStatus: String? = null,
     @SerialName("new_status") val newStatus: String,
-    @SerialName("reason_code") val reasonCode: String? = null,
-    @SerialName("actor_user_id") val actorUserId: String? = null,
-    @SerialName("created_at") val createdAt: String? = null,
+    // Columns in public.pet_status_history are reason / changed_by / changed_at
+    // (035). Property names keep the domain-facing vocabulary.
+    @SerialName("reason") val reasonCode: String? = null,
+    @SerialName("changed_by") val actorUserId: String? = null,
+    @SerialName("changed_at") val createdAt: String? = null,
     @SerialName("correlation_id") val correlationId: String? = null
 )

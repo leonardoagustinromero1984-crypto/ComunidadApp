@@ -267,7 +267,8 @@ class SupabasePetM08RemoteDataSource : PetM08RemoteDataSource {
         return supabase.from("pet_status_history")
             .select {
                 filter { eq("pet_id", petId) }
-                order("created_at", Order.DESCENDING)
+                // pet_status_history has changed_at (no created_at column).
+                order("changed_at", Order.DESCENDING)
             }
             .decodeList()
     }
