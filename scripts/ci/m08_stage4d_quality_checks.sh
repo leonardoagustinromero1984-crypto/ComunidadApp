@@ -101,25 +101,36 @@ DOCS=(
   "$ROOT/docs/04-calidad/M08-plan-despliegue-staging-035-036.md"
   "$ROOT/docs/04-calidad/M08-checklist-smoke-apk-staging.md"
 )
-for doc in "${DOCS[@]}"; do
+REPORT="$ROOT/docs/04-calidad/M08-reporte-validacion-staging-post-apply-4d.md"
+require_file "$REPORT"
+for doc in "${DOCS[@]}" "$REPORT"; do
   require_file "$doc"
-  grep -qF 'M08 ETAPA 4D — PREPARACIÓN STAGING LISTA' "$doc" \
-    || fail "preparation marker missing in $doc"
-  grep -qF 'APPLY 035/036 — PENDIENTE DE CONFIRMACIÓN MANUAL' "$doc" \
-    || fail "apply marker missing in $doc"
-  grep -qF 'APK DISTRIBUIBLE — PENDIENTE DEL APPLY' "$doc" \
-    || fail "APK marker missing in $doc"
+  # Post-apply markers (current) OR prep markers (historical retained in same docs).
+  if grep -qF 'M08 ETAPA 4D — BACKEND STAGING Y APK DISTRIBUIBLE LISTOS' "$doc"; then
+    grep -qF 'SMOKE APK STAGING MANUAL — PENDIENTE' "$doc" \
+      || fail "smoke pending marker missing in $doc"
+    grep -qF 'PRODUCCIÓN NO MODIFICADA' "$doc" \
+      || fail "production untouched marker missing in $doc"
+  else
+    grep -qF 'M08 ETAPA 4D — PREPARACIÓN STAGING LISTA' "$doc" \
+      || fail "4D status marker missing in $doc"
+    grep -qF 'APPLY 035/036 — PENDIENTE DE CONFIRMACIÓN MANUAL' "$doc" \
+      || fail "apply marker missing in $doc"
+    grep -qF 'APK DISTRIBUIBLE — PENDIENTE DEL APPLY' "$doc" \
+      || fail "APK marker missing in $doc"
+  fi
 done
 
-echo "== Documented remote commands remain pending =="
+echo "== Documented remote push must stay non-executable =="
 # Scan docs only, not this script, to avoid command-token false positives.
+# Historical db push lines must remain marked NO ejecutar / NO re-ejecutar.
 for doc in "${DOCS[@]}"; do
   bad_push=$(awk '
     BEGIN { IGNORECASE = 1 }
-    /db push/ && $0 !~ /NO ejecutar/ && previous !~ /NO ejecutar/ { print }
+    /db push/ && $0 !~ /NO ejecutar/ && $0 !~ /NO re-ejecutar/ && previous !~ /NO ejecutar/ && previous !~ /NO re-ejecutar/ { print }
     { previous = $0 }
   ' "$doc")
-  [[ -z "$bad_push" ]] || fail "db push not marked NO ejecutar in $doc"
+  [[ -z "$bad_push" ]] || fail "db push not marked NO ejecutar/re-ejecutar in $doc"
 done
 
 echo "== Backup path must stay outside the repo =="

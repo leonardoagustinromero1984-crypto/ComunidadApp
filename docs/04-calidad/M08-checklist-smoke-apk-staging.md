@@ -3,53 +3,77 @@
 **Producto:** LeoVer
 
 ```text
+M08 ETAPA 4D — BACKEND STAGING Y APK DISTRIBUIBLE LISTOS
+SMOKE APK STAGING MANUAL — PENDIENTE
+PRODUCCIÓN NO MODIFICADA
+```
+
+Histórico (pre-apply):
+```text
 M08 ETAPA 4D — PREPARACIÓN STAGING LISTA
 APPLY 035/036 — PENDIENTE DE CONFIRMACIÓN MANUAL
 APK DISTRIBUIBLE — PENDIENTE DEL APPLY
 ```
 
-## Bloqueo previo
+## Entrada (automática — completada)
 
-Este checklist no autoriza cambios remotos. **DO NOT RUN YET** los pasos
-manuales de backup, historial, dry-run o apply:
+| # | Criterio | Estado | Observación |
+|---|---|---|---|
+| E1 | Apply 035/036 confirmado | PASS | Humano + historial 001–036 |
+| E2 | Matrices 035/036 `runner_summary` PASS | PASS | FAIL=0 en ambas |
+| E3 | Staging HTTPS / sin hosts locales | PASS | `local.properties` gitignored |
+| E4 | Solo publishable/anon; sin service_role | PASS | Validación Gradle + quality |
+| E5 | `testStagingDebugUnitTest` / lint / assemble | PASS | 627 tests, 0 failures |
+| E6 | APK `apk/LeoVer-M08-Staging-debug.apk` | PASS | Ignorado por Git |
 
-```powershell
-# NO ejecutar todavía — ver plan M08-plan-despliegue-staging-035-036.md
-# backup fuera del repo → $HOME\LeoVerBackups\<fecha>_pre_m08_035_036\
-# NO ejecutar: supabase migration list --linked
-# NO ejecutar: supabase db push --linked --dry-run
-# NO ejecutar: supabase db push --linked
-```
+Pruebas mutantes/JWT de comportamiento: **NO EJECUTADO** en matriz (diferidas a este smoke).
 
-## Entrada al smoke
+## Smoke en cualquier celular (solo internet)
 
-- [ ] Apply 035/036 confirmado y completado por una persona autorizada.
-- [ ] Validaciones 035 y 036 con `runner_summary PASS`.
-- [ ] Pruebas mutantes/JWT autorizadas para datos controlados.
-- [ ] `SUPABASE_STAGING_URL` usa HTTPS y no es host local.
-- [ ] Solo publishable/anon key en Android; ningún secreto real en logs.
-- [ ] `./gradlew testStagingDebugUnitTest lintStagingDebug assembleStagingDebug`
-      finaliza correctamente.
-- [ ] APK esperado: `apk/LeoVer-M08-Staging-debug.apk` (ignorado por Git).
+Instalar `apk/LeoVer-M08-Staging-debug.apk` (**LeoVer Staging**, `com.comunidapp.app.staging`).
+Sin emulador, sin PC, sin USB, sin `adb reverse`, sin Supabase local.
 
-## Smoke funcional
+| # | Paso | Resultado | Observación |
+|---|---|---|---|
+| 1 | Enviar APK por Drive, WhatsApp, correo o cable | NO EJECUTADO | |
+| 2 | Instalar en teléfono sin entorno de desarrollo | NO EJECUTADO | |
+| 3 | Desconectar USB | NO EJECUTADO | |
+| 4 | PC apagada o Supabase local detenido | NO EJECUTADO | |
+| 5 | Abrir LeoVer Staging | NO EJECUTADO | |
+| 6 | Registrar usuario de prueba | NO EJECUTADO | |
+| 7 | Iniciar sesión | NO EJECUTADO | |
+| 8 | Abrir Mis mascotas | NO EJECUTADO | |
+| 9 | Crear mascota | NO EJECUTADO | |
+| 10 | Verificar listado | NO EJECUTADO | |
+| 11 | Editar perfil | NO EJECUTADO | |
+| 12 | Editar salud | NO EJECUTADO | |
+| 13 | Guardar microchip | NO EJECUTADO | |
+| 14 | Provocar conflicto de microchip | NO EJECUTADO | |
+| 15 | Agregar avatar | NO EJECUTADO | |
+| 16 | Cerrar y reabrir la aplicación | NO EJECUTADO | |
+| 17 | Verificar persistencia remota | NO EJECUTADO | |
+| 18 | Logout / login | NO EJECUTADO | |
+| 19 | Archivar mascota | NO EJECUTADO | |
+| 20 | Comprobar que desaparece de activas | NO EJECUTADO | |
+| 21 | Probar en Wi-Fi | NO EJECUTADO | |
+| 22 | Probar con datos móviles | NO EJECUTADO | |
+| 23 | Probar en un segundo teléfono | NO EJECUTADO | |
+| 24 | Confirmar: no PC / USB / adb reverse | NO EJECUTADO | Técnicamente preparado |
+| 25 | Confirmar: no muestra datos ajenos | NO EJECUTADO | |
+| 26 | Registrar crashes o errores visibles | NO EJECUTADO | |
 
-- [ ] Instalar LeoVer Staging en un dispositivo de prueba.
-- [ ] Confirmar nombre **LeoVer Staging** e identificación separada.
-- [ ] Iniciar sesión con una cuenta sintética autorizada para staging.
-- [ ] Listar mascotas accesibles sin exponer mascotas ajenas.
-- [ ] Crear mascota y verificar principal.
-- [ ] Editar perfil y salud con permisos válidos.
-- [ ] Confirmar rechazo sin capacidad suficiente.
-- [ ] Archivar/restaurar y revisar estado/listado.
-- [ ] Cerrar sesión y confirmar limpieza de sesión.
-- [ ] Revisar que UI y logs no muestren claves, tokens ni datos sensibles.
+Resultados permitidos por fila: **PASS** / **FAIL** / **NO EJECUTADO** + observación.
 
 ## Salida
 
 - [ ] Registrar dispositivo, versión, fecha y resultado fuera del APK.
 - [ ] Eliminar datos sintéticos mediante el procedimiento controlado.
-- [ ] Marcar APK distribuible solo si no hay fallos bloqueantes.
+- [ ] Declarar smoke PASS solo si no hay fallos bloqueantes.
 
-Mientras algún ítem de entrada esté pendiente, permanece vigente:
-`APK DISTRIBUIBLE — PENDIENTE DEL APPLY`.
+Mientras el smoke manual no se complete:
+
+```text
+SMOKE APK STAGING MANUAL — PENDIENTE
+```
+
+**No** declarar: `M08 ETAPA 4D — CERRADA` ni `SMOKE APK STAGING — PASS`.

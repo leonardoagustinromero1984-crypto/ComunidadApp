@@ -1,5 +1,6 @@
 package com.comunidapp.app.core.config
 
+import com.comunidapp.app.BuildConfig
 import com.comunidapp.app.core.featureflags.FeatureFlagOverrides
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -9,7 +10,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Pruebas de defaults seguros. BuildConfig de test refleja el entorno de compilación unitaria (debug).
+ * Pruebas de defaults seguros. BuildConfig de test refleja el flavor + buildType unitario.
  */
 class AppConfigProviderTest {
 
@@ -23,7 +24,13 @@ class AppConfigProviderTest {
         val config = AppConfigProvider.get()
         assertNotNull(config.appVersionName)
         assertTrue(config.appVersionCode >= 0)
-        assertEquals(AppEnvironment.LOCAL, config.environment)
+        val expected = when (BuildConfig.LEOVER_ENV.lowercase()) {
+            "local" -> AppEnvironment.LOCAL
+            "staging" -> AppEnvironment.STAGING
+            "production" -> AppEnvironment.PRODUCTION
+            else -> AppEnvironment.LOCAL
+        }
+        assertEquals(expected, config.environment)
         assertTrue(config.isDebug)
     }
 

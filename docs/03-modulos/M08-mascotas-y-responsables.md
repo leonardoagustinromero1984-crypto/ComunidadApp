@@ -2,15 +2,15 @@
 
 **Producto:** LeoVer
 **Módulo:** M08 — Mascotas y responsables
-**Versión:** 1.6 (Etapa 4D — preparación staging; apply 035/036 pendiente)
-**Fecha:** 2026-07-20
+**Versión:** 1.7 (Etapa 4D — backend staging + APK distribuible; smoke manual pendiente)
+**Fecha:** 2026-07-21
 **Fuente superior:** D01 Mapa de Módulos · Documento Maestro Integral
 **Estado:**
 
 ```text
-M08 ETAPA 4D — PREPARACIÓN STAGING LISTA
-APPLY 035/036 — PENDIENTE DE CONFIRMACIÓN MANUAL
-APK DISTRIBUIBLE — PENDIENTE DEL APPLY
+M08 ETAPA 4D — BACKEND STAGING Y APK DISTRIBUIBLE LISTOS
+SMOKE APK STAGING MANUAL — PENDIENTE
+PRODUCCIÓN NO MODIFICADA
 ```
 
 Marcadores de calidad de etapas anteriores (conservados):
@@ -18,8 +18,11 @@ Marcadores de calidad de etapas anteriores (conservados):
 M08 ETAPA 4B — REPOSITORIOS Y ADAPTADOR LEGACY LISTOS LOCALMENTE
 STAGING NO AUTORIZADO
 REQUIERE ETAPA 4C
+M08 ETAPA 4D — PREPARACIÓN STAGING LISTA
+APPLY 035/036 — PENDIENTE DE CONFIRMACIÓN MANUAL
+APK DISTRIBUIBLE — PENDIENTE DEL APPLY
 ```
-(4C/4D prep cerraron la integración local; el apply remoto 035/036 sigue pendiente de confirmación humana.)
+(Apply 035/036 y APK staging ya realizados; smoke manual pendiente. Producción no modificada.)
 
 SQL: `035_m08_pets_responsibilities_and_rls.sql` + `036_m08_pet_repository_compatibility_rpcs.sql`
 Detalle 4B: `docs/02-arquitectura/M08-etapa-4b-repositorios-adaptador-legacy.md`
@@ -28,6 +31,7 @@ Detalle 4D: `docs/02-arquitectura/M08-etapa-4d-staging-apk-distribuible.md`
 Checklist smoke: `docs/04-calidad/M08-checklist-smoke-apk-local.md`
 Checklist smoke staging: `docs/04-calidad/M08-checklist-smoke-apk-staging.md`
 Plan despliegue staging: `docs/04-calidad/M08-plan-despliegue-staging-035-036.md`
+Reporte post-apply 4D: `docs/04-calidad/M08-reporte-validacion-staging-post-apply-4d.md`
 Android: `LegacyPetRepositoryAdapter` + package `data/remote/supabase/m08/` (DataProvider).
 Perfil público: mascotas ajenas ocultas (sin SELECT-all / sin vitrina pública).
 
