@@ -18,6 +18,17 @@ SUPABASE_URL=https://TU_PROJECT_REF.supabase.co
 # Nunca loguear esta clave. No va a AppConfig.
 SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.EJEMPLO_ANON_KEY_FICTICIA
 
+# ---------------------------------------------------------------------------
+# M08 Etapa 4C — Supabase LOCAL (solo debug / smoke APK)
+# Obtener valores con: npx supabase status -o env
+# Emulador Android: host 10.0.2.2 + puerto API local (no inventar puerto).
+# Dispositivo físico: adb reverse tcp:<API_PORT> tcp:<API_PORT>
+# Nunca service_role. Nunca commitear este archivo.
+# Ejemplo (ficticio / placeholder):
+# SUPABASE_URL=http://10.0.2.2:55321
+# SUPABASE_ANON_KEY=<anon_from_supabase_status_env>
+# ---------------------------------------------------------------------------
+
 # Ambientes: hoy solo debug/release (buildTypes). Staging se añadirá cuando
 # exista un proyecto Supabase de staging (sin inventar flavors ahora).
 

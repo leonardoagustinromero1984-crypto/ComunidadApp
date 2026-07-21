@@ -29,6 +29,8 @@ supabase/.env
 *.aab
 *.jks
 *.keystore
+apk/
+supabase/.temp/
 
 # Logs
 *.log

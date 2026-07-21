@@ -1,11 +1,13 @@
-# M08 — Matriz operaciones Android ↔ RPC 035/036 (post-4B)
+# M08 — Matriz operaciones Android ↔ RPC 035/036 (post-4C)
 
 **Producto:** LeoVer
-**Etapa:** 4B adapter listo localmente
+**Etapa:** 4C integración local automática PASS; smoke manual pendiente
 **Conclusión:**
 
 ```text
 M08 ETAPA 4B — REPOSITORIOS Y ADAPTADOR LEGACY LISTOS LOCALMENTE
+M08 ETAPA 4C — INTEGRACIÓN LOCAL AUTOMÁTICA PASS
+SMOKE APK MANUAL — PENDIENTE
 STAGING NO AUTORIZADO
 REQUIERE ETAPA 4C — INTEGRACIÓN LOCAL Y SMOKE APK
 ```

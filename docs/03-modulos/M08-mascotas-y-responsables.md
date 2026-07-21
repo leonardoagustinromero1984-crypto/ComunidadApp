@@ -2,19 +2,23 @@
 
 **Producto:** LeoVer
 **Módulo:** M08 — Mascotas y responsables
-**Versión:** 1.4 (Etapa 4B — repositorios y adaptador legacy listos localmente)
+**Versión:** 1.5 (Etapa 4C — integración local automática PASS; smoke APK manual pendiente)
 **Fecha:** 2026-07-20
 **Fuente superior:** D01 Mapa de Módulos · Documento Maestro Integral
 **Estado:**
 
 ```text
 M08 ETAPA 4B — REPOSITORIOS Y ADAPTADOR LEGACY LISTOS LOCALMENTE
+M08 ETAPA 4C — INTEGRACIÓN LOCAL AUTOMÁTICA PASS
+SMOKE APK MANUAL — PENDIENTE
 STAGING NO AUTORIZADO
 REQUIERE ETAPA 4C — INTEGRACIÓN LOCAL Y SMOKE APK
 ```
 
 SQL: `035_m08_pets_responsibilities_and_rls.sql` + `036_m08_pet_repository_compatibility_rpcs.sql`
 Detalle 4B: `docs/02-arquitectura/M08-etapa-4b-repositorios-adaptador-legacy.md`
+Detalle 4C: `docs/02-arquitectura/M08-etapa-4c-integracion-local-smoke-apk.md`
+Checklist smoke: `docs/04-calidad/M08-checklist-smoke-apk-local.md`
 Android: `LegacyPetRepositoryAdapter` + package `data/remote/supabase/m08/` (DataProvider).
 Perfil público: mascotas ajenas ocultas (sin SELECT-all / sin vitrina pública).
 
