@@ -1,5 +1,6 @@
 package com.comunidapp.app.ui.screens.pets
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -51,17 +53,26 @@ fun PetDetailScreen(
     onNavigateToResponsibilities: (String) -> Unit = {},
     onNavigateToAuthorizations: (String) -> Unit = {},
     onNavigateToTransfers: (String) -> Unit = {},
+    onNavigateToStatusHistory: (String) -> Unit = {},
     viewModel: PetDetailViewModel = viewModel()
 ) {
     val pet by viewModel.pet.collectAsState()
     val canManage by viewModel.canManage.collectAsState()
     val canViewGovernance by viewModel.canViewGovernance.collectAsState()
+    val canMarkDeceased by viewModel.canMarkDeceased.collectAsState()
+    val canRestore by viewModel.canRestore.collectAsState()
+    val canViewHistory by viewModel.canViewHistory.collectAsState()
     val clinicalRecords by viewModel.clinicalRecords.collectAsState()
     val clinicalTitle by viewModel.clinicalTitle.collectAsState()
     val clinicalNote by viewModel.clinicalNote.collectAsState()
     val deleteSuccess by viewModel.deleteSuccess.collectAsState()
+    val lifecycleSuccess by viewModel.lifecycleSuccess.collectAsState()
+    val isSubmitting by viewModel.isSubmitting.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
+    var showDeceasedDialog by remember { mutableStateOf(false) }
+    var showRestoreDialog by remember { mutableStateOf(false) }
+    var deceasedReason by remember { mutableStateOf("") }
 
     LaunchedEffect(deleteSuccess) {
         if (deleteSuccess) {
@@ -70,11 +81,20 @@ fun PetDetailScreen(
         }
     }
 
+    LaunchedEffect(lifecycleSuccess) {
+        if (lifecycleSuccess) {
+            viewModel.clearLifecycleSuccess()
+            showDeceasedDialog = false
+            showRestoreDialog = false
+            deceasedReason = ""
+        }
+    }
+
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Eliminar mascota") },
-            text = { Text("¿Estás seguro? Esta acción no se puede deshacer.") },
+            title = { Text("Archivar mascota") },
+            text = { Text("¿Archivar esta mascota? Podés restaurarla después si tenés permiso.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -82,11 +102,50 @@ fun PetDetailScreen(
                         viewModel.deletePet()
                     }
                 ) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                    Text("Archivar", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showDeceasedDialog) {
+        MarkPetDeceasedDialog(
+            reason = deceasedReason,
+            onReasonChange = { deceasedReason = it },
+            isSubmitting = isSubmitting,
+            onConfirm = { viewModel.markPetDeceased(deceasedReason) },
+            onDismiss = {
+                if (!isSubmitting) {
+                    showDeceasedDialog = false
+                    deceasedReason = ""
+                }
+            }
+        )
+    }
+
+    if (showRestoreDialog) {
+        AlertDialog(
+            onDismissRequest = { if (!isSubmitting) showRestoreDialog = false },
+            title = { Text("Restaurar mascota") },
+            text = { Text("¿Volver a activar esta mascota archivada?") },
+            confirmButton = {
+                TextButton(
+                    onClick = { viewModel.restorePet() },
+                    enabled = !isSubmitting
+                ) {
+                    Text("Restaurar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showRestoreDialog = false },
+                    enabled = !isSubmitting
+                ) {
                     Text("Cancelar")
                 }
             }
@@ -120,11 +179,18 @@ fun PetDetailScreen(
                     contentDescription = data.name
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = data.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Text(
+                        text = data.name,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f)
+                    )
+                    PetLifecycleStatusBadge(status = data.status)
+                }
                 Text(
                     text = "${data.species.toDisplayName()} · ${data.sex.toDisplayName()} · ${data.ageDisplay()}",
                     style = MaterialTheme.typography.bodyMedium,
@@ -142,17 +208,24 @@ fun PetDetailScreen(
                 if (canViewGovernance) {
                     Spacer(modifier = Modifier.height(16.dp))
                     PetGovernanceSection(
+                        mutationsEnabled = data.status == "ACTIVE",
                         onOpenResponsibilities = { onNavigateToResponsibilities(data.id) },
                         onOpenAuthorizations = { onNavigateToAuthorizations(data.id) },
                         onOpenTransfers = { onNavigateToTransfers(data.id) }
                     )
+                }
+                if (canViewHistory) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    TextButton(onClick = { onNavigateToStatusHistory(data.id) }) {
+                        Text("Ver historial de estado")
+                    }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 ClinicalRecordsSection(
                     records = clinicalRecords,
                     title = clinicalTitle,
                     note = clinicalNote,
-                    canManage = canManage,
+                    canManage = canManage && data.status == "ACTIVE",
                     onTitleChange = viewModel::updateClinicalTitle,
                     onNoteChange = viewModel::updateClinicalNote,
                     onAdd = viewModel::addClinicalNote
@@ -167,6 +240,27 @@ fun PetDetailScreen(
                     )
                 }
 
+                if (canMarkDeceased) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedButton(
+                        onClick = { showDeceasedDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSubmitting
+                    ) {
+                        Text("Marcar como fallecida")
+                    }
+                }
+                if (canRestore) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Button(
+                        onClick = { showRestoreDialog = true },
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !isSubmitting
+                    ) {
+                        Text("Restaurar mascota")
+                    }
+                }
+
                 if (canManage) {
                     Spacer(modifier = Modifier.height(24.dp))
                     Row(
@@ -175,15 +269,17 @@ fun PetDetailScreen(
                     ) {
                         Button(
                             onClick = { onNavigateToEdit(data.id) },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            enabled = data.status == "ACTIVE" && !isSubmitting
                         ) {
                             Text("Editar")
                         }
                         OutlinedButton(
                             onClick = { showDeleteDialog = true },
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            enabled = data.status == "ACTIVE" && !isSubmitting
                         ) {
-                            Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                            Text("Archivar", color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
@@ -192,9 +288,74 @@ fun PetDetailScreen(
     }
 }
 
+@Composable
+internal fun MarkPetDeceasedDialog(
+    reason: String,
+    onReasonChange: (String) -> Unit,
+    isSubmitting: Boolean,
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Marcar como fallecida") },
+        text = {
+            Column {
+                Text(
+                    text = "Esta acción es irreversible. La mascota pasará a estado fallecida " +
+                        "y se cancelarán transferencias pendientes."
+                )
+                OutlinedTextField(
+                    value = reason,
+                    onValueChange = onReasonChange,
+                    label = { Text("Motivo (opcional)") },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 12.dp),
+                    enabled = !isSubmitting,
+                    singleLine = true
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = onConfirm,
+                enabled = !isSubmitting
+            ) {
+                Text("Confirmar", color = MaterialTheme.colorScheme.error)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSubmitting) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@Composable
+internal fun PetLifecycleStatusBadge(status: String) {
+    val label = petStatusLabel(status)
+    if (status.equals("ACTIVE", ignoreCase = true)) return
+    val color = when (status.uppercase()) {
+        "ARCHIVED" -> MaterialTheme.colorScheme.surfaceVariant
+        "DECEASED" -> MaterialTheme.colorScheme.errorContainer
+        else -> MaterialTheme.colorScheme.secondaryContainer
+    }
+    Text(
+        text = label,
+        modifier = Modifier
+            .background(color, RoundedCornerShape(8.dp))
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold
+    )
+}
+
 /** M08 Etapa 5 — accesos a responsables, autorizaciones y transferencias. */
 @Composable
 private fun PetGovernanceSection(
+    mutationsEnabled: Boolean,
     onOpenResponsibilities: () -> Unit,
     onOpenAuthorizations: () -> Unit,
     onOpenTransfers: () -> Unit
@@ -209,13 +370,30 @@ private fun PetGovernanceSection(
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            TextButton(onClick = onOpenResponsibilities) {
+            if (!mutationsEnabled) {
+                Text(
+                    text = "La gestión está bloqueada para este estado.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 4.dp, bottom = 4.dp)
+                )
+            }
+            TextButton(
+                onClick = onOpenResponsibilities,
+                enabled = mutationsEnabled
+            ) {
                 Text("Responsables y custodias")
             }
-            TextButton(onClick = onOpenAuthorizations) {
+            TextButton(
+                onClick = onOpenAuthorizations,
+                enabled = mutationsEnabled
+            ) {
                 Text("Personas autorizadas")
             }
-            TextButton(onClick = onOpenTransfers) {
+            TextButton(
+                onClick = onOpenTransfers,
+                enabled = mutationsEnabled
+            ) {
                 Text("Transferencias de responsabilidad")
             }
         }

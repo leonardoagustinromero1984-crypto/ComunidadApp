@@ -104,7 +104,9 @@ android {
 
     buildTypes {
         debug {
-            enableUnitTestCoverage = true
+            // Off by default on low-RAM machines; enable with -PenableUnitTestCoverage=true
+            // before jacocoTestReport / full coverage runs.
+            enableUnitTestCoverage = project.hasProperty("enableUnitTestCoverage")
         }
         release {
             optimization {

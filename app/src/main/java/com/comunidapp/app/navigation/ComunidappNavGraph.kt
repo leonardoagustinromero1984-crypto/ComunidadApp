@@ -73,6 +73,7 @@ import com.comunidapp.app.ui.screens.pets.MyPetsScreen
 import com.comunidapp.app.ui.screens.pets.PetAuthorizationsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
 import com.comunidapp.app.ui.screens.pets.PetResponsibilitiesScreen
+import com.comunidapp.app.ui.screens.pets.PetStatusHistoryScreen
 import com.comunidapp.app.ui.screens.pets.PetTransferDetailScreen
 import com.comunidapp.app.ui.screens.pets.PetTransfersScreen
 import com.comunidapp.app.ui.screens.profile.EditProfileScreen
@@ -119,6 +120,7 @@ import com.comunidapp.app.ui.screens.sumate.SumateScreen
 import com.comunidapp.app.viewmodel.PetAuthorizationsViewModel
 import com.comunidapp.app.viewmodel.PetFormViewModel
 import com.comunidapp.app.viewmodel.PetResponsibilitiesViewModel
+import com.comunidapp.app.viewmodel.PetStatusHistoryViewModel
 import com.comunidapp.app.viewmodel.PetTransfersViewModel
 import com.comunidapp.app.viewmodel.SessionState
 import com.comunidapp.app.viewmodel.SessionViewModel
@@ -685,7 +687,27 @@ private fun MainScreen(accountType: AccountType) {
                     },
                     onNavigateToTransfers = { id ->
                         navController.navigate(NavRoutes.petTransfers(id))
+                    },
+                    onNavigateToStatusHistory = { id ->
+                        navController.navigate(NavRoutes.petStatusHistory(id))
                     }
+                )
+            }
+            composable(
+                route = NavRoutes.PET_STATUS_HISTORY,
+                arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
+            ) { backStackEntry ->
+                val petId = java.net.URLDecoder.decode(
+                    backStackEntry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                PetStatusHistoryScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(
+                        viewModelStoreOwner = backStackEntry,
+                        key = "pet_status_history_$petId",
+                        factory = PetStatusHistoryViewModel.factory(petId)
+                    )
                 )
             }
             composable(

@@ -55,11 +55,31 @@ fun PetCard(
             }
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = pet.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = pet.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (!pet.status.equals("ACTIVE", ignoreCase = true)) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = when (pet.status.uppercase()) {
+                                "ARCHIVED" -> "Archivada"
+                                "DECEASED" -> "Fallecida"
+                                else -> pet.status
+                            },
+                            modifier = Modifier
+                                .background(
+                                    MaterialTheme.colorScheme.surfaceVariant,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(horizontal = 6.dp, vertical = 2.dp),
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
                 Text(
                     text = "${pet.species.toDisplayName()} · ${pet.sex.toDisplayName()} · ${pet.ageDisplay()}",
                     style = MaterialTheme.typography.bodySmall,

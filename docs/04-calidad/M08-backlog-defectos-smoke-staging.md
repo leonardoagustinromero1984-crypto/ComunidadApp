@@ -55,6 +55,22 @@ Espacio reservado para observaciones del smoke que aún no tienen ID, severidad 
 
 ---
 
+## Gap diferido Etapa 6 — Galería pet (no smoke)
+
+| Campo | Valor |
+|---|---|
+| ID | M08-GAP-GALLERY-001 |
+| Estado | **BACKLOG** |
+| Severidad | Media (UX) |
+| Detección | Auditoría Etapa 6 |
+| Resolución prevista | Post-Etapa 6 / estabilización (sin inventar SQL en Etapa 6) |
+
+**Síntoma / gap:** existen RPCs genéricos M05 (`list_file_assets_for_resource` / `link_file_asset` / `unlink_file_asset`) y propósito `PET_GALLERY`, pero no hay fachada pet alineada a `pet.manage_media` ni pantalla de galería. Etapa 6 entrega avatar + fallecimiento + historial + restore + microchip + duplicados privados; **no** declara smoke PASS ni cierra este gap.
+
+**Nota:** `M08-SMOKE-001` permanece **OPEN/BACKLOG** (sin PASS inventado).
+
+---
+
 ## Criterios de salida del backlog
 
 - [ ] Reproducción instrumentada de M08-SMOKE-001 con causa raíz confirmada.

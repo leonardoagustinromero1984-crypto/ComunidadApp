@@ -160,9 +160,18 @@ private fun PetFormScreen(
                             PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                         )
                     },
-                    enabled = !uiState.isSaving && !uiState.isDeleting
+                    enabled = !uiState.isSaving && !uiState.isDeleting &&
+                        uiState.canManageMedia && !uiState.mutationsLocked
                 ) {
                     Text(stringResource(R.string.change_photo))
+                }
+                if (!uiState.canManageMedia) {
+                    Text(
+                        text = "No tenés permiso para cambiar la foto.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
                 }
                 Spacer(modifier = Modifier.height(16.dp))
 
@@ -240,6 +249,15 @@ private fun PetFormScreen(
                     onHealthNotesChange = viewModel::onHealthNotesChange
                 )
 
+                uiState.duplicateWarning?.let { warning ->
+                    Spacer(modifier = Modifier.height(12.dp))
+                    Text(
+                        text = warning,
+                        color = MaterialTheme.colorScheme.tertiary,
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+
                 uiState.errorMessage?.let { error ->
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(text = error, color = MaterialTheme.colorScheme.error)
@@ -249,7 +267,7 @@ private fun PetFormScreen(
                 Button(
                     onClick = viewModel::savePet,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isSaving && !uiState.isDeleting
+                    enabled = !uiState.isSaving && !uiState.isDeleting && !uiState.mutationsLocked
                 ) {
                     if (uiState.isSaving) {
                         CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)

@@ -1,9 +1,9 @@
 # M08 — Matriz de impacto y no regresión
 
 **Producto:** LeoVer
-**Fecha:** 2026-07-19 (actualizada 2026-07-21 — Etapa 5)
-**Etapa:** 5 (UI responsables y transferencias)
-**Base de código:** rama `m08/etapa-5-ui-responsables-transferencias`
+**Fecha:** 2026-07-19 (actualizada 2026-07-21 — Etapa 6)
+**Etapa:** 6 (fallecimiento, duplicados y fotos/avatar)
+**Base de código:** rama `m08/etapa-6-fallecimiento-duplicados-fotos`
 **Migraciones:** 035/036 aplicadas en staging; **sin 037**; producción no modificada
 
 ---
@@ -28,7 +28,9 @@ Registrar impactos esperados de M08 sobre superficies existentes y pruebas futur
 | **Perdidos** | Sin FK pet hoy | Doble ficha | Diferir bridge | lost/found CRUD intacto |
 | **Notificaciones** | Ruta PET existente | Notifs transfer faltan | M06 events Etapa 5 | deep link PET sigue parseando |
 | **Historia clínica** | FK cascade | Delete pet borra clínica | Preferir archive | no hard-delete en DECEASED |
-| **Fotos** | Híbrido photo_url / M05 | Huérfanos storage | Etapa 6 cleanup plan | upload PET_AVATAR path válido |
+| **Fotos** | Avatar M05+`m08_set_pet_avatar_asset`; galería pet completa en backlog | ACL M05 ≠ manage_media | Etapa 6: avatar listo; galería diferida | upload PET_AVATAR path válido; sin photo_url write |
+| **Fallecimiento / restore** | UI Detail + wrappers repo | Acciones inválidas en DECEASED | Capabilities + status gates | mark/restore dialogs; history screen |
+| **Duplicados** | Aviso privado Form vía RPC scoped | PII ajena / búsqueda global | Solo `m08_detect_pet_duplicate_candidates` | warning sin datos ajenos |
 | **Organizaciones** | Custodia org | Dual primary | Regla exclusividad | org custody sin dual |
 | **Auditoría M07** | Nuevos event keys | Huecos compliance | Catalog Etapa 2–3 | keys existen; unknown rejected |
 | **Permisos M02** | Codes pet.* | Auth bypass vía RLS only | Seed + has_permission | deny sin permiso staff |

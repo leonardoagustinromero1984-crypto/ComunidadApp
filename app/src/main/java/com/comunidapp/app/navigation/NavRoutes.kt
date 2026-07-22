@@ -35,6 +35,9 @@ object NavRoutes {
     const val PET_TRANSFERS = "pet_transfers/{petId}"
     const val PET_TRANSFER_DETAIL = "pet_transfer_detail/{petId}/{transferId}"
 
+    // M08 Etapa 6 — historial de estado (galería pet diferida a backlog)
+    const val PET_STATUS_HISTORY = "pet_status_history/{petId}"
+
     const val EDIT_PROFILE = "edit_profile"
     const val SEARCH_FRIENDS = "search_friends"
     const val USER_PROFILE = "user_profile/{userId}"
@@ -129,6 +132,8 @@ object NavRoutes {
     fun petTransferDetail(petId: String, transferId: String) =
         "pet_transfer_detail/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}/" +
             java.net.URLEncoder.encode(transferId, Charsets.UTF_8.name())
+    fun petStatusHistory(petId: String) =
+        "pet_status_history/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
     fun emailVerification(email: String) = "email_verification/$email"
     fun editPet(petId: String) = "edit_pet/$petId"
     fun userProfile(userId: String) =

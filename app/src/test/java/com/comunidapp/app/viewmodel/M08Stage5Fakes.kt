@@ -6,6 +6,8 @@ import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.data.remote.supabase.m08.PetAccessContext
+import com.comunidapp.app.data.remote.supabase.m08.PetDuplicateCandidateRow
+import com.comunidapp.app.data.remote.supabase.m08.PetStatusHistoryM08Row
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.organization.OrganizationId
@@ -135,14 +137,21 @@ fun stage5Transfer(
 
 class FakeStage5PetRepository(
     var accessResult: Result<PetAccessContext> = Result.success(stage5AccessContext()),
-    var pet: Pet? = stage5Pet()
+    pet: Pet? = stage5Pet()
 ) : PetRepository {
+
+    private val petFlow = MutableStateFlow(pet)
+    var pet: Pet?
+        get() = petFlow.value
+        set(value) {
+            petFlow.value = value
+        }
 
     var accessCalls = 0
 
     override fun observePets(): StateFlow<List<Pet>> = MutableStateFlow(emptyList())
     override fun observePetsForOwner(ownerId: String): Flow<List<Pet>> = flowOf(emptyList())
-    override fun observePet(petId: String): Flow<Pet?> = flowOf(pet)
+    override fun observePet(petId: String): Flow<Pet?> = petFlow
     override fun getPetsByOwner(ownerId: String): List<Pet> = emptyList()
     override fun getPetById(petId: String): Pet? = pet
     override suspend fun fetchPetById(petId: String): Pet? = pet
@@ -158,6 +167,34 @@ class FakeStage5PetRepository(
     override suspend fun setPetAvatarAsset(petId: String, assetId: String?): Result<Pet> =
         pet?.let { Result.success(it) }
             ?: Result.failure(IllegalStateException("PET_NOT_FOUND"))
+
+    var markDeceasedResult: Result<Pet> = pet?.let { Result.success(it.copy(status = "DECEASED")) }
+        ?: Result.failure(IllegalStateException("PET_NOT_FOUND"))
+    var restoreResult: Result<Pet> = pet?.let { Result.success(it.copy(status = "ACTIVE")) }
+        ?: Result.failure(IllegalStateException("PET_NOT_FOUND"))
+    var statusHistoryResult: Result<List<PetStatusHistoryM08Row>> = Result.success(emptyList())
+    var duplicateCandidatesResult: Result<List<PetDuplicateCandidateRow>> =
+        Result.success(emptyList())
+    var markDeceasedCalls = 0
+    var restoreCalls = 0
+
+    override suspend fun markPetDeceased(petId: String, reason: String?): Result<Pet> {
+        markDeceasedCalls++
+        return markDeceasedResult.onSuccess { updated -> this.pet = updated }
+    }
+
+    override suspend fun restorePet(petId: String): Result<Pet> {
+        restoreCalls++
+        return restoreResult.onSuccess { updated -> this.pet = updated }
+    }
+
+    override suspend fun listStatusHistory(petId: String): Result<List<PetStatusHistoryM08Row>> =
+        statusHistoryResult
+
+    override suspend fun detectDuplicateCandidates(
+        microchip: String?,
+        name: String?
+    ): Result<List<PetDuplicateCandidateRow>> = duplicateCandidatesResult
 }
 
 class FakeStage5UserRepository(

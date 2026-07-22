@@ -2,15 +2,20 @@ package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.remote.supabase.m08.ArchivePetParams
+import com.comunidapp.app.data.remote.supabase.m08.DetectPetDuplicateParams
 import com.comunidapp.app.data.remote.supabase.m08.M08PetErrorMapper
+import com.comunidapp.app.data.remote.supabase.m08.MarkPetDeceasedParams
 import com.comunidapp.app.data.remote.supabase.m08.PetAccessContext
 import com.comunidapp.app.data.remote.supabase.m08.PetCreatePartialException
+import com.comunidapp.app.data.remote.supabase.m08.PetDuplicateCandidateRow
 import com.comunidapp.app.data.remote.supabase.m08.PetM08Mappers.toPet
 import com.comunidapp.app.data.remote.supabase.m08.PetM08Mappers.toUpdateHealthParams
 import com.comunidapp.app.data.remote.supabase.m08.PetM08Mappers.toUpdateProfileParams
 import com.comunidapp.app.data.remote.supabase.m08.PetM08Mappers.toCreateParams
 import com.comunidapp.app.data.remote.supabase.m08.PetM08Mappers.toDomain
 import com.comunidapp.app.data.remote.supabase.m08.PetM08RemoteDataSource
+import com.comunidapp.app.data.remote.supabase.m08.PetStatusHistoryM08Row
+import com.comunidapp.app.data.remote.supabase.m08.RestorePetParams
 import com.comunidapp.app.data.remote.supabase.m08.SetPetAvatarAssetParams
 import com.comunidapp.app.data.remote.supabase.m08.SupabasePetM08RemoteDataSource
 import com.comunidapp.app.data.remote.supabase.supabase
@@ -148,6 +153,49 @@ class LegacyPetRepositoryAdapter(
             )
             refreshCache()
             Result.success(row.toPet())
+        } catch (e: Exception) {
+            M08PetErrorMapper.failure(e)
+        }
+    }
+
+    override suspend fun markPetDeceased(petId: String, reason: String?): Result<Pet> {
+        return try {
+            val row = remote.markPetDeceased(MarkPetDeceasedParams(petId = petId, reason = reason))
+            refreshCache()
+            Result.success(row.toPet())
+        } catch (e: Exception) {
+            M08PetErrorMapper.failure(e)
+        }
+    }
+
+    override suspend fun restorePet(petId: String): Result<Pet> {
+        return try {
+            val row = remote.restorePet(RestorePetParams(petId = petId))
+            refreshCache()
+            Result.success(row.toPet())
+        } catch (e: Exception) {
+            M08PetErrorMapper.failure(e)
+        }
+    }
+
+    override suspend fun listStatusHistory(petId: String): Result<List<PetStatusHistoryM08Row>> {
+        return try {
+            Result.success(remote.listStatusHistory(petId))
+        } catch (e: Exception) {
+            M08PetErrorMapper.failure(e)
+        }
+    }
+
+    override suspend fun detectDuplicateCandidates(
+        microchip: String?,
+        name: String?
+    ): Result<List<PetDuplicateCandidateRow>> {
+        return try {
+            Result.success(
+                remote.detectDuplicates(
+                    DetectPetDuplicateParams(microchip = microchip, name = name)
+                )
+            )
         } catch (e: Exception) {
             M08PetErrorMapper.failure(e)
         }

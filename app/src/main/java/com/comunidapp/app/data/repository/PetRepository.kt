@@ -3,6 +3,8 @@ package com.comunidapp.app.data.repository
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.mock.InMemoryDataStore
 import com.comunidapp.app.data.remote.supabase.m08.PetAccessContext
+import com.comunidapp.app.data.remote.supabase.m08.PetDuplicateCandidateRow
+import com.comunidapp.app.data.remote.supabase.m08.PetStatusHistoryM08Row
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.map
@@ -19,6 +21,24 @@ interface PetRepository {
     suspend fun deletePet(petId: String): Result<Unit>
     suspend fun getPetAccessContext(petId: String): Result<PetAccessContext>
     suspend fun setPetAvatarAsset(petId: String, assetId: String?): Result<Pet>
+
+    /** M08 Etapa 6 — mark pet as DECEASED via RPC. */
+    suspend fun markPetDeceased(petId: String, reason: String? = null): Result<Pet>
+
+    /** M08 Etapa 6 — restore ARCHIVED pet to ACTIVE via RPC. */
+    suspend fun restorePet(petId: String): Result<Pet>
+
+    /** M08 Etapa 6 — status history (RLS SELECT), newest first. */
+    suspend fun listStatusHistory(petId: String): Result<List<PetStatusHistoryM08Row>>
+
+    /**
+     * M08 Etapa 6 — private duplicate hints via scoped RPC.
+     * Returns only pet_id + match_reason (no foreign PII).
+     */
+    suspend fun detectDuplicateCandidates(
+        microchip: String? = null,
+        name: String? = null
+    ): Result<List<PetDuplicateCandidateRow>>
 }
 
 class MockPetRepository : PetRepository {
@@ -94,5 +114,57 @@ class MockPetRepository : PetRepository {
             avatarFileAssetId = assetId
         )
         return InMemoryDataStore.updatePet(updated).map { updated }
+    }
+
+    override suspend fun markPetDeceased(petId: String, reason: String?): Result<Pet> {
+        val pet = getPetById(petId)
+            ?: return Result.failure(IllegalStateException("PET_NOT_FOUND"))
+        if (pet.status == "DECEASED") {
+            return Result.failure(IllegalStateException("PET_ALREADY_DECEASED"))
+        }
+        val updated = pet.copy(
+            status = "DECEASED",
+            deceasedAt = System.currentTimeMillis(),
+            archivedAt = null
+        )
+        return InMemoryDataStore.updatePet(updated).map { updated }
+    }
+
+    override suspend fun restorePet(petId: String): Result<Pet> {
+        val pet = getPetById(petId)
+            ?: return Result.failure(IllegalStateException("PET_NOT_FOUND"))
+        if (pet.status == "DECEASED") {
+            return Result.failure(IllegalStateException("PET_DECEASED_CANNOT_RESTORE"))
+        }
+        if (pet.status != "ARCHIVED") {
+            return Result.failure(IllegalStateException("PET_NOT_ARCHIVED"))
+        }
+        val updated = pet.copy(status = "ACTIVE", archivedAt = null)
+        return InMemoryDataStore.updatePet(updated).map { updated }
+    }
+
+    override suspend fun listStatusHistory(petId: String): Result<List<PetStatusHistoryM08Row>> {
+        if (getPetById(petId) == null) {
+            return Result.failure(IllegalStateException("PET_NOT_FOUND"))
+        }
+        return Result.success(emptyList())
+    }
+
+    override suspend fun detectDuplicateCandidates(
+        microchip: String?,
+        name: String?
+    ): Result<List<PetDuplicateCandidateRow>> {
+        val chip = microchip?.trim()?.takeIf { it.isNotEmpty() }
+        val nm = name?.trim()?.takeIf { it.isNotEmpty() }
+        if (chip == null && nm == null) return Result.success(emptyList())
+        val matches = InMemoryDataStore.pets.value.mapNotNull { pet ->
+            val reason = when {
+                chip != null && pet.microchipId.equals(chip, ignoreCase = true) -> "MICROCHIP"
+                nm != null && pet.name.equals(nm, ignoreCase = true) -> "NAME"
+                else -> null
+            }
+            reason?.let { PetDuplicateCandidateRow(petId = pet.id, matchReason = it) }
+        }
+        return Result.success(matches)
     }
 }

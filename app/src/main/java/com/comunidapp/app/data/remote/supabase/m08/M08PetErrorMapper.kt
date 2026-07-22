@@ -40,6 +40,15 @@ object M08PetErrorMapper {
         "PET_TRANSFER_SAME_PRINCIPAL",
         "PET_DECEASED_NOT_TRANSFERABLE",
         "PET_ARCHIVED_NOT_TRANSFERABLE",
+        "PET_DECEASED_CANNOT_ARCHIVE",
+        "PET_DECEASED_CANNOT_RESTORE",
+        "PET_ALREADY_DECEASED",
+        "PET_ALREADY_ARCHIVED",
+        "PET_NOT_ARCHIVED",
+        "PET_AVATAR_ASSET_NOT_FOUND",
+        "PET_AVATAR_PURPOSE_INVALID",
+        "INVALID_DECEASED_DATE",
+        "ALREADY_DECEASED",
         "PET_PRINCIPAL_USE_TRANSFER",
         "PET_PRINCIPAL_MISSING",
         "PET_RESPONSIBILITY_DUPLICATE_ACTIVE",
@@ -98,7 +107,21 @@ object M08PetErrorMapper {
         "PET_NOT_ACTIVE" -> "La mascota no está activa."
         "PET_NAME_REQUIRED" -> "El nombre de la mascota es obligatorio."
         "PET_MICROCHIP_ACTIVE_CONFLICT" ->
-            "Ya hay otra mascota activa con ese microchip."
+            "Ya existe una mascota activa registrada con ese microchip."
+        "PET_ALREADY_DECEASED", "ALREADY_DECEASED" ->
+            "La mascota ya está marcada como fallecida."
+        "PET_ALREADY_ARCHIVED" -> "La mascota ya está archivada."
+        "PET_DECEASED_CANNOT_ARCHIVE" ->
+            "No se puede archivar una mascota fallecida."
+        "PET_DECEASED_CANNOT_RESTORE" ->
+            "No se puede restaurar una mascota fallecida."
+        "PET_NOT_ARCHIVED" -> "Solo se pueden restaurar mascotas archivadas."
+        "PET_AVATAR_ASSET_NOT_FOUND" ->
+            "No encontramos el archivo de avatar."
+        "PET_AVATAR_PURPOSE_INVALID" ->
+            "El archivo no es un avatar de mascota válido."
+        "INVALID_DECEASED_DATE" ->
+            "La fecha de fallecimiento no es válida."
         "PET_OWNER_ID_DIRECT_FORBIDDEN" ->
             "No se puede asignar el dueño directamente."
         "PET_CREATE_PARTIAL" ->

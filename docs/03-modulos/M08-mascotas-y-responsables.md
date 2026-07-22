@@ -2,10 +2,19 @@
 
 **Producto:** LeoVer
 **Módulo:** M08 — Mascotas y responsables
-**Versión:** 1.8 (Etapa 5 — UI de responsables, autorizaciones y transferencias)
+**Versión:** 1.9 (Etapa 6 — fallecimiento, duplicados y fotos/avatar)
 **Fecha:** 2026-07-21
 **Fuente superior:** D01 Mapa de Módulos · Documento Maestro Integral
 **Estado:**
+
+```text
+M08 ETAPA 6 — FALLECIMIENTO, DUPLICADOS Y FOTOS LISTOS
+SMOKE INTEGRAL M08 — PENDIENTE
+DEFECTOS DIFERIDOS — BACKLOG
+PRODUCCIÓN NO MODIFICADA
+```
+
+Marcadores de calidad de etapas anteriores (conservados):
 
 ```text
 M08 ETAPA 5 — UI RESPONSABLES Y TRANSFERENCIAS LISTA
@@ -13,9 +22,6 @@ SMOKE INTEGRAL M08 — PENDIENTE
 DEFECTOS ETAPA 4D — BACKLOG
 PRODUCCIÓN NO MODIFICADA
 ```
-
-Marcadores de calidad de etapas anteriores (conservados):
-
 ```text
 M08 ETAPA 4D — BACKEND STAGING Y APK DISTRIBUIBLE LISTOS
 SMOKE MANUAL — PARCIAL CON DEFECTOS REGISTRADOS
@@ -37,8 +43,11 @@ Detalle 4B: `docs/02-arquitectura/M08-etapa-4b-repositorios-adaptador-legacy.md`
 Detalle 4C: `docs/02-arquitectura/M08-etapa-4c-integracion-local-smoke-apk.md`
 Detalle 4D: `docs/02-arquitectura/M08-etapa-4d-staging-apk-distribuible.md`
 Detalle 5: `docs/02-arquitectura/M08-etapa-5-ui-responsables-transferencias.md`
+Detalle 6: `docs/02-arquitectura/M08-etapa-6-fallecimiento-duplicados-fotos.md`
+Auditoría 6: `docs/02-arquitectura/M08-etapa-6-auditoria-contratos.md`
 Backlog defectos 4D: `docs/04-calidad/M08-backlog-defectos-smoke-staging.md`
 Reporte Etapa 5: `docs/04-calidad/M08-reporte-validacion-etapa-5.md`
+Reporte Etapa 6: `docs/04-calidad/M08-reporte-validacion-etapa-6.md`
 Checklist smoke: `docs/04-calidad/M08-checklist-smoke-apk-local.md`
 Checklist smoke staging: `docs/04-calidad/M08-checklist-smoke-apk-staging.md`
 Plan despliegue staging: `docs/04-calidad/M08-plan-despliegue-staging-035-036.md`
