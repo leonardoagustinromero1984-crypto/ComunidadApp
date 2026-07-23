@@ -63,6 +63,7 @@ fun FosterHomesScreen(
     onReceived: () -> Unit,
     onSent: () -> Unit,
     onPlacements: () -> Unit,
+    onHistory: () -> Unit = {},
     viewModel: FosterHomesListViewModel = viewModel(factory = FosterHomesListViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -89,6 +90,10 @@ fun FosterHomesScreen(
             Spacer(Modifier.height(8.dp))
             OutlinedButton(onClick = onPlacements, modifier = Modifier.fillMaxWidth()) {
                 Text("Animales alojados")
+            }
+            Spacer(Modifier.height(8.dp))
+            OutlinedButton(onClick = onHistory, modifier = Modifier.fillMaxWidth()) {
+                Text("Historial de tránsitos")
             }
             Spacer(Modifier.height(12.dp))
             when (val s = state) {

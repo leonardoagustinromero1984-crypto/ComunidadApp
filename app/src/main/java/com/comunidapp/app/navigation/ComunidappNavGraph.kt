@@ -55,17 +55,36 @@ import com.comunidapp.app.ui.screens.adoptions.AdoptionApplyScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDocumentsScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionFinalizeScreen
+import com.comunidapp.app.ui.screens.foster.FosterCompleteScreen
+import com.comunidapp.app.ui.screens.foster.FosterEvolutionFormScreen
+import com.comunidapp.app.ui.screens.foster.FosterEvolutionScreen
+import com.comunidapp.app.ui.screens.foster.FosterExpenseFormScreen
+import com.comunidapp.app.ui.screens.foster.FosterExpensesScreen
+import com.comunidapp.app.ui.screens.foster.FosterHelpDetailScreen
+import com.comunidapp.app.ui.screens.foster.FosterHelpFormScreen
+import com.comunidapp.app.ui.screens.foster.FosterHelpScreen
+import com.comunidapp.app.ui.screens.foster.FosterHistoryScreen
 import com.comunidapp.app.ui.screens.foster.FosterHomeDetailScreen
 import com.comunidapp.app.ui.screens.foster.FosterHomeFormScreen
 import com.comunidapp.app.ui.screens.foster.FosterHomesScreen
 import com.comunidapp.app.ui.screens.foster.FosterPlacementDetailScreen
+import com.comunidapp.app.ui.screens.foster.FosterPlacementManagementScreen
 import com.comunidapp.app.ui.screens.foster.FosterPlacementsScreen
 import com.comunidapp.app.ui.screens.foster.FosterRequestDetailScreen
 import com.comunidapp.app.ui.screens.foster.FosterRequestFormScreen
 import com.comunidapp.app.ui.screens.foster.FosterRequestsScreen
 import com.comunidapp.app.ui.screens.foster.MyFosterHomeScreen
+import com.comunidapp.app.viewmodel.FosterCompleteViewModel
+import com.comunidapp.app.viewmodel.FosterEvolutionFormViewModel
+import com.comunidapp.app.viewmodel.FosterEvolutionListViewModel
+import com.comunidapp.app.viewmodel.FosterExpenseFormViewModel
+import com.comunidapp.app.viewmodel.FosterExpensesViewModel
+import com.comunidapp.app.viewmodel.FosterHelpDetailViewModel
+import com.comunidapp.app.viewmodel.FosterHelpFormViewModel
+import com.comunidapp.app.viewmodel.FosterHelpListViewModel
 import com.comunidapp.app.viewmodel.FosterHomeDetailViewModel
 import com.comunidapp.app.viewmodel.FosterPlacementDetailViewModel
+import com.comunidapp.app.viewmodel.FosterPlacementManagementViewModel
 import com.comunidapp.app.viewmodel.FosterRequestDetailViewModel
 import com.comunidapp.app.viewmodel.FosterRequestFormViewModel
 import com.comunidapp.app.ui.screens.adoptions.AdoptionFollowUpCheckDetailScreen
@@ -823,7 +842,8 @@ private fun MainScreen(accountType: AccountType) {
                     onMyHome = { navController.navigate(NavRoutes.MY_FOSTER_HOME) },
                     onReceived = { navController.navigate(NavRoutes.FOSTER_REQUESTS_RECEIVED) },
                     onSent = { navController.navigate(NavRoutes.FOSTER_REQUESTS_SENT) },
-                    onPlacements = { navController.navigate(NavRoutes.FOSTER_PLACEMENTS) }
+                    onPlacements = { navController.navigate(NavRoutes.FOSTER_PLACEMENTS) },
+                    onHistory = { navController.navigate(NavRoutes.FOSTER_HISTORY) }
                 )
             }
             composable(NavRoutes.MY_FOSTER_HOME) {
@@ -917,7 +937,7 @@ private fun MainScreen(accountType: AccountType) {
                 FosterRequestDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onPlacementStarted = { placementId ->
-                        navController.navigate(NavRoutes.fosterPlacementDetail(placementId))
+                        navController.navigate(NavRoutes.fosterPlacementManagement(placementId))
                     },
                     viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
                         factory = FosterRequestDetailViewModel.factory(id)
@@ -927,7 +947,7 @@ private fun MainScreen(accountType: AccountType) {
             composable(NavRoutes.FOSTER_PLACEMENTS) {
                 FosterPlacementsScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onPlacementClick = { id -> navController.navigate(NavRoutes.fosterPlacementDetail(id)) }
+                    onPlacementClick = { id -> navController.navigate(NavRoutes.fosterPlacementManagement(id)) }
                 )
             }
             composable(
@@ -943,6 +963,163 @@ private fun MainScreen(accountType: AccountType) {
                     viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
                         factory = FosterPlacementDetailViewModel.factory(id)
                     )
+                )
+            }
+            composable(
+                route = NavRoutes.FOSTER_PLACEMENT_MANAGEMENT,
+                arguments = listOf(navArgument(NavRoutes.ARG_FOSTER_PLACEMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_FOSTER_PLACEMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                FosterPlacementManagementScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onExpenses = { pid -> navController.navigate(NavRoutes.fosterExpenses(pid)) },
+                    onEvolution = { pid -> navController.navigate(NavRoutes.fosterEvolution(pid)) },
+                    onHelp = { pid -> navController.navigate(NavRoutes.fosterHelp(pid)) },
+                    onComplete = { pid -> navController.navigate(NavRoutes.fosterComplete(pid)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = FosterPlacementManagementViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.FOSTER_EXPENSES,
+                arguments = listOf(navArgument(NavRoutes.ARG_FOSTER_PLACEMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_FOSTER_PLACEMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                FosterExpensesScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAdd = { navController.navigate(NavRoutes.fosterExpenseForm(id)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = FosterExpensesViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.FOSTER_EXPENSE_FORM,
+                arguments = listOf(navArgument(NavRoutes.ARG_FOSTER_PLACEMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_FOSTER_PLACEMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                FosterExpenseFormScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = FosterExpenseFormViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.FOSTER_EVOLUTION,
+                arguments = listOf(navArgument(NavRoutes.ARG_FOSTER_PLACEMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_FOSTER_PLACEMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                FosterEvolutionScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAdd = { navController.navigate(NavRoutes.fosterEvolutionForm(id)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = FosterEvolutionListViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.FOSTER_EVOLUTION_FORM,
+                arguments = listOf(navArgument(NavRoutes.ARG_FOSTER_PLACEMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_FOSTER_PLACEMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                FosterEvolutionFormScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = FosterEvolutionFormViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.FOSTER_HELP,
+                arguments = listOf(navArgument(NavRoutes.ARG_FOSTER_PLACEMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_FOSTER_PLACEMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                FosterHelpScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAdd = { navController.navigate(NavRoutes.fosterHelpForm(id)) },
+                    onDetail = { hid -> navController.navigate(NavRoutes.fosterHelpDetail(hid)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = FosterHelpListViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.FOSTER_HELP_FORM,
+                arguments = listOf(navArgument(NavRoutes.ARG_FOSTER_PLACEMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_FOSTER_PLACEMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                FosterHelpFormScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = FosterHelpFormViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.FOSTER_HELP_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_FOSTER_HELP_REQUEST_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_FOSTER_HELP_REQUEST_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                FosterHelpDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = FosterHelpDetailViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.FOSTER_COMPLETE,
+                arguments = listOf(navArgument(NavRoutes.ARG_FOSTER_PLACEMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_FOSTER_PLACEMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                FosterCompleteScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCompleted = {
+                        navController.navigate(NavRoutes.FOSTER_HISTORY) {
+                            popUpTo(NavRoutes.FOSTER_HOMES) { inclusive = false }
+                        }
+                    },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = FosterCompleteViewModel.factory(id)
+                    )
+                )
+            }
+            composable(NavRoutes.FOSTER_HISTORY) {
+                FosterHistoryScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onPlacementClick = { id -> navController.navigate(NavRoutes.fosterPlacementManagement(id)) }
                 )
             }
             composable(

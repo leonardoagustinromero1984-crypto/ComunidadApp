@@ -8,7 +8,11 @@ import com.comunidapp.app.data.model.FosterHomeStatus
 import com.comunidapp.app.data.model.FosterPlacement
 import com.comunidapp.app.data.remote.supabase.m10.M10FosterErrorMapper
 import com.comunidapp.app.data.remote.supabase.m10.SupabaseFosterM10RemoteDataSource
+import com.comunidapp.app.data.remote.supabase.m10.toContributionDomain
 import com.comunidapp.app.data.remote.supabase.m10.toDomain
+import com.comunidapp.app.data.remote.supabase.m10.toEvolutionDomain
+import com.comunidapp.app.data.remote.supabase.m10.toExpenseDomain
+import com.comunidapp.app.data.remote.supabase.m10.toHelpDomain
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.JsonNull
@@ -215,6 +219,191 @@ class SupabaseFosterPlacementRepository(
         initialNotes: String?
     ): Result<FosterPlacement> = try {
         Result.success(remote.startPlacement(requestId, initialNotes).toDomain())
+    } catch (t: Throwable) {
+        M10FosterErrorMapper.failure(t)
+    }
+
+    override fun observePlacementHistory(userId: String): Flow<List<FosterPlacement>> = flow {
+        emit(runCatching { remote.listHistory().map { it.toDomain() } }.getOrElse { emptyList() })
+    }
+
+    override suspend fun completePlacement(
+        placementId: String,
+        reason: com.comunidapp.app.data.model.FosterPlacementEndReason,
+        notes: String?
+    ): Result<FosterPlacement> = try {
+        Result.success(remote.completePlacement(placementId, reason.name, notes).toDomain())
+    } catch (t: Throwable) {
+        M10FosterErrorMapper.failure(t)
+    }
+
+    override suspend fun cancelReservedPlacement(
+        placementId: String,
+        reason: String?
+    ): Result<FosterPlacement> = try {
+        Result.success(remote.cancelPlacement(placementId, reason).toDomain())
+    } catch (t: Throwable) {
+        M10FosterErrorMapper.failure(t)
+    }
+}
+
+class SupabaseFosterExpenseRepository(
+    private val remote: SupabaseFosterM10RemoteDataSource = SupabaseFosterM10RemoteDataSource()
+) : FosterExpenseRepository {
+    override fun observeExpenses(placementId: String): Flow<List<com.comunidapp.app.data.model.FosterExpense>> =
+        flow {
+            emit(
+                runCatching { remote.listExpenses(placementId).map { it.toExpenseDomain() } }
+                    .getOrElse { emptyList() }
+            )
+        }
+
+    override suspend fun addExpense(
+        placementId: String,
+        category: com.comunidapp.app.data.model.FosterExpenseCategory,
+        description: String,
+        amountMinor: Long,
+        currency: String,
+        occurredAt: Long,
+        receiptRef: String?
+    ): Result<com.comunidapp.app.data.model.FosterExpense> = try {
+        Result.success(
+            remote.addExpense(
+                buildJsonObject {
+                    put("p_placement_id", placementId)
+                    put("p_category", category.name)
+                    put("p_description", description)
+                    put("p_amount_minor", amountMinor)
+                    put("p_currency", currency)
+                    put("p_occurred_at", java.time.Instant.ofEpochMilli(occurredAt).toString())
+                    put("p_receipt_ref", receiptRef)
+                }
+            ).toExpenseDomain()
+        )
+    } catch (t: Throwable) {
+        M10FosterErrorMapper.failure(t)
+    }
+}
+
+class SupabaseFosterEvolutionRepository(
+    private val remote: SupabaseFosterM10RemoteDataSource = SupabaseFosterM10RemoteDataSource()
+) : FosterEvolutionRepository {
+    override fun observeEvolution(placementId: String): Flow<List<com.comunidapp.app.data.model.FosterEvolutionEntry>> =
+        flow {
+            emit(
+                runCatching { remote.listEvolution(placementId).map { it.toEvolutionDomain() } }
+                    .getOrElse { emptyList() }
+            )
+        }
+
+    override suspend fun addEvolution(
+        placementId: String,
+        title: String,
+        description: String,
+        healthStatus: com.comunidapp.app.data.model.FosterHealthStatus,
+        weightGrams: Int?,
+        occurredAt: Long,
+        mediaRefs: List<String>,
+        visibility: com.comunidapp.app.data.model.FosterEvolutionVisibility
+    ): Result<com.comunidapp.app.data.model.FosterEvolutionEntry> = try {
+        Result.success(
+            remote.addEvolution(
+                buildJsonObject {
+                    put("p_placement_id", placementId)
+                    put("p_title", title)
+                    put("p_description", description)
+                    put("p_health_status", healthStatus.name)
+                    put("p_weight_grams", weightGrams)
+                    put("p_occurred_at", java.time.Instant.ofEpochMilli(occurredAt).toString())
+                    put("p_visibility", visibility.name)
+                    putJsonArray("p_media_refs") {
+                        mediaRefs.forEach { add(JsonPrimitive(it)) }
+                    }
+                }
+            ).toEvolutionDomain()
+        )
+    } catch (t: Throwable) {
+        M10FosterErrorMapper.failure(t)
+    }
+}
+
+class SupabaseFosterHelpRepository(
+    private val remote: SupabaseFosterM10RemoteDataSource = SupabaseFosterM10RemoteDataSource()
+) : FosterHelpRepository {
+    override fun observeHelpRequests(placementId: String) = flow {
+        emit(
+            runCatching { remote.listHelp(placementId).map { it.toHelpDomain() } }
+                .getOrElse { emptyList() }
+        )
+    }
+
+    override fun observeContributions(helpRequestId: String) = flow {
+        emit(emptyList<com.comunidapp.app.data.model.FosterHelpContribution>())
+    }
+
+    override suspend fun getHelpRequest(id: String): Result<com.comunidapp.app.data.model.FosterHelpRequest> =
+        try {
+            if (id.isBlank()) M10FosterErrorMapper.fail("FOSTER_HELP_REQUEST_NOT_FOUND")
+            else Result.success(remote.getHelp(id).toHelpDomain())
+        } catch (t: Throwable) {
+            M10FosterErrorMapper.failure(t)
+        }
+
+    override suspend fun createHelpRequest(
+        placementId: String,
+        type: com.comunidapp.app.data.model.FosterHelpType,
+        title: String,
+        description: String,
+        targetAmountMinor: Long?,
+        currency: String?,
+        quantityNeeded: Int?,
+        urgency: com.comunidapp.app.data.model.FosterUrgency
+    ) = try {
+        Result.success(
+            remote.createHelp(
+                buildJsonObject {
+                    put("p_placement_id", placementId)
+                    put("p_type", type.name)
+                    put("p_title", title)
+                    put("p_description", description)
+                    put("p_target_amount_minor", targetAmountMinor)
+                    put("p_currency", currency)
+                    put("p_quantity_needed", quantityNeeded)
+                    put("p_urgency", urgency.name)
+                }
+            ).toHelpDomain()
+        )
+    } catch (t: Throwable) {
+        M10FosterErrorMapper.failure(t)
+    }
+
+    override suspend fun changeHelpRequestStatus(
+        helpRequestId: String,
+        status: com.comunidapp.app.data.model.FosterHelpStatus
+    ) = try {
+        Result.success(remote.updateHelpStatus(helpRequestId, status.name).toHelpDomain())
+    } catch (t: Throwable) {
+        M10FosterErrorMapper.failure(t)
+    }
+
+    override suspend fun recordContribution(
+        helpRequestId: String,
+        description: String,
+        amountMinor: Long?,
+        quantity: Int?,
+        status: com.comunidapp.app.data.model.FosterContributionStatus
+    ) = try {
+        Result.success(
+            remote.recordContribution(
+                buildJsonObject {
+                    put("p_help_request_id", helpRequestId)
+                    put("p_description", description)
+                    put("p_amount_minor", amountMinor)
+                    put("p_quantity", quantity)
+                    put("p_status", status.name)
+                }
+            ).toContributionDomain()
+        )
     } catch (t: Throwable) {
         M10FosterErrorMapper.failure(t)
     }

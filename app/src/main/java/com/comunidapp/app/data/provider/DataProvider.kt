@@ -28,13 +28,22 @@ import com.comunidapp.app.data.repository.ChatRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationDeliveryRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationOutboxRepository
 import com.comunidapp.app.data.repository.CommunityRepository
+import com.comunidapp.app.data.repository.FosterEvolutionRepository
+import com.comunidapp.app.data.repository.FosterExpenseRepository
+import com.comunidapp.app.data.repository.FosterHelpRepository
 import com.comunidapp.app.data.repository.FosterHomeRepository
 import com.comunidapp.app.data.repository.FosterPlacementRepository
 import com.comunidapp.app.data.repository.FosterRequestRepository
 import com.comunidapp.app.data.repository.M10FosterMemoryStore
+import com.comunidapp.app.data.repository.MockFosterEvolutionRepository
+import com.comunidapp.app.data.repository.MockFosterExpenseRepository
+import com.comunidapp.app.data.repository.MockFosterHelpRepository
 import com.comunidapp.app.data.repository.MockFosterHomeRepository
 import com.comunidapp.app.data.repository.MockFosterPlacementRepository
 import com.comunidapp.app.data.repository.MockFosterRequestRepository
+import com.comunidapp.app.data.repository.SupabaseFosterEvolutionRepository
+import com.comunidapp.app.data.repository.SupabaseFosterExpenseRepository
+import com.comunidapp.app.data.repository.SupabaseFosterHelpRepository
 import com.comunidapp.app.data.repository.SupabaseFosterHomeRepository
 import com.comunidapp.app.data.repository.SupabaseFosterPlacementRepository
 import com.comunidapp.app.data.repository.SupabaseFosterRequestRepository
@@ -352,6 +361,39 @@ object DataProvider {
             SupabaseFosterPlacementRepository()
         } else {
             MockFosterPlacementRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m10FosterStore
+            )
+        }
+    }
+
+    val fosterExpenseRepository: FosterExpenseRepository by lazy {
+        if (useSupabase) {
+            SupabaseFosterExpenseRepository()
+        } else {
+            MockFosterExpenseRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m10FosterStore
+            )
+        }
+    }
+
+    val fosterEvolutionRepository: FosterEvolutionRepository by lazy {
+        if (useSupabase) {
+            SupabaseFosterEvolutionRepository()
+        } else {
+            MockFosterEvolutionRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m10FosterStore
+            )
+        }
+    }
+
+    val fosterHelpRepository: FosterHelpRepository by lazy {
+        if (useSupabase) {
+            SupabaseFosterHelpRepository()
+        } else {
+            MockFosterHelpRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m10FosterStore
             )

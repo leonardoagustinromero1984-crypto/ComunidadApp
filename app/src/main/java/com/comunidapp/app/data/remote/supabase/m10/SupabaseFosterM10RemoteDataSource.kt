@@ -1,6 +1,16 @@
 package com.comunidapp.app.data.remote.supabase.m10
 
 import com.comunidapp.app.data.model.FosterAvailabilityStatus
+import com.comunidapp.app.data.model.FosterContributionStatus
+import com.comunidapp.app.data.model.FosterEvolutionEntry
+import com.comunidapp.app.data.model.FosterEvolutionVisibility
+import com.comunidapp.app.data.model.FosterExpense
+import com.comunidapp.app.data.model.FosterExpenseCategory
+import com.comunidapp.app.data.model.FosterHealthStatus
+import com.comunidapp.app.data.model.FosterHelpContribution
+import com.comunidapp.app.data.model.FosterHelpRequest
+import com.comunidapp.app.data.model.FosterHelpStatus
+import com.comunidapp.app.data.model.FosterHelpType
 import com.comunidapp.app.data.model.FosterHomeProfile
 import com.comunidapp.app.data.model.FosterHomeRequest
 import com.comunidapp.app.data.model.FosterHomeRequestStatus
@@ -75,7 +85,69 @@ data class FosterPlacementRow(
     @SerialName("ended_at") val endedAt: String? = null,
     @SerialName("initial_notes") val initialNotes: String? = null,
     @SerialName("end_reason") val endReason: String? = null,
+    @SerialName("end_notes") val endNotes: String? = null,
+    @SerialName("ended_by") val endedBy: String? = null,
     @SerialName("temporary_responsibility_id") val temporaryResponsibilityId: String? = null
+)
+
+@Serializable
+data class FosterExpenseRow(
+    val id: String,
+    @SerialName("placement_id") val placementId: String,
+    val category: String,
+    val description: String,
+    @SerialName("amount_minor") val amountMinor: Long,
+    val currency: String = "ARS",
+    @SerialName("occurred_at") val occurredAt: String? = null,
+    @SerialName("receipt_ref") val receiptRef: String? = null,
+    @SerialName("created_by") val createdBy: String,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+data class FosterEvolutionRow(
+    val id: String,
+    @SerialName("placement_id") val placementId: String,
+    val title: String,
+    val description: String,
+    @SerialName("health_status") val healthStatus: String = "UNKNOWN",
+    @SerialName("weight_grams") val weightGrams: Int? = null,
+    @SerialName("occurred_at") val occurredAt: String? = null,
+    @SerialName("media_refs") val mediaRefs: List<String> = emptyList(),
+    val visibility: String = "PARTICIPANTS",
+    @SerialName("created_by") val createdBy: String,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+data class FosterHelpRequestRow(
+    val id: String,
+    @SerialName("placement_id") val placementId: String,
+    @SerialName("help_type") val helpType: String,
+    val title: String,
+    val description: String,
+    @SerialName("target_amount_minor") val targetAmountMinor: Long? = null,
+    val currency: String? = null,
+    @SerialName("quantity_needed") val quantityNeeded: Int? = null,
+    val status: String = "OPEN",
+    val urgency: String = "NORMAL",
+    @SerialName("created_by") val createdBy: String,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("closed_at") val closedAt: String? = null,
+    @SerialName("received_amount_minor") val receivedAmountMinor: Long = 0,
+    @SerialName("received_quantity") val receivedQuantity: Int = 0
+)
+
+@Serializable
+data class FosterHelpContributionRow(
+    val id: String,
+    @SerialName("help_request_id") val helpRequestId: String,
+    @SerialName("contributor_user_id") val contributorUserId: String? = null,
+    val description: String,
+    @SerialName("amount_minor") val amountMinor: Long? = null,
+    val quantity: Int? = null,
+    val status: String = "RECEIVED",
+    @SerialName("recorded_at") val recordedAt: String? = null
 )
 
 fun FosterHomeProfileRow.toDomain(): FosterHomeProfile = FosterHomeProfile(
@@ -133,7 +205,65 @@ fun FosterPlacementRow.toDomain(): FosterPlacement = FosterPlacement(
     endedAt = parseTsOrNull(endedAt),
     initialNotes = initialNotes,
     endReason = endReason,
+    endNotes = endNotes,
+    endedBy = endedBy,
     temporaryResponsibilityId = temporaryResponsibilityId
+)
+
+fun FosterExpenseRow.toExpenseDomain(): FosterExpense = FosterExpense(
+    id = id,
+    placementId = placementId,
+    category = FosterExpenseCategory.fromString(category),
+    description = description,
+    amountMinor = amountMinor,
+    currency = currency,
+    occurredAt = parseTs(occurredAt),
+    receiptRef = receiptRef,
+    createdBy = createdBy,
+    createdAt = parseTs(createdAt)
+)
+
+fun FosterEvolutionRow.toEvolutionDomain(): FosterEvolutionEntry = FosterEvolutionEntry(
+    id = id,
+    placementId = placementId,
+    title = title,
+    description = description,
+    healthStatus = FosterHealthStatus.fromString(healthStatus),
+    weightGrams = weightGrams,
+    occurredAt = parseTs(occurredAt),
+    mediaRefs = mediaRefs,
+    visibility = FosterEvolutionVisibility.fromString(visibility),
+    createdBy = createdBy,
+    createdAt = parseTs(createdAt)
+)
+
+fun FosterHelpRequestRow.toHelpDomain(): FosterHelpRequest = FosterHelpRequest(
+    id = id,
+    placementId = placementId,
+    type = FosterHelpType.fromString(helpType),
+    title = title,
+    description = description,
+    targetAmountMinor = targetAmountMinor,
+    currency = currency,
+    quantityNeeded = quantityNeeded,
+    status = FosterHelpStatus.fromString(status),
+    urgency = FosterUrgency.fromString(urgency),
+    createdBy = createdBy,
+    createdAt = parseTs(createdAt),
+    closedAt = parseTsOrNull(closedAt),
+    receivedAmountMinor = receivedAmountMinor,
+    receivedQuantity = receivedQuantity
+)
+
+fun FosterHelpContributionRow.toContributionDomain(): FosterHelpContribution = FosterHelpContribution(
+    id = id,
+    helpRequestId = helpRequestId,
+    contributorUserId = contributorUserId,
+    description = description,
+    amountMinor = amountMinor,
+    quantity = quantity,
+    status = FosterContributionStatus.fromString(status),
+    recordedAt = parseTs(recordedAt)
 )
 
 private fun parseTs(value: String?): Long =
@@ -241,4 +371,75 @@ class SupabaseFosterM10RemoteDataSource {
 
     suspend fun getPlacement(id: String): FosterPlacementRow =
         decodeOne("m10_get_foster_placement", buildJsonObject { put("p_placement_id", id) })
+
+    suspend fun listHistory(): List<FosterPlacementRow> =
+        decodeList("m10_list_foster_history")
+
+    suspend fun completePlacement(
+        placementId: String,
+        reason: String,
+        notes: String?
+    ): FosterPlacementRow =
+        decodeOne(
+            "m10_complete_foster_placement",
+            buildJsonObject {
+                put("p_placement_id", placementId)
+                put("p_end_reason", reason)
+                put("p_end_notes", notes)
+            }
+        )
+
+    suspend fun cancelPlacement(placementId: String, reason: String?): FosterPlacementRow =
+        decodeOne(
+            "m10_cancel_foster_placement",
+            buildJsonObject {
+                put("p_placement_id", placementId)
+                put("p_reason", reason)
+            }
+        )
+
+    suspend fun listExpenses(placementId: String): List<FosterExpenseRow> =
+        decodeList(
+            "m10_list_foster_expenses",
+            buildJsonObject { put("p_placement_id", placementId) }
+        )
+
+    suspend fun addExpense(params: JsonObject): FosterExpenseRow =
+        decodeOne("m10_add_foster_expense", params)
+
+    suspend fun listEvolution(placementId: String): List<FosterEvolutionRow> =
+        decodeList(
+            "m10_list_foster_evolution",
+            buildJsonObject { put("p_placement_id", placementId) }
+        )
+
+    suspend fun addEvolution(params: JsonObject): FosterEvolutionRow =
+        decodeOne("m10_add_foster_evolution", params)
+
+    suspend fun listHelp(placementId: String): List<FosterHelpRequestRow> =
+        decodeList(
+            "m10_list_help_requests",
+            buildJsonObject { put("p_placement_id", placementId) }
+        )
+
+    suspend fun getHelp(helpRequestId: String): FosterHelpRequestRow =
+        decodeOne(
+            "m10_get_help_request",
+            buildJsonObject { put("p_help_request_id", helpRequestId) }
+        )
+
+    suspend fun createHelp(params: JsonObject): FosterHelpRequestRow =
+        decodeOne("m10_create_help_request", params)
+
+    suspend fun updateHelpStatus(helpRequestId: String, status: String): FosterHelpRequestRow =
+        decodeOne(
+            "m10_update_help_request_status",
+            buildJsonObject {
+                put("p_help_request_id", helpRequestId)
+                put("p_status", status)
+            }
+        )
+
+    suspend fun recordContribution(params: JsonObject): FosterHelpContributionRow =
+        decodeOne("m10_record_help_contribution", params)
 }

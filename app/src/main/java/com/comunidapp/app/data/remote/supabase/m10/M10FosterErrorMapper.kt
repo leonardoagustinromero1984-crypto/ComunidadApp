@@ -27,6 +27,21 @@ object M10FosterErrorMapper {
         "FOSTER_PLACEMENT_NOT_FOUND",
         "FOSTER_PLACEMENT_ALREADY_ACTIVE",
         "FOSTER_PLACEMENT_CAPACITY_EXCEEDED",
+        "FOSTER_PLACEMENT_NOT_ACTIVE",
+        "FOSTER_PLACEMENT_ALREADY_COMPLETED",
+        "FOSTER_PLACEMENT_INVALID_TRANSITION",
+        "FOSTER_PLACEMENT_COMPLETION_FORBIDDEN",
+        "FOSTER_TEMPORARY_PERMISSION_REVOKE_FAILED",
+        "FOSTER_EXPENSE_NOT_FOUND",
+        "FOSTER_EXPENSE_INVALID_AMOUNT",
+        "FOSTER_EXPENSE_FORBIDDEN",
+        "FOSTER_EVOLUTION_NOT_FOUND",
+        "FOSTER_EVOLUTION_FORBIDDEN",
+        "FOSTER_EVOLUTION_INVALID_MEDIA_REF",
+        "FOSTER_HELP_REQUEST_NOT_FOUND",
+        "FOSTER_HELP_REQUEST_NOT_EDITABLE",
+        "FOSTER_HELP_REQUEST_FORBIDDEN",
+        "FOSTER_CONTRIBUTION_INVALID",
         "PET_NOT_ELIGIBLE_FOR_FOSTER",
         "PET_ALREADY_IN_FOSTER",
         "PET_NOT_FOUND",
@@ -73,6 +88,21 @@ object M10FosterErrorMapper {
         "FOSTER_PLACEMENT_NOT_FOUND" -> "No encontramos ese alojamiento."
         "FOSTER_PLACEMENT_ALREADY_ACTIVE" -> "La mascota ya tiene un alojamiento activo."
         "FOSTER_PLACEMENT_CAPACITY_EXCEEDED" -> "No hay capacidad para iniciar el ingreso."
+        "FOSTER_PLACEMENT_NOT_ACTIVE" -> "El alojamiento no está activo."
+        "FOSTER_PLACEMENT_ALREADY_COMPLETED" -> "Ese tránsito ya fue finalizado."
+        "FOSTER_PLACEMENT_INVALID_TRANSITION" -> "Ese cambio de estado del alojamiento no está permitido."
+        "FOSTER_PLACEMENT_COMPLETION_FORBIDDEN" -> "No tenés permiso para finalizar este tránsito."
+        "FOSTER_TEMPORARY_PERMISSION_REVOKE_FAILED" -> "No se pudo revocar la custodia temporal."
+        "FOSTER_EXPENSE_NOT_FOUND" -> "No encontramos ese gasto."
+        "FOSTER_EXPENSE_INVALID_AMOUNT" -> "El importe del gasto debe ser mayor que cero."
+        "FOSTER_EXPENSE_FORBIDDEN" -> "No tenés permiso sobre estos gastos."
+        "FOSTER_EVOLUTION_NOT_FOUND" -> "No encontramos esa evolución."
+        "FOSTER_EVOLUTION_FORBIDDEN" -> "No tenés permiso sobre la evolución."
+        "FOSTER_EVOLUTION_INVALID_MEDIA_REF" -> "La referencia de media no es segura."
+        "FOSTER_HELP_REQUEST_NOT_FOUND" -> "No encontramos ese pedido de ayuda."
+        "FOSTER_HELP_REQUEST_NOT_EDITABLE" -> "Ese pedido ya no se puede editar."
+        "FOSTER_HELP_REQUEST_FORBIDDEN" -> "No tenés permiso sobre ese pedido de ayuda."
+        "FOSTER_CONTRIBUTION_INVALID" -> "La contribución no es válida."
         "PET_NOT_ELIGIBLE_FOR_FOSTER" -> "Esa mascota no puede ir a tránsito."
         "PET_ALREADY_IN_FOSTER" -> "Esa mascota ya está en un hogar de tránsito."
         "PET_NOT_FOUND" -> "No encontramos la mascota."

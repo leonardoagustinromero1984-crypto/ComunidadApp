@@ -150,5 +150,135 @@ data class FosterPlacement(
     val endedAt: Long? = null,
     val initialNotes: String? = null,
     val endReason: String? = null,
+    val endNotes: String? = null,
+    val endedBy: String? = null,
     val temporaryResponsibilityId: String? = null
 )
+
+enum class FosterExpenseCategory {
+    FOOD, MEDICATION, VETERINARY, TRANSPORT, HYGIENE, SUPPLIES, OTHER, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): FosterExpenseCategory =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+data class FosterExpense(
+    val id: String,
+    val placementId: String,
+    val category: FosterExpenseCategory,
+    val description: String,
+    val amountMinor: Long,
+    val currency: String,
+    val occurredAt: Long,
+    val receiptRef: String? = null,
+    val createdBy: String,
+    val createdAt: Long
+)
+
+enum class FosterHealthStatus {
+    GOOD, STABLE, NEEDS_ATTENTION, CRITICAL, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): FosterHealthStatus =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+enum class FosterEvolutionVisibility {
+    PARTICIPANTS, PUBLIC, PRIVATE_HOME, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): FosterEvolutionVisibility =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+data class FosterEvolutionEntry(
+    val id: String,
+    val placementId: String,
+    val title: String,
+    val description: String,
+    val healthStatus: FosterHealthStatus,
+    val weightGrams: Int? = null,
+    val occurredAt: Long,
+    val mediaRefs: List<String> = emptyList(),
+    val visibility: FosterEvolutionVisibility = FosterEvolutionVisibility.PARTICIPANTS,
+    val createdBy: String,
+    val createdAt: Long
+)
+
+enum class FosterHelpType {
+    FOOD, MEDICATION, VETERINARY, TRANSPORT, SUPPLIES, VOLUNTEER, MONEY, OTHER, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): FosterHelpType =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+enum class FosterHelpStatus {
+    OPEN, PAUSED, FULFILLED, CANCELLED, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): FosterHelpStatus =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+
+    val isEditable: Boolean get() = this == OPEN || this == PAUSED
+}
+
+enum class FosterContributionStatus {
+    PLEDGED, RECEIVED, CANCELLED, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): FosterContributionStatus =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+data class FosterHelpRequest(
+    val id: String,
+    val placementId: String,
+    val type: FosterHelpType,
+    val title: String,
+    val description: String,
+    val targetAmountMinor: Long? = null,
+    val currency: String? = null,
+    val quantityNeeded: Int? = null,
+    val status: FosterHelpStatus = FosterHelpStatus.OPEN,
+    val urgency: FosterUrgency = FosterUrgency.NORMAL,
+    val createdBy: String,
+    val createdAt: Long,
+    val closedAt: Long? = null,
+    val receivedAmountMinor: Long = 0,
+    val receivedQuantity: Int = 0
+)
+
+data class FosterHelpContribution(
+    val id: String,
+    val helpRequestId: String,
+    val contributorUserId: String? = null,
+    val description: String,
+    val amountMinor: Long? = null,
+    val quantity: Int? = null,
+    val status: FosterContributionStatus = FosterContributionStatus.RECEIVED,
+    val recordedAt: Long
+)
+
+enum class FosterPlacementEndReason {
+    RETURNED_TO_OWNER,
+    MOVED_TO_ANOTHER_FOSTER_HOME,
+    ADOPTED,
+    TRANSFERRED_TO_ORGANIZATION,
+    HOSPITALIZED,
+    CANCELLED_BEFORE_START,
+    OTHER,
+    UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): FosterPlacementEndReason =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}

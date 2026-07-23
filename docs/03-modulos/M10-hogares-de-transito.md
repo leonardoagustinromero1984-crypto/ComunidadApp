@@ -1,44 +1,52 @@
-# M10 — Hogares de tránsito (bloque 1)
+# M10 — Hogares de tránsito
 
-## Auditoría inicial
+## Auditoría (bloques 1–2)
 
 | Área | Clasificación |
 |------|----------------|
-| `FosterHomeListing` / Sumate / `PublishFosterScreen` | **Legacy / mock** — listing personal con `contact_info` público |
-| `foster_homes` (006) / `foster_requests` (011) | **Incompatible** — sin capacidad/ocupación M10, estados PENDING |
-| M08 `TEMPORARY_CUSTODIAN` | **Reutilizable** para custodia temporal al ingreso |
-| M03 `organization_memberships` | **Reutilizable** en RPC de permiso sobre mascota |
-| M09 adopciones | **Independiente** — no transferir PRINCIPAL ni finalizar adopción desde M10 |
-| Storage / coords públicas | **Ausente** en este bloque (zona textual aproximada) |
+| Perfiles / solicitudes / ingreso (bloque 1) | **Reutilizable** |
+| Migración `040` | **Reutilizable** (no modificar) |
+| Gastos / evolución / ayuda / finalización pre-041 | **Ausente** → implementado en bloque 2 |
+| Sumate / `PublishFosterScreen` | **Legacy / mock** |
+| `foster_homes` / `foster_requests` legacy | **Incompatible** |
+| M08 `TEMPORARY_CUSTODIAN` / `PRINCIPAL` | **Reutilizable** |
+| Pagos / bucket público comprobantes | **Fuera de alcance** / **rechazado** |
 
 ## Modelos
 
-- `FosterHomeProfile` + proyección pública `FosterHomePublicListing`
-- `FosterHomeRequest` (tabla SQL `foster_care_requests`; evita choque con legacy `FosterRequest`)
-- `FosterPlacement`
+Bloque 1: `FosterHomeProfile`, `FosterHomeRequest`, `FosterPlacement`.
 
-## Reglas clave
+Bloque 2: `FosterExpense`, `FosterEvolutionEntry`, `FosterHelpRequest`, `FosterHelpContribution`, `FosterPlacementEndReason`.
 
-- Un perfil abierto por usuario; ocupación calculada (no editable en UI).
-- Listado público: solo `ACTIVE`; sin dirección privada ni teléfono.
-- Solicitud: hogar activo/disponible, pet compatible, no fallecida, sin tránsito activo.
-- Aceptar reserva capacidad; ingreso (`m10_start_foster_placement`) confirma ocupación.
-- Ingreso crea `TEMPORARY_CUSTODIAN` M08; **no** cambia PRINCIPAL.
+## Ciclo del tránsito
+
+1. Perfil → solicitud → reserva → ingreso (`TEMPORARY_CUSTODIAN`, PRINCIPAL intacto).
+2. Gastos / evolución / pedidos de ayuda (solo `ACTIVE`).
+3. Finalización: libera capacidad, revoca custodia temporal, cierra ayuda abierta, historial inmutable.
+4. Cancelación pre-ingreso: solo `RESERVED`.
 
 ## Persistencia
 
-Migración `040_m10_foster_homes_core.sql` (**pendiente de apply remoto**).
+| Migración | Contenido | Remoto |
+|-----------|-----------|--------|
+| `040_m10_foster_homes_core.sql` | perfiles, solicitudes, placements | **Pendiente** |
+| `041_m10_foster_care_management.sql` | gastos, evolución, ayuda, complete/cancel | **Pendiente** |
 
-Detalle: `docs/02-arquitectura/M10-persistencia-hogares-transito.md`
+Detalle bloque 2: `docs/02-arquitectura/M10-gestion-y-finalizacion-transito.md`
+
+## RLS / RPC (bloque 2)
+
+`m10_add/list_foster_expense`, `m10_add/list_foster_evolution`, `m10_create_help_request`, `m10_update_help_request_status`, `m10_list_help_requests`, `m10_get_help_request`, `m10_record_help_contribution`, `m10_cancel_foster_placement`, `m10_complete_foster_placement`, `m10_list_foster_history`.
 
 ## Pantallas / rutas
 
-`foster_homes`, `foster_home_detail`, `my_foster_home`, `foster_home_form`, solicitudes enviadas/recibidas, formulario/detalle de solicitud, alojamientos.
+Además del bloque 1: `foster_placement_management`, `foster_expenses`, `foster_expense_form`, `foster_evolution`, `foster_evolution_form`, `foster_help`, `foster_help_form`, `foster_help_detail`, `foster_complete`, `foster_history`.
 
-## Tests
+## Tests / compilación
 
-`M10FosterHomeCoreTest` (+ regresión M08/M09 focalizada).
+- `M10FosterHomeCoreTest`, `M10FosterCareManagementTest` (+ M08/M09 focalizados)
+- `compileLocalDebugKotlin` (sin APK / lint / JaCoCo)
 
-## Pendientes (bloques siguientes)
+## Pendientes posteriores
 
-Gastos, comprobantes, donaciones, evolución/galería, pedidos de ayuda, finalización completa del tránsito, calificaciones, reputación, chat/push, estadísticas, apply remoto 040, APK.
+Pagos, reintegros, reputación, chat, push, IA, estadísticas, galería, apply remoto 040/041, staging, APK.

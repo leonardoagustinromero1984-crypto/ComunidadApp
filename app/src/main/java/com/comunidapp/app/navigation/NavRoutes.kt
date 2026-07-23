@@ -53,6 +53,16 @@ object NavRoutes {
     const val FOSTER_REQUEST_DETAIL = "foster_request_detail/{requestId}"
     const val FOSTER_PLACEMENTS = "foster_placements"
     const val FOSTER_PLACEMENT_DETAIL = "foster_placement_detail/{placementId}"
+    const val FOSTER_PLACEMENT_MANAGEMENT = "foster_placement_management/{placementId}"
+    const val FOSTER_EXPENSES = "foster_expenses/{placementId}"
+    const val FOSTER_EXPENSE_FORM = "foster_expense_form/{placementId}"
+    const val FOSTER_EVOLUTION = "foster_evolution/{placementId}"
+    const val FOSTER_EVOLUTION_FORM = "foster_evolution_form/{placementId}"
+    const val FOSTER_HELP = "foster_help/{placementId}"
+    const val FOSTER_HELP_FORM = "foster_help_form/{placementId}"
+    const val FOSTER_HELP_DETAIL = "foster_help_detail/{helpRequestId}"
+    const val FOSTER_COMPLETE = "foster_complete/{placementId}"
+    const val FOSTER_HISTORY = "foster_history"
 
     const val SHELTER_DETAIL = "shelter_detail/{shelterId}"
     const val PET_DETAIL = "pet_detail/{petId}"
@@ -143,6 +153,7 @@ object NavRoutes {
     const val ARG_FOSTER_HOME_ID = "fosterHomeId"
     const val ARG_FOSTER_REQUEST_ID = "requestId"
     const val ARG_FOSTER_PLACEMENT_ID = "placementId"
+    const val ARG_FOSTER_HELP_REQUEST_ID = "helpRequestId"
     const val ARG_SHELTER_ID = "shelterId"
     const val ARG_PET_ID = "petId"
     const val ARG_TRANSFER_ID = "transferId"
@@ -186,6 +197,24 @@ object NavRoutes {
         "foster_request_detail/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
     fun fosterPlacementDetail(placementId: String) =
         "foster_placement_detail/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun fosterPlacementManagement(placementId: String) =
+        "foster_placement_management/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun fosterExpenses(placementId: String) =
+        "foster_expenses/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun fosterExpenseForm(placementId: String) =
+        "foster_expense_form/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun fosterEvolution(placementId: String) =
+        "foster_evolution/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun fosterEvolutionForm(placementId: String) =
+        "foster_evolution_form/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun fosterHelp(placementId: String) =
+        "foster_help/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun fosterHelpForm(placementId: String) =
+        "foster_help_form/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun fosterHelpDetail(helpRequestId: String) =
+        "foster_help_detail/${java.net.URLEncoder.encode(helpRequestId, Charsets.UTF_8.name())}"
+    fun fosterComplete(placementId: String) =
+        "foster_complete/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
     fun shelterDetail(shelterId: String) = "shelter_detail/$shelterId"
     fun serviceDetail(serviceId: String) =
         "service_detail/${java.net.URLEncoder.encode(serviceId, Charsets.UTF_8.name())}"

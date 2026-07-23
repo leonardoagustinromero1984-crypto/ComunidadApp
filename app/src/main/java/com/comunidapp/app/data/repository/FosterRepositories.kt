@@ -34,6 +34,12 @@ class M10FosterMemoryStore {
     val temporaryCustody = MutableStateFlow<List<FosterTemporaryCustodyGrant>>(emptyList())
     /** petId → owner/principal user id (mock M08). */
     val petPrincipal = MutableStateFlow<Map<String, String>>(emptyMap())
+    val expenses = MutableStateFlow<List<com.comunidapp.app.data.model.FosterExpense>>(emptyList())
+    val evolution = MutableStateFlow<List<com.comunidapp.app.data.model.FosterEvolutionEntry>>(emptyList())
+    val helpRequests = MutableStateFlow<List<com.comunidapp.app.data.model.FosterHelpRequest>>(emptyList())
+    val contributions = MutableStateFlow<List<com.comunidapp.app.data.model.FosterHelpContribution>>(emptyList())
+    /** When true, completePlacement fails with FOSTER_TEMPORARY_PERMISSION_REVOKE_FAILED. */
+    var forceRevokeFailure: Boolean = false
 
     fun clear() {
         homes.value = emptyList()
@@ -41,6 +47,11 @@ class M10FosterMemoryStore {
         placements.value = emptyList()
         temporaryCustody.value = emptyList()
         petPrincipal.value = emptyMap()
+        expenses.value = emptyList()
+        evolution.value = emptyList()
+        helpRequests.value = emptyList()
+        contributions.value = emptyList()
+        forceRevokeFailure = false
     }
 }
 
@@ -115,10 +126,20 @@ data class SubmitFosterRequestInput(
 interface FosterPlacementRepository {
     fun observeActivePlacementsForHome(homeId: String): Flow<List<FosterPlacement>>
     fun observeActivePlacementsForUser(userId: String): Flow<List<FosterPlacement>>
+    fun observePlacementHistory(userId: String): Flow<List<FosterPlacement>>
     suspend fun getPlacementById(id: String): Result<FosterPlacement>
     suspend fun startPlacement(
         requestId: String,
         initialNotes: String? = null
+    ): Result<FosterPlacement>
+    suspend fun completePlacement(
+        placementId: String,
+        reason: com.comunidapp.app.data.model.FosterPlacementEndReason,
+        notes: String? = null
+    ): Result<FosterPlacement>
+    suspend fun cancelReservedPlacement(
+        placementId: String,
+        reason: String? = null
     ): Result<FosterPlacement>
 }
 
@@ -560,6 +581,117 @@ class MockFosterPlacementRepository(
         )
         store.homes.value = store.homes.value.map { if (it.id == home.id) updatedHome else it }
         placement
+    }.fold({ Result.success(it) }, { M10FosterErrorMapper.failure(it) })
+
+    override fun observePlacementHistory(userId: String): Flow<List<FosterPlacement>> =
+        store.placements.map { list ->
+            list.filter { it.fosterUserId == userId || it.requesterUserId == userId }
+                .sortedByDescending { it.startedAt }
+        }
+
+    override suspend fun completePlacement(
+        placementId: String,
+        reason: com.comunidapp.app.data.model.FosterPlacementEndReason,
+        notes: String?
+    ): Result<FosterPlacement> = runCatching {
+        val actor = actorUserId() ?: failM10("NOT_AUTHENTICATED")
+        if (placementId.isBlank()) failM10("FOSTER_PLACEMENT_NOT_FOUND")
+        val placement = store.placements.value.find { it.id == placementId }
+            ?: failM10("FOSTER_PLACEMENT_NOT_FOUND")
+        if (placement.status == FosterPlacementStatus.COMPLETED) return@runCatching placement
+        if (placement.status != FosterPlacementStatus.ACTIVE) {
+            failM10("FOSTER_PLACEMENT_NOT_ACTIVE")
+        }
+        val home = store.homes.value.find { it.id == placement.fosterHomeId }
+            ?: failM10("FOSTER_HOME_NOT_FOUND")
+        val principal = store.petPrincipal.value[placement.petId]
+        val allowed = actor == placement.fosterUserId ||
+            actor == placement.requesterUserId ||
+            actor == principal ||
+            actor == home.ownerUserId
+        if (!allowed) failM10("FOSTER_PLACEMENT_COMPLETION_FORBIDDEN")
+        if (store.forceRevokeFailure) failM10("FOSTER_TEMPORARY_PERMISSION_REVOKE_FAILED")
+
+        val now = System.currentTimeMillis()
+        // Revoke TEMPORARY_CUSTODIAN
+        store.temporaryCustody.value = store.temporaryCustody.value.map { g ->
+            if (g.placementId == placement.id && g.active) g.copy(active = false) else g
+        }
+        val completed = placement.copy(
+            status = FosterPlacementStatus.COMPLETED,
+            endedAt = now,
+            endReason = reason.name,
+            endNotes = notes?.trim()?.takeIf { it.isNotEmpty() },
+            endedBy = actor
+        )
+        store.placements.value = store.placements.value.map {
+            if (it.id == placement.id) completed else it
+        }
+        val newOccupancy = (home.currentOccupancy - 1).coerceAtLeast(0)
+        val updatedHome = home.copy(
+            currentOccupancy = newOccupancy,
+            availabilityStatus = recomputeAvailability(
+                home.status, home.totalCapacity, newOccupancy, home.reservedCount
+            ),
+            updatedAt = now
+        )
+        store.homes.value = store.homes.value.map { if (it.id == home.id) updatedHome else it }
+        // Close open help requests
+        store.helpRequests.value = store.helpRequests.value.map { hr ->
+            if (hr.placementId == placement.id && hr.status.isEditable) {
+                hr.copy(
+                    status = com.comunidapp.app.data.model.FosterHelpStatus.CANCELLED,
+                    closedAt = now
+                )
+            } else hr
+        }
+        // PRINCIPAL unchanged — petPrincipal map untouched
+        completed
+    }.fold({ Result.success(it) }, { M10FosterErrorMapper.failure(it) })
+
+    override suspend fun cancelReservedPlacement(
+        placementId: String,
+        reason: String?
+    ): Result<FosterPlacement> = runCatching {
+        val actor = actorUserId() ?: failM10("NOT_AUTHENTICATED")
+        if (placementId.isBlank()) failM10("FOSTER_PLACEMENT_NOT_FOUND")
+        val placement = store.placements.value.find { it.id == placementId }
+            ?: failM10("FOSTER_PLACEMENT_NOT_FOUND")
+        if (placement.status == FosterPlacementStatus.CANCELLED) return@runCatching placement
+        if (placement.status != FosterPlacementStatus.RESERVED) {
+            failM10("FOSTER_PLACEMENT_INVALID_TRANSITION")
+        }
+        val home = store.homes.value.find { it.id == placement.fosterHomeId }
+            ?: failM10("FOSTER_HOME_NOT_FOUND")
+        if (actor != placement.fosterUserId && actor != home.ownerUserId &&
+            actor != placement.requesterUserId
+        ) {
+            failM10("FOSTER_PLACEMENT_COMPLETION_FORBIDDEN")
+        }
+        val now = System.currentTimeMillis()
+        val cancelled = placement.copy(
+            status = FosterPlacementStatus.CANCELLED,
+            endedAt = now,
+            endReason = com.comunidapp.app.data.model.FosterPlacementEndReason.CANCELLED_BEFORE_START.name,
+            endNotes = reason?.trim()?.takeIf { it.isNotEmpty() },
+            endedBy = actor
+        )
+        store.placements.value = store.placements.value.map {
+            if (it.id == placement.id) cancelled else it
+        }
+        val newReserved = (home.reservedCount - 1).coerceAtLeast(0)
+        store.homes.value = store.homes.value.map {
+            if (it.id == home.id) {
+                it.copy(
+                    reservedCount = newReserved,
+                    availabilityStatus = recomputeAvailability(
+                        it.status, it.totalCapacity, it.currentOccupancy, newReserved
+                    ),
+                    updatedAt = now
+                )
+            } else it
+        }
+        cancelled
     }.fold({ Result.success(it) }, { M10FosterErrorMapper.failure(it) })
 }
 
