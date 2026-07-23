@@ -159,7 +159,25 @@ import com.comunidapp.app.ui.screens.publish.PublishFosterScreen
 import com.comunidapp.app.ui.screens.publish.PublishShelterScreen
 import com.comunidapp.app.ui.screens.publish.PublishScreen
 import com.comunidapp.app.data.model.AccountType
+import com.comunidapp.app.ui.screens.shelters.MySheltersScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterDashboardScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterDetailScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterIntakeScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterOpsDetailScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterOpsFormScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterOpsListScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterOpsPetDetailScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterOpsPetsScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterOpsVolunteersScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterVolunteerInviteScreen
+import com.comunidapp.app.viewmodel.ShelterDashboardViewModel
+import com.comunidapp.app.viewmodel.ShelterFormViewModel
+import com.comunidapp.app.viewmodel.ShelterIntakeViewModel
+import com.comunidapp.app.viewmodel.ShelterOpsDetailViewModel
+import com.comunidapp.app.viewmodel.ShelterPetDetailViewModel
+import com.comunidapp.app.viewmodel.ShelterPetsViewModel
+import com.comunidapp.app.viewmodel.ShelterVolunteerInviteViewModel
+import com.comunidapp.app.viewmodel.ShelterVolunteersViewModel
 import com.comunidapp.app.ui.screens.sumate.SumateScreen
 import com.comunidapp.app.viewmodel.PetAuthorizationsViewModel
 import com.comunidapp.app.viewmodel.PetFormViewModel
@@ -403,7 +421,8 @@ private fun MainScreen(accountType: AccountType) {
                     onReceivedApplications = {
                         navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
                     },
-                    onFosterHomes = { navController.navigate(NavRoutes.FOSTER_HOMES) }
+                    onFosterHomes = { navController.navigate(NavRoutes.FOSTER_HOMES) },
+                    onShelterOps = { navController.navigate(NavRoutes.SHELTERS) }
                 )
             }
             composable(NavRoutes.PUBLISH) {
@@ -1120,6 +1139,161 @@ private fun MainScreen(accountType: AccountType) {
                 FosterHistoryScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onPlacementClick = { id -> navController.navigate(NavRoutes.fosterPlacementManagement(id)) }
+                )
+            }
+            composable(NavRoutes.SHELTERS) {
+                ShelterOpsListScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onShelterClick = { id -> navController.navigate(NavRoutes.shelterOpsDetail(id)) },
+                    onMyShelters = { navController.navigate(NavRoutes.MY_SHELTERS) }
+                )
+            }
+            composable(NavRoutes.MY_SHELTERS) {
+                MySheltersScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onShelterClick = { id -> navController.navigate(NavRoutes.shelterDashboard(id)) },
+                    onCreate = { navController.navigate(NavRoutes.SHELTER_FORM) }
+                )
+            }
+            composable(NavRoutes.SHELTER_FORM) {
+                ShelterOpsFormScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { id ->
+                        navController.navigate(NavRoutes.shelterDashboard(id)) {
+                            popUpTo(NavRoutes.MY_SHELTERS) { inclusive = false }
+                        }
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_FORM_EDIT,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterOpsFormScreen(
+                    editShelterId = id,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterFormViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_OPS_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterOpsDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onDashboard = { sid -> navController.navigate(NavRoutes.shelterDashboard(sid)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterOpsDetailViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_DASHBOARD,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterDashboardScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onPets = { sid -> navController.navigate(NavRoutes.shelterPets(sid)) },
+                    onVolunteers = { sid -> navController.navigate(NavRoutes.shelterVolunteers(sid)) },
+                    onEdit = { sid -> navController.navigate(NavRoutes.shelterFormEdit(sid)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterDashboardViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_PETS,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterOpsPetsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onIntake = { navController.navigate(NavRoutes.shelterPetIntake(id)) },
+                    onDetail = { pid -> navController.navigate(NavRoutes.shelterPetDetail(pid)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterPetsViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_PET_INTAKE,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterIntakeScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterIntakeViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_PET_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_PLACEMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_PLACEMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterOpsPetDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterPetDetailViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_VOLUNTEERS,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterOpsVolunteersScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onInvite = { navController.navigate(NavRoutes.shelterVolunteerInvite(id)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterVolunteersViewModel.factory(id)
+                    )
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_VOLUNTEER_INVITE,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterVolunteerInviteScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterVolunteerInviteViewModel.factory(id)
+                    )
                 )
             }
             composable(

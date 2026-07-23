@@ -77,8 +77,18 @@ import com.comunidapp.app.data.repository.MockLostFoundRepository
 import com.comunidapp.app.data.repository.LegacyPetRepositoryAdapter
 import com.comunidapp.app.data.repository.MockPetRepository
 import com.comunidapp.app.data.repository.MockShelterRepository
+import com.comunidapp.app.data.repository.MockShelterPetRepository
+import com.comunidapp.app.data.repository.MockShelterProfileRepository
+import com.comunidapp.app.data.repository.MockShelterVolunteerRepository
+import com.comunidapp.app.data.repository.M11ShelterMemoryStore
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
+import com.comunidapp.app.data.repository.ShelterPetRepository
+import com.comunidapp.app.data.repository.ShelterProfileRepository
+import com.comunidapp.app.data.repository.ShelterVolunteerRepository
+import com.comunidapp.app.data.repository.SupabaseShelterPetRepository
+import com.comunidapp.app.data.repository.SupabaseShelterProfileRepository
+import com.comunidapp.app.data.repository.SupabaseShelterVolunteerRepository
 import com.comunidapp.app.data.repository.SupabasePetAuthorizationRepository
 import com.comunidapp.app.data.repository.SupabasePetDomainRepository
 import com.comunidapp.app.data.repository.SupabasePetResponsibilityRepository
@@ -410,6 +420,44 @@ object DataProvider {
 
     val shelterRepository: ShelterRepository by lazy {
         if (useSupabase) SupabaseShelterRepository() else MockShelterRepository()
+    }
+
+    private val m11ShelterStore by lazy {
+        M11ShelterMemoryStore().also { it.fosterStore = m10FosterStore }
+    }
+
+    val shelterProfileRepository: ShelterProfileRepository by lazy {
+        if (useSupabase) {
+            SupabaseShelterProfileRepository()
+        } else {
+            MockShelterProfileRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m11ShelterStore
+            )
+        }
+    }
+
+    val shelterPetRepository: ShelterPetRepository by lazy {
+        if (useSupabase) {
+            SupabaseShelterPetRepository()
+        } else {
+            MockShelterPetRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m11ShelterStore,
+                resolvePet = { id -> petRepository.getPetById(id) }
+            )
+        }
+    }
+
+    val shelterVolunteerRepository: ShelterVolunteerRepository by lazy {
+        if (useSupabase) {
+            SupabaseShelterVolunteerRepository()
+        } else {
+            MockShelterVolunteerRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m11ShelterStore
+            )
+        }
     }
 
     val serviceRepository: ServiceRepository by lazy {

@@ -257,6 +257,7 @@ private fun AdoptionEventCard(
 @Composable
 fun SheltersContent(
     onShelterClick: (String) -> Unit,
+    onShelterOps: () -> Unit = {},
     bottomPadding: Dp = 0.dp,
     viewModel: SheltersViewModel = viewModel()
 ) {
@@ -271,6 +272,14 @@ fun SheltersContent(
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item {
+            androidx.compose.material3.OutlinedButton(
+                onClick = onShelterOps,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Operación de refugios (M11)")
+            }
+        }
         items(shelters, key = { it.id }) { shelter ->
             ShelterListCard(shelter = shelter, onClick = { onShelterClick(shelter.id) })
         }
