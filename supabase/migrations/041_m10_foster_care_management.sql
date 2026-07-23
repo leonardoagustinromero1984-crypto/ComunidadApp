@@ -7,6 +7,29 @@
 begin;
 
 -- ---------------------------------------------------------------------------
+-- 0. Disponibilidad coherente (refuerzo si 040 ya estaba aplicada con regla vieja)
+-- ocupación+reservas = 0 → AVAILABLE; >0 y <capacidad → LIMITED; >=capacidad → FULL
+-- ---------------------------------------------------------------------------
+create or replace function public._m10_recompute_availability(
+  p_status text,
+  p_capacity integer,
+  p_occupancy integer,
+  p_reserved integer
+) returns text
+language sql
+immutable
+as $$
+  select case
+    when p_status is distinct from 'ACTIVE' then 'UNAVAILABLE'
+    when greatest(coalesce(p_occupancy, 0), 0) + greatest(coalesce(p_reserved, 0), 0)
+         >= greatest(coalesce(p_capacity, 0), 0) then 'FULL'
+    when greatest(coalesce(p_occupancy, 0), 0) + greatest(coalesce(p_reserved, 0), 0) > 0
+         then 'LIMITED'
+    else 'AVAILABLE'
+  end;
+$$;
+
+-- ---------------------------------------------------------------------------
 -- 1. Columnas de finalización en foster_placements
 -- ---------------------------------------------------------------------------
 alter table public.foster_placements

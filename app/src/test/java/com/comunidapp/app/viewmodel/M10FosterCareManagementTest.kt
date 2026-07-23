@@ -404,11 +404,7 @@ class M10FosterCareManagementTest {
         val homeId = placements.getPlacementById(pid).getOrThrow().fosterHomeId
         placements.completePlacement(pid, FosterPlacementEndReason.RETURNED_TO_OWNER, null).getOrThrow()
         val home = homes.getFosterHomeById(homeId).getOrThrow()
-        assertTrue(
-            home.availabilityStatus == FosterAvailabilityStatus.AVAILABLE ||
-                home.availabilityStatus == FosterAvailabilityStatus.LIMITED
-        )
-        assertNotEquals(FosterAvailabilityStatus.FULL, home.availabilityStatus)
+        assertEquals(FosterAvailabilityStatus.AVAILABLE, home.availabilityStatus)
     }
 
     @Test
@@ -524,7 +520,7 @@ class M10FosterCareManagementTest {
         placements.cancelReservedPlacement(reserved.id, null).getOrThrow()
         val after = homes.getFosterHomeById(home.id).getOrThrow()
         assertEquals(0, after.reservedCount)
-        assertNotEquals(FosterAvailabilityStatus.FULL, after.availabilityStatus)
+        assertEquals(FosterAvailabilityStatus.AVAILABLE, after.availabilityStatus)
     }
 
     @Test

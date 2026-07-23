@@ -51,11 +51,23 @@ Al completar:
 
 ## Migración
 
-`041_m10_foster_care_management.sql` (forward-only; **no** modifica 040).
+`041_m10_foster_care_management.sql` (forward-only; **no** modifica el archivo 040).
+
+Al inicio de 041 se refuerza `_m10_recompute_availability` con la regla final de slots usados.
 
 Tablas: `foster_expenses`, `foster_evolution_entries`, `foster_help_requests`, `foster_help_contributions`.
 
-RLS + RPC listados en el módulo M10. **040 y 041 pendientes de apply remoto.**
+RLS + RPC listados en el módulo M10. **040 y 041 pendientes de apply remoto.** Smoke manual pendiente (`docs/05-operacion/M10-aplicacion-migraciones-supabase.md`).
+
+## Disponibilidad
+
+```text
+used = occupancy + reserved
+ACTIVE + used = 0 → AVAILABLE
+ACTIVE + 0 < used < capacity → LIMITED
+ACTIVE + used >= capacity → FULL
+otro status → UNAVAILABLE
+```
 
 ## Repositorios / UI
 
@@ -65,9 +77,9 @@ Rutas: panel `foster_placement_management`, gastos, evolución, ayuda, complete,
 
 ## Tests / build
 
-- `M10FosterCareManagementTest` (+ núcleo M10 / M08 / M09 focalizados)
+- `M10FosterCareManagementTest`, `M10MigrationStaticGuardsTest` (+ núcleo M10 / M08 focalizados)
 - `compileLocalDebugKotlin`
 
 ## Limitaciones / pendientes
 
-Sin pagos, reputación, chat, push, IA, galería nueva, apply remoto, APK.
+Sin pagos, reputación, chat, push, IA, galería nueva, apply remoto, APK (solo bajo pedido). Comprobantes limitados a referencias privadas M05.

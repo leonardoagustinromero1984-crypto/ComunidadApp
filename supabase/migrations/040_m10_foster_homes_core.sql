@@ -149,8 +149,10 @@ immutable
 as $$
   select case
     when p_status is distinct from 'ACTIVE' then 'UNAVAILABLE'
-    when (p_capacity - p_occupancy - p_reserved) <= 0 then 'FULL'
-    when p_occupancy > 0 or (p_capacity - p_occupancy - p_reserved) <= 1 then 'LIMITED'
+    when greatest(coalesce(p_occupancy, 0), 0) + greatest(coalesce(p_reserved, 0), 0)
+         >= greatest(coalesce(p_capacity, 0), 0) then 'FULL'
+    when greatest(coalesce(p_occupancy, 0), 0) + greatest(coalesce(p_reserved, 0), 0) > 0
+         then 'LIMITED'
     else 'AVAILABLE'
   end;
 $$;

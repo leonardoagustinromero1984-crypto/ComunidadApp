@@ -702,10 +702,10 @@ internal fun recomputeAvailability(
     reserved: Int
 ): FosterAvailabilityStatus {
     if (status != FosterHomeStatus.ACTIVE) return FosterAvailabilityStatus.UNAVAILABLE
-    val free = capacity - occupancy - reserved
+    val used = occupancy.coerceAtLeast(0) + reserved.coerceAtLeast(0)
     return when {
-        free <= 0 -> FosterAvailabilityStatus.FULL
-        free <= 1 || occupancy > 0 -> FosterAvailabilityStatus.LIMITED
+        used >= capacity.coerceAtLeast(0) -> FosterAvailabilityStatus.FULL
+        used > 0 -> FosterAvailabilityStatus.LIMITED
         else -> FosterAvailabilityStatus.AVAILABLE
     }
 }
