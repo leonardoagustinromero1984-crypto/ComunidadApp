@@ -167,8 +167,18 @@ No ejecutar este smoke desde Cursor ni CI.
 
 Las políticas usan `drop policy if exists` antes de `create policy`. Reejecución parcial de políticas no debería fallar por duplicado. **No** garantiza idempotencia completa con datos reales.
 
+## Estado remoto (pruebas)
+
+* **043 aplicada correctamente** en Supabase de pruebas.
+* Verificación posterior detectó grants excesivos:
+  * `EXECUTE` heredado por `PUBLIC`/`anon` en las 20 RPC del Bloque 2;
+  * privilegios directos amplios (`INSERT`/`UPDATE`/`DELETE`/`TRUNCATE`/`REFERENCES`/`TRIGGER`) en las cuatro tablas para `authenticated`.
+* Correctiva: migración **044** (`044_m11_harden_campaign_aid_permissions.sql`).
+  Guía: `docs/05-operacion/M11-aplicacion-migracion-044-seguridad.md`.
+* **No promover a producción** el Bloque 2 antes de aplicar y validar 044.
+* Bloque 3 comienza en migración **045** (solo tras PASS de 044).
+
 ## Pendientes
 
-* Apply remoto 043 en pruebas tras 042 validada.
-* Smoke manual remoto.
+* Apply remoto 044 (hardening) y validar consultas del doc 044.
 * Push M06 cuando se autorice.

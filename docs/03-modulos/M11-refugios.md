@@ -33,11 +33,14 @@ Un refugio M11 es capacidad operativa de una **organización M03**, no un owners
 
 | Migración | Alcance | Apply remoto |
 |-----------|---------|--------------|
-| `042_m11_shelter_operations_core.sql` | Perfiles, placements, voluntarios | Pendiente |
-| `043_m11_shelter_campaigns_and_aid.sql` | Campañas, insumos, aportes | **LOCAL ONLY** |
+| `042_m11_shelter_operations_core.sql` | Perfiles, placements, voluntarios | Aplicada (pruebas) |
+| `043_m11_shelter_campaigns_and_aid.sql` | Campañas, insumos, aportes | Aplicada (pruebas) |
+| `044_m11_harden_campaign_aid_permissions.sql` | Hardening permisos (sin cambio funcional) | **Pendiente apply** |
+| Bloque 3 | Urgencias/eventos/reportes | Migración **045** (no iniciar sin PASS 044) |
 
 Legacy `shelters` intacta. Detalle bloque 1: `docs/02-arquitectura/M11-operacion-refugios.md`.
 Detalle bloque 2: `docs/02-arquitectura/M11-campanas-insumos-red-ayuda.md`.
+Hardening: `docs/05-operacion/M11-aplicacion-migracion-044-seguridad.md`.
 
 ## Bloque 2 — Campañas e insumos (no monetario)
 
@@ -48,7 +51,8 @@ Detalle bloque 2: `docs/02-arquitectura/M11-campanas-insumos-red-ayuda.md`.
 - Evidencia M05: `m05://` y `file_asset:` únicamente.
 - Permisos M03: `shelter.campaign.*`, `shelter.supply.*`, `shelter.contribution.*`.
 - M06 hooks preparados sin push; M07 auditoría en dominio mock.
-- Apply manual: `docs/05-operacion/M11-aplicacion-migracion-043-supabase.md` (**no apply desde Cursor**).
+- Cliente: mutaciones solo vía RPC `SECURITY DEFINER`; tablas con `SELECT` + RLS (correctiva 044).
+- Apply: `docs/05-operacion/M11-aplicacion-migracion-043-supabase.md` + hardening 044 (**no apply desde Cursor**).
 
 ## Pantallas
 
@@ -63,9 +67,10 @@ Bloque 2: listado público/gestión de campañas y pedidos, detalle, formularios
 | `M11ShelterOperationsCoreTest` | Bloque 1 |
 | `M11ShelterCampaignsAndAidTest` | Bloque 2 dominio mock (~40 casos) |
 | `M11CampaignMigrationStaticGuardsTest` | Contratos SQL 043 |
+| `M11CampaignSecurityGuardsTest` | Hardening permisos 044 |
 
 `compileLocalDebugKotlin` · `./gradlew :app:testLocalDebugUnitTest --tests "com.comunidapp.app.viewmodel.M11*"`
 
 ## Pendientes
 
-Apply remoto 043 (manual), smoke Supabase, push M06, reputación, chat, eventos, reportes avanzados, APK cuando se solicite (Bloque 3+).
+Apply remoto **044** (hardening) + PASS de seguridad; luego Bloque 3 (migración **045**). Push M06, reputación, chat, APK cuando se solicite.
