@@ -35,6 +35,25 @@ object M09AdoptionErrorMapper {
         "APPLICATION_FORBIDDEN",
         "APPLICATION_INVALID_TRANSITION",
         "APPLICATION_MESSAGE_REQUIRED",
+        "INTERVIEW_NOT_FOUND",
+        "INTERVIEW_NOT_ALLOWED",
+        "INTERVIEW_ALREADY_COMPLETED",
+        "INTERVIEW_INVALID_TRANSITION",
+        "DOCUMENT_REQUIREMENT_NOT_FOUND",
+        "DOCUMENT_NOT_APPROVED",
+        "DOCUMENT_FORBIDDEN",
+        "DOCUMENT_UNSAFE_REFERENCE",
+        "AGREEMENT_NOT_FOUND",
+        "AGREEMENT_NOT_ACCEPTED",
+        "AGREEMENT_ALREADY_ACCEPTED",
+        "AGREEMENT_ALREADY_EXISTS",
+        "AGREEMENT_FORBIDDEN",
+        "ADOPTION_NOT_READY_TO_FINALIZE",
+        "ADOPTION_ALREADY_FINALIZED",
+        "ADOPTION_TRANSFER_FAILED",
+        "FOLLOWUP_NOT_FOUND",
+        "FOLLOWUP_ALREADY_COMPLETED",
+        "FOLLOWUP_FORBIDDEN",
         "NOT_AUTHENTICATED",
         "FORBIDDEN",
         "NETWORK",
@@ -84,6 +103,25 @@ object M09AdoptionErrorMapper {
         "APPLICATION_FORBIDDEN" -> "No tenés permiso para esta postulación."
         "APPLICATION_INVALID_TRANSITION" -> "Ese cambio de estado no está permitido."
         "APPLICATION_MESSAGE_REQUIRED" -> "Escribí un mensaje para el responsable."
+        "INTERVIEW_NOT_FOUND" -> "No encontramos esa entrevista."
+        "INTERVIEW_NOT_ALLOWED" -> "No se puede agendar una entrevista en este estado."
+        "INTERVIEW_ALREADY_COMPLETED" -> "La entrevista ya está completada."
+        "INTERVIEW_INVALID_TRANSITION" -> "Ese cambio de estado de entrevista no está permitido."
+        "DOCUMENT_REQUIREMENT_NOT_FOUND" -> "No encontramos ese requisito documental."
+        "DOCUMENT_NOT_APPROVED" -> "Falta documentación obligatoria aprobada."
+        "DOCUMENT_FORBIDDEN" -> "No tenés permiso para esta documentación."
+        "DOCUMENT_UNSAFE_REFERENCE" -> "No se permite una URL pública para documentos personales."
+        "AGREEMENT_NOT_FOUND" -> "No encontramos el acuerdo de adopción."
+        "AGREEMENT_NOT_ACCEPTED" -> "El acuerdo todavía no está aceptado por ambas partes."
+        "AGREEMENT_ALREADY_ACCEPTED" -> "El acuerdo ya está aceptado."
+        "AGREEMENT_ALREADY_EXISTS" -> "Ya hay un acuerdo activo para esta adopción."
+        "AGREEMENT_FORBIDDEN" -> "No tenés permiso sobre este acuerdo."
+        "ADOPTION_NOT_READY_TO_FINALIZE" -> "La adopción todavía no está lista para finalizar."
+        "ADOPTION_ALREADY_FINALIZED" -> "Esta adopción ya fue finalizada."
+        "ADOPTION_TRANSFER_FAILED" -> "No se pudo transferir la responsabilidad de la mascota."
+        "FOLLOWUP_NOT_FOUND" -> "No encontramos ese control de seguimiento."
+        "FOLLOWUP_ALREADY_COMPLETED" -> "Ese control ya fue completado."
+        "FOLLOWUP_FORBIDDEN" -> "No tenés permiso para el seguimiento."
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión."
         "NETWORK" -> "Problema de conexión. Intentá de nuevo."
         "TIMEOUT" -> "La operación tardó demasiado. Intentá de nuevo."

@@ -32,6 +32,14 @@ object NavRoutes {
     const val MY_ADOPTION_APPLICATIONS = "my_adoption_applications"
     const val RECEIVED_ADOPTION_APPLICATIONS = "received_adoption_applications"
     const val ADOPTION_APPLICATION_DETAIL = "adoption_application_detail/{applicationId}"
+    const val ADOPTION_PROCESS = "adoption_process/{adoptionId}"
+    const val ADOPTION_INTERVIEWS = "adoption_interviews/{adoptionId}"
+    const val ADOPTION_INTERVIEW_DETAIL = "adoption_interview_detail/{interviewId}"
+    const val ADOPTION_DOCUMENTS = "adoption_documents/{adoptionId}"
+    const val ADOPTION_AGREEMENT = "adoption_agreement/{adoptionId}"
+    const val ADOPTION_FINALIZE = "adoption_finalize/{adoptionId}"
+    const val ADOPTION_FOLLOWUP = "adoption_followup/{adoptionId}"
+    const val ADOPTION_FOLLOWUP_CHECK = "adoption_followup_check/{checkId}"
     const val SHELTER_DETAIL = "shelter_detail/{shelterId}"
     const val PET_DETAIL = "pet_detail/{petId}"
 
@@ -116,6 +124,8 @@ object NavRoutes {
     const val ARG_PEER_NAME = "peerName"
     const val ARG_ADOPTION_ID = "adoptionId"
     const val ARG_APPLICATION_ID = "applicationId"
+    const val ARG_INTERVIEW_ID = "interviewId"
+    const val ARG_CHECK_ID = "checkId"
     const val ARG_SHELTER_ID = "shelterId"
     const val ARG_PET_ID = "petId"
     const val ARG_TRANSFER_ID = "transferId"
@@ -133,6 +143,22 @@ object NavRoutes {
         "adoption_apply/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
     fun adoptionApplicationDetail(applicationId: String) =
         "adoption_application_detail/${java.net.URLEncoder.encode(applicationId, Charsets.UTF_8.name())}"
+    fun adoptionProcess(adoptionId: String) =
+        "adoption_process/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
+    fun adoptionInterviews(adoptionId: String) =
+        "adoption_interviews/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
+    fun adoptionInterviewDetail(interviewId: String) =
+        "adoption_interview_detail/${java.net.URLEncoder.encode(interviewId, Charsets.UTF_8.name())}"
+    fun adoptionDocuments(adoptionId: String) =
+        "adoption_documents/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
+    fun adoptionAgreement(adoptionId: String) =
+        "adoption_agreement/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
+    fun adoptionFinalize(adoptionId: String) =
+        "adoption_finalize/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
+    fun adoptionFollowUp(adoptionId: String) =
+        "adoption_followup/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
+    fun adoptionFollowUpCheck(checkId: String) =
+        "adoption_followup_check/${java.net.URLEncoder.encode(checkId, Charsets.UTF_8.name())}"
     fun shelterDetail(shelterId: String) = "shelter_detail/$shelterId"
     fun serviceDetail(serviceId: String) =
         "service_detail/${java.net.URLEncoder.encode(serviceId, Charsets.UTF_8.name())}"

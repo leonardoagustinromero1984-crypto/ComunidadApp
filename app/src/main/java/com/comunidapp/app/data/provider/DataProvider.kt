@@ -16,6 +16,11 @@ import com.comunidapp.app.data.remote.storage.OrganizationMediaStorageService
 import com.comunidapp.app.data.remote.storage.ProfileAvatarStorageService
 import com.comunidapp.app.data.remote.storage.SupabaseStorageService
 import com.comunidapp.app.data.repository.AdoptionApplicationRepository
+import com.comunidapp.app.data.repository.AdoptionAgreementRepository
+import com.comunidapp.app.data.repository.AdoptionCompletionRepository
+import com.comunidapp.app.data.repository.AdoptionDocumentRepository
+import com.comunidapp.app.data.repository.AdoptionFollowUpRepository
+import com.comunidapp.app.data.repository.AdoptionInterviewRepository
 import com.comunidapp.app.data.repository.AdoptionRepository
 import com.comunidapp.app.data.repository.AdoptionRequestRepository
 import com.comunidapp.app.data.repository.AuthProvider
@@ -23,11 +28,22 @@ import com.comunidapp.app.data.repository.ChatRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationDeliveryRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationOutboxRepository
 import com.comunidapp.app.data.repository.CommunityRepository
+import com.comunidapp.app.data.repository.M09CompletionMemoryStore
+import com.comunidapp.app.data.repository.MockAdoptionAgreementRepository
 import com.comunidapp.app.data.repository.MockAdoptionApplicationRepository
+import com.comunidapp.app.data.repository.MockAdoptionCompletionRepository
+import com.comunidapp.app.data.repository.MockAdoptionDocumentRepository
+import com.comunidapp.app.data.repository.MockAdoptionFollowUpRepository
+import com.comunidapp.app.data.repository.MockAdoptionInterviewRepository
 import com.comunidapp.app.data.repository.MockAdoptionRequestRepository
 import com.comunidapp.app.data.repository.MockChatRepository
 import com.comunidapp.app.data.repository.MockCommunityRepository
+import com.comunidapp.app.data.repository.SupabaseAdoptionAgreementRepository
 import com.comunidapp.app.data.repository.SupabaseAdoptionApplicationRepository
+import com.comunidapp.app.data.repository.SupabaseAdoptionCompletionRepository
+import com.comunidapp.app.data.repository.SupabaseAdoptionDocumentRepository
+import com.comunidapp.app.data.repository.SupabaseAdoptionFollowUpRepository
+import com.comunidapp.app.data.repository.SupabaseAdoptionInterviewRepository
 import com.comunidapp.app.data.repository.SupabaseAdoptionRequestRepository
 import com.comunidapp.app.data.repository.SupabaseChatRepository
 import com.comunidapp.app.data.repository.FeedRepository
@@ -201,13 +217,94 @@ object DataProvider {
         if (useSupabase) SupabaseAdoptionRequestRepository() else MockAdoptionRequestRepository()
     }
 
+    private val m09ApplicationStore by lazy {
+        kotlinx.coroutines.flow.MutableStateFlow<List<com.comunidapp.app.data.model.AdoptionApplication>>(emptyList())
+    }
+
+    private val m09CompletionStore by lazy { M09CompletionMemoryStore() }
+
     val adoptionApplicationRepository: AdoptionApplicationRepository by lazy {
         if (useSupabase) {
             SupabaseAdoptionApplicationRepository()
         } else {
             MockAdoptionApplicationRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
-                actorName = { AuthProvider.repository.getCurrentUser()?.name ?: "Usuario" }
+                actorName = { AuthProvider.repository.getCurrentUser()?.name ?: "Usuario" },
+                store = m09ApplicationStore
+            )
+        }
+    }
+
+    private fun m09IsManager(adoptionId: String, userId: String): Boolean {
+        val post = com.comunidapp.app.data.mock.InMemoryDataStore.getAdoptionPostById(adoptionId)
+            ?: return false
+        return post.publisherId == userId || post.shelterId == userId
+    }
+
+    private fun m09ApplicationsSnapshot(): List<com.comunidapp.app.data.model.AdoptionApplication> =
+        (adoptionApplicationRepository as? MockAdoptionApplicationRepository)?.snapshot()
+            ?: m09ApplicationStore.value
+
+    val adoptionInterviewRepository: AdoptionInterviewRepository by lazy {
+        if (useSupabase) {
+            SupabaseAdoptionInterviewRepository()
+        } else {
+            MockAdoptionInterviewRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                applications = { m09ApplicationsSnapshot() },
+                isManager = ::m09IsManager,
+                store = m09CompletionStore
+            )
+        }
+    }
+
+    val adoptionDocumentRepository: AdoptionDocumentRepository by lazy {
+        if (useSupabase) {
+            SupabaseAdoptionDocumentRepository()
+        } else {
+            MockAdoptionDocumentRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                applications = { m09ApplicationsSnapshot() },
+                isManager = ::m09IsManager,
+                store = m09CompletionStore
+            )
+        }
+    }
+
+    val adoptionAgreementRepository: AdoptionAgreementRepository by lazy {
+        if (useSupabase) {
+            SupabaseAdoptionAgreementRepository()
+        } else {
+            MockAdoptionAgreementRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                applications = { m09ApplicationsSnapshot() },
+                isManager = ::m09IsManager,
+                store = m09CompletionStore
+            )
+        }
+    }
+
+    val adoptionCompletionRepository: AdoptionCompletionRepository by lazy {
+        if (useSupabase) {
+            SupabaseAdoptionCompletionRepository()
+        } else {
+            MockAdoptionCompletionRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                applications = { m09ApplicationsSnapshot() },
+                isManager = ::m09IsManager,
+                store = m09CompletionStore
+            )
+        }
+    }
+
+    val adoptionFollowUpRepository: AdoptionFollowUpRepository by lazy {
+        if (useSupabase) {
+            SupabaseAdoptionFollowUpRepository()
+        } else {
+            MockAdoptionFollowUpRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                isManager = ::m09IsManager,
+                store = m09CompletionStore
             )
         }
     }

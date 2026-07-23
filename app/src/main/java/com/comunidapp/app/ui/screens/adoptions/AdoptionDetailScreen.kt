@@ -268,6 +268,7 @@ fun MyAdoptionsScreen(
     onCreateAdoption: () -> Unit = {},
     onEditAdoption: (String) -> Unit = {},
     onReceivedApplications: () -> Unit = {},
+    onProcess: (String) -> Unit = {},
     viewModel: MyAdoptionsViewModel = viewModel()
 ) {
     val adoptions by viewModel.myAdoptions.collectAsState()
@@ -402,6 +403,10 @@ fun MyAdoptionsScreen(
             items(adoptions, key = { it.id }) { post ->
                 Column {
                     AdoptionCard(post = post, onClick = { onAdoptionClick(post.id) })
+                    OutlinedButton(
+                        onClick = { onProcess(post.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Proceso post-aceptación") }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)

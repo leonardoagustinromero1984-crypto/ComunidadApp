@@ -49,10 +49,18 @@ import com.comunidapp.app.ui.screens.support.SupportTicketAdminDetailScreen
 import com.comunidapp.app.ui.screens.support.SupportTicketDetailScreen
 import com.comunidapp.app.ui.screens.verification.OrganizationVerificationQueueScreen
 import com.comunidapp.app.ui.screens.verification.OrganizationVerificationReviewScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionAgreementScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionApplicationDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionApplyScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionDocumentsScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionFinalizeScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionFollowUpCheckDetailScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionFollowUpScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionFormScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionInterviewDetailScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionInterviewsScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionProcessScreen
 import com.comunidapp.app.ui.screens.adoptions.MyAdoptionApplicationsScreen
 import com.comunidapp.app.ui.screens.adoptions.MyAdoptionsScreen
 import com.comunidapp.app.ui.screens.adoptions.ReceivedAdoptionApplicationsScreen
@@ -657,7 +665,8 @@ private fun MainScreen(accountType: AccountType) {
                     onEditAdoption = { id -> navController.navigate(NavRoutes.adoptionFormEdit(id)) },
                     onReceivedApplications = {
                         navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
-                    }
+                    },
+                    onProcess = { id -> navController.navigate(NavRoutes.adoptionProcess(id)) }
                 )
             }
             composable(NavRoutes.MY_ADOPTION_APPLICATIONS) {
@@ -720,6 +729,77 @@ private fun MainScreen(accountType: AccountType) {
                 AdoptionApplicationDetailScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
+            }
+            composable(
+                route = NavRoutes.ADOPTION_PROCESS,
+                arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
+            ) {
+                AdoptionProcessScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onInterviews = { id -> navController.navigate(NavRoutes.adoptionInterviews(id)) },
+                    onDocuments = { id -> navController.navigate(NavRoutes.adoptionDocuments(id)) },
+                    onAgreement = { id -> navController.navigate(NavRoutes.adoptionAgreement(id)) },
+                    onFinalize = { id -> navController.navigate(NavRoutes.adoptionFinalize(id)) },
+                    onFollowUp = { id -> navController.navigate(NavRoutes.adoptionFollowUp(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.ADOPTION_INTERVIEWS,
+                arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
+            ) {
+                AdoptionInterviewsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenDetail = { id -> navController.navigate(NavRoutes.adoptionInterviewDetail(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.ADOPTION_INTERVIEW_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_INTERVIEW_ID) { type = NavType.StringType })
+            ) {
+                AdoptionInterviewDetailScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(
+                route = NavRoutes.ADOPTION_DOCUMENTS,
+                arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
+            ) {
+                AdoptionDocumentsScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(
+                route = NavRoutes.ADOPTION_AGREEMENT,
+                arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
+            ) {
+                AdoptionAgreementScreen(onNavigateBack = { navController.popBackStack() })
+            }
+            composable(
+                route = NavRoutes.ADOPTION_FINALIZE,
+                arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
+            ) { entry ->
+                val adoptionId = entry.arguments?.getString(NavRoutes.ARG_ADOPTION_ID).orEmpty()
+                AdoptionFinalizeScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onFinalized = {
+                        if (adoptionId.isNotBlank()) {
+                            navController.navigate(NavRoutes.adoptionFollowUp(adoptionId)) {
+                                popUpTo(NavRoutes.adoptionProcess(adoptionId)) { inclusive = false }
+                            }
+                        }
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.ADOPTION_FOLLOWUP,
+                arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
+            ) {
+                AdoptionFollowUpScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenCheck = { id -> navController.navigate(NavRoutes.adoptionFollowUpCheck(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.ADOPTION_FOLLOWUP_CHECK,
+                arguments = listOf(navArgument(NavRoutes.ARG_CHECK_ID) { type = NavType.StringType })
+            ) {
+                AdoptionFollowUpCheckDetailScreen(onNavigateBack = { navController.popBackStack() })
             }
             composable(
                 route = NavRoutes.SHELTER_DETAIL,
