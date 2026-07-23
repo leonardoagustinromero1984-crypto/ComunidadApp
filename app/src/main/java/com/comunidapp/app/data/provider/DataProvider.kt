@@ -28,6 +28,17 @@ import com.comunidapp.app.data.repository.ChatRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationDeliveryRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationOutboxRepository
 import com.comunidapp.app.data.repository.CommunityRepository
+import com.comunidapp.app.data.repository.FosterHomeRepository
+import com.comunidapp.app.data.repository.FosterPlacementRepository
+import com.comunidapp.app.data.repository.FosterRequestRepository
+import com.comunidapp.app.data.repository.M10FosterMemoryStore
+import com.comunidapp.app.data.repository.MockFosterHomeRepository
+import com.comunidapp.app.data.repository.MockFosterPlacementRepository
+import com.comunidapp.app.data.repository.MockFosterRequestRepository
+import com.comunidapp.app.data.repository.SupabaseFosterHomeRepository
+import com.comunidapp.app.data.repository.SupabaseFosterPlacementRepository
+import com.comunidapp.app.data.repository.SupabaseFosterRequestRepository
+import com.comunidapp.app.data.repository.m10ResolvePetFromStore
 import com.comunidapp.app.data.repository.M09CompletionMemoryStore
 import com.comunidapp.app.data.repository.MockAdoptionAgreementRepository
 import com.comunidapp.app.data.repository.MockAdoptionApplicationRepository
@@ -305,6 +316,44 @@ object DataProvider {
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 isManager = ::m09IsManager,
                 store = m09CompletionStore
+            )
+        }
+    }
+
+    private val m10FosterStore by lazy { M10FosterMemoryStore() }
+
+    val fosterHomeRepository: FosterHomeRepository by lazy {
+        if (useSupabase) {
+            SupabaseFosterHomeRepository()
+        } else {
+            MockFosterHomeRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m10FosterStore
+            )
+        }
+    }
+
+    val fosterRequestRepository: FosterRequestRepository by lazy {
+        if (useSupabase) {
+            SupabaseFosterRequestRepository()
+        } else {
+            MockFosterRequestRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m10FosterStore,
+                resolvePet = { id ->
+                    petRepository.getPetById(id) ?: m10ResolvePetFromStore(id)
+                }
+            )
+        }
+    }
+
+    val fosterPlacementRepository: FosterPlacementRepository by lazy {
+        if (useSupabase) {
+            SupabaseFosterPlacementRepository()
+        } else {
+            MockFosterPlacementRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m10FosterStore
             )
         }
     }

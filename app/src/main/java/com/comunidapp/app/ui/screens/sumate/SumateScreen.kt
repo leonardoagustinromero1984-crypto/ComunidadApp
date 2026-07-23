@@ -39,7 +39,8 @@ fun SumateScreen(
     onShelterClick: (String) -> Unit,
     onNavigateToMap: () -> Unit = {},
     onMyApplications: () -> Unit = {},
-    onReceivedApplications: () -> Unit = {}
+    onReceivedApplications: () -> Unit = {},
+    onFosterHomes: () -> Unit = {}
 ) {
     val pagerState = rememberPagerState(pageCount = { sumateTabs.size })
     val scope = rememberCoroutineScope()
@@ -85,7 +86,7 @@ fun SumateScreen(
                     onReceivedApplications = onReceivedApplications
                 )
                 1 -> LostFoundContent(onNavigateToMap = onNavigateToMap)
-                2 -> FosterHomesContent()
+                2 -> FosterHomesContent(onOpenFosterHomes = onFosterHomes)
                 3 -> AdoptionEventsContent()
                 4 -> SheltersContent(onShelterClick = onShelterClick)
                 5 -> DonationsContent()

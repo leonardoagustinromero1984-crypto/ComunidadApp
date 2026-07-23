@@ -40,6 +40,7 @@ import com.comunidapp.app.viewmodel.SheltersViewModel
 @Composable
 fun FosterHomesContent(
     bottomPadding: Dp = 0.dp,
+    onOpenFosterHomes: () -> Unit = {},
     viewModel: CommunityViewModel = viewModel()
 ) {
     val homes by viewModel.fosterHomes.collectAsState()
@@ -68,6 +69,14 @@ fun FosterHomesContent(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+                Button(
+                    onClick = onOpenFosterHomes,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Abrir hogares de tránsito (M10)")
+                }
+            }
             items(homes, key = { it.id }) { home ->
                 FosterHomeCard(
                     home = home,
