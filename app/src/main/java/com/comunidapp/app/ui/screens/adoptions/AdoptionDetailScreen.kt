@@ -52,6 +52,7 @@ fun AdoptionDetailScreen(
     onEdit: (String) -> Unit = {},
     onApply: (String) -> Unit = {},
     onMessagePublisher: (String, String) -> Unit = { _, _ -> },
+    onProcess: (String) -> Unit = {},
     viewModel: AdoptionDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -199,10 +200,10 @@ fun AdoptionDetailScreen(
                             ) { Text("Cerrar publicación") }
                             Spacer(modifier = Modifier.height(8.dp))
                             Button(
-                                onClick = { confirmAction = ConfirmAction.Adopted },
+                                onClick = { onProcess(adoption.id) },
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = !state.actionInFlight
-                            ) { Text("Marcar como adoptada") }
+                            ) { Text("Proceso / finalizar adopción") }
                         }
                     } else if (adoption.status == AdoptionStatus.PUBLISHED) {
                         Spacer(modifier = Modifier.height(24.dp))
@@ -238,7 +239,6 @@ fun AdoptionDetailScreen(
                             ConfirmAction.Pause -> viewModel.pause()
                             ConfirmAction.Resume -> viewModel.resume()
                             ConfirmAction.Close -> viewModel.close()
-                            ConfirmAction.Adopted -> viewModel.markAdopted()
                         }
                         confirmAction = null
                     }
@@ -254,11 +254,7 @@ fun AdoptionDetailScreen(
 private enum class ConfirmAction(val title: String, val message: String) {
     Pause("Pausar publicación", "La publicación dejará de verse en el listado público."),
     Resume("Reanudar publicación", "La publicación volverá a mostrarse como publicada."),
-    Close("Cerrar publicación", "No podrás editarla después de cerrarla."),
-    Adopted(
-        "Marcar como adoptada",
-        "Se marcará la publicación como adoptada y se actualizará el estado de la mascota."
-    )
+    Close("Cerrar publicación", "No podrás editarla después de cerrarla.")
 }
 
 @Composable
@@ -346,7 +342,6 @@ fun MyAdoptionsScreen(
                             ConfirmAction.Pause -> viewModel.pause(id)
                             ConfirmAction.Resume -> viewModel.resume(id)
                             ConfirmAction.Close -> viewModel.close(id)
-                            ConfirmAction.Adopted -> viewModel.markAdopted(id)
                         }
                         confirm = null
                     }
@@ -428,9 +423,9 @@ fun MyAdoptionsScreen(
                                     modifier = Modifier.weight(1f)
                                 ) { Text("Pausar") }
                                 OutlinedButton(
-                                    onClick = { confirm = post.id to ConfirmAction.Adopted },
+                                    onClick = { onProcess(post.id) },
                                     modifier = Modifier.weight(1f)
-                                ) { Text("Adoptada") }
+                                ) { Text("Proceso") }
                             }
                             AdoptionStatus.PAUSED -> {
                                 OutlinedButton(

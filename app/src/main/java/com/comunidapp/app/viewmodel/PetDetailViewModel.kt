@@ -51,6 +51,10 @@ class PetDetailViewModel(
     private val _petLoadError = MutableStateFlow<String?>(null)
     val petLoadError: StateFlow<String?> = _petLoadError.asStateFlow()
 
+    /** Último motivo de historial (p. ej. ADOPTED tras finalización M09). */
+    private val _statusReasonCode = MutableStateFlow<String?>(null)
+    val statusReasonCode: StateFlow<String?> = _statusReasonCode.asStateFlow()
+
     val clinicalRecords: StateFlow<List<PetClinicalRecord>> =
         if (petId.isBlank()) {
             flowOf(emptyList())
@@ -79,8 +83,10 @@ class PetDetailViewModel(
         ctx?.canMarkDeceased == true && p?.status == "ACTIVE"
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
-    val canRestore: StateFlow<Boolean> = combine(accessContext, pet) { ctx, p ->
-        ctx?.canRestore == true && p?.status == "ARCHIVED"
+    val canRestore: StateFlow<Boolean> = combine(accessContext, pet, statusReasonCode) { ctx, p, reason ->
+        ctx?.canRestore == true &&
+            p?.status == "ARCHIVED" &&
+            !reason.equals("ADOPTED", ignoreCase = true)
     }.stateIn(viewModelScope, SharingStarted.Eagerly, false)
 
     val canViewHistory: StateFlow<Boolean> = combine(accessContext, currentUserId) { ctx, userId ->
@@ -149,9 +155,11 @@ class PetDetailViewModel(
                     _pet.value = fetched
                     _petLoadError.value = null
                     _isPetLoading.value = false
+                    refreshStatusReason(fetched.status)
                 }
                 _pet.value != null -> {
                     _isPetLoading.value = false
+                    refreshStatusReason(_pet.value?.status)
                 }
                 else -> {
                     _isPetLoading.value = false
@@ -179,6 +187,7 @@ class PetDetailViewModel(
                         _pet.value = latest
                         _isPetLoading.value = false
                         _petLoadError.value = null
+                        refreshStatusReason(latest.status)
                     }
                 }
         }
@@ -190,6 +199,19 @@ class PetDetailViewModel(
             petRepository.getPetAccessContext(petId)
                 .onSuccess { accessContext.value = it }
                 .onFailure { /* keep gates false */ }
+        }
+    }
+
+    private fun refreshStatusReason(status: String?) {
+        if (petId.isBlank()) return
+        if (!status.equals("ARCHIVED", ignoreCase = true)) {
+            _statusReasonCode.value = null
+            return
+        }
+        viewModelScope.launch {
+            val history = petRepository.listStatusHistory(petId).getOrNull().orEmpty()
+            val latest = history.maxByOrNull { it.createdAt.orEmpty() }
+            _statusReasonCode.value = latest?.reasonCode
         }
     }
 
@@ -282,6 +304,10 @@ class PetDetailViewModel(
         }
         if (pet.value?.status != "ARCHIVED") {
             _errorMessage.value = M08PetErrorMapper.userMessage("PET_NOT_ARCHIVED")
+            return
+        }
+        if (_statusReasonCode.value.equals("ADOPTED", ignoreCase = true)) {
+            _errorMessage.value = "Esta mascota fue adoptada; no se restaura desde archivo."
             return
         }
         viewModelScope.launch {

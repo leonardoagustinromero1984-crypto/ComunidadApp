@@ -61,6 +61,7 @@ fun PetDetailScreen(
     val pet by viewModel.pet.collectAsState()
     val isPetLoading by viewModel.isPetLoading.collectAsState()
     val petLoadError by viewModel.petLoadError.collectAsState()
+    val statusReasonCode by viewModel.statusReasonCode.collectAsState()
     val canManage by viewModel.canManage.collectAsState()
     val canViewGovernance by viewModel.canViewGovernance.collectAsState()
     val canMarkDeceased by viewModel.canMarkDeceased.collectAsState()
@@ -213,7 +214,10 @@ fun PetDetailScreen(
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f)
                     )
-                    PetLifecycleStatusBadge(status = data.status)
+                    PetLifecycleStatusBadge(
+                        status = data.status,
+                        reasonCode = statusReasonCode
+                    )
                 }
                 Text(
                     text = "${data.species.toDisplayName()} · ${data.sex.toDisplayName()} · ${data.ageDisplay()}",
@@ -358,12 +362,20 @@ internal fun MarkPetDeceasedDialog(
 }
 
 @Composable
-internal fun PetLifecycleStatusBadge(status: String) {
-    val label = petStatusLabel(status)
+internal fun PetLifecycleStatusBadge(
+    status: String,
+    reasonCode: String? = null
+) {
+    val label = petStatusLabel(status, reasonCode)
     if (status.equals("ACTIVE", ignoreCase = true)) return
-    val color = when (status.uppercase()) {
-        "ARCHIVED" -> MaterialTheme.colorScheme.surfaceVariant
-        "DECEASED" -> MaterialTheme.colorScheme.errorContainer
+    val color = when {
+        status.equals("ARCHIVED", ignoreCase = true) &&
+            reasonCode.equals("ADOPTED", ignoreCase = true) ->
+            MaterialTheme.colorScheme.secondaryContainer
+        status.equals("ARCHIVED", ignoreCase = true) ->
+            MaterialTheme.colorScheme.surfaceVariant
+        status.equals("DECEASED", ignoreCase = true) ->
+            MaterialTheme.colorScheme.errorContainer
         else -> MaterialTheme.colorScheme.secondaryContainer
     }
     Text(

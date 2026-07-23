@@ -23,6 +23,7 @@ object M09AdoptionErrorMapper {
         "ADOPTION_DESCRIPTION_REQUIRED",
         "ADOPTION_STATUS_INVALID",
         "ADOPTION_USE_MARK_ADOPTED",
+        "ADOPTION_USE_FINALIZE",
         "PET_NOT_FOUND",
         "APPLICATION_NOT_FOUND",
         "APPLICATION_ALREADY_EXISTS",
@@ -118,6 +119,8 @@ object M09AdoptionErrorMapper {
         "AGREEMENT_FORBIDDEN" -> "No tenés permiso sobre este acuerdo."
         "ADOPTION_NOT_READY_TO_FINALIZE" -> "La adopción todavía no está lista para finalizar."
         "ADOPTION_ALREADY_FINALIZED" -> "Esta adopción ya fue finalizada."
+        "ADOPTION_USE_FINALIZE" ->
+            "Para completar la adopción usá el proceso post-aceptación (entrevista, docs, acuerdo y finalización)."
         "ADOPTION_TRANSFER_FAILED" -> "No se pudo transferir la responsabilidad de la mascota."
         "FOLLOWUP_NOT_FOUND" -> "No encontramos ese control de seguimiento."
         "FOLLOWUP_ALREADY_COMPLETED" -> "Ese control ya fue completado."

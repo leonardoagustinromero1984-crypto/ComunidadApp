@@ -31,6 +31,12 @@ Transacción única:
 
 Idempotente si ya existe finalización.
 
+Tras 039, el atajo `m09_mark_adoption_adopted` (037) lanza `ADOPTION_USE_FINALIZE`. La UI dirige al proceso / finalización (no marca adoptada en un solo paso).
+
+## Decisión temporal `ARCHIVED + ADOPTED`
+
+M08 no define ciclo `ADOPTED`. Detalle e historial muestran **Adoptada** si `status=ARCHIVED` y el último motivo es `ADOPTED`. No se ofrece restaurar esa mascota. Listados adoptables / nueva publicación siguen bloqueando `ARCHIVED`.
+
 ## Storage documental
 
 No se usa el bucket público `leover`. Referencias aceptadas: `m05://…`, `file_asset:…`. Upload físico real queda pendiente de pipeline M05 seguro.
@@ -38,3 +44,7 @@ No se usa el bucket público `leover`. Referencias aceptadas: `m05://…`, `file
 ## RLS
 
 Lectura solo proceso aceptado / gestor. Writes directos denegados; mutaciones vía RPC `m09_*`.
+
+## Operación
+
+Apply remoto pendiente. Guía: `docs/05-operacion/M09-aplicacion-migraciones-supabase.md`. Smoke DB pendiente tras apply.

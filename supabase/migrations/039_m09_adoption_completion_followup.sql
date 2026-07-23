@@ -773,4 +773,23 @@ grant execute on function public.m09_complete_followup_check(uuid, text, text, t
 comment on function public.m09_finalize_adoption(uuid) is
   'M09: finalize adoption — validate process, ADOPTED publication, ARCHIVED pet+history ADOPTED, transfer PRINCIPAL, create follow-up 7/30/90.';
 
+-- ---------------------------------------------------------------------------
+-- 9. Bloquear atajo legacy m09_mark_adoption_adopted (037)
+--     La finalización real es solo m09_finalize_adoption (transfer + follow-up).
+-- ---------------------------------------------------------------------------
+create or replace function public.m09_mark_adoption_adopted(p_adoption_id uuid)
+returns public.adoptions
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  -- Evita archivar/marcar ADOPTED sin transferencia PRINCIPAL ni seguimiento.
+  raise exception 'ADOPTION_USE_FINALIZE';
+end;
+$$;
+
+comment on function public.m09_mark_adoption_adopted(uuid) is
+  'M09: deprecated shortcut — use m09_finalize_adoption after interview/docs/agreement.';
+
 commit;

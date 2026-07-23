@@ -704,7 +704,8 @@ private fun MainScreen(accountType: AccountType) {
                     onApply = { id -> navController.navigate(NavRoutes.adoptionApply(id)) },
                     onMessagePublisher = { publisherId, publisherName ->
                         navController.navigate(NavRoutes.chatStart(publisherId, publisherName))
-                    }
+                    },
+                    onProcess = { id -> navController.navigate(NavRoutes.adoptionProcess(id)) }
                 )
             }
             composable(

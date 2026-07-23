@@ -131,6 +131,8 @@ $$;
 -- ---------------------------------------------------------------------------
 -- 4. RLS: lectura pública solo PUBLISHED; dueño/gestor ve las propias
 -- ---------------------------------------------------------------------------
+alter table public.adoptions enable row level security;
+
 drop policy if exists adoptions_select_authenticated on public.adoptions;
 drop policy if exists adoptions_insert_own on public.adoptions;
 drop policy if exists adoptions_update_own on public.adoptions;

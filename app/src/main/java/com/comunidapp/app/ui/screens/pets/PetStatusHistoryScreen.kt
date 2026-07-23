@@ -81,7 +81,11 @@ private fun StatusHistoryCard(entry: PetStatusHistoryM08Row) {
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
             Text(
-                text = statusTransitionLabel(entry.previousStatus, entry.newStatus),
+                text = statusTransitionLabel(
+                    entry.previousStatus,
+                    entry.newStatus,
+                    entry.reasonCode
+                ),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
@@ -93,9 +97,9 @@ private fun StatusHistoryCard(entry: PetStatusHistoryM08Row) {
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
-            entry.reasonCode?.takeIf { it.isNotBlank() }?.let {
+            entry.reasonCode?.takeIf { it.isNotBlank() }?.let { reason ->
                 Text(
-                    text = "Motivo: $it",
+                    text = "Motivo: ${petStatusReasonLabel(reason)}",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(top = 4.dp)
                 )
@@ -112,14 +116,34 @@ private fun StatusHistoryCard(entry: PetStatusHistoryM08Row) {
     }
 }
 
-private fun statusTransitionLabel(previous: String?, next: String): String {
+private fun statusTransitionLabel(
+    previous: String?,
+    next: String,
+    reasonCode: String? = null
+): String {
     val from = previous?.let { petStatusLabel(it) } ?: "—"
-    return "$from → ${petStatusLabel(next)}"
+    return "$from → ${petStatusLabel(next, reasonCode)}"
 }
 
-internal fun petStatusLabel(status: String): String = when (status.uppercase()) {
-    "ACTIVE" -> "Activa"
-    "ARCHIVED" -> "Archivada"
-    "DECEASED" -> "Fallecida"
-    else -> status
+/** M08+M09: ARCHIVED + reason ADOPTED se muestra como Adoptada (sin ciclo ADOPTED en M08). */
+internal fun petStatusLabel(status: String, reasonCode: String? = null): String {
+    if (status.equals("ARCHIVED", ignoreCase = true) &&
+        reasonCode.equals("ADOPTED", ignoreCase = true)
+    ) {
+        return "Adoptada"
+    }
+    return when (status.uppercase()) {
+        "ACTIVE" -> "Activa"
+        "ARCHIVED" -> "Archivada"
+        "DECEASED" -> "Fallecida"
+        else -> status
+    }
+}
+
+internal fun petStatusReasonLabel(reasonCode: String): String = when (reasonCode.uppercase()) {
+    "ADOPTED" -> "Adopción finalizada"
+    "RESTORED" -> "Restauración"
+    "DECEASED" -> "Fallecimiento"
+    "ARCHIVED" -> "Archivo"
+    else -> reasonCode
 }
