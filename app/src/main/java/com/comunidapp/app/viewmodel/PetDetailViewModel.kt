@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -26,6 +27,8 @@ import kotlinx.coroutines.launch
 /**
  * LeoVer M08 — detalle de mascota + Etapa 6 (fallecimiento / restore / gating).
  * Autorización solo por PetAccessContext; nunca por ownerId.
+ *
+ * M08-SMOKE-001: carga explícita con loading/error; no trata “sin mascota” como loading eterno.
  */
 class PetDetailViewModel(
     savedStateHandle: SavedStateHandle,
@@ -39,15 +42,14 @@ class PetDetailViewModel(
     private val currentUserId = MutableStateFlow<String?>(null)
     private val accessContext = MutableStateFlow<PetAccessContext?>(null)
 
-    val pet: StateFlow<Pet?> = if (petId.isBlank()) {
-        flowOf(null)
-    } else {
-        petRepository.observePet(petId)
-    }.stateIn(
-        viewModelScope,
-        SharingStarted.Eagerly,
-        if (petId.isBlank()) null else petRepository.getPetById(petId)
-    )
+    private val _pet = MutableStateFlow<Pet?>(null)
+    val pet: StateFlow<Pet?> = _pet.asStateFlow()
+
+    private val _isPetLoading = MutableStateFlow(petId.isNotBlank())
+    val isPetLoading: StateFlow<Boolean> = _isPetLoading.asStateFlow()
+
+    private val _petLoadError = MutableStateFlow<String?>(null)
+    val petLoadError: StateFlow<String?> = _petLoadError.asStateFlow()
 
     val clinicalRecords: StateFlow<List<PetClinicalRecord>> =
         if (petId.isBlank()) {
@@ -106,7 +108,79 @@ class PetDetailViewModel(
     init {
         viewModelScope.launch {
             currentUserId.value = authRepository.getCurrentUser()?.id
+            if (petId.isBlank()) {
+                _isPetLoading.value = false
+                _petLoadError.value = M08PetErrorMapper.userMessage("PET_NOT_FOUND")
+                return@launch
+            }
+            loadPet()
             refreshAccess()
+            observePetUpdates()
+        }
+    }
+
+    fun loadPet() {
+        if (petId.isBlank()) {
+            _isPetLoading.value = false
+            _petLoadError.value = M08PetErrorMapper.userMessage("PET_NOT_FOUND")
+            return
+        }
+        viewModelScope.launch {
+            _isPetLoading.value = _pet.value == null
+            _petLoadError.value = null
+
+            val cached = runCatching { petRepository.getPetById(petId) }.getOrNull()
+            if (cached != null) {
+                _pet.value = cached
+                _isPetLoading.value = false
+            }
+
+            val fetched = runCatching { petRepository.fetchPetById(petId) }
+                .onFailure { error ->
+                    if (_pet.value == null) {
+                        _petLoadError.value =
+                            M08PetErrorMapper.userMessage(M08PetErrorMapper.codeOf(error))
+                    }
+                }
+                .getOrNull()
+
+            when {
+                fetched != null -> {
+                    _pet.value = fetched
+                    _petLoadError.value = null
+                    _isPetLoading.value = false
+                }
+                _pet.value != null -> {
+                    _isPetLoading.value = false
+                }
+                else -> {
+                    _isPetLoading.value = false
+                    if (_petLoadError.value == null) {
+                        _petLoadError.value = M08PetErrorMapper.userMessage("PET_NOT_FOUND")
+                    }
+                }
+            }
+        }
+    }
+
+    private fun observePetUpdates() {
+        if (petId.isBlank()) return
+        viewModelScope.launch {
+            petRepository.observePet(petId)
+                .catch { error ->
+                    if (_pet.value == null) {
+                        _isPetLoading.value = false
+                        _petLoadError.value =
+                            M08PetErrorMapper.userMessage(M08PetErrorMapper.codeOf(error))
+                    }
+                }
+                .collect { latest ->
+                    if (latest != null) {
+                        _pet.value = latest
+                        _isPetLoading.value = false
+                        _petLoadError.value = null
+                    }
+                }
         }
     }
 

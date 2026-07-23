@@ -614,7 +614,11 @@ class PlatformSupabaseDataSource {
 
     private fun <T> pollingFlow(fetch: suspend () -> T): Flow<T> = flow {
         while (coroutineContext.isActive) {
-            emit(fetch())
+            try {
+                emit(fetch())
+            } catch (_: Exception) {
+                // Ignore transient network/Supabase errors and keep polling.
+            }
             delay(4_000)
         }
     }

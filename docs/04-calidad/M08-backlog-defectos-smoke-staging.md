@@ -29,19 +29,27 @@ Reglas de este backlog:
 | Campo | Valor |
 |---|---|
 | ID | M08-SMOKE-001 |
-| Estado | **BACKLOG** |
+| Estado | **CORREGIDO A NIVEL DE CÓDIGO — PENDIENTE REVALIDACIÓN MANUAL** |
 | Severidad | **ALTA** |
 | Detección | Smoke manual Etapa 4D |
 | Entorno | LeoVer Staging (APK distribuible, teléfono físico, solo internet) |
-| Resolución prevista | Diferido a **Etapa 7 / estabilización** |
+| Resolución prevista | Revalidación manual APK staging tras fix en código |
 
 **Síntoma observado:** al navegar desde *Mis mascotas* al detalle de una mascota en LeoVer Staging, la aplicación se cierra (crash visible para el usuario). El resto del flujo smoke previo (registro, login, creación y listado de mascota) se completó.
 
-**Causa raíz:** **no confirmada.** No se registra causa inventada; requiere reproducción con logs/instrumentación en staging antes de asignar corrección definitiva.
+**Causa raíz (análisis de código, pendiente confirmación en dispositivo):** `PetDetail` trataba `pet == null` como *Loading* eterno; el polling de `observePet` no aislaba excepciones (a diferencia de otras fuentes de datos); la sección de salud / mapeo DTO no toleraba campos incompletos de vacunación/recordatorios; `clinical pollingFlow` carecía de `try/catch`. El fix de `SerialName` del historial **no** es la causa directa del crash al abrir: `PetDetail` no carga el historial de estados al abrir (solo vía pantalla separada).
 
-**Nota de contexto (no es diagnóstico):** la Etapa 5 corrigió en Android un desalineamiento de `SerialName` del DTO de historial de estados (`pet_status_history`: `reason` / `changed_by` / `changed_at`). Su relación con este defecto queda pendiente de verificación en el smoke integral M08.
+**Corrección aplicada:** estados explícitos de carga/error en `PetDetailViewModel`; UI `Loading`/`Error`/`Empty` en `PetDetailScreen`; endurecimiento de `PetHealthSection` + mapeo vacunación/recordatorios; `try/catch` en `LegacyPetRepositoryAdapter.observePet`; `try/catch` en `pollingFlow` clínico de Platform; `getPetAccessContext` con `firstOrNull`.
 
-**Impacto:** bloquea la validación manual completa del detalle de mascota en staging; no afecta backend ni datos (solo lectura).
+**Prueba:** `PetDetailSmokeRegressionTest`.
+
+**Tests focalizados:** `PetDetailSmokeRegressionTest` + `MarkPetDeceasedViewModelTest` + `PetStatusHistoryViewModelTest` = **19 PASS**.
+
+**Compilación:** `compileLocalDebugKotlin` **PASS**.
+
+**Revalidación manual APK staging:** **PENDIENTE** — no declarar cierre total ni smoke PASS hasta ejecutar smoke en dispositivo.
+
+**Impacto:** bloquea la validación manual completa del detalle de mascota en staging hasta revalidación APK; no afecta backend ni datos (solo lectura).
 
 ---
 
@@ -67,13 +75,13 @@ Espacio reservado para observaciones del smoke que aún no tienen ID, severidad 
 
 **Síntoma / gap:** existen RPCs genéricos M05 (`list_file_assets_for_resource` / `link_file_asset` / `unlink_file_asset`) y propósito `PET_GALLERY`, pero no hay fachada pet alineada a `pet.manage_media` ni pantalla de galería. Etapa 6 entrega avatar + fallecimiento + historial + restore + microchip + duplicados privados; **no** declara smoke PASS ni cierra este gap.
 
-**Nota:** `M08-SMOKE-001` permanece **OPEN/BACKLOG** (sin PASS inventado).
+**Nota:** `M08-SMOKE-001` tiene corrección en código; smoke manual APK y cierre integral siguen **PENDIENTES** (sin PASS inventado).
 
 ---
 
 ## Criterios de salida del backlog
 
-- [ ] Reproducción instrumentada de M08-SMOKE-001 con causa raíz confirmada.
-- [ ] Corrección aplicada y verificada en staging.
+- [x] Reproducción instrumentada / análisis de código de M08-SMOKE-001 con causa raíz documentada (fix aplicado).
+- [x] Corrección aplicada a nivel de código. [ ] Verificación manual en staging (APK) **PENDIENTE**.
 - [ ] Re-ejecución del smoke manual staging completo con resultado registrado fila por fila.
 - [ ] Solo entonces puede declararse `SMOKE APK STAGING MANUAL` como completado sin defectos bloqueantes.

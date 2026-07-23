@@ -41,17 +41,17 @@ import java.time.Instant
 
 @Serializable
 data class VaccinationRecordDto(
-    val name: String,
-    val date: String,
+    val name: String = "",
+    val date: String = "",
     @SerialName("next_due_date") val nextDueDate: String? = null
 )
 
 @Serializable
 data class PetReminderDto(
-    val id: String,
-    val title: String,
-    val date: String,
-    val type: String
+    val id: String = "",
+    val title: String = "",
+    val date: String = "",
+    val type: String = ""
 )
 
 @Serializable
@@ -241,7 +241,16 @@ fun parsePet(row: PetRow): Pet = Pet(
     ageMonths = row.ageMonths,
     size = enumValueOrDefault(row.size, PetSize.MEDIUM),
     description = row.description,
-    vaccinations = row.vaccinations.map { VaccinationRecord(it.name, it.date, it.nextDueDate) },
+    vaccinations = row.vaccinations.mapNotNull { dto ->
+        val name = dto.name.trim()
+        val date = dto.date.trim()
+        if (name.isEmpty() && date.isEmpty()) null
+        else VaccinationRecord(
+            name = name.ifBlank { "Vacuna" },
+            date = date,
+            nextDueDate = dto.nextDueDate?.trim()?.takeIf { it.isNotEmpty() }
+        )
+    },
     lastDeworming = row.lastDeworming,
     dewormingProduct = row.dewormingProduct,
     lastFleaTreatment = row.lastFleaTreatment,
@@ -255,7 +264,17 @@ fun parsePet(row: PetRow): Pet = Pet(
     breed = row.breed,
     personality = row.personality,
     locationText = row.locationText,
-    reminders = row.reminders.map { PetReminder(it.id, it.title, it.date, it.type) },
+    reminders = row.reminders.mapNotNull { dto ->
+        val title = dto.title.trim()
+        val date = dto.date.trim()
+        if (title.isEmpty() && date.isEmpty()) null
+        else PetReminder(
+            id = dto.id.ifBlank { "reminder" },
+            title = title.ifBlank { "Recordatorio" },
+            date = date,
+            type = dto.type
+        )
+    },
     createdAt = row.createdAt.toEpochMillis(),
     updatedAt = row.updatedAt.toEpochMillis(),
     status = row.status.ifBlank { "ACTIVE" },

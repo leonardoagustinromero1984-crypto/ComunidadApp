@@ -71,7 +71,12 @@ class LegacyPetRepositoryAdapter(
 
     override fun observePet(petId: String): Flow<Pet?> = flow {
         while (coroutineContext.isActive) {
-            emit(fetchPetById(petId) ?: _pets.value.find { it.id == petId })
+            try {
+                emit(fetchPetById(petId) ?: _pets.value.find { it.id == petId })
+            } catch (_: Exception) {
+                // Transient network/decode errors must not cancel PetDetail collectors.
+                emit(_pets.value.find { it.id == petId })
+            }
             delay(4_000)
         }
     }

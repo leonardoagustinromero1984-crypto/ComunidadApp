@@ -31,6 +31,7 @@ import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 
 /**
@@ -148,13 +149,21 @@ class FakeStage5PetRepository(
         }
 
     var accessCalls = 0
+    var fetchError: Throwable? = null
+    var observeError: Throwable? = null
 
     override fun observePets(): StateFlow<List<Pet>> = MutableStateFlow(emptyList())
     override fun observePetsForOwner(ownerId: String): Flow<List<Pet>> = flowOf(emptyList())
-    override fun observePet(petId: String): Flow<Pet?> = petFlow
+    override fun observePet(petId: String): Flow<Pet?> = flow {
+        observeError?.let { throw it }
+        petFlow.collect { emit(it) }
+    }
     override fun getPetsByOwner(ownerId: String): List<Pet> = emptyList()
     override fun getPetById(petId: String): Pet? = pet
-    override suspend fun fetchPetById(petId: String): Pet? = pet
+    override suspend fun fetchPetById(petId: String): Pet? {
+        fetchError?.let { throw it }
+        return pet
+    }
     override suspend fun createPet(pet: Pet): Result<String> = Result.success(pet.id)
     override suspend fun updatePet(pet: Pet): Result<Unit> = Result.success(Unit)
     override suspend fun deletePet(petId: String): Result<Unit> = Result.success(Unit)

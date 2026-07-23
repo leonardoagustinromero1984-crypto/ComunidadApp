@@ -96,7 +96,8 @@ class SupabasePetM08RemoteDataSource : PetM08RemoteDataSource {
         return supabase.postgrest.rpc(
             function = "m08_get_pet_access_context",
             parameters = buildJsonObject { put("p_pet_id", petId) }
-        ).decodeList<PetAccessContextRow>().first()
+        ).decodeList<PetAccessContextRow>().firstOrNull()
+            ?: throw M08PetException("PET_NOT_FOUND", "PET_NOT_FOUND")
     }
 
     override suspend fun archivePet(params: ArchivePetParams): PetM08Row {

@@ -43,7 +43,16 @@ object PetM08Mappers {
         ageMonths = ageMonths,
         size = enumValueOrDefault(size, PetSize.MEDIUM),
         description = description,
-        vaccinations = vaccinations.map { VaccinationRecord(it.name, it.date, it.nextDueDate) },
+        vaccinations = vaccinations.mapNotNull { dto ->
+            val name = dto.name.trim()
+            val date = dto.date.trim()
+            if (name.isEmpty() && date.isEmpty()) null
+            else VaccinationRecord(
+                name = name.ifBlank { "Vacuna" },
+                date = date,
+                nextDueDate = dto.nextDueDate?.trim()?.takeIf { it.isNotEmpty() }
+            )
+        },
         lastDeworming = lastDeworming,
         dewormingProduct = dewormingProduct,
         lastFleaTreatment = lastFleaTreatment,
@@ -57,7 +66,17 @@ object PetM08Mappers {
         breed = breed,
         personality = personality,
         locationText = locationText,
-        reminders = reminders.map { PetReminder(it.id, it.title, it.date, it.type) },
+        reminders = reminders.mapNotNull { dto ->
+            val title = dto.title.trim()
+            val date = dto.date.trim()
+            if (title.isEmpty() && date.isEmpty()) null
+            else PetReminder(
+                id = dto.id.ifBlank { "reminder" },
+                title = title.ifBlank { "Recordatorio" },
+                date = date,
+                type = dto.type
+            )
+        },
         createdAt = createdAt.toEpochMillis(),
         updatedAt = updatedAt.toEpochMillis(),
         status = status.ifBlank { "ACTIVE" },

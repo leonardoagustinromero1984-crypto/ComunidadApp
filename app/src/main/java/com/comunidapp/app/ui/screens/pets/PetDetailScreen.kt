@@ -37,9 +37,11 @@ import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.PetClinicalRecord
 import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.ui.components.ComunidappTopBar
-import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.ageDisplay
+import com.comunidapp.app.ui.components.state.EmptyState
+import com.comunidapp.app.ui.components.state.ErrorState
+import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.ui.util.formatDisplayDate
 import com.comunidapp.app.ui.util.formatRelativeTime
@@ -57,6 +59,8 @@ fun PetDetailScreen(
     viewModel: PetDetailViewModel = viewModel()
 ) {
     val pet by viewModel.pet.collectAsState()
+    val isPetLoading by viewModel.isPetLoading.collectAsState()
+    val petLoadError by viewModel.petLoadError.collectAsState()
     val canManage by viewModel.canManage.collectAsState()
     val canViewGovernance by viewModel.canViewGovernance.collectAsState()
     val canMarkDeceased by viewModel.canMarkDeceased.collectAsState()
@@ -161,8 +165,28 @@ fun PetDetailScreen(
             )
         }
     ) { padding ->
-        when (val data = pet) {
-            null -> LoadingState(Modifier.padding(padding))
+        val data = pet
+        when {
+            isPetLoading && data == null -> {
+                LoadingState(contentModifier = Modifier.padding(padding))
+            }
+            data == null && !petLoadError.isNullOrBlank() -> {
+                ErrorState(
+                    message = petLoadError.orEmpty(),
+                    contentModifier = Modifier.padding(padding),
+                    title = "No se pudo abrir la mascota",
+                    onRetry = viewModel::loadPet
+                )
+            }
+            data == null -> {
+                EmptyState(
+                    title = "Mascota no disponible",
+                    contentModifier = Modifier.padding(padding),
+                    message = "No encontramos esta mascota o ya no tenés acceso.",
+                    actionLabel = "Reintentar",
+                    onAction = viewModel::loadPet
+                )
+            }
             else -> Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -515,40 +539,51 @@ private fun PetHealthSection(pet: Pet) {
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
-            pet.vaccinations.forEach { vac ->
-                val next = vac.nextDueDate?.takeIf { d -> d.isNotBlank() }?.let { " · Próx: ${formatDisplayDate(it)}" }.orEmpty()
-                Text(
-                    text = "💉 ${vac.name}: ${formatDisplayDate(vac.date)}$next",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            pet.lastDeworming?.let {
-                val product = pet.dewormingProduct?.let { p -> " ($p)" }.orEmpty()
+            pet.vaccinations
+                .filter { it.name.isNotBlank() || it.date.isNotBlank() }
+                .forEach { vac ->
+                    val label = vac.name.ifBlank { "Vacuna" }
+                    val applied = vac.date.takeIf { it.isNotBlank() }?.let(::formatDisplayDate) ?: "—"
+                    val next = vac.nextDueDate?.takeIf { d -> d.isNotBlank() }
+                        ?.let { " · Próx: ${formatDisplayDate(it)}" }
+                        .orEmpty()
+                    Text(
+                        text = "💉 $label: $applied$next",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            pet.lastDeworming?.takeIf { it.isNotBlank() }?.let {
+                val product = pet.dewormingProduct?.takeIf { p -> p.isNotBlank() }?.let { p -> " ($p)" }.orEmpty()
                 Text(
                     text = "🪱 Desparasitación: ${formatDisplayDate(it)}$product",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
-            pet.lastFleaTreatment?.let {
-                val product = pet.fleaTreatmentProduct?.let { p -> " ($p)" }.orEmpty()
+            pet.lastFleaTreatment?.takeIf { it.isNotBlank() }?.let {
+                val product = pet.fleaTreatmentProduct?.takeIf { p -> p.isNotBlank() }?.let { p -> " ($p)" }.orEmpty()
                 Text(
                     text = "🐾 Antiparasitarios: ${formatDisplayDate(it)}$product",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
-            pet.healthNotes?.let {
+            pet.healthNotes?.takeIf { it.isNotBlank() }?.let {
                 Text(
                     text = "Notas: $it",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
-            if (pet.vaccinations.isEmpty() && pet.lastDeworming == null && pet.lastFleaTreatment == null &&
-                pet.sterilized == null && pet.microchipId == null && pet.lastVetVisit == null && pet.healthNotes == null
-            ) {
+            val hasHealthData = pet.vaccinations.any { it.name.isNotBlank() || it.date.isNotBlank() } ||
+                !pet.lastDeworming.isNullOrBlank() ||
+                !pet.lastFleaTreatment.isNullOrBlank() ||
+                pet.sterilized != null ||
+                !pet.microchipId.isNullOrBlank() ||
+                !pet.lastVetVisit.isNullOrBlank() ||
+                !pet.healthNotes.isNullOrBlank()
+            if (!hasHealthData) {
                 Text(
                     text = "Sin datos de salud registrados.",
                     style = MaterialTheme.typography.bodySmall,
@@ -556,16 +591,19 @@ private fun PetHealthSection(pet: Pet) {
                     modifier = Modifier.padding(top = 8.dp)
                 )
             }
-            if (pet.reminders.isNotEmpty()) {
+            val reminders = pet.reminders.filter { it.title.isNotBlank() || it.date.isNotBlank() }
+            if (reminders.isNotEmpty()) {
                 Text(
                     text = "Recordatorios",
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 12.dp)
                 )
-                pet.reminders.forEach { reminder ->
+                reminders.forEach { reminder ->
+                    val title = reminder.title.ifBlank { "Recordatorio" }
+                    val whenLabel = reminder.date.takeIf { it.isNotBlank() } ?: "—"
                     Text(
-                        text = "⏰ ${reminder.title} — ${reminder.date}",
+                        text = "⏰ $title — $whenLabel",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )

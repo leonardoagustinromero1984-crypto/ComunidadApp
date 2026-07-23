@@ -21,6 +21,7 @@ Registrar impactos esperados de M08 sobre superficies existentes y pruebas futur
 | **MyPets** | Filtro por grafo vs solo `ownerId` | Lista incompleta/incorrecta | Adaptador legacy; feature flag | Lista = pets donde soy PRINCIPAL/CO |
 | **PetForm** create | Crear + PRINCIPAL | owner_id desfasado | Transacción RPC create | create ⇒ owner + responsibility |
 | **PetForm** edit | Quién puede editar | Escalada privilegios | Matriz auth server | co-responsable edita; autorizado no |
+| **M08-SMOKE-001 (PetDetail crash)** | Crash al abrir detalle desde MyPets | Bloqueo smoke staging | Fix PetDetailViewModel/PetDetailScreen, health mapping, observePet + clinical polling try/catch | PetDetailSmokeRegressionTest; revalidación APK manual **PENDIENTE** |
 | **PetDetail** | Mostrar responsables | UX incompleta | Sección nueva Etapa 5 | UI muestra principal |
 | **Perfil** | Pets del perfil | Solo owner legacy | Misma fuente MyPets | perfil ajeno no filtra mis co-custody |
 | **Publicaciones** | Bajo (no FK pet) | Bajo | Sin cambio M08 | smoke feed |
@@ -48,7 +49,7 @@ Registrar impactos esperados de M08 sobre superficies existentes y pruebas futur
 - [ ] `MyPets` lista al menos las mascotas donde el usuario es `owner_id` (compat).
 - [ ] Create/update/delete pet sigue funcionando para principal.
 - [ ] Perfil muestra pets del owner.
-- [ ] PetDetail / health section no crashea.
+- [x] PetDetail / health section no crashea (fix a nivel de código; revalidación manual APK **PENDIENTE**).
 - [ ] Navegación add/edit pet.
 - [ ] Suite unit tests ≥ baseline (559+) en verde.
 - [ ] `assembleDebug` / `lintDebug` PASS.
