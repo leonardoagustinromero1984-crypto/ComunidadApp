@@ -49,9 +49,13 @@ import com.comunidapp.app.ui.screens.support.SupportTicketAdminDetailScreen
 import com.comunidapp.app.ui.screens.support.SupportTicketDetailScreen
 import com.comunidapp.app.ui.screens.verification.OrganizationVerificationQueueScreen
 import com.comunidapp.app.ui.screens.verification.OrganizationVerificationReviewScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionApplicationDetailScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionApplyScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionFormScreen
+import com.comunidapp.app.ui.screens.adoptions.MyAdoptionApplicationsScreen
 import com.comunidapp.app.ui.screens.adoptions.MyAdoptionsScreen
+import com.comunidapp.app.ui.screens.adoptions.ReceivedAdoptionApplicationsScreen
 import com.comunidapp.app.ui.screens.search.SearchScreen
 import com.comunidapp.app.ui.screens.chat.ChatListScreen
 import com.comunidapp.app.ui.screens.chat.ChatStartScreen
@@ -352,7 +356,13 @@ private fun MainScreen(accountType: AccountType) {
                     onShelterClick = { id ->
                         navController.navigate(NavRoutes.shelterDetail(id))
                     },
-                    onNavigateToMap = { navController.navigate(NavRoutes.LOST_FOUND_MAP) }
+                    onNavigateToMap = { navController.navigate(NavRoutes.LOST_FOUND_MAP) },
+                    onMyApplications = {
+                        navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS)
+                    },
+                    onReceivedApplications = {
+                        navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
+                    }
                 )
             }
             composable(NavRoutes.PUBLISH) {
@@ -385,6 +395,9 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                     onNavigateToMyPets = { navController.navigate(NavRoutes.MY_PETS) },
                     onNavigateToMyAdoptions = { navController.navigate(NavRoutes.MY_ADOPTIONS) },
+                    onNavigateToMyApplications = {
+                        navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS)
+                    },
                     onNavigateToChat = { navController.navigate(NavRoutes.CHAT) },
                     onNavigateToFriendRequests = { navController.navigate(NavRoutes.FRIEND_REQUESTS) },
                     onNavigateToNotifications = { navController.navigate(NavRoutes.NOTIFICATIONS) },
@@ -641,7 +654,26 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateBack = { navController.popBackStack() },
                     onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
                     onCreateAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
-                    onEditAdoption = { id -> navController.navigate(NavRoutes.adoptionFormEdit(id)) }
+                    onEditAdoption = { id -> navController.navigate(NavRoutes.adoptionFormEdit(id)) },
+                    onReceivedApplications = {
+                        navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
+                    }
+                )
+            }
+            composable(NavRoutes.MY_ADOPTION_APPLICATIONS) {
+                MyAdoptionApplicationsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenDetail = { id ->
+                        navController.navigate(NavRoutes.adoptionApplicationDetail(id))
+                    }
+                )
+            }
+            composable(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS) {
+                ReceivedAdoptionApplicationsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onOpenDetail = { id ->
+                        navController.navigate(NavRoutes.adoptionApplicationDetail(id))
+                    }
                 )
             }
             composable(NavRoutes.LOST_FOUND_MAP) {
@@ -660,9 +692,33 @@ private fun MainScreen(accountType: AccountType) {
                 AdoptionDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onEdit = { id -> navController.navigate(NavRoutes.adoptionFormEdit(id)) },
+                    onApply = { id -> navController.navigate(NavRoutes.adoptionApply(id)) },
                     onMessagePublisher = { publisherId, publisherName ->
                         navController.navigate(NavRoutes.chatStart(publisherId, publisherName))
                     }
+                )
+            }
+            composable(
+                route = NavRoutes.ADOPTION_APPLY,
+                arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
+            ) {
+                AdoptionApplyScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSubmitted = {
+                        navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS) {
+                            popUpTo(NavRoutes.ADOPTIONS) { inclusive = false }
+                        }
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.ADOPTION_APPLICATION_DETAIL,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_APPLICATION_ID) { type = NavType.StringType }
+                )
+            ) {
+                AdoptionApplicationDetailScreen(
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(

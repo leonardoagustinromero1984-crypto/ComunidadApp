@@ -63,4 +63,64 @@ class SupabaseAdoptionM09RemoteDataSource {
             function = "m09_mark_adoption_adopted",
             parameters = buildJsonObject { put("p_adoption_id", adoptionId) }
         ).decodeList<AdoptionPublicationRow>().first()
+
+    // --- Applications (bloque 2) ---
+
+    suspend fun listMyApplications(): List<AdoptionApplicationRow> =
+        supabase.postgrest.rpc(function = "m09_list_my_applications")
+            .decodeList()
+
+    suspend fun listReceivedApplications(status: String? = null): List<AdoptionApplicationRow> =
+        supabase.postgrest.rpc(
+            function = "m09_list_received_applications",
+            parameters = buildJsonObject {
+                status?.let { put("p_status", it) }
+            }
+        ).decodeList()
+
+    suspend fun getApplication(applicationId: String): AdoptionApplicationRow =
+        supabase.postgrest.rpc(
+            function = "m09_get_application",
+            parameters = buildJsonObject { put("p_application_id", applicationId) }
+        ).decodeList<AdoptionApplicationRow>().first()
+
+    suspend fun submitApplication(params: SubmitApplicationParams): AdoptionApplicationRow =
+        supabase.postgrest.rpc(
+            function = "m09_submit_application",
+            parameters = buildJsonObject {
+                put("p_adoption_id", params.adoptionId)
+                put("p_message", params.message)
+                params.housingType?.let { put("p_housing_type", it) }
+                params.hasOtherPets?.let { put("p_has_other_pets", it) }
+                params.previousExperience?.let { put("p_previous_experience", it) }
+                params.contactPhone?.let { put("p_contact_phone", it) }
+            }
+        ).decodeList<AdoptionApplicationRow>().first()
+
+    suspend fun withdrawApplication(applicationId: String): AdoptionApplicationRow =
+        supabase.postgrest.rpc(
+            function = "m09_withdraw_application",
+            parameters = buildJsonObject { put("p_application_id", applicationId) }
+        ).decodeList<AdoptionApplicationRow>().first()
+
+    suspend fun markApplicationUnderReview(applicationId: String): AdoptionApplicationRow =
+        supabase.postgrest.rpc(
+            function = "m09_mark_application_under_review",
+            parameters = buildJsonObject { put("p_application_id", applicationId) }
+        ).decodeList<AdoptionApplicationRow>().first()
+
+    suspend fun acceptApplication(applicationId: String): AdoptionApplicationRow =
+        supabase.postgrest.rpc(
+            function = "m09_accept_application",
+            parameters = buildJsonObject { put("p_application_id", applicationId) }
+        ).decodeList<AdoptionApplicationRow>().first()
+
+    suspend fun rejectApplication(applicationId: String, reason: String?): AdoptionApplicationRow =
+        supabase.postgrest.rpc(
+            function = "m09_reject_application",
+            parameters = buildJsonObject {
+                put("p_application_id", applicationId)
+                reason?.let { put("p_rejection_reason", it) }
+            }
+        ).decodeList<AdoptionApplicationRow>().first()
 }

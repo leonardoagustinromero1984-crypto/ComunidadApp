@@ -76,6 +76,7 @@ fun ProfileScreen(
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToMyPets: () -> Unit = {},
     onNavigateToMyAdoptions: () -> Unit = {},
+    onNavigateToMyApplications: () -> Unit = {},
     onNavigateToChat: () -> Unit = {},
     onNavigateToFriendRequests: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
@@ -208,6 +209,18 @@ fun ProfileScreen(
                             ) {
                                 Text("Mis adopciones publicadas")
                             }
+                        }
+                    }
+
+                    item {
+                        OutlinedButton(
+                            onClick = onNavigateToMyApplications,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Mis postulaciones de adopción")
                         }
                     }
 

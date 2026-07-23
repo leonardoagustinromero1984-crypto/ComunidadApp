@@ -15,7 +15,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -46,18 +45,16 @@ import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.viewmodel.AdoptionDetailUiState
 import com.comunidapp.app.viewmodel.AdoptionDetailViewModel
 import com.comunidapp.app.viewmodel.MyAdoptionsViewModel
-import com.comunidapp.app.viewmodel.RequestUiState
 
 @Composable
 fun AdoptionDetailScreen(
     onNavigateBack: () -> Unit,
     onEdit: (String) -> Unit = {},
+    onApply: (String) -> Unit = {},
     onMessagePublisher: (String, String) -> Unit = { _, _ -> },
     viewModel: AdoptionDetailViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val showDialog by viewModel.showRequestDialog.collectAsState()
-    val requestState by viewModel.requestState.collectAsState()
     var confirmAction by remember { mutableStateOf<ConfirmAction?>(null) }
 
     val title = when (val s = uiState) {
@@ -210,7 +207,7 @@ fun AdoptionDetailScreen(
                     } else if (adoption.status == AdoptionStatus.PUBLISHED) {
                         Spacer(modifier = Modifier.height(24.dp))
                         Button(
-                            onClick = viewModel::openRequestDialog,
+                            onClick = { onApply(adoption.id) },
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Quiero adoptar") }
                         Spacer(modifier = Modifier.height(8.dp))
@@ -252,14 +249,6 @@ fun AdoptionDetailScreen(
             }
         )
     }
-
-    if (showDialog) {
-        AdoptionRequestDialog(
-            requestState = requestState,
-            onDismiss = viewModel::closeRequestDialog,
-            onSubmit = viewModel::submitRequest
-        )
-    }
 }
 
 private enum class ConfirmAction(val title: String, val message: String) {
@@ -273,66 +262,12 @@ private enum class ConfirmAction(val title: String, val message: String) {
 }
 
 @Composable
-private fun AdoptionRequestDialog(
-    requestState: RequestUiState,
-    onDismiss: () -> Unit,
-    onSubmit: (String, String?) -> Unit
-) {
-    var message by remember { mutableStateOf("") }
-    var phone by remember { mutableStateOf("") }
-
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("Solicitud de adopción") },
-        text = {
-            Column {
-                when (requestState) {
-                    RequestUiState.Success -> Text("¡Solicitud enviada! El publicador te contactará pronto.")
-                    RequestUiState.Loading -> CircularProgressIndicator()
-                    is RequestUiState.Error -> Text(
-                        requestState.message,
-                        color = MaterialTheme.colorScheme.error
-                    )
-                    RequestUiState.Idle -> {
-                        OutlinedTextField(
-                            value = message,
-                            onValueChange = { message = it },
-                            label = { Text("Contanos por qué querés adoptar") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 3
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedTextField(
-                            value = phone,
-                            onValueChange = { phone = it },
-                            label = { Text("Teléfono (opcional)") },
-                            modifier = Modifier.fillMaxWidth(),
-                            singleLine = true
-                        )
-                    }
-                }
-            }
-        },
-        confirmButton = {
-            if (requestState !is RequestUiState.Success) {
-                TextButton(
-                    onClick = { onSubmit(message, phone) },
-                    enabled = requestState !is RequestUiState.Loading
-                ) { Text("Enviar") }
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) { Text("Cerrar") }
-        }
-    )
-}
-
-@Composable
 fun MyAdoptionsScreen(
     onNavigateBack: () -> Unit,
     onAdoptionClick: (String) -> Unit,
     onCreateAdoption: () -> Unit = {},
     onEditAdoption: (String) -> Unit = {},
+    onReceivedApplications: () -> Unit = {},
     viewModel: MyAdoptionsViewModel = viewModel()
 ) {
     val adoptions by viewModel.myAdoptions.collectAsState()
@@ -443,6 +378,12 @@ fun MyAdoptionsScreen(
                     onClick = onCreateAdoption,
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Nueva publicación") }
+            }
+            item {
+                OutlinedButton(
+                    onClick = onReceivedApplications,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Ver postulaciones recibidas") }
             }
             item {
                 Text(

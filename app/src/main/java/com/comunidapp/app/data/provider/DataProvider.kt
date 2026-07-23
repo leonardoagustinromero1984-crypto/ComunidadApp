@@ -15,6 +15,7 @@ import com.comunidapp.app.data.remote.storage.ImageStorageService
 import com.comunidapp.app.data.remote.storage.OrganizationMediaStorageService
 import com.comunidapp.app.data.remote.storage.ProfileAvatarStorageService
 import com.comunidapp.app.data.remote.storage.SupabaseStorageService
+import com.comunidapp.app.data.repository.AdoptionApplicationRepository
 import com.comunidapp.app.data.repository.AdoptionRepository
 import com.comunidapp.app.data.repository.AdoptionRequestRepository
 import com.comunidapp.app.data.repository.AuthProvider
@@ -22,9 +23,11 @@ import com.comunidapp.app.data.repository.ChatRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationDeliveryRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationOutboxRepository
 import com.comunidapp.app.data.repository.CommunityRepository
+import com.comunidapp.app.data.repository.MockAdoptionApplicationRepository
 import com.comunidapp.app.data.repository.MockAdoptionRequestRepository
 import com.comunidapp.app.data.repository.MockChatRepository
 import com.comunidapp.app.data.repository.MockCommunityRepository
+import com.comunidapp.app.data.repository.SupabaseAdoptionApplicationRepository
 import com.comunidapp.app.data.repository.SupabaseAdoptionRequestRepository
 import com.comunidapp.app.data.repository.SupabaseChatRepository
 import com.comunidapp.app.data.repository.FeedRepository
@@ -196,6 +199,17 @@ object DataProvider {
 
     val adoptionRequestRepository: AdoptionRequestRepository by lazy {
         if (useSupabase) SupabaseAdoptionRequestRepository() else MockAdoptionRequestRepository()
+    }
+
+    val adoptionApplicationRepository: AdoptionApplicationRepository by lazy {
+        if (useSupabase) {
+            SupabaseAdoptionApplicationRepository()
+        } else {
+            MockAdoptionApplicationRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                actorName = { AuthProvider.repository.getCurrentUser()?.name ?: "Usuario" }
+            )
+        }
     }
 
     val chatRepository: ChatRepository by lazy {

@@ -28,6 +28,10 @@ object NavRoutes {
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
+    const val ADOPTION_APPLY = "adoption_apply/{adoptionId}"
+    const val MY_ADOPTION_APPLICATIONS = "my_adoption_applications"
+    const val RECEIVED_ADOPTION_APPLICATIONS = "received_adoption_applications"
+    const val ADOPTION_APPLICATION_DETAIL = "adoption_application_detail/{applicationId}"
     const val SHELTER_DETAIL = "shelter_detail/{shelterId}"
     const val PET_DETAIL = "pet_detail/{petId}"
 
@@ -111,6 +115,7 @@ object NavRoutes {
     const val ARG_CONVERSATION_ID = "conversationId"
     const val ARG_PEER_NAME = "peerName"
     const val ARG_ADOPTION_ID = "adoptionId"
+    const val ARG_APPLICATION_ID = "applicationId"
     const val ARG_SHELTER_ID = "shelterId"
     const val ARG_PET_ID = "petId"
     const val ARG_TRANSFER_ID = "transferId"
@@ -124,6 +129,10 @@ object NavRoutes {
         "adoption_detail/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
     fun adoptionFormEdit(adoptionId: String) =
         "adoption_form/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
+    fun adoptionApply(adoptionId: String) =
+        "adoption_apply/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
+    fun adoptionApplicationDetail(applicationId: String) =
+        "adoption_application_detail/${java.net.URLEncoder.encode(applicationId, Charsets.UTF_8.name())}"
     fun shelterDetail(shelterId: String) = "shelter_detail/$shelterId"
     fun serviceDetail(serviceId: String) =
         "service_detail/${java.net.URLEncoder.encode(serviceId, Charsets.UTF_8.name())}"

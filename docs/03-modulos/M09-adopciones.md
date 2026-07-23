@@ -1,107 +1,103 @@
-# M09 — Adopciones (bloque 1: publicaciones)
+# M09 — Adopciones (bloque 2: postulaciones y selección)
 
-## Estado inicial encontrado
+## Auditoría inicial (bloque 2)
 
 | Área | Clasificación |
 |------|----------------|
-| Tabla `public.adoptions` (legacy) | **Legacy / parcial** — sin `pet_id`; estados `AVAILABLE` / `IN_PROCESS` / `ADOPTED`; RLS select amplio y writes directos |
-| `AdoptionPost` / `AdoptionStatus` | **Legacy** — denormalizado; estados viejos |
-| `AdoptionRepository` + Mock + Supabase | **Parcial** — list/filter/add/update; writes PostgREST directos |
-| UI Adoptions / Detail / MyAdoptions / Publish | **Parcial / mock** — sin selección de mascota ni pause/resume/close/adopt coherentes |
-| Navegación | **Parcial** — `adoptions`, `adoption_detail/{id}`, `my_adoptions`, `publish_adoption` |
-| Postulaciones (`adoption_requests`) | **Fuera de alcance** (bloque siguiente) |
-| Migración previa más alta | **036** (M08) |
+| Modelos/repos M09 publicaciones (037) | **Reutilizable** |
+| `AdoptionRequest` / `adoption_requests` (legacy PENDING) | **Legacy / incompatible** — estados y campos insuficientes; RLS select amplio; writes PostgREST |
+| Dialogo “Quiero adoptar” en detalle | **Parcial / legacy** — reemplazado por pantalla de postulación |
+| Matching sugerido / entrevistas en Mis adopciones | **Fuera de alcance** (siguientes bloques) |
+| Tabla `adoption_applications` | **Ausente** → creada en 038 |
+| Migraciones 037 / 038 remotas | **Pendientes de apply** |
 
-## Arquitectura reutilizada
+## Modelo
 
-- Modelo `AdoptionPost` evolucionado (campos `petId`, `title`, `requirements`, timestamps).
-- Capacidades M08 (`_m08_actor_effective_capabilities`, `m08_actor_can_read_pet`) para autorización de publicación.
-- `pet_status_history` al marcar adoptada (pet `ACTIVE` → `ARCHIVED`, reason `ADOPTED`).
-- Patrón RPC-only (como M08 pets) para escrituras.
-- `StateFlow` + estados Loading / Empty / Content / Error / NotFound en ViewModels.
-- Foto principal: se reutiliza `pets.photo_url` (sin galería nueva).
+`AdoptionApplication` + `AdoptionApplicationStatus`:
 
-## Funcionalidades implementadas
+`SUBMITTED` | `UNDER_REVIEW` | `ACCEPTED` | `REJECTED` | `WITHDRAWN`
 
-- Publicar (borrador o publicada) ligada a mascota activa administrable.
-- Listado público solo `PUBLISHED`.
-- Mis publicaciones (todos los estados del publicador/gestor).
-- Detalle con loading / not found / error / acciones de propietario.
-- Editar (bloqueado si `CLOSED` / `ADOPTED`).
-- Pausar / reanudar / cerrar / marcar adoptada (con confirmación UI).
-- Idempotencia en mock/RPC para estados ya finales o iguales.
+Valores desconocidos (p. ej. legacy `PENDING`) → `SUBMITTED` sin crash.
+
+Teléfono: solo visible para postulante o gestor en el detalle (`visibleContactPhone`).
+
+La aceptación **no** finaliza la adopción.
 
 ## Reglas de negocio
 
-- Una sola publicación abierta (`DRAFT`/`PUBLISHED`/`PAUSED`) por `pet_id` (índice único parcial).
-- Mascota `DECEASED` o `ARCHIVED` (u otro no `ACTIVE`) → `PET_NOT_ADOPTABLE`.
-- Solo actores con capacidad de gestión M08 pueden crear/modificar.
-- Pausada fuera del listado público.
-- Cerrada/adoptada no editable.
-- `markAsAdopted` actualiza publicación + pet + historial en una RPC.
-- IDs vacíos/inexistentes → `ADOPTION_NOT_FOUND` sin crash.
-- Errores mapeados (`M09AdoptionErrorMapper`) sin mensajes técnicos de Supabase.
+1. Solo publicaciones `PUBLISHED` aceptan postulaciones.
+2. Publicador/gestor no puede postularse a la propia.
+3. Una sola postulación activa por usuario y publicación.
+4. `REJECTED` / `WITHDRAWN` permiten nueva postulación.
+5. Solo el postulante retira.
+6. Solo gestor ve recibidas / revisa / acepta / rechaza.
+7. Postulante solo ve las propias.
+8. Pausada / adoptada / cerrada no aceptan nuevas.
+9–10. Transiciones controladas; rechazada no pasa a aceptada directamente.
+11. Al aceptar: elegida `ACCEPTED`, demás activas `REJECTED`, publicación `PAUSED`, mascota intacta.
+12–16. Idempotencia / IDs vacíos / errores tipados / sin Supabase directo en ViewModels.
 
 ## Persistencia
 
-Migración nueva: `supabase/migrations/037_m09_adoption_publications.sql`
+Migración: `supabase/migrations/038_m09_adoption_applications.sql`
 
-- Columnas: `pet_id`, `title`, `requirements`, `location_text`, `published_at`, `publisher_organization_id`.
-- Estados: `DRAFT`, `PUBLISHED`, `PAUSED`, `ADOPTED`, `CLOSED` (backfill desde legacy).
-- Índices: `pet_id`, `status`, `published_at`.
-- Unique parcial: `adoptions_one_open_per_pet_uidx`.
+Detalle: `docs/02-arquitectura/M09-persistencia-postulaciones.md`
 
-**No aplicada remotamente en esta etapa.**
-
-Detalle: `docs/02-arquitectura/M09-persistencia-publicaciones-adopcion.md`
+**037 y 038 no aplicadas remotamente en esta etapa.**
 
 ## RLS / RPC
 
-- SELECT: público autenticado solo `PUBLISHED`; dueño/gestor ve propias no públicas.
-- INSERT/UPDATE/DELETE directo: denegado (`with check/using false`).
-- RPCs: `m09_create_adoption_publication`, `m09_update_adoption_publication`, `m09_set_adoption_status`, `m09_mark_adoption_adopted`, `m09_list_published_adoptions`, `m09_list_my_adoptions`, `m09_get_adoption`.
+- Writes directos denegados; canal `m09_*` SECURITY DEFINER.
+- RPCs: submit, withdraw, mark under review, accept, reject, list mine, list received, get.
+
+## Repositorio
+
+`AdoptionApplicationRepository` + `MockAdoptionApplicationRepository` + `SupabaseAdoptionApplicationRepository`.
+
+Errores tipados vía `M09AdoptionErrorMapper` (`APPLICATION_*`, `ADOPTION_NOT_ACCEPTING_APPLICATIONS`, `CANNOT_APPLY_TO_OWN_ADOPTION`, …).
 
 ## Pantallas y rutas
 
 | Ruta | Pantalla |
 |------|----------|
-| `adoptions` | Listado público |
-| `adoption_detail/{adoptionId}` | Detalle |
-| `my_adoptions` | Mis publicaciones |
-| `adoption_form` | Alta |
-| `adoption_form/{adoptionId}` | Edición |
-| `publish_adoption` | Alias → formulario M09 |
+| `adoption_apply/{adoptionId}` | Formulario de postulación |
+| `my_adoption_applications` | Mis postulaciones |
+| `received_adoption_applications` | Postulaciones recibidas |
+| `adoption_application_detail/{applicationId}` | Detalle + acciones |
+
+Accesos desde: detalle de publicación, Sumate/Adopciones, Mis publicaciones, perfil.
 
 ## ViewModels
 
-- `AdoptionsViewModel` — listado público
-- `MyAdoptionsViewModel` — mis publicaciones + acciones
-- `AdoptionDetailViewModel` — detalle + pause/resume/close/adopt
-- `AdoptionFormViewModel` — crear/editar borrador/publicar
+- `AdoptionApplyViewModel`
+- `MyAdoptionApplicationsViewModel`
+- `ReceivedAdoptionApplicationsViewModel`
+- `AdoptionApplicationDetailViewModel`
+
+`StateFlow` + `SharingStarted.Eagerly` donde aplica; bloqueo de doble envío.
 
 ## Tests focalizados
 
 Clases ejecutadas:
 
+- `com.comunidapp.app.viewmodel.M09AdoptionApplicationTest`
 - `com.comunidapp.app.viewmodel.M09AdoptionPublicationTest`
-- `com.comunidapp.app.viewmodel.MarkPetDeceasedViewModelTest`
 - `com.comunidapp.app.viewmodel.M08IntegrationRegressionTest`
 
 Resultado: **PASS** (`testDebugUnitTest` focalizado).
 
-Cobertura M09: listado, vacío, error, create, duplicado, fallecida, archivada, edit, pause/resume/close, mark adopted + pet + historial, forbidden, id vacío/inexistente, doble envío, status desconocido, pausada fuera de público.
-
 ## Compilación
 
-`.\gradlew.bat compileLocalDebugKotlin` → **PASS**
+`.\gradlew.bat compileLocalDebugKotlin` → **PASS** (también vía `testDebugUnitTest`)
 
-## Pendientes del siguiente bloque
+## Pendientes del próximo bloque
 
-- Postulaciones (aceptar/rechazar candidatos)
-- Entrevistas
-- Carga de documentación
-- Seguimiento postadopción
-- Reputación del adoptante
-- Chat / notificaciones push específicas de adopción
-- Estadísticas avanzadas
-- Apply remoto de migración 037 + smoke staging / APK
+- Agenda de entrevistas
+- Videollamadas
+- Documentación del adoptante
+- Contratos de adopción
+- Seguimiento postadopción / marcar adopción finalizada (flujo aparte)
+- Reputación
+- Chat / notificaciones push específicas
+- Estadísticas
+- Apply remoto de migraciones 037 + 038 + smoke staging / APK

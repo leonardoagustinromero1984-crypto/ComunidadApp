@@ -1,5 +1,7 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.model.AdoptionApplication
+import com.comunidapp.app.data.model.AdoptionApplicationStatus
 import com.comunidapp.app.data.model.AdoptionPost
 import com.comunidapp.app.data.model.AdoptionStatus
 import com.comunidapp.app.data.model.FeedPost
@@ -17,8 +19,10 @@ import com.comunidapp.app.data.remote.supabase.UserSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.m09.CreateAdoptionParams
 import com.comunidapp.app.data.remote.supabase.m09.M09AdoptionErrorMapper
 import com.comunidapp.app.data.remote.supabase.m09.M09AdoptionException
+import com.comunidapp.app.data.remote.supabase.m09.SubmitApplicationParams
 import com.comunidapp.app.data.remote.supabase.m09.SupabaseAdoptionM09RemoteDataSource
 import com.comunidapp.app.data.remote.supabase.m09.UpdateAdoptionParams
+import com.comunidapp.app.data.remote.supabase.m09.toAdoptionApplication
 import com.comunidapp.app.data.remote.supabase.toAdoptionPost
 import com.comunidapp.app.domain.user.UserProfileMapper
 import kotlinx.coroutines.CoroutineScope
@@ -346,6 +350,92 @@ class SupabaseLostFoundRepository(
 
     override suspend fun updateStatus(id: String, status: LostFoundStatus): Result<Unit> =
         dataSource.updateStatus(id, status)
+}
+
+class SupabaseAdoptionApplicationRepository(
+    private val m09: SupabaseAdoptionM09RemoteDataSource = SupabaseAdoptionM09RemoteDataSource()
+) : AdoptionApplicationRepository {
+
+    override fun observeMyApplications(applicantUserId: String): Flow<List<AdoptionApplication>> =
+        kotlinx.coroutines.flow.flow {
+            while (true) {
+                try {
+                    emit(m09.listMyApplications().map { it.toAdoptionApplication() })
+                } catch (_: Exception) {
+                    emit(emptyList())
+                }
+                kotlinx.coroutines.delay(4_000)
+            }
+        }
+
+    override fun observeReceivedApplications(
+        managerUserId: String,
+        statusFilter: AdoptionApplicationStatus?
+    ): Flow<List<AdoptionApplication>> =
+        kotlinx.coroutines.flow.flow {
+            while (true) {
+                try {
+                    emit(
+                        m09.listReceivedApplications(statusFilter?.name)
+                            .map { it.toAdoptionApplication() }
+                    )
+                } catch (_: Exception) {
+                    emit(emptyList())
+                }
+                kotlinx.coroutines.delay(4_000)
+            }
+        }
+
+    override suspend fun getApplicationById(id: String): Result<AdoptionApplication> {
+        if (id.isBlank()) {
+            return M09AdoptionErrorMapper.failure(
+                M09AdoptionException(
+                    "APPLICATION_NOT_FOUND",
+                    M09AdoptionErrorMapper.userMessage("APPLICATION_NOT_FOUND")
+                )
+            )
+        }
+        return try {
+            Result.success(m09.getApplication(id).toAdoptionApplication())
+        } catch (e: Exception) {
+            M09AdoptionErrorMapper.failure(e)
+        }
+    }
+
+    override suspend fun submitApplication(params: SubmitApplicationParams): Result<AdoptionApplication> =
+        try {
+            Result.success(m09.submitApplication(params).toAdoptionApplication())
+        } catch (e: Exception) {
+            M09AdoptionErrorMapper.failure(e)
+        }
+
+    override suspend fun withdrawApplication(id: String): Result<AdoptionApplication> =
+        try {
+            Result.success(m09.withdrawApplication(id).toAdoptionApplication())
+        } catch (e: Exception) {
+            M09AdoptionErrorMapper.failure(e)
+        }
+
+    override suspend fun markUnderReview(id: String): Result<AdoptionApplication> =
+        try {
+            Result.success(m09.markApplicationUnderReview(id).toAdoptionApplication())
+        } catch (e: Exception) {
+            M09AdoptionErrorMapper.failure(e)
+        }
+
+    override suspend fun acceptApplication(id: String): Result<AdoptionApplication> =
+        try {
+            Result.success(m09.acceptApplication(id).toAdoptionApplication())
+        } catch (e: Exception) {
+            M09AdoptionErrorMapper.failure(e)
+        }
+
+    override suspend fun rejectApplication(id: String, reason: String?): Result<AdoptionApplication> =
+        try {
+            Result.success(m09.rejectApplication(id, reason).toAdoptionApplication())
+        } catch (e: Exception) {
+            M09AdoptionErrorMapper.failure(e)
+        }
 }
 
 class SupabaseAdoptionRequestRepository(

@@ -24,6 +24,17 @@ object M09AdoptionErrorMapper {
         "ADOPTION_STATUS_INVALID",
         "ADOPTION_USE_MARK_ADOPTED",
         "PET_NOT_FOUND",
+        "APPLICATION_NOT_FOUND",
+        "APPLICATION_ALREADY_EXISTS",
+        "APPLICATION_NOT_ACTIVE",
+        "APPLICATION_ALREADY_ACCEPTED",
+        "APPLICATION_ALREADY_REJECTED",
+        "APPLICATION_ALREADY_WITHDRAWN",
+        "ADOPTION_NOT_ACCEPTING_APPLICATIONS",
+        "CANNOT_APPLY_TO_OWN_ADOPTION",
+        "APPLICATION_FORBIDDEN",
+        "APPLICATION_INVALID_TRANSITION",
+        "APPLICATION_MESSAGE_REQUIRED",
         "NOT_AUTHENTICATED",
         "FORBIDDEN",
         "NETWORK",
@@ -40,6 +51,8 @@ object M09AdoptionErrorMapper {
             if (signal.contains(code)) return code
         }
         return when {
+            "APPLICATIONS_ONE_ACTIVE" in signal || "ADOPTION_APPLICATIONS_ONE_ACTIVE" in signal ->
+                "APPLICATION_ALREADY_EXISTS"
             "UNIQUE" in signal || "ADOPTIONS_ONE_OPEN" in signal -> "ADOPTION_ALREADY_EXISTS"
             "NETWORK" in signal || "UNABLE TO RESOLVE" in signal -> "NETWORK"
             "TIMEOUT" in signal -> "TIMEOUT"
@@ -60,6 +73,17 @@ object M09AdoptionErrorMapper {
         "ADOPTION_DESCRIPTION_REQUIRED" -> "Indicá una descripción."
         "ADOPTION_STATUS_INVALID" -> "Estado de publicación no válido."
         "PET_NOT_FOUND" -> "No encontramos la mascota."
+        "APPLICATION_NOT_FOUND" -> "No encontramos esa postulación."
+        "APPLICATION_ALREADY_EXISTS" -> "Ya tenés una postulación activa para esta publicación."
+        "APPLICATION_NOT_ACTIVE" -> "Esta postulación ya no está activa."
+        "APPLICATION_ALREADY_ACCEPTED" -> "Esta postulación ya fue aceptada."
+        "APPLICATION_ALREADY_REJECTED" -> "Esta postulación ya fue rechazada."
+        "APPLICATION_ALREADY_WITHDRAWN" -> "Esta postulación ya fue retirada."
+        "ADOPTION_NOT_ACCEPTING_APPLICATIONS" -> "Esta publicación no está recibiendo postulaciones."
+        "CANNOT_APPLY_TO_OWN_ADOPTION" -> "No podés postularte a tu propia publicación."
+        "APPLICATION_FORBIDDEN" -> "No tenés permiso para esta postulación."
+        "APPLICATION_INVALID_TRANSITION" -> "Ese cambio de estado no está permitido."
+        "APPLICATION_MESSAGE_REQUIRED" -> "Escribí un mensaje para el responsable."
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión."
         "NETWORK" -> "Problema de conexión. Intentá de nuevo."
         "TIMEOUT" -> "La operación tardó demasiado. Intentá de nuevo."

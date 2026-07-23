@@ -14,6 +14,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -37,6 +38,8 @@ import com.comunidapp.app.viewmodel.AdoptionsViewModel
 @Composable
 fun AdoptionsScreen(
     onAdoptionClick: (String) -> Unit,
+    onMyApplications: () -> Unit = {},
+    onReceivedApplications: () -> Unit = {},
     viewModel: AdoptionsViewModel = viewModel()
 ) {
     Scaffold(
@@ -44,6 +47,8 @@ fun AdoptionsScreen(
     ) { padding ->
         AdoptionsContent(
             onAdoptionClick = onAdoptionClick,
+            onMyApplications = onMyApplications,
+            onReceivedApplications = onReceivedApplications,
             topPadding = padding.calculateTopPadding(),
             bottomPadding = padding.calculateBottomPadding(),
             viewModel = viewModel
@@ -54,6 +59,8 @@ fun AdoptionsScreen(
 @Composable
 fun AdoptionsContent(
     onAdoptionClick: (String) -> Unit,
+    onMyApplications: () -> Unit = {},
+    onReceivedApplications: () -> Unit = {},
     topPadding: Dp = 0.dp,
     bottomPadding: Dp = 0.dp,
     viewModel: AdoptionsViewModel = viewModel()
@@ -67,6 +74,19 @@ fun AdoptionsContent(
             .padding(top = topPadding)
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = onMyApplications,
+                    modifier = Modifier.weight(1f)
+                ) { Text("Mis postulaciones") }
+                OutlinedButton(
+                    onClick = onReceivedApplications,
+                    modifier = Modifier.weight(1f)
+                ) { Text("Recibidas") }
+            }
             OutlinedTextField(
                 value = filters.location,
                 onValueChange = viewModel::onLocationChange,
