@@ -14,6 +14,12 @@ import com.comunidapp.app.data.remote.supabase.LostFoundSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.SocialSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.PostSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.UserSupabaseDataSource
+import com.comunidapp.app.data.remote.supabase.m09.CreateAdoptionParams
+import com.comunidapp.app.data.remote.supabase.m09.M09AdoptionErrorMapper
+import com.comunidapp.app.data.remote.supabase.m09.M09AdoptionException
+import com.comunidapp.app.data.remote.supabase.m09.SupabaseAdoptionM09RemoteDataSource
+import com.comunidapp.app.data.remote.supabase.m09.UpdateAdoptionParams
+import com.comunidapp.app.data.remote.supabase.toAdoptionPost
 import com.comunidapp.app.domain.user.UserProfileMapper
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -153,7 +159,8 @@ class SupabaseFeedRepository(
 }
 
 class SupabaseAdoptionRepository(
-    private val dataSource: AdoptionSupabaseDataSource = AdoptionSupabaseDataSource()
+    private val m09: SupabaseAdoptionM09RemoteDataSource = SupabaseAdoptionM09RemoteDataSource(),
+    private val legacy: AdoptionSupabaseDataSource = AdoptionSupabaseDataSource()
 ) : AdoptionRepository {
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
@@ -161,15 +168,50 @@ class SupabaseAdoptionRepository(
     override fun observeAdoptionPosts(): StateFlow<List<AdoptionPost>> = _posts.asStateFlow()
 
     init {
-        scope.launch {
-            dataSource.observeAdoptions().collect { posts ->
-                _posts.value = posts
-            }
+        scope.launch { refreshPublished() }
+    }
+
+    private suspend fun refreshPublished() {
+        try {
+            _posts.value = m09.listPublished().map { it.toAdoptionPost() }
+        } catch (_: Exception) {
+            // keep last known
         }
     }
 
+    override fun observePublishedAdoptions(): Flow<List<AdoptionPost>> =
+        _posts.map { list -> list.filter { it.status == AdoptionStatus.PUBLISHED } }
+
+    override fun observeMyAdoptions(publisherId: String): Flow<List<AdoptionPost>> =
+        kotlinx.coroutines.flow.flow {
+            while (true) {
+                try {
+                    emit(m09.listMine().map { it.toAdoptionPost() })
+                } catch (_: Exception) {
+                    emit(emptyList())
+                }
+                kotlinx.coroutines.delay(4_000)
+            }
+        }
+
     override fun getAdoptionPostById(id: String): AdoptionPost? =
-        _posts.value.find { it.id == id }
+        if (id.isBlank()) null else _posts.value.find { it.id == id }
+
+    override suspend fun getAdoptionById(id: String): Result<AdoptionPost> {
+        if (id.isBlank()) {
+            return M09AdoptionErrorMapper.failure(
+                M09AdoptionException(
+                    "ADOPTION_NOT_FOUND",
+                    M09AdoptionErrorMapper.userMessage("ADOPTION_NOT_FOUND")
+                )
+            )
+        }
+        return try {
+            Result.success(m09.getById(id).toAdoptionPost())
+        } catch (e: Exception) {
+            M09AdoptionErrorMapper.failure(e)
+        }
+    }
 
     override fun getFilteredAdoptions(
         location: String?,
@@ -190,24 +232,82 @@ class SupabaseAdoptionRepository(
     override fun getAdoptionsByShelter(shelterId: String): List<AdoptionPost> =
         _posts.value.filter { it.shelterId == shelterId || it.publisherId == shelterId }
 
-    override suspend fun addAdoptionPost(post: AdoptionPost): Result<String> =
-        dataSource.addAdoption(post)
-
-    override suspend fun updateAdoptionPost(post: AdoptionPost): Result<Unit> =
-        dataSource.updateAdoption(post)
-
-    override suspend fun updateAdoptionStatus(id: String, status: com.comunidapp.app.data.model.AdoptionStatus): Result<Unit> {
-        val post = getAdoptionPostById(id) ?: return Result.failure(NoSuchElementException())
-        return dataSource.updateAdoption(post.copy(status = status))
+    override suspend fun addAdoptionPost(post: AdoptionPost): Result<String> {
+        if (post.petId.isNullOrBlank()) {
+            return legacy.addAdoption(post)
+        }
+        return createAdoption(
+            CreateAdoptionParams(
+                petId = post.petId,
+                title = post.title.ifBlank { post.name },
+                description = post.description,
+                requirements = post.requirements,
+                locationText = post.location,
+                publish = post.status == AdoptionStatus.PUBLISHED
+            )
+        ).map { it.id }
     }
 
-    override fun observeMyAdoptions(publisherId: String): Flow<List<AdoptionPost>> =
-        kotlinx.coroutines.flow.flow {
-            while (true) {
-                emit(_posts.value.filter { it.publisherId == publisherId || it.shelterId == publisherId })
-                kotlinx.coroutines.delay(4_000)
-            }
+    override suspend fun updateAdoptionPost(post: AdoptionPost): Result<Unit> =
+        updateAdoption(
+            UpdateAdoptionParams(
+                adoptionId = post.id,
+                title = post.title.ifBlank { post.name },
+                description = post.description,
+                requirements = post.requirements,
+                locationText = post.location
+            )
+        ).map { }
+
+    override suspend fun updateAdoptionStatus(id: String, status: AdoptionStatus): Result<Unit> =
+        when (status) {
+            AdoptionStatus.PAUSED -> pauseAdoption(id).map { }
+            AdoptionStatus.PUBLISHED -> resumeAdoption(id).map { }
+            AdoptionStatus.CLOSED -> closeAdoption(id).map { }
+            AdoptionStatus.ADOPTED -> markAsAdopted(id).map { }
+            AdoptionStatus.DRAFT -> setStatusRemote(id, "DRAFT").map { }
         }
+
+    override suspend fun createAdoption(params: CreateAdoptionParams): Result<AdoptionPost> = try {
+        val post = m09.create(params).toAdoptionPost()
+        refreshPublished()
+        Result.success(post)
+    } catch (e: Exception) {
+        M09AdoptionErrorMapper.failure(e)
+    }
+
+    override suspend fun updateAdoption(params: UpdateAdoptionParams): Result<AdoptionPost> = try {
+        val post = m09.update(params).toAdoptionPost()
+        refreshPublished()
+        Result.success(post)
+    } catch (e: Exception) {
+        M09AdoptionErrorMapper.failure(e)
+    }
+
+    override suspend fun pauseAdoption(id: String): Result<AdoptionPost> =
+        setStatusRemote(id, "PAUSED")
+
+    override suspend fun resumeAdoption(id: String): Result<AdoptionPost> =
+        setStatusRemote(id, "PUBLISHED")
+
+    override suspend fun closeAdoption(id: String): Result<AdoptionPost> =
+        setStatusRemote(id, "CLOSED")
+
+    override suspend fun markAsAdopted(id: String): Result<AdoptionPost> = try {
+        val post = m09.markAdopted(id).toAdoptionPost()
+        refreshPublished()
+        Result.success(post)
+    } catch (e: Exception) {
+        M09AdoptionErrorMapper.failure(e)
+    }
+
+    private suspend fun setStatusRemote(id: String, status: String): Result<AdoptionPost> = try {
+        val post = m09.setStatus(id, status).toAdoptionPost()
+        refreshPublished()
+        Result.success(post)
+    } catch (e: Exception) {
+        M09AdoptionErrorMapper.failure(e)
+    }
 }
 
 class SupabaseLostFoundRepository(

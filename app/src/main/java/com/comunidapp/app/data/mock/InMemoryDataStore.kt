@@ -129,6 +129,11 @@ object InMemoryDataStore {
         }
     }
 
+    /** Test/helper: replace the full adoption list (M09 unit tests). */
+    fun replaceAdoptionPosts(posts: List<AdoptionPost>) {
+        _adoptionPosts.value = posts
+    }
+
     fun observeMyAdoptions(publisherId: String): Flow<List<AdoptionPost>> =
         _adoptionPosts.map { posts ->
             posts.filter { it.publisherId == publisherId || it.shelterId == publisherId }

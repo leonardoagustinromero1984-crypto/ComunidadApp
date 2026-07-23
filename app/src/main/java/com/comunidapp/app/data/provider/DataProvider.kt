@@ -17,6 +17,7 @@ import com.comunidapp.app.data.remote.storage.ProfileAvatarStorageService
 import com.comunidapp.app.data.remote.storage.SupabaseStorageService
 import com.comunidapp.app.data.repository.AdoptionRepository
 import com.comunidapp.app.data.repository.AdoptionRequestRepository
+import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.ChatRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationDeliveryRepository
 import com.comunidapp.app.data.repository.ClientDeniedNotificationOutboxRepository
@@ -180,7 +181,13 @@ object DataProvider {
     }
 
     val adoptionRepository: AdoptionRepository by lazy {
-        if (useSupabase) SupabaseAdoptionRepository() else MockAdoptionRepository()
+        if (useSupabase) {
+            SupabaseAdoptionRepository()
+        } else {
+            MockAdoptionRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        }
     }
 
     val lostFoundRepository: LostFoundRepository by lazy {

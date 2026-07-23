@@ -264,7 +264,7 @@ object MockData {
             size = PetSize.LARGE,
             location = "CABA",
             description = "Labrador sociable y enérgico. Ideal para familias activas.",
-            status = AdoptionStatus.AVAILABLE
+            status = AdoptionStatus.PUBLISHED
         ),
         AdoptionPost(
             id = "adopt_2",
@@ -279,7 +279,7 @@ object MockData {
             size = PetSize.SMALL,
             location = "CABA",
             description = "Gatita tímida pero muy cariñosa una vez que te conoce.",
-            status = AdoptionStatus.AVAILABLE
+            status = AdoptionStatus.PUBLISHED
         ),
         AdoptionPost(
             id = "adopt_3",
@@ -293,7 +293,7 @@ object MockData {
             size = PetSize.MEDIUM,
             location = "La Plata",
             description = "Mestizo tranquilo, perfecto para departamento.",
-            status = AdoptionStatus.IN_PROCESS
+            status = AdoptionStatus.PAUSED
         ),
         AdoptionPost(
             id = "adopt_4",
@@ -321,7 +321,7 @@ object MockData {
             size = PetSize.MEDIUM,
             location = "CABA",
             description = "Cachorro mestizo lleno de energía. Necesita paciencia y entrenamiento.",
-            status = AdoptionStatus.AVAILABLE
+            status = AdoptionStatus.PUBLISHED
         )
     )
 

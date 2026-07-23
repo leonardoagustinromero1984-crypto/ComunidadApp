@@ -175,7 +175,7 @@ class PublishViewModel(
                         size = size,
                         location = location.trim(),
                         description = description.trim(),
-                        status = AdoptionStatus.AVAILABLE
+                        status = AdoptionStatus.PUBLISHED
                     )
                     adoptionRepository.addAdoptionPost(adoption)
                         .onSuccess { adoptionId ->

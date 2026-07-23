@@ -357,7 +357,9 @@ data class AdoptionRow(
     @SerialName("publisher_id") val publisherId: String,
     @SerialName("publisher_name") val publisherName: String,
     @SerialName("shelter_id") val shelterId: String? = null,
+    @SerialName("pet_id") val petId: String? = null,
     val name: String,
+    val title: String? = null,
     @SerialName("photo_url") val photoUrl: String? = null,
     val species: String,
     val sex: String,
@@ -365,8 +367,11 @@ data class AdoptionRow(
     @SerialName("age_months") val ageMonths: Int = 0,
     val size: String,
     val location: String,
+    @SerialName("location_text") val locationText: String? = null,
     val description: String,
-    val status: String = AdoptionStatus.AVAILABLE.name,
+    val requirements: String? = null,
+    val status: String = AdoptionStatus.PUBLISHED.name,
+    @SerialName("published_at") val publishedAt: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
 )
@@ -392,9 +397,11 @@ data class LostFoundRow(
 
 fun parseAdoption(row: AdoptionRow): AdoptionPost = AdoptionPost(
     id = row.id,
+    petId = row.petId,
     publisherId = row.publisherId,
     shelterId = row.shelterId,
     shelterName = row.publisherName,
+    title = row.title.orEmpty().ifBlank { row.name },
     name = row.name,
     photoUrl = row.photoUrl,
     species = enumValueOrDefault(row.species, PetSpecies.OTHER),
@@ -402,10 +409,13 @@ fun parseAdoption(row: AdoptionRow): AdoptionPost = AdoptionPost(
     ageYears = row.ageYears,
     ageMonths = row.ageMonths,
     size = enumValueOrDefault(row.size, PetSize.MEDIUM),
-    location = row.location,
+    location = row.locationText?.takeIf { it.isNotBlank() } ?: row.location,
     description = row.description,
-    status = enumValueOrDefault(row.status, AdoptionStatus.AVAILABLE),
-    createdAt = row.createdAt.toEpochMillis()
+    requirements = row.requirements.orEmpty(),
+    status = AdoptionStatus.fromString(row.status),
+    publishedAt = row.publishedAt.toEpochMillis(),
+    createdAt = row.createdAt.toEpochMillis(),
+    updatedAt = row.updatedAt.toEpochMillis()
 )
 
 fun AdoptionPost.toAdoptionRow(now: Instant = Instant.now()): AdoptionRow = AdoptionRow(
@@ -413,7 +423,9 @@ fun AdoptionPost.toAdoptionRow(now: Instant = Instant.now()): AdoptionRow = Adop
     publisherId = publisherId.orEmpty(),
     publisherName = shelterName,
     shelterId = shelterId,
+    petId = petId,
     name = name,
+    title = title.ifBlank { name },
     photoUrl = photoUrl,
     species = species.name,
     sex = sex.name,
@@ -421,11 +433,41 @@ fun AdoptionPost.toAdoptionRow(now: Instant = Instant.now()): AdoptionRow = Adop
     ageMonths = ageMonths,
     size = size.name,
     location = location,
+    locationText = location,
     description = description,
+    requirements = requirements,
     status = status.name,
+    publishedAt = publishedAt?.let { Instant.ofEpochMilli(it).toString() },
     createdAt = (createdAt?.let { Instant.ofEpochMilli(it) } ?: now).toString(),
     updatedAt = now.toString()
 )
+
+fun com.comunidapp.app.data.remote.supabase.m09.AdoptionPublicationRow.toAdoptionPost(): AdoptionPost {
+    val loc = locationText?.takeIf { it.isNotBlank() } ?: location
+    return AdoptionPost(
+        id = id,
+        petId = petId,
+        publisherId = publisherId,
+        publisherOrganizationId = publisherOrganizationId,
+        shelterId = shelterId,
+        shelterName = publisherName.ifBlank { "Publicador" },
+        title = title.orEmpty().ifBlank { name },
+        name = name.ifBlank { title.orEmpty() },
+        photoUrl = photoUrl,
+        species = enumValueOrDefault(species, PetSpecies.OTHER),
+        sex = enumValueOrDefault(sex, PetSex.UNKNOWN),
+        ageYears = ageYears,
+        ageMonths = ageMonths,
+        size = enumValueOrDefault(size, PetSize.MEDIUM),
+        location = loc,
+        description = description,
+        requirements = requirements.orEmpty(),
+        status = AdoptionStatus.fromString(status),
+        publishedAt = publishedAt.toEpochMillis(),
+        createdAt = createdAt.toEpochMillis(),
+        updatedAt = updatedAt.toEpochMillis()
+    )
+}
 
 fun parseLostFound(row: LostFoundRow): LostFoundPost {
     val createdAt = row.createdAt.toEpochMillis()

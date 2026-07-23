@@ -155,9 +155,11 @@ fun AdoptionCard(
 @Composable
 fun AdoptionStatusBadge(status: AdoptionStatus) {
     val (label, color) = when (status) {
-        AdoptionStatus.AVAILABLE -> "Disponible" to MaterialTheme.colorScheme.primaryContainer
-        AdoptionStatus.IN_PROCESS -> "En proceso" to MaterialTheme.colorScheme.tertiaryContainer
-        AdoptionStatus.ADOPTED -> "Adoptado" to MaterialTheme.colorScheme.surfaceVariant
+        AdoptionStatus.DRAFT -> "Borrador" to MaterialTheme.colorScheme.surfaceVariant
+        AdoptionStatus.PUBLISHED -> "Publicada" to MaterialTheme.colorScheme.primaryContainer
+        AdoptionStatus.PAUSED -> "Pausada" to MaterialTheme.colorScheme.tertiaryContainer
+        AdoptionStatus.ADOPTED -> "Adoptada" to MaterialTheme.colorScheme.secondaryContainer
+        AdoptionStatus.CLOSED -> "Cerrada" to MaterialTheme.colorScheme.errorContainer
     }
     Text(
         text = label,

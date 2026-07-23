@@ -50,6 +50,7 @@ import com.comunidapp.app.ui.screens.support.SupportTicketDetailScreen
 import com.comunidapp.app.ui.screens.verification.OrganizationVerificationQueueScreen
 import com.comunidapp.app.ui.screens.verification.OrganizationVerificationReviewScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionFormScreen
 import com.comunidapp.app.ui.screens.adoptions.MyAdoptionsScreen
 import com.comunidapp.app.ui.screens.search.SearchScreen
 import com.comunidapp.app.ui.screens.chat.ChatListScreen
@@ -103,7 +104,6 @@ import com.comunidapp.app.viewmodel.OrganizationTeamViewModel
 import com.comunidapp.app.viewmodel.PublicOrganizationViewModel
 import com.comunidapp.app.viewmodel.ChatStartViewModel
 import com.comunidapp.app.viewmodel.ChatThreadViewModel
-import com.comunidapp.app.ui.screens.publish.PublishAdoptionScreen
 import com.comunidapp.app.ui.screens.publish.PublishGeneralScreen
 import com.comunidapp.app.ui.screens.publish.PublishLostFoundScreen
 import com.comunidapp.app.ui.screens.publish.PublishPromoScreen
@@ -361,7 +361,7 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateToGeneral = { navController.navigate(NavRoutes.PUBLISH_GENERAL) },
                     onNavigateToQuestion = { navController.navigate(NavRoutes.PUBLISH_QUESTION) },
                     onNavigateToPromo = { navController.navigate(NavRoutes.PUBLISH_PROMO) },
-                    onNavigateToAdoption = { navController.navigate(NavRoutes.PUBLISH_ADOPTION) },
+                    onNavigateToAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
                     onNavigateToLostFound = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
                     onNavigateToUrgent = { navController.navigate(NavRoutes.PUBLISH_URGENT) },
                     onNavigateToFoster = { navController.navigate(NavRoutes.PUBLISH_FOSTER) },
@@ -639,7 +639,9 @@ private fun MainScreen(accountType: AccountType) {
             composable(NavRoutes.MY_ADOPTIONS) {
                 MyAdoptionsScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) }
+                    onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
+                    onCreateAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
+                    onEditAdoption = { id -> navController.navigate(NavRoutes.adoptionFormEdit(id)) }
                 )
             }
             composable(NavRoutes.LOST_FOUND_MAP) {
@@ -657,6 +659,7 @@ private fun MainScreen(accountType: AccountType) {
             ) {
                 AdoptionDetailScreen(
                     onNavigateBack = { navController.popBackStack() },
+                    onEdit = { id -> navController.navigate(NavRoutes.adoptionFormEdit(id)) },
                     onMessagePublisher = { publisherId, publisherName ->
                         navController.navigate(NavRoutes.chatStart(publisherId, publisherName))
                     }
@@ -816,10 +819,33 @@ private fun MainScreen(accountType: AccountType) {
                     }
                 )
             }
-            composable(NavRoutes.PUBLISH_ADOPTION) {
-                PublishAdoptionScreen(
+            composable(NavRoutes.ADOPTION_FORM) {
+                AdoptionFormScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onPublishSuccess = {
+                    onSaved = { id ->
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.adoptionDetail(id))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.ADOPTION_FORM_EDIT,
+                arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
+            ) {
+                AdoptionFormScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { id ->
+                        navController.popBackStack()
+                        navController.navigate(NavRoutes.adoptionDetail(id)) {
+                            launchSingleTop = true
+                        }
+                    }
+                )
+            }
+            composable(NavRoutes.PUBLISH_ADOPTION) {
+                AdoptionFormScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { id ->
                         navController.popBackStack()
                         navController.navigate(NavRoutes.SUMATE)
                     }

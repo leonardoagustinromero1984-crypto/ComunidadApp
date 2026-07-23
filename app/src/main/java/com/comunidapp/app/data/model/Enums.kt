@@ -64,9 +64,25 @@ enum class PetSize {
 }
 
 enum class AdoptionStatus {
-    AVAILABLE,
-    IN_PROCESS,
-    ADOPTED
+    DRAFT,
+    PUBLISHED,
+    PAUSED,
+    ADOPTED,
+    CLOSED;
+
+    companion object {
+        fun fromString(value: String?): AdoptionStatus {
+            val raw = value?.trim()?.uppercase().orEmpty()
+            return when (raw) {
+                "AVAILABLE" -> PUBLISHED // legacy
+                "IN_PROCESS" -> PAUSED // legacy
+                else -> entries.find { it.name == raw } ?: PUBLISHED
+            }
+        }
+
+        fun isOpen(status: AdoptionStatus): Boolean =
+            status == DRAFT || status == PUBLISHED || status == PAUSED
+    }
 }
 
 enum class LostFoundType {

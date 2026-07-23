@@ -2,6 +2,7 @@ package com.comunidapp.app.ui.screens.adoptions
 
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -18,16 +20,18 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.data.model.AdoptionStatus
 import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.ui.components.AdoptionCard
 import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.viewmodel.AdoptionListUiState
 import com.comunidapp.app.viewmodel.AdoptionsViewModel
 
 @Composable
@@ -54,7 +58,7 @@ fun AdoptionsContent(
     bottomPadding: Dp = 0.dp,
     viewModel: AdoptionsViewModel = viewModel()
 ) {
-    val posts by viewModel.posts.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val filters by viewModel.filters.collectAsState()
 
     Column(
@@ -78,26 +82,6 @@ fun AdoptionsContent(
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FilterChip(
-                    selected = filters.status == AdoptionStatus.AVAILABLE,
-                    onClick = {
-                        viewModel.onStatusFilterChange(
-                            if (filters.status == AdoptionStatus.AVAILABLE) null
-                            else AdoptionStatus.AVAILABLE
-                        )
-                    },
-                    label = { Text("Disponible") }
-                )
-                FilterChip(
-                    selected = filters.status == AdoptionStatus.IN_PROCESS,
-                    onClick = {
-                        viewModel.onStatusFilterChange(
-                            if (filters.status == AdoptionStatus.IN_PROCESS) null
-                            else AdoptionStatus.IN_PROCESS
-                        )
-                    },
-                    label = { Text("En proceso") }
-                )
                 PetSex.entries.forEach { sex ->
                     FilterChip(
                         selected = filters.sex == sex,
@@ -123,17 +107,37 @@ fun AdoptionsContent(
             }
         }
 
-        LazyColumn(
-            modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                bottom = bottomPadding + 8.dp
-            ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            items(posts, key = { it.id }) { post ->
-                AdoptionCard(post = post, onClick = { onAdoptionClick(post.id) })
+        when (val state = uiState) {
+            AdoptionListUiState.Loading -> LoadingState()
+            AdoptionListUiState.Empty -> Box(
+                modifier = Modifier.fillMaxSize(),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No hay publicaciones activas por ahora.")
+            }
+            is AdoptionListUiState.Error -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(state.message)
+                    Button(onClick = viewModel::refresh) { Text("Reintentar") }
+                }
+            }
+            is AdoptionListUiState.Content -> LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = bottomPadding + 8.dp
+                ),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                items(state.posts, key = { it.id }) { post ->
+                    AdoptionCard(post = post, onClick = { onAdoptionClick(post.id) })
+                }
             }
         }
     }

@@ -1,6 +1,7 @@
 package com.comunidapp.app.ui.screens.adoptions
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -27,6 +28,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -41,6 +43,7 @@ import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.ageDisplay
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.viewmodel.AdoptionDetailUiState
 import com.comunidapp.app.viewmodel.AdoptionDetailViewModel
 import com.comunidapp.app.viewmodel.MyAdoptionsViewModel
 import com.comunidapp.app.viewmodel.RequestUiState
@@ -48,92 +51,206 @@ import com.comunidapp.app.viewmodel.RequestUiState
 @Composable
 fun AdoptionDetailScreen(
     onNavigateBack: () -> Unit,
+    onEdit: (String) -> Unit = {},
     onMessagePublisher: (String, String) -> Unit = { _, _ -> },
     viewModel: AdoptionDetailViewModel = viewModel()
 ) {
-    val post by viewModel.post.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
     val showDialog by viewModel.showRequestDialog.collectAsState()
     val requestState by viewModel.requestState.collectAsState()
+    var confirmAction by remember { mutableStateOf<ConfirmAction?>(null) }
+
+    val title = when (val s = uiState) {
+        is AdoptionDetailUiState.Content -> s.post.displayTitle
+        else -> "Adopción"
+    }
 
     Scaffold(
         topBar = {
             ComunidappTopBar(
-                title = post?.name ?: "Adopción",
+                title = title,
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
         }
     ) { padding ->
-        when (val adoption = post) {
-            null -> LoadingState(Modifier.padding(padding))
-            else -> Column(
+        when (val state = uiState) {
+            AdoptionDetailUiState.Loading -> LoadingState(Modifier.padding(padding))
+            AdoptionDetailUiState.NotFound -> Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding),
+                contentAlignment = Alignment.Center
+            ) {
+                Text("No encontramos esa publicación.")
+            }
+            is AdoptionDetailUiState.Error -> Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
+                    .padding(16.dp),
+                contentAlignment = Alignment.Center
             ) {
-                PetImage(
-                    imageUrl = adoption.photoUrl,
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(state.message)
+                    Button(onClick = viewModel::load) { Text("Reintentar") }
+                }
+            }
+            is AdoptionDetailUiState.Content -> {
+                val adoption = state.post
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp),
-                    cornerRadius = 12.dp,
-                    contentDescription = adoption.name
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = adoption.name,
-                    style = MaterialTheme.typography.headlineMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = adoption.shelterName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                AdoptionStatusBadge(status = adoption.status)
-                Spacer(modifier = Modifier.height(16.dp))
-                DetailRow("Especie", adoption.species.toDisplayName())
-                DetailRow("Sexo", adoption.sex.toDisplayName())
-                DetailRow("Edad", adoption.ageDisplay())
-                DetailRow("Tamaño", adoption.size.toDisplayName())
-                DetailRow("Zona", adoption.location)
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Descripción",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text(
-                    text = adoption.description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                if (adoption.status == AdoptionStatus.AVAILABLE) {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = viewModel::openRequestDialog,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Quiero adoptar")
-                    }
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(16.dp)
+                ) {
+                    PetImage(
+                        imageUrl = adoption.photoUrl,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        cornerRadius = 12.dp,
+                        contentDescription = adoption.name
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = adoption.displayTitle,
+                        style = MaterialTheme.typography.headlineMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = adoption.shelterName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = {
-                            adoption.publisherId?.let { id ->
-                                onMessagePublisher(id, adoption.shelterName)
+                    AdoptionStatusBadge(status = adoption.status)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    DetailRow("Mascota", adoption.name)
+                    DetailRow("Especie", adoption.species.toDisplayName())
+                    DetailRow("Sexo", adoption.sex.toDisplayName())
+                    DetailRow("Edad", adoption.ageDisplay())
+                    DetailRow("Tamaño", adoption.size.toDisplayName())
+                    DetailRow("Zona", adoption.location)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "Descripción",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = adoption.description,
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    if (adoption.requirements.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Text(
+                            text = "Requisitos",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = adoption.requirements,
+                            style = MaterialTheme.typography.bodyLarge,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    state.actionMessage?.let {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(it, color = MaterialTheme.colorScheme.error)
+                    }
+                    if (state.isOwner) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        if (adoption.status != AdoptionStatus.CLOSED &&
+                            adoption.status != AdoptionStatus.ADOPTED
+                        ) {
+                            OutlinedButton(
+                                onClick = { onEdit(adoption.id) },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !state.actionInFlight
+                            ) { Text("Editar publicación") }
+                        }
+                        when (adoption.status) {
+                            AdoptionStatus.PUBLISHED -> {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = { confirmAction = ConfirmAction.Pause },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !state.actionInFlight
+                                ) { Text("Pausar") }
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !adoption.publisherId.isNullOrBlank()
-                    ) {
-                        Text("Enviar mensaje al publicador")
+                            AdoptionStatus.PAUSED, AdoptionStatus.DRAFT -> {
+                                Spacer(modifier = Modifier.height(8.dp))
+                                OutlinedButton(
+                                    onClick = { confirmAction = ConfirmAction.Resume },
+                                    modifier = Modifier.fillMaxWidth(),
+                                    enabled = !state.actionInFlight
+                                ) { Text("Publicar / reanudar") }
+                            }
+                            else -> Unit
+                        }
+                        if (adoption.status != AdoptionStatus.CLOSED &&
+                            adoption.status != AdoptionStatus.ADOPTED
+                        ) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            OutlinedButton(
+                                onClick = { confirmAction = ConfirmAction.Close },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !state.actionInFlight
+                            ) { Text("Cerrar publicación") }
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Button(
+                                onClick = { confirmAction = ConfirmAction.Adopted },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !state.actionInFlight
+                            ) { Text("Marcar como adoptada") }
+                        }
+                    } else if (adoption.status == AdoptionStatus.PUBLISHED) {
+                        Spacer(modifier = Modifier.height(24.dp))
+                        Button(
+                            onClick = viewModel::openRequestDialog,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Quiero adoptar") }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        OutlinedButton(
+                            onClick = {
+                                adoption.publisherId?.let { id ->
+                                    onMessagePublisher(id, adoption.shelterName)
+                                }
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = !adoption.publisherId.isNullOrBlank()
+                        ) { Text("Enviar mensaje al publicador") }
                     }
                 }
             }
         }
+    }
+
+    confirmAction?.let { action ->
+        AlertDialog(
+            onDismissRequest = { confirmAction = null },
+            title = { Text(action.title) },
+            text = { Text(action.message) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        when (action) {
+                            ConfirmAction.Pause -> viewModel.pause()
+                            ConfirmAction.Resume -> viewModel.resume()
+                            ConfirmAction.Close -> viewModel.close()
+                            ConfirmAction.Adopted -> viewModel.markAdopted()
+                        }
+                        confirmAction = null
+                    }
+                ) { Text("Confirmar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirmAction = null }) { Text("Cancelar") }
+            }
+        )
     }
 
     if (showDialog) {
@@ -143,6 +260,16 @@ fun AdoptionDetailScreen(
             onSubmit = viewModel::submitRequest
         )
     }
+}
+
+private enum class ConfirmAction(val title: String, val message: String) {
+    Pause("Pausar publicación", "La publicación dejará de verse en el listado público."),
+    Resume("Reanudar publicación", "La publicación volverá a mostrarse como publicada."),
+    Close("Cerrar publicación", "No podrás editarla después de cerrarla."),
+    Adopted(
+        "Marcar como adoptada",
+        "Se marcará la publicación como adoptada y se actualizará el estado de la mascota."
+    )
 }
 
 @Composable
@@ -191,9 +318,7 @@ private fun AdoptionRequestDialog(
                 TextButton(
                     onClick = { onSubmit(message, phone) },
                     enabled = requestState !is RequestUiState.Loading
-                ) {
-                    Text("Enviar")
-                }
+                ) { Text("Enviar") }
             }
         },
         dismissButton = {
@@ -206,6 +331,8 @@ private fun AdoptionRequestDialog(
 fun MyAdoptionsScreen(
     onNavigateBack: () -> Unit,
     onAdoptionClick: (String) -> Unit,
+    onCreateAdoption: () -> Unit = {},
+    onEditAdoption: (String) -> Unit = {},
     viewModel: MyAdoptionsViewModel = viewModel()
 ) {
     val adoptions by viewModel.myAdoptions.collectAsState()
@@ -215,6 +342,7 @@ fun MyAdoptionsScreen(
     var interviewRequestId by remember { mutableStateOf<String?>(null) }
     var interviewDate by remember { mutableStateOf("") }
     var interviewNotes by remember { mutableStateOf("") }
+    var confirm by remember { mutableStateOf<Pair<String, ConfirmAction>?>(null) }
 
     if (interviewRequestId != null) {
         AlertDialog(
@@ -270,6 +398,30 @@ fun MyAdoptionsScreen(
         )
     }
 
+    confirm?.let { (id, action) ->
+        AlertDialog(
+            onDismissRequest = { confirm = null },
+            title = { Text(action.title) },
+            text = { Text(action.message) },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        when (action) {
+                            ConfirmAction.Pause -> viewModel.pause(id)
+                            ConfirmAction.Resume -> viewModel.resume(id)
+                            ConfirmAction.Close -> viewModel.close(id)
+                            ConfirmAction.Adopted -> viewModel.markAdopted(id)
+                        }
+                        confirm = null
+                    }
+                ) { Text("Confirmar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { confirm = null }) { Text("Cancelar") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             ComunidappTopBar(
@@ -287,12 +439,24 @@ fun MyAdoptionsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
+                Button(
+                    onClick = onCreateAdoption,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Nueva publicación") }
+            }
+            item {
                 Text(
                     text = "Publicaciones",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
+                message?.let {
+                    Text(it, color = MaterialTheme.colorScheme.error)
+                }
+            }
+            if (adoptions.isEmpty()) {
+                item { Text("Todavía no tenés publicaciones.") }
             }
             items(adoptions, key = { it.id }) { post ->
                 Column {
@@ -302,31 +466,46 @@ fun MyAdoptionsScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         when (post.status) {
-                            AdoptionStatus.AVAILABLE -> {
+                            AdoptionStatus.DRAFT -> {
                                 OutlinedButton(
-                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.IN_PROCESS) },
+                                    onClick = { onEditAdoption(post.id) },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Editar") }
+                                OutlinedButton(
+                                    onClick = { confirm = post.id to ConfirmAction.Resume },
+                                    modifier = Modifier.weight(1f)
+                                ) { Text("Publicar") }
+                            }
+                            AdoptionStatus.PUBLISHED -> {
+                                OutlinedButton(
+                                    onClick = { confirm = post.id to ConfirmAction.Pause },
                                     modifier = Modifier.weight(1f)
                                 ) { Text("Pausar") }
                                 OutlinedButton(
-                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.ADOPTED) },
+                                    onClick = { confirm = post.id to ConfirmAction.Adopted },
                                     modifier = Modifier.weight(1f)
                                 ) { Text("Adoptada") }
                             }
-                            AdoptionStatus.IN_PROCESS -> {
+                            AdoptionStatus.PAUSED -> {
                                 OutlinedButton(
-                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.AVAILABLE) },
+                                    onClick = { confirm = post.id to ConfirmAction.Resume },
                                     modifier = Modifier.weight(1f)
-                                ) { Text("Reactivar") }
+                                ) { Text("Reanudar") }
                                 OutlinedButton(
-                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.ADOPTED) },
+                                    onClick = { confirm = post.id to ConfirmAction.Close },
                                     modifier = Modifier.weight(1f)
-                                ) { Text("Adoptada") }
+                                ) { Text("Cerrar") }
                             }
-                            AdoptionStatus.ADOPTED -> {
-                                OutlinedButton(
-                                    onClick = { viewModel.updateStatus(post.id, AdoptionStatus.AVAILABLE) },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) { Text("Volver a disponible") }
+                            AdoptionStatus.ADOPTED, AdoptionStatus.CLOSED -> {
+                                Text(
+                                    text = if (post.status == AdoptionStatus.ADOPTED) {
+                                        "Finalizada (adoptada)"
+                                    } else {
+                                        "Cerrada"
+                                    },
+                                    style = MaterialTheme.typography.labelMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
                             }
                         }
                     }
@@ -347,15 +526,11 @@ fun MyAdoptionsScreen(
                     )
                 }
                 items(matches, key = { it.id }) { match ->
-                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                    Text("Candidato ${match.userId} — score ${"%.0f".format(match.score)}")
+                    if (match.reasons.isNotEmpty()) {
                         Text(
-                            text = "Usuario ${match.userId}",
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Score: ${match.score.toInt()} · ${match.reasons.joinToString(" · ")}",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            match.reasons.joinToString(" · "),
+                            style = MaterialTheme.typography.bodySmall
                         )
                     }
                 }
@@ -369,17 +544,29 @@ fun MyAdoptionsScreen(
                         modifier = Modifier.padding(vertical = 8.dp)
                     )
                 }
-                items(requests, key = { it.id }) { request ->
-                    CardRequestItem(
-                        request = request,
-                        onAccept = { viewModel.respondToRequest(request.id, true) },
-                        onReject = { viewModel.respondToRequest(request.id, false) },
-                        onScheduleInterview = {
-                            interviewRequestId = request.id
-                            interviewDate = ""
-                            interviewNotes = ""
+                items(requests, key = { it.id }) { req ->
+                    Column(modifier = Modifier.padding(vertical = 4.dp)) {
+                        Text(req.applicantName, fontWeight = FontWeight.SemiBold)
+                        Text(req.message)
+                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (req.status == AdoptionRequestStatus.PENDING) {
+                                TextButton(
+                                    onClick = { viewModel.respondToRequest(req.id, true) }
+                                ) { Text("Aceptar") }
+                                TextButton(
+                                    onClick = { viewModel.respondToRequest(req.id, false) }
+                                ) { Text("Rechazar") }
+                                TextButton(
+                                    onClick = { interviewRequestId = req.id }
+                                ) { Text("Entrevista") }
+                            } else {
+                                Text(req.status.name)
+                                if (req.interviewStatus == InterviewStatus.SCHEDULED) {
+                                    Text("Entrevista agendada")
+                                }
+                            }
                         }
-                    )
+                    }
                 }
             }
         }
@@ -387,47 +574,18 @@ fun MyAdoptionsScreen(
 }
 
 @Composable
-private fun CardRequestItem(
-    request: com.comunidapp.app.data.model.AdoptionRequest,
-    onAccept: () -> Unit,
-    onReject: () -> Unit,
-    onScheduleInterview: () -> Unit
-) {
-    Column(modifier = Modifier.padding(vertical = 4.dp)) {
-        Text(text = request.applicantName, fontWeight = FontWeight.SemiBold)
-        Text(text = request.message, style = MaterialTheme.typography.bodySmall)
-        Text(
-            text = when (request.status) {
-                AdoptionRequestStatus.PENDING -> "Pendiente"
-                AdoptionRequestStatus.ACCEPTED -> "Aceptada"
-                AdoptionRequestStatus.REJECTED -> "Rechazada"
-            },
-            style = MaterialTheme.typography.labelMedium
-        )
-        if (request.interviewStatus == InterviewStatus.SCHEDULED) {
-            Text(
-                text = "Entrevista agendada${request.interviewNotes?.let { ": $it" }.orEmpty()}",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        if (request.status == AdoptionRequestStatus.PENDING) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = onAccept) { Text("Aceptar") }
-                TextButton(onClick = onReject) { Text("Rechazar") }
-            }
-        }
-        if (request.status == AdoptionRequestStatus.ACCEPTED) {
-            TextButton(onClick = onScheduleInterview) { Text("Agendar entrevista") }
-        }
-    }
-}
-
-@Composable
 private fun DetailRow(label: String, value: String) {
-    Text(
-        text = "$label: $value",
-        style = MaterialTheme.typography.bodyMedium,
-        modifier = Modifier.padding(vertical = 4.dp)
-    )
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 2.dp),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(value, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Medium)
+    }
 }

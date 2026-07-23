@@ -26,6 +26,8 @@ object NavRoutes {
     const val LOST_FOUND = "lost_found"
 
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
+    const val ADOPTION_FORM = "adoption_form"
+    const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
     const val SHELTER_DETAIL = "shelter_detail/{shelterId}"
     const val PET_DETAIL = "pet_detail/{petId}"
 
@@ -118,7 +120,10 @@ object NavRoutes {
     const val ARG_ORGANIZATION_ID = "organizationId"
     const val ARG_SLUG = "slug"
 
-    fun adoptionDetail(adoptionId: String) = "adoption_detail/$adoptionId"
+    fun adoptionDetail(adoptionId: String) =
+        "adoption_detail/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
+    fun adoptionFormEdit(adoptionId: String) =
+        "adoption_form/${java.net.URLEncoder.encode(adoptionId, Charsets.UTF_8.name())}"
     fun shelterDetail(shelterId: String) = "shelter_detail/$shelterId"
     fun serviceDetail(serviceId: String) =
         "service_detail/${java.net.URLEncoder.encode(serviceId, Charsets.UTF_8.name())}"
