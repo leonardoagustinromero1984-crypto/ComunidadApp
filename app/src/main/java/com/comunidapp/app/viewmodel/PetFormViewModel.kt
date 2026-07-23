@@ -108,6 +108,7 @@ class PetFormViewModel(
                     _uiState.update {
                         it.copy(
                             isLoading = false,
+                            petStatus = pet.status,
                             errorMessage = "No se puede editar una mascota fallecida."
                         )
                     }

@@ -288,6 +288,28 @@ DiseÃ±o fÃ­sico y RLS congelados en:
 - [x] Tests unitarios de ViewModels + guardas estáticas; script `scripts/ci/m08_stage5_quality_checks.sh`.
 - [ ] Smoke integral M08 en staging (pendiente; incluye verificación de M08-SMOKE-001).
 
+### Etapa 6 (fallecimiento, historial, duplicados, avatar)
+
+- [x] Marcado DECEASED, restore ARCHIVED, historial de estados, microchip/duplicados privados, avatar M05.
+- [x] Restricciones UI por estado; galería pet completa permanece en backlog (`M08-GAP-GALLERY-001`).
+
+### Etapa 7 (integración y cierre técnico — 2026-07-23)
+
+- [x] Auditoría de integración entre alta/edición, detalle, salud, responsables, transferencias, fallecimiento, historial y errores controlados.
+- [x] Fix: al bloquear edición de mascota fallecida se persiste `petStatus=DECEASED` para activar `mutationsLocked`.
+- [x] Fake de repositorio M08 con create/update/getById coherentes para pruebas de integración.
+- [x] `M08IntegrationRegressionTest` (12 casos de contrato entre ViewModels).
+- [x] Pruebas focalizadas Etapa 7 PASS; `compileLocalDebugKotlin` PASS.
+- [ ] `M08-SMOKE-001` corregido en código — **pendiente revalidación manual APK**.
+- [ ] Smoke integral M08 en staging — **PENDIENTE** (M08 no validado en staging hasta smoke manual).
+- [ ] Galería completa M05 — backlog / módulo correspondiente.
+
+```text
+M08 ETAPA 7 — INTEGRACIÓN Y CIERRE TÉCNICO LISTOS
+SMOKE INTEGRAL APK — PENDIENTE
+GALERÍA M05 COMPLETA — BACKLOG
+```
+
 ---
 
 ## 18. Documentos relacionados
@@ -296,3 +318,4 @@ DiseÃ±o fÃ­sico y RLS congelados en:
 - `docs/02-arquitectura/M08-modelo-responsabilidad-y-custodia.md`
 - `docs/04-calidad/M08-matriz-impacto-y-no-regresion.md`
 - `docs/02-arquitectura/BASE-PRE-M08-INTEGRADA.md`
+- `docs/04-calidad/M08-backlog-defectos-smoke-staging.md`

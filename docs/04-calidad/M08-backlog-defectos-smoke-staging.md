@@ -77,6 +77,18 @@ Espacio reservado para observaciones del smoke que aún no tienen ID, severidad 
 
 **Nota:** `M08-SMOKE-001` tiene corrección en código; smoke manual APK y cierre integral siguen **PENDIENTES** (sin PASS inventado).
 
+### Etapa 7 — integración técnica (2026-07-23)
+
+```text
+M08 ETAPA 7 — INTEGRACIÓN Y CIERRE TÉCNICO LISTOS
+SMOKE INTEGRAL APK — PENDIENTE
+```
+
+- Integración ViewModels verificada con `M08IntegrationRegressionTest`.
+- `M08-SMOKE-001`: **CORREGIDO A NIVEL DE CÓDIGO — PENDIENTE REVALIDACIÓN MANUAL**.
+- Galería M05 completa: **BACKLOG** (`M08-GAP-GALLERY-001`).
+- M08 **no** se declara validado en staging hasta smoke manual APK.
+
 ---
 
 ## Criterios de salida del backlog

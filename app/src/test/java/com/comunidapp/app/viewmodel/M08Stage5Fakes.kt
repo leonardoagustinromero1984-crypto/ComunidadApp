@@ -151,21 +151,59 @@ class FakeStage5PetRepository(
     var accessCalls = 0
     var fetchError: Throwable? = null
     var observeError: Throwable? = null
+    var createCalls = 0
+    var updateCalls = 0
+    var lastCreated: Pet? = null
+    var lastUpdated: Pet? = null
+    var createFailure: Throwable? = null
+    var updateFailure: Throwable? = null
+    private var createSeq = 0
 
-    override fun observePets(): StateFlow<List<Pet>> = MutableStateFlow(emptyList())
-    override fun observePetsForOwner(ownerId: String): Flow<List<Pet>> = flowOf(emptyList())
+    override fun observePets(): StateFlow<List<Pet>> =
+        MutableStateFlow(listOfNotNull(pet))
+
+    override fun observePetsForOwner(ownerId: String): Flow<List<Pet>> =
+        flowOf(listOfNotNull(pet).filter { it.ownerId == ownerId })
+
     override fun observePet(petId: String): Flow<Pet?> = flow {
         observeError?.let { throw it }
-        petFlow.collect { emit(it) }
+        petFlow.collect { current ->
+            emit(current?.takeIf { it.id == petId })
+        }
     }
-    override fun getPetsByOwner(ownerId: String): List<Pet> = emptyList()
-    override fun getPetById(petId: String): Pet? = pet
+
+    override fun getPetsByOwner(ownerId: String): List<Pet> =
+        listOfNotNull(pet).filter { it.ownerId == ownerId }
+
+    override fun getPetById(petId: String): Pet? = pet?.takeIf { it.id == petId }
+
     override suspend fun fetchPetById(petId: String): Pet? {
         fetchError?.let { throw it }
-        return pet
+        return pet?.takeIf { it.id == petId }
     }
-    override suspend fun createPet(pet: Pet): Result<String> = Result.success(pet.id)
-    override suspend fun updatePet(pet: Pet): Result<Unit> = Result.success(Unit)
+
+    override suspend fun createPet(pet: Pet): Result<String> {
+        createCalls++
+        createFailure?.let { return Result.failure(it) }
+        createSeq++
+        val id = pet.id.ifBlank { "pet-created-$createSeq" }
+        val stored = pet.copy(id = id)
+        this.pet = stored
+        lastCreated = stored
+        return Result.success(id)
+    }
+
+    override suspend fun updatePet(pet: Pet): Result<Unit> {
+        updateCalls++
+        updateFailure?.let { return Result.failure(it) }
+        if (this.pet?.status == "DECEASED") {
+            return Result.failure(IllegalStateException("PET_NOT_ACTIVE"))
+        }
+        this.pet = pet
+        lastUpdated = pet
+        return Result.success(Unit)
+    }
+
     override suspend fun deletePet(petId: String): Result<Unit> = Result.success(Unit)
 
     override suspend fun getPetAccessContext(petId: String): Result<PetAccessContext> {

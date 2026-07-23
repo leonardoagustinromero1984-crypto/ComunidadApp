@@ -89,9 +89,20 @@ Checklist adicional previo al cierre de Etapa 5 en calidad:
 - [x] `scripts/ci/m08_stage5_quality_checks.sh` PASS — registrado 2026-07-21.
 - [ ] Smoke integral M08 en staging (incluye re-verificar M08-SMOKE-001) — **PENDIENTE**.
 
+### Etapa 7 — integración y cierre técnico (2026-07-23)
+
+| Ítem | Estado |
+|---|---|
+| Integración ViewModels (alta/edición/detalle/salud/responsables/transferencias/fallecimiento/historial/errores) | Verificada con `M08IntegrationRegressionTest` |
+| Fix edición fallecida (`petStatus` → `mutationsLocked`) | Aplicado |
+| `PetDetail` / health section (código) | Corregido; revalidación APK **PENDIENTE** |
+| `M08-SMOKE-001` | CORREGIDO A NIVEL DE CÓDIGO — PENDIENTE REVALIDACIÓN MANUAL |
+| Galería M05 completa | BACKLOG |
+| Smoke integral APK / validación staging | **PENDIENTE** — no declarar M08 validado en staging |
+
 ---
 
-## 4. Casos de prueba futuros (borrador Etapa 7)
+## 4. Casos de prueba futuros (borrador post-smoke)
 
 1. Usuario A crea pet → es PRINCIPAL; aparece en MyPets.
 2. A invita B co-responsable → B acepta → ambos ven pet; solo A transfiere.
@@ -101,6 +112,7 @@ Checklist adicional previo al cierre de Etapa 5 en calidad:
 6. Microchip duplicado en ACTIVE → rechazo o flag (según regla Etapa 6).
 7. Legacy smoke: 10 pets existentes siguen listables post-backfill.
 8. Org custody: sin dual primary.
+9. Revalidar M08-SMOKE-001 en APK staging (detalle + salud vacía/incompleta).
 
 ---
 
