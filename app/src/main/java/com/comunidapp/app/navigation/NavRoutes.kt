@@ -78,6 +78,21 @@ object NavRoutes {
     const val SHELTER_VOLUNTEER_INVITE = "shelter_volunteer_invite/{shelterId}"
     const val SHELTER_OPS_DETAIL = "shelter_ops_detail/{shelterId}"
 
+    // M11 Block 2 — campañas y pedidos de insumos
+    const val SHELTER_PUBLIC_CAMPAIGNS = "shelter_public_campaigns"
+    const val SHELTER_PUBLIC_SUPPLY_REQUESTS = "shelter_public_supply_requests"
+    const val SHELTER_CAMPAIGNS = "shelter_campaigns/{shelterId}"
+    const val SHELTER_CAMPAIGN_DETAIL = "shelter_campaign_detail/{campaignId}"
+    const val SHELTER_CAMPAIGN_FORM = "shelter_campaign_form/{shelterId}"
+    const val SHELTER_CAMPAIGN_FORM_EDIT = "shelter_campaign_form/{shelterId}/{campaignId}"
+    const val SHELTER_CAMPAIGN_UPDATE = "shelter_campaign_update/{campaignId}"
+    const val SHELTER_SUPPLY_REQUESTS = "shelter_supply_requests/{shelterId}"
+    const val SHELTER_SUPPLY_REQUEST_DETAIL = "shelter_supply_request_detail/{requestId}"
+    const val SHELTER_SUPPLY_REQUEST_FORM = "shelter_supply_request_form/{shelterId}"
+    const val SHELTER_SUPPLY_REQUEST_FORM_EDIT = "shelter_supply_request_form/{shelterId}/{requestId}"
+    const val SHELTER_SUPPLY_CONTRIBUTE = "shelter_supply_contribute/{requestId}"
+    const val SHELTER_SUPPLY_CONTRIBUTIONS = "shelter_supply_contributions/{requestId}"
+
     const val PET_DETAIL = "pet_detail/{petId}"
 
     // M08 Etapa 5 — gobierno de responsables, autorizaciones y transferencias
@@ -169,6 +184,8 @@ object NavRoutes {
     const val ARG_FOSTER_HELP_REQUEST_ID = "helpRequestId"
     const val ARG_SHELTER_ID = "shelterId"
     const val ARG_SHELTER_PLACEMENT_ID = "placementId"
+    const val ARG_CAMPAIGN_ID = "campaignId"
+    const val ARG_SUPPLY_REQUEST_ID = "requestId"
     const val ARG_PET_ID = "petId"
     const val ARG_TRANSFER_ID = "transferId"
     const val ARG_EMAIL = "email"
@@ -246,6 +263,30 @@ object NavRoutes {
         "shelter_volunteers/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
     fun shelterVolunteerInvite(shelterId: String) =
         "shelter_volunteer_invite/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun shelterCampaigns(shelterId: String) =
+        "shelter_campaigns/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun shelterCampaignDetail(campaignId: String) =
+        "shelter_campaign_detail/${java.net.URLEncoder.encode(campaignId, Charsets.UTF_8.name())}"
+    fun shelterCampaignForm(shelterId: String) =
+        "shelter_campaign_form/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun shelterCampaignFormEdit(shelterId: String, campaignId: String) =
+        "shelter_campaign_form/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}/" +
+            java.net.URLEncoder.encode(campaignId, Charsets.UTF_8.name())
+    fun shelterCampaignUpdate(campaignId: String) =
+        "shelter_campaign_update/${java.net.URLEncoder.encode(campaignId, Charsets.UTF_8.name())}"
+    fun shelterSupplyRequests(shelterId: String) =
+        "shelter_supply_requests/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun shelterSupplyRequestDetail(requestId: String) =
+        "shelter_supply_request_detail/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
+    fun shelterSupplyRequestForm(shelterId: String) =
+        "shelter_supply_request_form/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun shelterSupplyRequestFormEdit(shelterId: String, requestId: String) =
+        "shelter_supply_request_form/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}/" +
+            java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())
+    fun shelterSupplyContribute(requestId: String) =
+        "shelter_supply_contribute/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
+    fun shelterSupplyContributions(requestId: String) =
+        "shelter_supply_contributions/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
     fun serviceDetail(serviceId: String) =
         "service_detail/${java.net.URLEncoder.encode(serviceId, Charsets.UTF_8.name())}"
     fun petDetail(petId: String) = "pet_detail/$petId"

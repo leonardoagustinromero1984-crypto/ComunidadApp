@@ -29,6 +29,22 @@ object M11ShelterErrorMapper {
         "ORGANIZATION_NOT_ELIGIBLE",
         "ORGANIZATION_MEMBERSHIP_REQUIRED",
         "PET_NOT_FOUND",
+        "SHELTER_CAMPAIGN_NOT_FOUND",
+        "SHELTER_CAMPAIGN_FORBIDDEN",
+        "SHELTER_CAMPAIGN_INVALID_TRANSITION",
+        "SHELTER_CAMPAIGN_HAS_OPEN_REQUESTS",
+        "SHELTER_CAMPAIGN_NOT_ACTIVE",
+        "SHELTER_SUPPLY_REQUEST_NOT_FOUND",
+        "SHELTER_SUPPLY_REQUEST_FORBIDDEN",
+        "SHELTER_SUPPLY_REQUEST_INVALID",
+        "SHELTER_SUPPLY_REQUEST_CLOSED",
+        "SHELTER_SUPPLY_REQUEST_EXPIRED",
+        "SHELTER_CONTRIBUTION_NOT_FOUND",
+        "SHELTER_CONTRIBUTION_FORBIDDEN",
+        "SHELTER_CONTRIBUTION_INVALID",
+        "SHELTER_CONTRIBUTION_EXCEEDS_REMAINING",
+        "SHELTER_CONTRIBUTION_ALREADY_RECEIVED",
+        "SHELTER_EVIDENCE_REF_INVALID",
         "NOT_AUTHENTICATED",
         "FORBIDDEN",
         "NETWORK",
@@ -74,6 +90,22 @@ object M11ShelterErrorMapper {
         "ORGANIZATION_NOT_ELIGIBLE" -> "Esa organización no puede operar un refugio."
         "ORGANIZATION_MEMBERSHIP_REQUIRED" -> "Necesitás ser miembro activo de la organización."
         "PET_NOT_FOUND" -> "No encontramos esa mascota."
+        "SHELTER_CAMPAIGN_NOT_FOUND" -> "No encontramos esa campaña del refugio."
+        "SHELTER_CAMPAIGN_FORBIDDEN" -> "No tenés permiso para gestionar esta campaña."
+        "SHELTER_CAMPAIGN_INVALID_TRANSITION" -> "Ese cambio de estado de campaña no está permitido."
+        "SHELTER_CAMPAIGN_HAS_OPEN_REQUESTS" -> "No podés completar la campaña mientras haya pedidos abiertos."
+        "SHELTER_CAMPAIGN_NOT_ACTIVE" -> "La campaña no está activa."
+        "SHELTER_SUPPLY_REQUEST_NOT_FOUND" -> "No encontramos ese pedido de insumos."
+        "SHELTER_SUPPLY_REQUEST_FORBIDDEN" -> "No tenés permiso para gestionar este pedido."
+        "SHELTER_SUPPLY_REQUEST_INVALID" -> "Los datos del pedido de insumos no son válidos."
+        "SHELTER_SUPPLY_REQUEST_CLOSED" -> "Ese pedido de insumos ya está cerrado."
+        "SHELTER_SUPPLY_REQUEST_EXPIRED" -> "Ese pedido de insumos venció."
+        "SHELTER_CONTRIBUTION_NOT_FOUND" -> "No encontramos ese aporte."
+        "SHELTER_CONTRIBUTION_FORBIDDEN" -> "No tenés permiso sobre este aporte."
+        "SHELTER_CONTRIBUTION_INVALID" -> "Los datos del aporte no son válidos."
+        "SHELTER_CONTRIBUTION_EXCEEDS_REMAINING" -> "La cantidad supera lo que falta por comprometer."
+        "SHELTER_CONTRIBUTION_ALREADY_RECEIVED" -> "Ese aporte ya fue recibido y no puede cancelarse."
+        "SHELTER_EVIDENCE_REF_INVALID" -> "La referencia de evidencia no es válida."
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión."
         "FORBIDDEN" -> "No tenés permiso para esta acción."
         "NETWORK" -> "Problema de conexión. Probá de nuevo."

@@ -2,6 +2,8 @@ package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.FosterPlacementStatus
 import com.comunidapp.app.data.model.Pet
+import com.comunidapp.app.data.model.ShelterCampaign
+import com.comunidapp.app.data.model.ShelterCampaignUpdate
 import com.comunidapp.app.data.model.ShelterIntakeType
 import com.comunidapp.app.data.model.ShelterPetEndReason
 import com.comunidapp.app.data.model.ShelterPetPlacement
@@ -9,6 +11,8 @@ import com.comunidapp.app.data.model.ShelterPetPlacementStatus
 import com.comunidapp.app.data.model.ShelterProfile
 import com.comunidapp.app.data.model.ShelterPublicListing
 import com.comunidapp.app.data.model.ShelterStatus
+import com.comunidapp.app.data.model.ShelterSupplyContribution
+import com.comunidapp.app.data.model.ShelterSupplyRequest
 import com.comunidapp.app.data.model.ShelterVolunteerAssignment
 import com.comunidapp.app.data.model.ShelterVolunteerRole
 import com.comunidapp.app.data.model.ShelterVolunteerStatus
@@ -46,6 +50,13 @@ class M11ShelterMemoryStore {
     val petPrincipal = MutableStateFlow<Map<String, String>>(emptyMap())
     /** Optional link to M10 store for FOSTER_RETURN. */
     var fosterStore: M10FosterMemoryStore? = null
+    /** M11 Bloque 2 — campañas e insumos. */
+    val campaigns = MutableStateFlow<List<ShelterCampaign>>(emptyList())
+    val campaignUpdates = MutableStateFlow<List<ShelterCampaignUpdate>>(emptyList())
+    val supplyRequests = MutableStateFlow<List<ShelterSupplyRequest>>(emptyList())
+    val supplyContributions = MutableStateFlow<List<ShelterSupplyContribution>>(emptyList())
+    val auditEvents = MutableStateFlow<List<M11AuditEvent>>(emptyList())
+    val m06Hooks = MutableStateFlow<List<String>>(emptyList())
 
     fun clear() {
         profiles.value = emptyList()
@@ -57,8 +68,17 @@ class M11ShelterMemoryStore {
         orgViewers.value = emptyMap()
         petPrincipal.value = emptyMap()
         fosterStore = null
+        campaigns.value = emptyList()
+        campaignUpdates.value = emptyList()
+        supplyRequests.value = emptyList()
+        supplyContributions.value = emptyList()
+        auditEvents.value = emptyList()
+        m06Hooks.value = emptyList()
     }
 }
+
+/** Evento auditable M07 (mock). */
+data class M11AuditEvent(val eventKey: String, val resourceId: String)
 
 data class CreateShelterProfileInput(
     val organizationId: String,

@@ -63,6 +63,8 @@ fun ShelterOpsListScreen(
     onNavigateBack: () -> Unit,
     onShelterClick: (String) -> Unit,
     onMyShelters: () -> Unit,
+    onPublicCampaigns: () -> Unit = {},
+    onPublicSupplyRequests: () -> Unit = {},
     viewModel: ShelterPublicListViewModel = viewModel(factory = ShelterPublicListViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -74,6 +76,12 @@ fun ShelterOpsListScreen(
         Column(Modifier.padding(padding).padding(16.dp)) {
             OutlinedButton(onClick = onMyShelters, modifier = Modifier.fillMaxWidth()) {
                 Text("Mis refugios")
+            }
+            OutlinedButton(onClick = onPublicCampaigns, modifier = Modifier.fillMaxWidth()) {
+                Text("Campañas públicas")
+            }
+            OutlinedButton(onClick = onPublicSupplyRequests, modifier = Modifier.fillMaxWidth()) {
+                Text("Pedidos de insumos")
             }
             Spacer(Modifier.height(12.dp))
             when (val s = state) {
@@ -270,6 +278,8 @@ fun ShelterDashboardScreen(
     onPets: (String) -> Unit,
     onVolunteers: (String) -> Unit,
     onEdit: (String) -> Unit,
+    onCampaigns: (String) -> Unit,
+    onSupplyRequests: (String) -> Unit,
     viewModel: ShelterDashboardViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -301,6 +311,10 @@ fun ShelterDashboardScreen(
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     OutlinedButton(onClick = { onPets(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Mascotas") }
                     OutlinedButton(onClick = { onVolunteers(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Voluntarios") }
+                    OutlinedButton(onClick = { onCampaigns(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Campañas") }
+                    OutlinedButton(onClick = { onSupplyRequests(sh.id) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Pedidos de insumos")
+                    }
                     OutlinedButton(onClick = { onEdit(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Editar perfil") }
                     if (sh.status == ShelterStatus.ACTIVE) {
                         OutlinedButton(onClick = { viewModel.changeStatus(ShelterStatus.PAUSED) }, modifier = Modifier.fillMaxWidth()) {

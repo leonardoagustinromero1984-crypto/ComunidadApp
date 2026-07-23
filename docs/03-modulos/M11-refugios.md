@@ -31,18 +31,41 @@ Un refugio M11 es capacidad operativa de una **organización M03**, no un owners
 
 ## Persistencia
 
-`042_m11_shelter_operations_core.sql` — **pendiente de apply remoto**. Legacy `shelters` intacta.
+| Migración | Alcance | Apply remoto |
+|-----------|---------|--------------|
+| `042_m11_shelter_operations_core.sql` | Perfiles, placements, voluntarios | Pendiente |
+| `043_m11_shelter_campaigns_and_aid.sql` | Campañas, insumos, aportes | **LOCAL ONLY** |
 
-Detalle: `docs/02-arquitectura/M11-operacion-refugios.md`
+Legacy `shelters` intacta. Detalle bloque 1: `docs/02-arquitectura/M11-operacion-refugios.md`.
+Detalle bloque 2: `docs/02-arquitectura/M11-campanas-insumos-red-ayuda.md`.
+
+## Bloque 2 — Campañas e insumos (no monetario)
+
+- Campañas por refugio operativo (`DRAFT` → `ACTIVE` / `PAUSED` / `COMPLETED` / `CANCELLED`).
+- Visibilidad `PUBLIC` (listado público solo ACTIVE+PUBLIC) o `INTERNAL`.
+- Pedidos de insumos con estados derivados de aportes (`OPEN` → … → `FULFILLED` / `EXPIRED` / `CANCELLED`).
+- Aportes: pledge, confirmación, recepción parcial/total; sin CBU, alias ni pagos.
+- Evidencia M05: `m05://` y `file_asset:` únicamente.
+- Permisos M03: `shelter.campaign.*`, `shelter.supply.*`, `shelter.contribution.*`.
+- M06 hooks preparados sin push; M07 auditoría en dominio mock.
+- Apply manual: `docs/05-operacion/M11-aplicacion-migracion-043-supabase.md` (**no apply desde Cursor**).
 
 ## Pantallas
 
-`shelters`, `my_shelters`, `shelter_ops_detail`, `shelter_dashboard`, formulario, mascotas/ingreso/detalle, voluntarios/invitación.
+Bloque 1: `shelters`, `my_shelters`, `shelter_ops_detail`, `shelter_dashboard`, formulario, mascotas/ingreso/detalle, voluntarios/invitación.
+
+Bloque 2: listado público/gestión de campañas y pedidos, detalle, formularios, novedades, aporte y recepción de contribuciones.
 
 ## Tests / build
 
-`M11ShelterOperationsCoreTest` (+ M08/M09/M10 focalizados). `compileLocalDebugKotlin`.
+| Test | Alcance |
+|------|---------|
+| `M11ShelterOperationsCoreTest` | Bloque 1 |
+| `M11ShelterCampaignsAndAidTest` | Bloque 2 dominio mock (~40 casos) |
+| `M11CampaignMigrationStaticGuardsTest` | Contratos SQL 043 |
 
-## Pendientes (bloque siguiente)
+`compileLocalDebugKotlin` · `./gradlew :app:testLocalDebugUnitTest --tests "com.comunidapp.app.viewmodel.M11*"`
 
-Campañas, insumos, donaciones, eventos, reportes, reputación, chat, push, apply remoto 042, APK.
+## Pendientes
+
+Apply remoto 043 (manual), smoke Supabase, push M06, reputación, chat, eventos, reportes avanzados, APK cuando se solicite (Bloque 3+).

@@ -160,6 +160,10 @@ import com.comunidapp.app.ui.screens.publish.PublishShelterScreen
 import com.comunidapp.app.ui.screens.publish.PublishScreen
 import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.ui.screens.shelters.MySheltersScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterCampaignDetailScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterCampaignFormScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterCampaignUpdateScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterCampaignsScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterDashboardScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterDetailScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterIntakeScreen
@@ -169,13 +173,29 @@ import com.comunidapp.app.ui.screens.shelters.ShelterOpsListScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterOpsPetDetailScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterOpsPetsScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterOpsVolunteersScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterPublicCampaignsScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterPublicSupplyRequestsScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterSupplyContributeScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterSupplyContributionsScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterSupplyRequestDetailScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterSupplyRequestFormScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterSupplyRequestsScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterVolunteerInviteScreen
+import com.comunidapp.app.viewmodel.ShelterCampaignDetailViewModel
+import com.comunidapp.app.viewmodel.ShelterCampaignFormViewModel
+import com.comunidapp.app.viewmodel.ShelterCampaignUpdateFormViewModel
+import com.comunidapp.app.viewmodel.ShelterCampaignsViewModel
 import com.comunidapp.app.viewmodel.ShelterDashboardViewModel
 import com.comunidapp.app.viewmodel.ShelterFormViewModel
 import com.comunidapp.app.viewmodel.ShelterIntakeViewModel
 import com.comunidapp.app.viewmodel.ShelterOpsDetailViewModel
 import com.comunidapp.app.viewmodel.ShelterPetDetailViewModel
 import com.comunidapp.app.viewmodel.ShelterPetsViewModel
+import com.comunidapp.app.viewmodel.ShelterSupplyContributeViewModel
+import com.comunidapp.app.viewmodel.ShelterSupplyContributionsViewModel
+import com.comunidapp.app.viewmodel.ShelterSupplyRequestDetailViewModel
+import com.comunidapp.app.viewmodel.ShelterSupplyRequestFormViewModel
+import com.comunidapp.app.viewmodel.ShelterSupplyRequestsViewModel
 import com.comunidapp.app.viewmodel.ShelterVolunteerInviteViewModel
 import com.comunidapp.app.viewmodel.ShelterVolunteersViewModel
 import com.comunidapp.app.ui.screens.sumate.SumateScreen
@@ -1145,7 +1165,9 @@ private fun MainScreen(accountType: AccountType) {
                 ShelterOpsListScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onShelterClick = { id -> navController.navigate(NavRoutes.shelterOpsDetail(id)) },
-                    onMyShelters = { navController.navigate(NavRoutes.MY_SHELTERS) }
+                    onMyShelters = { navController.navigate(NavRoutes.MY_SHELTERS) },
+                    onPublicCampaigns = { navController.navigate(NavRoutes.SHELTER_PUBLIC_CAMPAIGNS) },
+                    onPublicSupplyRequests = { navController.navigate(NavRoutes.SHELTER_PUBLIC_SUPPLY_REQUESTS) }
                 )
             }
             composable(NavRoutes.MY_SHELTERS) {
@@ -1211,6 +1233,8 @@ private fun MainScreen(accountType: AccountType) {
                     onPets = { sid -> navController.navigate(NavRoutes.shelterPets(sid)) },
                     onVolunteers = { sid -> navController.navigate(NavRoutes.shelterVolunteers(sid)) },
                     onEdit = { sid -> navController.navigate(NavRoutes.shelterFormEdit(sid)) },
+                    onCampaigns = { sid -> navController.navigate(NavRoutes.shelterCampaigns(sid)) },
+                    onSupplyRequests = { sid -> navController.navigate(NavRoutes.shelterSupplyRequests(sid)) },
                     viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
                         factory = ShelterDashboardViewModel.factory(id)
                     )
@@ -1294,6 +1318,205 @@ private fun MainScreen(accountType: AccountType) {
                     viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
                         factory = ShelterVolunteerInviteViewModel.factory(id)
                     )
+                )
+            }
+            composable(NavRoutes.SHELTER_PUBLIC_CAMPAIGNS) {
+                ShelterPublicCampaignsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCampaignClick = { cid -> navController.navigate(NavRoutes.shelterCampaignDetail(cid)) }
+                )
+            }
+            composable(NavRoutes.SHELTER_PUBLIC_SUPPLY_REQUESTS) {
+                ShelterPublicSupplyRequestsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onRequestClick = { rid -> navController.navigate(NavRoutes.shelterSupplyRequestDetail(rid)) },
+                    onContribute = { rid -> navController.navigate(NavRoutes.shelterSupplyContribute(rid)) }
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_CAMPAIGNS,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterCampaignsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreate = { navController.navigate(NavRoutes.shelterCampaignForm(id)) },
+                    onDetail = { cid -> navController.navigate(NavRoutes.shelterCampaignDetail(cid)) },
+                    viewModel = viewModel(factory = ShelterCampaignsViewModel.factory(id))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_CAMPAIGN_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_CAMPAIGN_ID) { type = NavType.StringType })
+            ) { entry ->
+                val cid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CAMPAIGN_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterCampaignDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAddUpdate = { id -> navController.navigate(NavRoutes.shelterCampaignUpdate(id)) },
+                    onEdit = { sid, campId -> navController.navigate(NavRoutes.shelterCampaignFormEdit(sid, campId)) },
+                    viewModel = viewModel(factory = ShelterCampaignDetailViewModel.factory(cid))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_CAMPAIGN_FORM,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterCampaignFormScreen(
+                    shelterId = id,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { campId ->
+                        navController.navigate(NavRoutes.shelterCampaignDetail(campId)) {
+                            popUpTo(NavRoutes.shelterCampaigns(id)) { inclusive = false }
+                        }
+                    },
+                    viewModel = viewModel(factory = ShelterCampaignFormViewModel.factory(id))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_CAMPAIGN_FORM_EDIT,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType },
+                    navArgument(NavRoutes.ARG_CAMPAIGN_ID) { type = NavType.StringType }
+                )
+            ) { entry ->
+                val sid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                val cid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CAMPAIGN_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterCampaignFormScreen(
+                    shelterId = sid,
+                    editCampaignId = cid,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = viewModel(factory = ShelterCampaignFormViewModel.factory(sid, cid))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_CAMPAIGN_UPDATE,
+                arguments = listOf(navArgument(NavRoutes.ARG_CAMPAIGN_ID) { type = NavType.StringType })
+            ) { entry ->
+                val cid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CAMPAIGN_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterCampaignUpdateScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = viewModel(factory = ShelterCampaignUpdateFormViewModel.factory(cid))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_SUPPLY_REQUESTS,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterSupplyRequestsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreate = { navController.navigate(NavRoutes.shelterSupplyRequestForm(id)) },
+                    onDetail = { rid -> navController.navigate(NavRoutes.shelterSupplyRequestDetail(rid)) },
+                    viewModel = viewModel(factory = ShelterSupplyRequestsViewModel.factory(id))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_SUPPLY_REQUEST_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_SUPPLY_REQUEST_ID) { type = NavType.StringType })
+            ) { entry ->
+                val rid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SUPPLY_REQUEST_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterSupplyRequestDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onEdit = { sid, reqId -> navController.navigate(NavRoutes.shelterSupplyRequestFormEdit(sid, reqId)) },
+                    onContributions = { reqId -> navController.navigate(NavRoutes.shelterSupplyContributions(reqId)) },
+                    onContribute = { reqId -> navController.navigate(NavRoutes.shelterSupplyContribute(reqId)) },
+                    viewModel = viewModel(factory = ShelterSupplyRequestDetailViewModel.factory(rid))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_SUPPLY_REQUEST_FORM,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterSupplyRequestFormScreen(
+                    shelterId = id,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { reqId ->
+                        navController.navigate(NavRoutes.shelterSupplyRequestDetail(reqId)) {
+                            popUpTo(NavRoutes.shelterSupplyRequests(id)) { inclusive = false }
+                        }
+                    },
+                    viewModel = viewModel(factory = ShelterSupplyRequestFormViewModel.factory(id))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_SUPPLY_REQUEST_FORM_EDIT,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType },
+                    navArgument(NavRoutes.ARG_SUPPLY_REQUEST_ID) { type = NavType.StringType }
+                )
+            ) { entry ->
+                val sid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                val rid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SUPPLY_REQUEST_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterSupplyRequestFormScreen(
+                    shelterId = sid,
+                    editRequestId = rid,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = viewModel(factory = ShelterSupplyRequestFormViewModel.factory(sid, rid))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_SUPPLY_CONTRIBUTE,
+                arguments = listOf(navArgument(NavRoutes.ARG_SUPPLY_REQUEST_ID) { type = NavType.StringType })
+            ) { entry ->
+                val rid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SUPPLY_REQUEST_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterSupplyContributeScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = viewModel(factory = ShelterSupplyContributeViewModel.factory(rid))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_SUPPLY_CONTRIBUTIONS,
+                arguments = listOf(navArgument(NavRoutes.ARG_SUPPLY_REQUEST_ID) { type = NavType.StringType })
+            ) { entry ->
+                val rid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SUPPLY_REQUEST_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterSupplyContributionsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(factory = ShelterSupplyContributionsViewModel.factory(rid))
                 )
             }
             composable(

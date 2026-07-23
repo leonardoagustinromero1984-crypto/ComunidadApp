@@ -1,11 +1,22 @@
 package com.comunidapp.app.data.remote.supabase.m11
 
+import com.comunidapp.app.data.model.ShelterCampaign
+import com.comunidapp.app.data.model.ShelterCampaignCategory
+import com.comunidapp.app.data.model.ShelterCampaignStatus
+import com.comunidapp.app.data.model.ShelterCampaignUpdate
+import com.comunidapp.app.data.model.ShelterCampaignVisibility
 import com.comunidapp.app.data.model.ShelterIntakeType
 import com.comunidapp.app.data.model.ShelterPetEndReason
 import com.comunidapp.app.data.model.ShelterPetPlacement
 import com.comunidapp.app.data.model.ShelterPetPlacementStatus
 import com.comunidapp.app.data.model.ShelterProfile
 import com.comunidapp.app.data.model.ShelterStatus
+import com.comunidapp.app.data.model.ShelterSupplyCategory
+import com.comunidapp.app.data.model.ShelterSupplyContribution
+import com.comunidapp.app.data.model.ShelterSupplyContributionStatus
+import com.comunidapp.app.data.model.ShelterSupplyPriority
+import com.comunidapp.app.data.model.ShelterSupplyRequest
+import com.comunidapp.app.data.model.ShelterSupplyRequestStatus
 import com.comunidapp.app.data.model.ShelterVolunteerAssignment
 import com.comunidapp.app.data.model.ShelterVolunteerRole
 import com.comunidapp.app.data.model.ShelterVolunteerStatus
@@ -121,6 +132,136 @@ fun ShelterVolunteerRow.toDomain(): ShelterVolunteerAssignment = ShelterVoluntee
     invitedBy = invitedBy
 )
 
+@Serializable
+data class ShelterCampaignRow(
+    val id: String,
+    @SerialName("shelter_profile_id") val shelterProfileId: String,
+    val title: String,
+    val description: String,
+    val category: String,
+    val visibility: String,
+    val status: String,
+    @SerialName("starts_at") val startsAt: String? = null,
+    @SerialName("ends_at") val endsAt: String? = null,
+    @SerialName("cover_asset_ref") val coverAssetRef: String? = null,
+    @SerialName("created_by") val createdBy: String,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("shelter_display_name") val shelterDisplayName: String? = null
+)
+
+@Serializable
+data class ShelterCampaignUpdateRow(
+    val id: String,
+    @SerialName("campaign_id") val campaignId: String,
+    @SerialName("author_user_id") val authorUserId: String,
+    val visibility: String,
+    val message: String,
+    @SerialName("evidence_ref") val evidenceRef: String? = null,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+data class ShelterSupplyRequestRow(
+    val id: String,
+    @SerialName("shelter_profile_id") val shelterProfileId: String,
+    @SerialName("campaign_id") val campaignId: String? = null,
+    val category: String,
+    @SerialName("item_name") val itemName: String,
+    val description: String? = null,
+    @SerialName("quantity_requested") val quantityRequested: Int,
+    @SerialName("quantity_committed") val quantityCommitted: Int = 0,
+    @SerialName("quantity_received") val quantityReceived: Int = 0,
+    @SerialName("unit_text") val unitText: String,
+    val priority: String,
+    val status: String,
+    @SerialName("expires_at") val expiresAt: String? = null,
+    @SerialName("public_notes") val publicNotes: String? = null,
+    @SerialName("internal_notes") val internalNotes: String? = null,
+    @SerialName("created_by") val createdBy: String,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("shelter_display_name") val shelterDisplayName: String? = null
+)
+
+@Serializable
+data class ShelterSupplyContributionRow(
+    val id: String,
+    @SerialName("request_id") val requestId: String,
+    @SerialName("contributor_user_id") val contributorUserId: String,
+    @SerialName("quantity_committed") val quantityCommitted: Int,
+    @SerialName("quantity_received") val quantityReceived: Int = 0,
+    val status: String,
+    @SerialName("contributor_notes") val contributorNotes: String? = null,
+    @SerialName("internal_receipt_notes") val internalReceiptNotes: String? = null,
+    @SerialName("evidence_ref") val evidenceRef: String? = null,
+    @SerialName("committed_at") val committedAt: String? = null,
+    @SerialName("received_at") val receivedAt: String? = null,
+    @SerialName("cancelled_at") val cancelledAt: String? = null
+)
+
+fun ShelterCampaignRow.toDomain(): ShelterCampaign = ShelterCampaign(
+    id = id,
+    shelterProfileId = shelterProfileId,
+    title = title,
+    description = description,
+    category = ShelterCampaignCategory.fromString(category),
+    visibility = ShelterCampaignVisibility.fromString(visibility),
+    status = ShelterCampaignStatus.fromString(status),
+    startsAt = parseTsOrNull(startsAt),
+    endsAt = parseTsOrNull(endsAt),
+    coverAssetRef = coverAssetRef,
+    createdBy = createdBy,
+    createdAt = parseTs(createdAt),
+    updatedAt = parseTs(updatedAt)
+)
+
+fun ShelterCampaignUpdateRow.toDomain(): ShelterCampaignUpdate = ShelterCampaignUpdate(
+    id = id,
+    campaignId = campaignId,
+    authorUserId = authorUserId,
+    visibility = ShelterCampaignVisibility.fromString(visibility),
+    message = message,
+    evidenceRef = evidenceRef,
+    createdAt = parseTs(createdAt)
+)
+
+fun ShelterSupplyRequestRow.toDomain(): ShelterSupplyRequest = ShelterSupplyRequest(
+    id = id,
+    shelterProfileId = shelterProfileId,
+    campaignId = campaignId,
+    category = ShelterSupplyCategory.fromString(category),
+    itemName = itemName,
+    description = description,
+    quantityRequested = quantityRequested,
+    quantityCommitted = quantityCommitted,
+    quantityReceived = quantityReceived,
+    unitText = unitText,
+    priority = ShelterSupplyPriority.fromString(priority),
+    status = ShelterSupplyRequestStatus.fromString(status),
+    expiresAt = parseTsOrNull(expiresAt),
+    publicNotes = publicNotes,
+    internalNotes = internalNotes,
+    createdBy = createdBy,
+    createdAt = parseTs(createdAt),
+    updatedAt = parseTs(updatedAt)
+)
+
+fun ShelterSupplyContributionRow.toDomain(): ShelterSupplyContribution = ShelterSupplyContribution(
+    id = id,
+    requestId = requestId,
+    contributorUserId = contributorUserId,
+    quantityCommitted = quantityCommitted,
+    quantityReceived = quantityReceived,
+    status = ShelterSupplyContributionStatus.fromString(status),
+    contributorNotes = contributorNotes,
+    internalReceiptNotes = internalReceiptNotes,
+    evidenceRef = evidenceRef,
+    committedAt = parseTs(committedAt),
+    receivedAt = parseTsOrNull(receivedAt),
+    cancelledAt = parseTsOrNull(cancelledAt)
+)
+
 class SupabaseShelterM11RemoteDataSource {
     private suspend inline fun <reified T : Any> decodeOne(
         function: String,
@@ -185,4 +326,65 @@ class SupabaseShelterM11RemoteDataSource {
         decodeOne("m11_pause_volunteer_assignment", buildJsonObject { put("p_assignment_id", id) })
     suspend fun endVol(id: String): ShelterVolunteerRow =
         decodeOne("m11_end_volunteer_assignment", buildJsonObject { put("p_assignment_id", id) })
+
+    // --- M11 Bloque 2: campañas ---
+    suspend fun listPublicCampaigns(): List<ShelterCampaignRow> =
+        decodeList("m11_list_public_shelter_campaigns")
+    suspend fun listShelterCampaigns(shelterId: String): List<ShelterCampaignRow> =
+        decodeList("m11_list_shelter_campaigns", buildJsonObject { put("p_shelter_id", shelterId) })
+    suspend fun getCampaign(id: String): ShelterCampaignRow =
+        decodeOne("m11_get_shelter_campaign", buildJsonObject { put("p_campaign_id", id) })
+    suspend fun createCampaign(params: JsonObject): ShelterCampaignRow =
+        decodeOne("m11_create_shelter_campaign", params)
+    suspend fun updateCampaign(params: JsonObject): ShelterCampaignRow =
+        decodeOne("m11_update_shelter_campaign", params)
+    suspend fun changeCampaignStatus(id: String, status: String): ShelterCampaignRow =
+        decodeOne(
+            "m11_change_shelter_campaign_status",
+            buildJsonObject {
+                put("p_campaign_id", id)
+                put("p_status", status)
+            }
+        )
+    suspend fun addCampaignUpdate(params: JsonObject): ShelterCampaignUpdateRow =
+        decodeOne("m11_add_shelter_campaign_update", params)
+    suspend fun listCampaignUpdates(campaignId: String): List<ShelterCampaignUpdateRow> =
+        decodeList(
+            "m11_list_shelter_campaign_updates",
+            buildJsonObject { put("p_campaign_id", campaignId) }
+        )
+
+    // --- M11 Bloque 2: pedidos de insumos ---
+    suspend fun listPublicSupplyRequests(): List<ShelterSupplyRequestRow> =
+        decodeList("m11_list_public_supply_requests")
+    suspend fun listShelterSupplyRequests(shelterId: String): List<ShelterSupplyRequestRow> =
+        decodeList("m11_list_shelter_supply_requests", buildJsonObject { put("p_shelter_id", shelterId) })
+    suspend fun getSupplyRequest(id: String): ShelterSupplyRequestRow =
+        decodeOne("m11_get_supply_request", buildJsonObject { put("p_request_id", id) })
+    suspend fun createSupplyRequest(params: JsonObject): ShelterSupplyRequestRow =
+        decodeOne("m11_create_supply_request", params)
+    suspend fun updateSupplyRequest(params: JsonObject): ShelterSupplyRequestRow =
+        decodeOne("m11_update_supply_request", params)
+    suspend fun cancelSupplyRequest(id: String): ShelterSupplyRequestRow =
+        decodeOne("m11_cancel_supply_request", buildJsonObject { put("p_request_id", id) })
+
+    // --- M11 Bloque 2: aportes ---
+    suspend fun pledgeContribution(params: JsonObject): ShelterSupplyContributionRow =
+        decodeOne("m11_pledge_supply_contribution", params)
+    suspend fun cancelContribution(id: String): ShelterSupplyContributionRow =
+        decodeOne("m11_cancel_supply_contribution", buildJsonObject { put("p_contribution_id", id) })
+    suspend fun confirmContribution(id: String): ShelterSupplyContributionRow =
+        decodeOne(
+            "m11_confirm_supply_contribution",
+            buildJsonObject { put("p_contribution_id", id) }
+        )
+    suspend fun recordSupplyReceipt(params: JsonObject): ShelterSupplyContributionRow =
+        decodeOne("m11_record_supply_receipt", params)
+    suspend fun getSupplyContribution(id: String): ShelterSupplyContributionRow =
+        decodeOne("m11_get_supply_contribution", buildJsonObject { put("p_contribution_id", id) })
+    suspend fun listSupplyContributions(requestId: String): List<ShelterSupplyContributionRow> =
+        decodeList(
+            "m11_list_supply_contributions",
+            buildJsonObject { put("p_request_id", requestId) }
+        )
 }

@@ -176,3 +176,224 @@ fun recomputeShelterAvailability(
         else -> ShelterAvailabilityStatus.AVAILABLE
     }
 }
+
+// ---------------------------------------------------------------------------
+// LeoVer M11 — bloque 2: campañas, insumos y red de ayuda no monetaria
+// ---------------------------------------------------------------------------
+
+enum class ShelterCampaignCategory {
+    FOOD, MEDICATION, HYGIENE, VETERINARY, TRANSPORT, INFRASTRUCTURE, EMERGENCY, OTHER, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): ShelterCampaignCategory =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+enum class ShelterCampaignVisibility {
+    PUBLIC, INTERNAL, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): ShelterCampaignVisibility =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+enum class ShelterCampaignStatus {
+    DRAFT, ACTIVE, PAUSED, COMPLETED, CANCELLED, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): ShelterCampaignStatus =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+enum class ShelterSupplyCategory {
+    FOOD, MEDICATION, HYGIENE, VETERINARY, TRANSPORT, INFRASTRUCTURE, EMERGENCY, OTHER, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): ShelterSupplyCategory =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+enum class ShelterSupplyPriority {
+    NORMAL, HIGH, URGENT, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): ShelterSupplyPriority =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+enum class ShelterSupplyRequestStatus {
+    DRAFT, OPEN, PARTIALLY_COMMITTED, FULLY_COMMITTED, PARTIALLY_RECEIVED,
+    FULFILLED, EXPIRED, CANCELLED, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): ShelterSupplyRequestStatus =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+
+    val isOpen: Boolean
+        get() = this == DRAFT || this == OPEN || this == PARTIALLY_COMMITTED ||
+            this == FULLY_COMMITTED || this == PARTIALLY_RECEIVED
+}
+
+enum class ShelterSupplyContributionStatus {
+    PLEDGED, CONFIRMED, PARTIALLY_RECEIVED, RECEIVED, CANCELLED, REJECTED, UNKNOWN;
+
+    companion object {
+        fun fromString(value: String?): ShelterSupplyContributionStatus =
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: UNKNOWN
+    }
+}
+
+data class ShelterCampaign(
+    val id: String,
+    val shelterProfileId: String,
+    val title: String,
+    val description: String,
+    val category: ShelterCampaignCategory,
+    val visibility: ShelterCampaignVisibility,
+    val status: ShelterCampaignStatus,
+    val startsAt: Long? = null,
+    val endsAt: Long? = null,
+    val coverAssetRef: String? = null,
+    val createdBy: String,
+    val createdAt: Long,
+    val updatedAt: Long
+)
+
+/** Proyección pública: sin datos internos ni bancarios. */
+data class ShelterCampaignPublicListing(
+    val id: String,
+    val shelterProfileId: String,
+    val shelterDisplayName: String? = null,
+    val title: String,
+    val description: String,
+    val category: ShelterCampaignCategory,
+    val status: ShelterCampaignStatus,
+    val startsAt: Long? = null,
+    val endsAt: Long? = null,
+    val coverAssetRef: String? = null
+)
+
+fun ShelterCampaign.toPublicListing(shelterDisplayName: String? = null): ShelterCampaignPublicListing =
+    ShelterCampaignPublicListing(
+        id = id,
+        shelterProfileId = shelterProfileId,
+        shelterDisplayName = shelterDisplayName,
+        title = title,
+        description = description,
+        category = category,
+        status = status,
+        startsAt = startsAt,
+        endsAt = endsAt,
+        coverAssetRef = coverAssetRef
+    )
+
+data class ShelterCampaignUpdate(
+    val id: String,
+    val campaignId: String,
+    val authorUserId: String,
+    val visibility: ShelterCampaignVisibility,
+    val message: String,
+    val evidenceRef: String? = null,
+    val createdAt: Long
+)
+
+data class ShelterSupplyRequest(
+    val id: String,
+    val shelterProfileId: String,
+    val campaignId: String? = null,
+    val category: ShelterSupplyCategory,
+    val itemName: String,
+    val description: String? = null,
+    val quantityRequested: Int,
+    val quantityCommitted: Int = 0,
+    val quantityReceived: Int = 0,
+    val unitText: String,
+    val priority: ShelterSupplyPriority,
+    val status: ShelterSupplyRequestStatus,
+    val expiresAt: Long? = null,
+    val publicNotes: String? = null,
+    val internalNotes: String? = null,
+    val createdBy: String,
+    val createdAt: Long,
+    val updatedAt: Long
+)
+
+/** Proyección pública: sin internalNotes; incluye progreso. */
+data class ShelterSupplyRequestPublicListing(
+    val id: String,
+    val shelterProfileId: String,
+    val shelterDisplayName: String? = null,
+    val campaignId: String? = null,
+    val category: ShelterSupplyCategory,
+    val itemName: String,
+    val description: String? = null,
+    val quantityRequested: Int,
+    val quantityCommitted: Int,
+    val quantityReceived: Int,
+    val unitText: String,
+    val priority: ShelterSupplyPriority,
+    val status: ShelterSupplyRequestStatus,
+    val expiresAt: Long? = null,
+    val publicNotes: String? = null
+)
+
+fun ShelterSupplyRequest.toPublicListing(shelterDisplayName: String? = null): ShelterSupplyRequestPublicListing =
+    ShelterSupplyRequestPublicListing(
+        id = id,
+        shelterProfileId = shelterProfileId,
+        shelterDisplayName = shelterDisplayName,
+        campaignId = campaignId,
+        category = category,
+        itemName = itemName,
+        description = description,
+        quantityRequested = quantityRequested,
+        quantityCommitted = quantityCommitted,
+        quantityReceived = quantityReceived,
+        unitText = unitText,
+        priority = priority,
+        status = status,
+        expiresAt = expiresAt,
+        publicNotes = publicNotes
+    )
+
+data class ShelterSupplyContribution(
+    val id: String,
+    val requestId: String,
+    val contributorUserId: String,
+    val quantityCommitted: Int,
+    val quantityReceived: Int = 0,
+    val status: ShelterSupplyContributionStatus,
+    val contributorNotes: String? = null,
+    val internalReceiptNotes: String? = null,
+    val evidenceRef: String? = null,
+    val committedAt: Long,
+    val receivedAt: Long? = null,
+    val cancelledAt: Long? = null
+)
+
+fun recomputeSupplyRequestStatus(
+    requested: Int,
+    committed: Int,
+    received: Int,
+    expiresAt: Long?,
+    now: Long,
+    currentIfTerminal: ShelterSupplyRequestStatus
+): ShelterSupplyRequestStatus {
+    when (currentIfTerminal) {
+        ShelterSupplyRequestStatus.CANCELLED -> return ShelterSupplyRequestStatus.CANCELLED
+        ShelterSupplyRequestStatus.DRAFT -> return ShelterSupplyRequestStatus.DRAFT
+        else -> Unit
+    }
+    if (requested > 0 && received >= requested) return ShelterSupplyRequestStatus.FULFILLED
+    if (received > 0) return ShelterSupplyRequestStatus.PARTIALLY_RECEIVED
+    if (requested > 0 && committed >= requested) return ShelterSupplyRequestStatus.FULLY_COMMITTED
+    if (committed > 0) return ShelterSupplyRequestStatus.PARTIALLY_COMMITTED
+    if (expiresAt != null && expiresAt < now) return ShelterSupplyRequestStatus.EXPIRED
+    return ShelterSupplyRequestStatus.OPEN
+}
