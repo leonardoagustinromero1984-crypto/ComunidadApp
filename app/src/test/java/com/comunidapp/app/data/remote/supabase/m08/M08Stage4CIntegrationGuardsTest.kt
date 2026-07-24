@@ -17,15 +17,15 @@ class M08Stage4CIntegrationGuardsTest {
     ).first { File(it, "supabase/migrations").isDirectory }
 
     @Test
-    fun highestMigrationIs036_and037Absent() {
+    fun highestMigrationIs047_and048Absent() {
         val mig = File(repoRoot(), "supabase/migrations")
         val nums = mig.listFiles()!!
             .map { it.name }
             .filter { it.matches(Regex("^\\d{3}_.*\\.sql$")) }
             .map { it.substring(0, 3).toInt() }
-        assertTrue(nums.contains(36))
-        assertFalse(nums.contains(37))
-        assertTrue(nums.maxOrNull() == 36)
+        assertTrue(nums.contains(47))
+        assertFalse(nums.contains(48))
+        assertTrue("expected highest migration 047, got ${nums.maxOrNull()}", nums.maxOrNull() == 47)
     }
 
     @Test

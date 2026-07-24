@@ -60,11 +60,11 @@ class M08Stage4DStagingGuardsTest {
     }
 
     @Test
-    fun migration037IsAbsent() {
+    fun migration048IsAbsent() {
         val migrations = File(repoRoot(), "supabase/migrations")
         assertFalse(
             migrations.listFiles().orEmpty().any {
-                it.isFile && it.name.matches(Regex("^037_.*\\.sql$"))
+                it.isFile && it.name.matches(Regex("^048_.*\\.sql$"))
             }
         )
     }
