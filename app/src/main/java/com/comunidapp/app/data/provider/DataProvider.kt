@@ -86,6 +86,13 @@ import com.comunidapp.app.data.repository.MockShelterEmergencyRepository
 import com.comunidapp.app.data.repository.MockShelterEventRepository
 import com.comunidapp.app.data.repository.MockShelterReportRepository
 import com.comunidapp.app.data.repository.M11ShelterMemoryStore
+import com.comunidapp.app.data.repository.M12VeterinaryMemoryStore
+import com.comunidapp.app.data.repository.MockVeterinaryClinicRepository
+import com.comunidapp.app.data.repository.MockVeterinaryDirectoryRepository
+import com.comunidapp.app.data.repository.MockVeterinaryProfessionalRepository
+import com.comunidapp.app.data.repository.VeterinaryClinicRepository
+import com.comunidapp.app.data.repository.VeterinaryDirectoryRepository
+import com.comunidapp.app.data.repository.VeterinaryProfessionalRepository
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.ShelterCampaignRepository
@@ -528,6 +535,26 @@ object DataProvider {
                 store = m11ShelterStore
             )
         }
+    }
+
+    /** M12 Bloque 1 — solo fakes locales; sin cliente remoto. */
+    private val m12VeterinaryStore by lazy {
+        M12VeterinaryMemoryStore().also { it.seedDemoData() }
+    }
+
+    val veterinaryClinicRepository: VeterinaryClinicRepository by lazy {
+        MockVeterinaryClinicRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+            store = m12VeterinaryStore
+        )
+    }
+
+    val veterinaryProfessionalRepository: VeterinaryProfessionalRepository by lazy {
+        MockVeterinaryProfessionalRepository(store = m12VeterinaryStore)
+    }
+
+    val veterinaryDirectoryRepository: VeterinaryDirectoryRepository by lazy {
+        MockVeterinaryDirectoryRepository(store = m12VeterinaryStore)
     }
 
     val serviceRepository: ServiceRepository by lazy {

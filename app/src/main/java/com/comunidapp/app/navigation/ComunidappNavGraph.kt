@@ -191,6 +191,10 @@ import com.comunidapp.app.ui.screens.shelters.ShelterSupplyRequestDetailScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterSupplyRequestFormScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterSupplyRequestsScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterVolunteerInviteScreen
+import com.comunidapp.app.ui.screens.veterinary.ManagedVeterinaryClinicsScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicDetailScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicDraftScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryDirectoryScreen
 import com.comunidapp.app.viewmodel.ShelterCampaignDetailViewModel
 import com.comunidapp.app.viewmodel.ShelterCampaignFormViewModel
 import com.comunidapp.app.viewmodel.ShelterCampaignUpdateFormViewModel
@@ -462,7 +466,8 @@ private fun MainScreen(accountType: AccountType) {
                         navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
                     },
                     onFosterHomes = { navController.navigate(NavRoutes.FOSTER_HOMES) },
-                    onShelterOps = { navController.navigate(NavRoutes.SHELTERS) }
+                    onShelterOps = { navController.navigate(NavRoutes.SHELTERS) },
+                    onVeterinaryDirectory = { navController.navigate(NavRoutes.VETERINARY_DIRECTORY) }
                 )
             }
             composable(NavRoutes.PUBLISH) {
@@ -1735,6 +1740,58 @@ private fun MainScreen(accountType: AccountType) {
                 ShelterReportsScreen(
                     onNavigateBack = { navController.popBackStack() },
                     viewModel = viewModel(factory = ShelterReportsViewModel.factory(id))
+                )
+            }
+            composable(NavRoutes.VETERINARY_DIRECTORY) {
+                VeterinaryDirectoryScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onClinicClick = { id -> navController.navigate(NavRoutes.veterinaryClinicDetail(id)) },
+                    onMyClinics = { navController.navigate(NavRoutes.MY_VETERINARY_CLINICS) }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_CLINIC_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType })
+            ) { entry ->
+                val clinicId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryClinicDetailScreen(
+                    clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.MY_VETERINARY_CLINICS) {
+                ManagedVeterinaryClinicsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onClinicClick = { id -> navController.navigate(NavRoutes.veterinaryClinicDraftEdit(id)) },
+                    onCreate = { navController.navigate(NavRoutes.VETERINARY_CLINIC_DRAFT) }
+                )
+            }
+            composable(NavRoutes.VETERINARY_CLINIC_DRAFT) {
+                VeterinaryClinicDraftScreen(
+                    clinicId = null,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { id ->
+                        navController.navigate(NavRoutes.veterinaryClinicDraftEdit(id)) {
+                            popUpTo(NavRoutes.MY_VETERINARY_CLINICS) { inclusive = false }
+                        }
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_CLINIC_DRAFT_EDIT,
+                arguments = listOf(navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType })
+            ) { entry ->
+                val clinicId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryClinicDraftScreen(
+                    clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() }
                 )
             }
             composable(

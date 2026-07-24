@@ -114,6 +114,13 @@ M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/
 
 **M00 — Fundación técnica de Leover.** El proyecto Android ya existe; no debe recrearse. Se auditará lo construido y se completarán arquitectura, entornos, calidad, backend base, CI/CD, manejo de errores, observabilidad y reglas del repositorio.
 
+## Nota de implementación técnica (LeoVer)
+
+El catálogo de producto de este documento (M00–M27) se preserva. En el track Android/arquitectura del repo:
+
+- **M11 técnico (Refugios)** ya cerrado — no altera el significado de producto de **M11 Web pública** ni de **M16 Refugios**.
+- **M12 técnico (Veterinarias)** — Bloque 1 local/fake — prepara dominio de clínicas/profesionales previo a prestadores (**M22**); **no reemplaza** el **M12 Mascotas perdidas y encontradas** del catálogo de producto.
+
 ## Prompt base
 
 ```text

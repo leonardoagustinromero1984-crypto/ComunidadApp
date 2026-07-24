@@ -66,6 +66,13 @@ object NavRoutes {
 
     const val SHELTER_DETAIL = "shelter_detail/{shelterId}"
 
+    // M12 — directorio y gestión local de veterinarias (sin persistencia remota en Bloque 1)
+    const val VETERINARY_DIRECTORY = "veterinary_directory"
+    const val VETERINARY_CLINIC_DETAIL = "veterinary_clinic_detail/{clinicId}"
+    const val MY_VETERINARY_CLINICS = "my_veterinary_clinics"
+    const val VETERINARY_CLINIC_DRAFT = "veterinary_clinic_draft"
+    const val VETERINARY_CLINIC_DRAFT_EDIT = "veterinary_clinic_draft/{clinicId}"
+
     // M11 — operación de refugios (legacy Sumate sigue en SHELTER_DETAIL; SHELTERS = listado ops)
     const val MY_SHELTERS = "my_shelters"
     const val SHELTER_DASHBOARD = "shelter_dashboard/{shelterId}"
@@ -196,6 +203,7 @@ object NavRoutes {
     const val ARG_FOSTER_REQUEST_ID = "requestId"
     const val ARG_FOSTER_PLACEMENT_ID = "placementId"
     const val ARG_FOSTER_HELP_REQUEST_ID = "helpRequestId"
+    const val ARG_CLINIC_ID = "clinicId"
     const val ARG_SHELTER_ID = "shelterId"
     const val ARG_SHELTER_PLACEMENT_ID = "placementId"
     const val ARG_CAMPAIGN_ID = "campaignId"
@@ -262,6 +270,10 @@ object NavRoutes {
         "foster_help_detail/${java.net.URLEncoder.encode(helpRequestId, Charsets.UTF_8.name())}"
     fun fosterComplete(placementId: String) =
         "foster_complete/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun veterinaryClinicDetail(clinicId: String) =
+        "veterinary_clinic_detail/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
+    fun veterinaryClinicDraftEdit(clinicId: String) =
+        "veterinary_clinic_draft/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
     fun shelterDetail(shelterId: String) = "shelter_detail/$shelterId"
     fun shelterOpsDetail(shelterId: String) =
         "shelter_ops_detail/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"

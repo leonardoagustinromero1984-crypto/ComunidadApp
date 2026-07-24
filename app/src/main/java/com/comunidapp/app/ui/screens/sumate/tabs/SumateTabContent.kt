@@ -258,6 +258,7 @@ private fun AdoptionEventCard(
 fun SheltersContent(
     onShelterClick: (String) -> Unit,
     onShelterOps: () -> Unit = {},
+    onVeterinaryDirectory: () -> Unit = {},
     bottomPadding: Dp = 0.dp,
     viewModel: SheltersViewModel = viewModel()
 ) {
@@ -278,6 +279,14 @@ fun SheltersContent(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("Operación de refugios (M11)")
+            }
+        }
+        item {
+            androidx.compose.material3.OutlinedButton(
+                onClick = onVeterinaryDirectory,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Directorio de veterinarias (M12)")
             }
         }
         items(shelters, key = { it.id }) { shelter ->
