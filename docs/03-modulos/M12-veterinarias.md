@@ -1,11 +1,27 @@
 # M12 — Veterinarias
 
-**Estado del módulo:** Bloque 1–2 cerrados · Bloque 3 entregado en repo · **Bloque 4 cerrado localmente**.
+**Estado del módulo:** Bloques 1–4 cerrados localmente · **cierre técnico local COMPLETADO** · **cierre oficial PENDIENTE**.
 **Migración 046:** aplicada y validada en Supabase de pruebas (Bloque 2).
 **Migración 047:** aplicada en Supabase de pruebas · validación **estructural** remota **13/13 PASS**.
 **Smoke funcional Bloque 3:** **pendiente externo** (diferido por decisión del usuario). No se afirma smoke aprobado.
 
-> Estado global: **M12 no está cerrado todavía**. Falta el smoke funcional remoto del Bloque 3.
+```text
+M12 CIERRE TÉCNICO LOCAL COMPLETADO
+M12 SMOKE FUNCIONAL PENDIENTE EXTERNO
+M12 CIERRE OFICIAL PENDIENTE
+Smoke funcional de agenda y turnos: PENDIENTE EXTERNO
+No se declara M12 CERRADO
+Validación estructural 047: 13/13 PASS
+Riesgo aceptado: validación funcional remota diferida
+```
+
+> Estado global: **M12 no está cerrado todavía**. El cierre técnico local está completo; falta el
+> smoke funcional remoto del Bloque 3 para el cierre oficial.
+
+> **Cierre técnico local:** ver `docs/03-modulos/M12-cierre-final.md`,
+> `docs/05-operacion/M12-validacion-final.md` y
+> `docs/02-arquitectura/M12-matriz-funcional-final.md`. El smoke pendiente vive en
+> `docs/05-operacion/M12-smoke-funcional-pendiente-cierre.md`.
 
 > Nota D01: M12 técnico (Veterinarias) ≠ M12 producto (mascotas perdidas). Ver nota en D01.
 
@@ -60,8 +76,9 @@ Sin pagos, señas, checkout, Mercado Pago, historia clínica, diagnóstico, rece
 ### Estado
 
 ```text
-M12 BLOQUE 4 CERRADO LOCALMENTE
-M12 BLOQUE 3 SMOKE FUNCIONAL PENDIENTE EXTERNO
+M12 CIERRE TÉCNICO LOCAL COMPLETADO
+M12 SMOKE FUNCIONAL PENDIENTE EXTERNO
+M12 CIERRE OFICIAL PENDIENTE
 Validación estructural 047: 13/13 PASS
 ```
 

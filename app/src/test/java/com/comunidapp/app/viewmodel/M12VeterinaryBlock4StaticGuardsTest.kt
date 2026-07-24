@@ -178,14 +178,27 @@ class M12VeterinaryBlock4StaticGuardsTest {
     fun created_docs_state_local_close_not_full_m12_close() {
         createdDocs.forEach { path ->
             val text = read(path)
+            val localClose =
+                text.contains("M12 BLOQUE 4 CERRADO LOCALMENTE") ||
+                    text.contains("M12 CIERRE TÉCNICO LOCAL COMPLETADO")
             assertTrue(
-                "$path debe indicar cierre local del Bloque 4",
-                text.contains("M12 BLOQUE 4 CERRADO LOCALMENTE")
+                "$path debe indicar cierre local del Bloque 4 o cierre técnico local",
+                localClose
             )
-            assertFalse(
-                "$path no debe declarar M12 CERRADO",
-                Regex("(^|\\n)\\s*M12 CERRADO").containsMatchIn(text)
+            assertTrue(
+                "$path debe documentar smoke PENDIENTE EXTERNO",
+                text.contains("PENDIENTE EXTERNO")
             )
+            assertTrue(
+                "$path debe negar cierre oficial",
+                text.contains("No se declara M12 CERRADO") ||
+                    text.contains("No se declara `M12 CERRADO`")
+            )
+            val declaresOfficialClose = text.lineSequence().any { line ->
+                val t = line.trim().trim('`')
+                t == "M12 CERRADO" || t == "M12 CIERRE OFICIAL COMPLETADO"
+            }
+            assertFalse("$path no debe declarar cierre oficial", declaresOfficialClose)
         }
     }
 }

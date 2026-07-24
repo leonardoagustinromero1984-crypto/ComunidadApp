@@ -75,3 +75,16 @@ Reserva, mis turnos, detalle, agenda gestionada, settings, reglas, gestión de t
 ## Límites
 
 Sin pagos, señas, Mercado Pago, historia clínica, diagnóstico, recetas, laboratorio, chat, video ni push real. No afirmar aplicación remota de 047 más allá de la validación estructural (13/13). Smoke funcional del Bloque 3: pendiente externo.
+
+## Estado de cierre
+
+```text
+M12 CIERRE TÉCNICO LOCAL COMPLETADO
+M12 SMOKE FUNCIONAL PENDIENTE EXTERNO
+M12 CIERRE OFICIAL PENDIENTE
+Smoke funcional de agenda y turnos: PENDIENTE EXTERNO
+Validación estructural 047: 13/13 PASS
+```
+
+Cierre técnico local y matriz funcional: `docs/03-modulos/M12-cierre-final.md`,
+`docs/02-arquitectura/M12-matriz-funcional-final.md`. No se declara `M12 CERRADO`.

@@ -129,6 +129,10 @@ requiere persistencia adicional imprescindible, se propondrá 048 como **bloque 
 
 ```text
 M12 BLOQUE 4 CERRADO LOCALMENTE
-M12 BLOQUE 3 SMOKE FUNCIONAL PENDIENTE EXTERNO
+M12 CIERRE TÉCNICO LOCAL COMPLETADO
+M12 SMOKE FUNCIONAL PENDIENTE EXTERNO
+M12 CIERRE OFICIAL PENDIENTE
 Validación estructural 047: 13/13 PASS
 ```
+
+Cierre técnico local del módulo: `docs/03-modulos/M12-cierre-final.md`. No se declara `M12 CERRADO`.
