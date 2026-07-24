@@ -261,7 +261,12 @@ class M09AdoptionApplicationTest {
 
         val accepted = publisherRepo(store).acceptApplication(a1.id).getOrThrow()
         assertEquals(AdoptionApplicationStatus.ACCEPTED, accepted.status)
+        assertTrue(
+            "application ids must be unique under rapid submit; a1=${a1.id} a2=${a2.id}",
+            a1.id != a2.id
+        )
         assertEquals(
+            "a2 expected REJECTED after accepting a1; a1.id=${a1.id} a2.id=${a2.id}",
             AdoptionApplicationStatus.REJECTED,
             store.value.first { it.id == a2.id }.status
         )

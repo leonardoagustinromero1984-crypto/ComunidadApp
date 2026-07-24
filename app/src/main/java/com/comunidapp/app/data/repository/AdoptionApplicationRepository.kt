@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
+import java.util.concurrent.atomic.AtomicLong
 
 interface AdoptionApplicationRepository {
     fun observeMyApplications(applicantUserId: String = ""): Flow<List<AdoptionApplication>>
@@ -36,6 +37,11 @@ class MockAdoptionApplicationRepository(
     private val canManagePet: (petId: String, userId: String) -> Boolean = { _, _ -> false },
     private val store: MutableStateFlow<List<AdoptionApplication>> = MutableStateFlow(emptyList())
 ) : AdoptionApplicationRepository {
+
+    companion object {
+        /** Monotonic suffix so rapid submits never share the same id (millis alone can collide). */
+        private val applicationIdSeq = AtomicLong(0)
+    }
 
     fun seed(applications: List<AdoptionApplication>) {
         store.value = applications
@@ -101,7 +107,7 @@ class MockAdoptionApplicationRepository(
 
         val now = System.currentTimeMillis()
         val app = AdoptionApplication(
-            id = "app_$now",
+            id = "app_${applicationIdSeq.incrementAndGet()}_$now",
             adoptionId = params.adoptionId,
             applicantUserId = actor,
             applicantName = actorName(),

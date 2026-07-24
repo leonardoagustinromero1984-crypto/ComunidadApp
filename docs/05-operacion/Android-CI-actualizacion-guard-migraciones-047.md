@@ -96,3 +96,41 @@ git status -sb
 - Advertencia **Node.js 20** de Actions: sigue siendo informativa / no bloqueante.
 - Smoke funcional M12: **PENDIENTE EXTERNO**.
 - M12 no cerrado oficialmente; M13 no iniciado.
+
+## Tercer fallo detectado: regresión M09 en ejecución limpia
+
+### Contexto
+
+Tras el hotfix `localDebug`, CI superó M07, `assembleLocalDebug` y `lintLocalDebug`. En ejecución limpia:
+
+```text
+1246 tests completed, 1 failed
+M09AdoptionApplicationTest > acceptApplication_rejectsOthers_andPausesPublication FAILED
+java.lang.AssertionError at M09AdoptionApplicationTest.kt:250
+```
+
+La validación local previa había dejado `testLocalDebugUnitTest` **UP-TO-DATE**, por lo que **no re-ejecutó** la suite y ocultó el fallo.
+
+### Aserción (línea ~264–267)
+
+- **Esperado:** `AdoptionApplicationStatus.REJECTED` para la postulación competidora (`a2`).
+- **Obtenido:** `AdoptionApplicationStatus.ACCEPTED` cuando `a1.id == a2.id`.
+
+### Causa raíz
+
+**DEFECTO_PRODUCTIVO_M09** (mock): `MockAdoptionApplicationRepository.submitApplication` generaba `id = "app_$millis"`. Dos envíos en el mismo milisegundo (frecuente en CI con `UnconfinedTestDispatcher`) comparten ID; al aceptar, `acceptApplication` marca **ambas** filas como `ACCEPTED` (rama `app.id == id`) y no rechaza la competidora.
+
+### Corrección
+
+- IDs únicos: `app_${seq}_${millis}` con `AtomicLong`.
+- La prueba ahora también exige `a1.id != a2.id` (sin debilitar el resto de aserciones).
+
+### Validaciones
+
+```text
+.\gradlew.bat :app:testLocalDebugUnitTest --tests "...acceptApplication_rejectsOthers_andPausesPublication" --rerun-tasks --no-configuration-cache
+.\gradlew.bat :app:testLocalDebugUnitTest --tests "com.comunidapp.app.viewmodel.M09AdoptionApplicationTest" --rerun-tasks --no-configuration-cache
+.\gradlew.bat :app:assembleLocalDebug :app:testLocalDebugUnitTest :app:lintLocalDebug --continue --rerun-tasks --no-configuration-cache
+```
+
+Smoke funcional M12: **PENDIENTE EXTERNO**. M12 no cerrado; M13 no iniciado.
