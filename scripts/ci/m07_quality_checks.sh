@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# LeoVer M07 Etapa 5 — local CI quality checks (no external SaaS).
+# LeoVer M07 Etapa 5 â€” local CI quality checks (no external SaaS).
 # Prefer python3 when available; fall back to pure bash/grep checks.
 set -euo pipefail
 ROOT="${ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
@@ -35,7 +35,7 @@ resolve_python() {
 
 PYTHON="$(resolve_python || true)"
 
-echo "== Migration numbering 001–047 =="
+echo "== Migration numbering 001–048 =="
 nums=$(ls "$MIG" | grep -E '^[0-9]{3}_' | sed 's/_.*//' | sort)
 dupes=$(echo "$nums" | uniq -d || true)
 if [[ -n "${dupes}" ]]; then
@@ -54,24 +54,24 @@ for n in $nums; do
 done
 highest=$(echo "$nums" | tail -n1)
 echo "Highest migration: $highest"
-if [[ "$highest" != "047" ]]; then
-  echo "Expected highest migration 047, got $highest"
+if [[ "$highest" != "048" ]]; then
+  echo "Expected highest migration 048, got $highest"
   FAIL=1
 fi
 echo "- Migrations: highest=$highest" >> "$SUMMARY"
 
-echo "== Prior migrations 001–019 intact (git base when available) =="
+echo "== Prior migrations 001â€“019 intact (git base when available) =="
 if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   base="${M07_BASE_COMMIT:-a02acb15bc78be6b9c405d563f2de2030da70abd}"
   if git -C "$ROOT" cat-file -e "$base^{commit}" 2>/dev/null; then
-    # 020–032 may receive minimal apply fixes during M07 local validation (citext, BOM, DROP FUNCTION).
+    # 020â€“032 may receive minimal apply fixes during M07 local validation (citext, BOM, DROP FUNCTION).
     changed=$(git -C "$ROOT" diff --ignore-cr-at-eol --name-only "$base"..HEAD -- supabase/migrations/ | grep -E 'migrations/0(0[1-9]|1[0-9])_' || true)
     if [[ -n "$changed" ]]; then
-      echo "Prior migrations 001–019 edited:"
+      echo "Prior migrations 001â€“019 edited:"
       echo "$changed"
       FAIL=1
     else
-      echo "No edits to migrations 001–019 vs base"
+      echo "No edits to migrations 001â€“019 vs base"
     fi
   else
     echo "Base commit unavailable; skip prior-edit check"
@@ -124,11 +124,11 @@ PY
   return 0
 }
 
-echo "== Kotlin↔SQL event catalog exact (029+031 → 118) =="
+echo "== Kotlinâ†”SQL event catalog exact (029+031 â†’ 118) =="
 if ! run_catalog_checks; then FAIL=1; fi
 echo "- Event catalog: 118" >> "$SUMMARY"
 
-echo "== Metric catalog Kotlin↔SQL (030) =="
+echo "== Metric catalog Kotlinâ†”SQL (030) =="
 kt_metrics=$(grep -oE 'def\("m0[0-7]\.[a-z0-9_]+\.[a-z0-9_]+"' \
   "$ROOT/app/src/main/java/com/comunidapp/app/domain/observability/catalog/OperationalMetricCatalog.kt" | wc -l | tr -d ' ')
 echo "kotlin_metrics=$kt_metrics"
@@ -141,7 +141,7 @@ done < <(grep -oE 'def\("m0[0-7]\.[a-z0-9_]+\.[a-z0-9_]+"' \
   "$ROOT/app/src/main/java/com/comunidapp/app/domain/observability/catalog/OperationalMetricCatalog.kt" | sed 's/def("//;s/"$//')
 echo "- Metric catalog: $kt_metrics" >> "$SUMMARY"
 
-echo "== Health check catalog Kotlin↔SQL (030) =="
+echo "== Health check catalog Kotlinâ†”SQL (030) =="
 kt_health=$(awk '/healthCheckKeys/,/\)/' \
   "$ROOT/app/src/main/java/com/comunidapp/app/domain/observability/catalog/OperationalMetricCatalog.kt" \
   | grep -oE '"[^"]+"' | wc -l | tr -d ' ')
@@ -155,7 +155,7 @@ awk '/healthCheckKeys/,/\)/' \
   done || FAIL=1
 echo "- Health catalog: $kt_health" >> "$SUMMARY"
 
-echo "== M07 dedicated permissions Kotlin↔SQL =="
+echo "== M07 dedicated permissions Kotlinâ†”SQL =="
 for p in observability.view observability.manage audit.view_sensitive security.events.view \
   export.audit_data alert.manage retention.manage health.check.execute; do
   grep -q "$p" "$ROOT/supabase/migrations/031_m07_retention_permissions_instrumentation_closure_readiness.sql" \
@@ -218,9 +218,9 @@ echo "sql basic OK"
 
 echo "== JaCoCo informative note =="
 echo "- JaCoCo: informative only; baseline recorded after local :app:jacocoTestReport" >> "$SUMMARY"
-echo "- Staging migrations 014–032: PENDIENTE (no remote apply in CI)" >> "$SUMMARY"
-echo "- EXPORTACIÓN DE ARCHIVO PENDIENTE" >> "$SUMMARY"
-echo "- INTEGRACIÓN M06 PENDIENTE" >> "$SUMMARY"
+echo "- Staging migrations 014â€“032: PENDIENTE (no remote apply in CI)" >> "$SUMMARY"
+echo "- EXPORTACIÃ“N DE ARCHIVO PENDIENTE" >> "$SUMMARY"
+echo "- INTEGRACIÃ“N M06 PENDIENTE" >> "$SUMMARY"
 echo "- External providers: none" >> "$SUMMARY"
 
 if [[ "$FAIL" -ne 0 ]]; then

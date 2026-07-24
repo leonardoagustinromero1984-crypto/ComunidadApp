@@ -19,15 +19,53 @@ object M13ErrorMapper {
         "SIGHTING_INVALID_TRANSITION" -> "Esa transición de estado no está permitida."
         "CASE_NOT_FOUND" -> "No encontramos el caso Lost/Found."
         "CASE_NOT_ACTIVE" -> "El caso no está activo para coincidencias."
+        "CASE_REQUIRED" -> "El avistamiento persistido requiere un caso Lost/Found."
         "MATCH_NOT_FOUND" -> "No encontramos esa coincidencia."
         "MATCH_FORBIDDEN" -> "No tenés permiso para revisar esta coincidencia."
         "MATCH_INVALID_TRANSITION" -> "La coincidencia ya fue resuelta."
         "MATCH_AUTO_CONFIRM_FORBIDDEN" -> "Las coincidencias requieren confirmación humana."
+        "MATCH_GENERATION_NOT_ALLOWED" -> "No tenés permiso para generar coincidencias."
+        "MATCH_DATA_INSUFFICIENT" -> "Faltan datos para calcular la coincidencia."
+        "CONFLICT" -> "Conflicto al guardar el avistamiento o la coincidencia."
         "MEDIA_REF_INVALID" -> "La referencia de media no es segura."
         "M13_REPOSITORY_FAILURE" -> "No pudimos completar la operación (M13)."
         else -> "Ocurrió un error en avistamientos (M13)."
     }
 
-    fun codeOf(error: Throwable): String =
-        (error as? M13Exception)?.code ?: "M13_UNKNOWN"
+    private val knownCodes = listOf(
+        "NOT_AUTHENTICATED",
+        "SIGHTING_NOT_FOUND",
+        "SIGHTING_INVALID",
+        "SIGHTING_FORBIDDEN",
+        "SIGHTING_NOT_ACTIVE",
+        "SIGHTING_INVALID_TRANSITION",
+        "CASE_NOT_FOUND",
+        "CASE_NOT_ACTIVE",
+        "CASE_REQUIRED",
+        "MATCH_NOT_FOUND",
+        "MATCH_FORBIDDEN",
+        "MATCH_INVALID_TRANSITION",
+        "MATCH_AUTO_CONFIRM_FORBIDDEN",
+        "MATCH_GENERATION_NOT_ALLOWED",
+        "MATCH_DATA_INSUFFICIENT",
+        "CONFLICT",
+        "MEDIA_REF_INVALID",
+        "M13_REPOSITORY_FAILURE"
+    )
+
+    fun codeOf(error: Throwable): String {
+        val blob = buildString {
+            append(error.message.orEmpty())
+            generateSequence(error.cause) { it.cause }.forEach { append(' ').append(it.message.orEmpty()) }
+        }
+        knownCodes.forEach { code ->
+            if (blob.contains(code, ignoreCase = false)) return code
+        }
+        return (error as? M13Exception)?.code ?: "M13_UNKNOWN"
+    }
+
+    fun failure(t: Throwable): Result<Nothing> {
+        val code = codeOf(t)
+        return Result.failure(M13Exception(code, userMessage(code), t))
+    }
 }

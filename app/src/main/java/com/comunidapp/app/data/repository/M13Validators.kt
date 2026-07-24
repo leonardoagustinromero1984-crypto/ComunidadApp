@@ -6,7 +6,7 @@ import com.comunidapp.app.data.remote.supabase.m13.M13ErrorMapper
 import com.comunidapp.app.data.remote.supabase.m13.M13Exception
 
 object M13Validators {
-    private val safeMediaRef = Regex("^m05:[A-Za-z0-9_./-]{1,200}$")
+    private val safeMediaRef = Regex("^(m05://|file_asset:).{1,200}$")
 
     fun validateCreate(
         description: String,

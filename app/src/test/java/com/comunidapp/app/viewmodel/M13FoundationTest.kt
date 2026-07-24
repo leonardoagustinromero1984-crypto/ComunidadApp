@@ -153,13 +153,29 @@ class M13FoundationTest {
                 observedAt = System.currentTimeMillis(),
                 zoneText = "Palermo",
                 description = "Perro negro cerca del parque",
-                mediaRefs = listOf("m05:lostfound/test.jpg"),
+                mediaRefs = listOf("m05://lostfound/test.jpg"),
                 mirrorToLegacy = false
             )
         ).getOrThrow()
         assertEquals(M13SightingStatus.ACTIVE, created.status)
         val publicList = sightings.observePublicSightings().first()
         assertTrue(publicList.any { it.id == created.id })
+    }
+
+    @Test
+    fun validator_accepts_canonical_media_prefixes() {
+        assertEquals(
+            null,
+            M13Validators.validateCreate(
+                description = "Vi un perro cerca de la plaza",
+                zoneText = "Palermo",
+                primaryColor = "marrón",
+                mediaRefs = listOf("m05://lostfound/a.jpg", "file_asset:xyz"),
+                latitudeApprox = null,
+                longitudeApprox = null,
+                accuracyMeters = null
+            )
+        )
     }
 
     @Test

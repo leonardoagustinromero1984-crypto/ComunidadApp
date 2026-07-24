@@ -328,12 +328,12 @@ Fuera del alcance de M13:
 
 ### Bloque 2 — Persistencia y seguridad
 
-- migración nueva a partir de `048`, solo después de aprobación;
-- tablas/RPC/RLS;
-- adaptación del legacy sin pérdida;
-- Supabase repositories;
-- permisos reales;
-- validación remota estructural.
+- migración `048_m13_sightings_and_match_candidates.sql` creada localmente;
+- tabla lateral `lost_found_sighting_details` + candidatos/decisiones/historial;
+- 13 RPC cliente; RLS/grants; sin confirm/reject remoto;
+- repositorios Supabase + DataProvider;
+- **048 pendiente de aplicación remota**;
+- validación estructural remota y smoke: pendientes.
 
 ### Bloque 3 — Revisión y confirmación
 
@@ -369,7 +369,22 @@ El Bloque 1 queda cerrado localmente cuando:
 8. las referencias de media son seguras;
 9. las pruebas focalizadas pasan;
 10. `compileLocalDebugKotlin` pasa;
-11. no existe migración `048`;
+11. no existía migración `048` al cerrar Bloque 1 (histórico; 048 llega en Bloque 2);
 12. no se aplica SQL;
 13. hay un único commit y push;
 14. M12 sigue documentado como pendiente externo.
+
+## 14. Definición de terminado del Bloque 2
+
+El Bloque 2 queda cerrado localmente cuando:
+
+1. existe solo `048` nueva (sin 049);
+2. 001–047 intactas;
+3. legacy `lost_found_sightings` preservado;
+4. lateral + candidatos + decisiones + historial;
+5. 13 RPC cliente sin confirm/reject;
+6. RLS/grants/helpers correctos;
+7. repos Supabase + DataProvider;
+8. guard CI highest = 048;
+9. 048 no aplicada remotamente;
+10. M12 sigue pendiente externo.

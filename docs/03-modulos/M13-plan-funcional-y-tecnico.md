@@ -17,11 +17,11 @@ Registrar avistamientos seguros, proponer coincidencias explicables con casos Lo
 
 ## Exclusiones
 
-Pagos, historia clínica, chat, IA, biometría, GPS background, push real, SQL/`048`, cierre automático de caso, reemplazo destructivo del legacy.
+Pagos, historia clínica, chat, IA, biometría, GPS background, push real, confirm/reject remoto (Bloque 3), cierre automático de caso, reemplazo destructivo del legacy, apply remoto de 048 en este bloque.
 
 ## Dependencias
 
-M01/M02 auth, M03/M04 autoridad (preparada), M05 media refs, M07 eventos (nombres), M08 mascota (futuro), Lost/Found legacy, M12 técnico independiente (Veterinarias) — smoke M12 sigue pendiente externo.
+M01/M02 auth, M03/M04 autoridad, M05 media refs, M07 eventos (nombres), M08 mascota (futuro), Lost/Found legacy, M12 técnico independiente (Veterinarias) — smoke M12 sigue pendiente externo.
 
 ## Arquitectura Bloque 1
 
@@ -31,6 +31,15 @@ UI (m13/*) → ViewModels → MockM13*Repository → M13MemoryStore
                               ↘ M13LegacySightingAdapter → InMemoryDataStore.addSighting (opcional)
 ```
 
-## Bloque 2 (propuesta)
+## Bloque 2 (implementado localmente)
 
-Migración `048` (aprobación aparte), tablas/RPC/RLS, repos Supabase, autoridad remota, validación estructural, sin pérdida del legacy.
+- Migración `048_m13_sightings_and_match_candidates.sql` (no aplicada remotamente).
+- Tabla lateral + candidatos + decisiones + historial.
+- 13 RPC; RLS; grants authenticated; helpers `_m13_*` revocados.
+- `SupabaseM13*` + switching en `DataProvider`.
+- Docs: `M13-persistencia-y-seguridad.md`, `M13-Bloque-2-validacion.md`, runbook 048.
+- Guard CI highest = **048**.
+
+## Bloque 3 (propuesta exacta)
+
+RPC `m13_open_match_review`, `m13_confirm_match_candidate`, `m13_reject_match_candidate` (o equivalentes), escritura en `lost_found_match_decisions` + historial, autoridad dueño/org, sin autoconfirmación, UI remota de decisión, smoke remoto post-048.

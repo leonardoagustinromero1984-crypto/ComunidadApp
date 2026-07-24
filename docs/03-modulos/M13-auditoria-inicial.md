@@ -22,7 +22,7 @@
 | `lost_found_sightings` + migración `012` | COMPATIBLE (no tocar en Bloque 1) |
 | Matching / confirmación humana | REQUIERE_ADAPTACIÓN → dominio M13 nuevo |
 | IA / biometría / push real | FUERA_DE_ALCANCE |
-| Migración `048` | FUERA_DE_ALCANCE (Bloque 2) |
+| Migración `048` | IMPLEMENTADA LOCALMENTE (Bloque 2; no aplicada remotamente) |
 
 ## Decisiones
 

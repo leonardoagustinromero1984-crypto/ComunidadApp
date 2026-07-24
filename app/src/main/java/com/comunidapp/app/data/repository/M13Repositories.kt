@@ -175,7 +175,7 @@ class M13MemoryStore {
             longitudeApprox = -58.4240,
             accuracyMeters = 400.0,
             description = "Vi una perra marrón cerca de Plaza Serrano",
-            mediaRefs = listOf("m05:lostfound/demo/sighting1.jpg"),
+                mediaRefs = listOf("m05://lostfound/demo/sighting1.jpg"),
             status = M13SightingStatus.ACTIVE,
             createdAt = now,
             updatedAt = now

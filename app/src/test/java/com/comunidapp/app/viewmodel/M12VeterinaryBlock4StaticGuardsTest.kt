@@ -8,7 +8,7 @@ import org.junit.Test
 /**
  * LeoVer M12 Bloque 4 — guardas estáticas (sin SQL nuevo, sin Supabase real).
  *
- * Verifica que el Bloque 4 se cierra localmente: sin migración 048, migraciones 040–047 intactas,
+ * Verifica que el Bloque 4 se cierra localmente: migraciones 040–047 intactas, 048 es M13 (no M12),
  * sin WorkManager ni service_role en las fuentes de turnos/recordatorios, sin pagos ni historia
  * clínica, hotfix de autenticación preservado, rutas de seguimiento presentes, hooks M06 y errores
  * tipados del Bloque 4 disponibles, y sin afirmar el smoke remoto del Bloque 3 en la documentación.
@@ -49,12 +49,13 @@ class M12VeterinaryBlock4StaticGuardsTest {
     // --- Migraciones ---
 
     @Test
-    fun no_migration_048_file() {
+    fun migration_048_is_m13_and_no_049() {
         val names = migrationDir().listFiles()?.map { it.name }.orEmpty()
-        assertFalse(
-            "El Bloque 4 no debe crear la migración 048",
-            names.any { it.startsWith("048") }
+        assertTrue(
+            "048 debe ser M13 sightings (no M12)",
+            names.any { it == "048_m13_sightings_and_match_candidates.sql" }
         )
+        assertFalse("no debe existir 049 todavía", names.any { it.startsWith("049") })
     }
 
     @Test

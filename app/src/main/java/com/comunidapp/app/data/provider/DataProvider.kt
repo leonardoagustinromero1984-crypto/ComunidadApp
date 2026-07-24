@@ -41,6 +41,8 @@ import com.comunidapp.app.data.repository.M13MemoryStore
 import com.comunidapp.app.data.repository.M13SightingRepository
 import com.comunidapp.app.data.repository.MockM13MatchRepository
 import com.comunidapp.app.data.repository.MockM13SightingRepository
+import com.comunidapp.app.data.repository.SupabaseM13MatchRepository
+import com.comunidapp.app.data.repository.SupabaseM13SightingRepository
 import com.comunidapp.app.data.repository.MockFosterEvolutionRepository
 import com.comunidapp.app.data.repository.MockFosterExpenseRepository
 import com.comunidapp.app.data.repository.MockFosterHelpRepository
@@ -668,18 +670,26 @@ object DataProvider {
     }
 
     val m13SightingRepository: M13SightingRepository by lazy {
-        MockM13SightingRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
-            store = m13Store
-        )
+        if (useSupabase) {
+            SupabaseM13SightingRepository()
+        } else {
+            MockM13SightingRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m13Store
+            )
+        }
     }
 
     val m13MatchRepository: M13MatchRepository by lazy {
-        MockM13MatchRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
-            store = m13Store,
-            resolveCases = { InMemoryDataStore.lostFoundPosts.value }
-        )
+        if (useSupabase) {
+            SupabaseM13MatchRepository()
+        } else {
+            MockM13MatchRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m13Store,
+                resolveCases = { InMemoryDataStore.lostFoundPosts.value }
+            )
+        }
     }
 
     val serviceRepository: ServiceRepository by lazy {

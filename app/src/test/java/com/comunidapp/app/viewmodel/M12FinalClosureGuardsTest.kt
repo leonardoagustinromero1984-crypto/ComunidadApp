@@ -12,7 +12,7 @@ import org.junit.Test
  *   M12 CIERRE TÉCNICO LOCAL COMPLETADO / SMOKE PENDIENTE EXTERNO / CIERRE OFICIAL PENDIENTE
  *
  * Este test NO ejecuta SQL ni Supabase real. Verifica que los Bloques 1–4 quedan cerrados
- * localmente, que las migraciones 040–047 están intactas (sin 048), que no hay service_role ni
+ * localmente, que las migraciones 040–047 están intactas (048 es M13), que no hay service_role ni
  * WorkManager ni pagos/historia clínica en las fuentes M12, y que la documentación de cierre
  * documenta el smoke como PENDIENTE EXTERNO sin declarar "M12 CERRADO".
  */
@@ -147,14 +147,18 @@ class M12FinalClosureGuardsTest {
         assertTrue("falta 047 M12", names.any { it.startsWith("047_") && it.contains("m12") && it.contains("veterinary") })
     }
 
-    // 7 — 040–047 presentes; sin 048.
+    // 7 — 040–047 presentes; 048 es M13; sin 049.
     @Test
-    fun migrations_040_to_047_present_and_no_048() {
+    fun migrations_040_to_047_present_and_048_is_m13() {
         val names = migrationDir().listFiles()?.map { it.name }.orEmpty()
         (40..47).forEach { n ->
             assertTrue("falta migración 0$n", names.any { it.startsWith("0${n}_") })
         }
-        assertFalse("no debe existir migración 048", names.any { it.startsWith("048") })
+        assertTrue(
+            "048 debe ser M13",
+            names.any { it == "048_m13_sightings_and_match_candidates.sql" }
+        )
+        assertFalse("no debe existir migración 049", names.any { it.startsWith("049") })
     }
 
     // 8 — Sin service_role en fuentes Android M12.
