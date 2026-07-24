@@ -280,6 +280,9 @@ fun ShelterDashboardScreen(
     onEdit: (String) -> Unit,
     onCampaigns: (String) -> Unit,
     onSupplyRequests: (String) -> Unit,
+    onEmergencies: (String) -> Unit,
+    onEvents: (String) -> Unit,
+    onReports: (String) -> Unit,
     viewModel: ShelterDashboardViewModel
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -314,6 +317,15 @@ fun ShelterDashboardScreen(
                     OutlinedButton(onClick = { onCampaigns(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Campañas") }
                     OutlinedButton(onClick = { onSupplyRequests(sh.id) }, modifier = Modifier.fillMaxWidth()) {
                         Text("Pedidos de insumos")
+                    }
+                    OutlinedButton(onClick = { onEmergencies(sh.id) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Urgencias")
+                    }
+                    OutlinedButton(onClick = { onEvents(sh.id) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Eventos")
+                    }
+                    OutlinedButton(onClick = { onReports(sh.id) }, modifier = Modifier.fillMaxWidth()) {
+                        Text("Reportes")
                     }
                     OutlinedButton(onClick = { onEdit(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Editar perfil") }
                     if (sh.status == ShelterStatus.ACTIVE) {

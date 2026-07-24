@@ -45,6 +45,21 @@ object M11ShelterErrorMapper {
         "SHELTER_CONTRIBUTION_EXCEEDS_REMAINING",
         "SHELTER_CONTRIBUTION_ALREADY_RECEIVED",
         "SHELTER_EVIDENCE_REF_INVALID",
+        "SHELTER_EMERGENCY_NOT_FOUND",
+        "SHELTER_EMERGENCY_FORBIDDEN",
+        "SHELTER_EMERGENCY_INVALID_TRANSITION",
+        "SHELTER_EMERGENCY_RESOLUTION_REQUIRED",
+        "SHELTER_EMERGENCY_EXPIRED",
+        "SHELTER_EVENT_NOT_FOUND",
+        "SHELTER_EVENT_FORBIDDEN",
+        "SHELTER_EVENT_INVALID",
+        "SHELTER_EVENT_FULL",
+        "SHELTER_EVENT_ALREADY_REGISTERED",
+        "SHELTER_EVENT_REGISTRATION_NOT_FOUND",
+        "SHELTER_EVENT_ATTENDANCE_FORBIDDEN",
+        "SHELTER_REPORT_FORBIDDEN",
+        "SHELTER_REPORT_INVALID_RANGE",
+        "SHELTER_REPORT_EXPORT_FAILED",
         "NOT_AUTHENTICATED",
         "FORBIDDEN",
         "NETWORK",
@@ -106,6 +121,21 @@ object M11ShelterErrorMapper {
         "SHELTER_CONTRIBUTION_EXCEEDS_REMAINING" -> "La cantidad supera lo que falta por comprometer."
         "SHELTER_CONTRIBUTION_ALREADY_RECEIVED" -> "Ese aporte ya fue recibido y no puede cancelarse."
         "SHELTER_EVIDENCE_REF_INVALID" -> "La referencia de evidencia no es válida."
+        "SHELTER_EMERGENCY_NOT_FOUND" -> "No encontramos esa urgencia del refugio."
+        "SHELTER_EMERGENCY_FORBIDDEN" -> "No tenés permiso para gestionar esta urgencia."
+        "SHELTER_EMERGENCY_INVALID_TRANSITION" -> "Ese cambio de estado de urgencia no está permitido."
+        "SHELTER_EMERGENCY_RESOLUTION_REQUIRED" -> "Para resolver la urgencia tenés que incluir notas."
+        "SHELTER_EMERGENCY_EXPIRED" -> "Esa urgencia ya venció."
+        "SHELTER_EVENT_NOT_FOUND" -> "No encontramos ese evento del refugio."
+        "SHELTER_EVENT_FORBIDDEN" -> "No tenés permiso para gestionar este evento."
+        "SHELTER_EVENT_INVALID" -> "Los datos del evento no son válidos."
+        "SHELTER_EVENT_FULL" -> "El evento ya alcanzó su cupo."
+        "SHELTER_EVENT_ALREADY_REGISTERED" -> "Ya tenés una inscripción activa en este evento."
+        "SHELTER_EVENT_REGISTRATION_NOT_FOUND" -> "No encontramos esa inscripción al evento."
+        "SHELTER_EVENT_ATTENDANCE_FORBIDDEN" -> "Solo un gestor autorizado puede registrar asistencia."
+        "SHELTER_REPORT_FORBIDDEN" -> "No tenés permiso para ver o exportar reportes de este refugio."
+        "SHELTER_REPORT_INVALID_RANGE" -> "El rango de fechas del reporte no es válido."
+        "SHELTER_REPORT_EXPORT_FAILED" -> "No pudimos generar la exportación del reporte."
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión."
         "FORBIDDEN" -> "No tenés permiso para esta acción."
         "NETWORK" -> "Problema de conexión. Probá de nuevo."

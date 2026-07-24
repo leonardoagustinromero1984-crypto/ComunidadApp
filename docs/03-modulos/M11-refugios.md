@@ -35,8 +35,8 @@ Un refugio M11 es capacidad operativa de una **organización M03**, no un owners
 |-----------|---------|--------------|
 | `042_m11_shelter_operations_core.sql` | Perfiles, placements, voluntarios | Aplicada (pruebas) |
 | `043_m11_shelter_campaigns_and_aid.sql` | Campañas, insumos, aportes | Aplicada (pruebas) |
-| `044_m11_harden_campaign_aid_permissions.sql` | Hardening permisos (sin cambio funcional) | **Pendiente apply** |
-| Bloque 3 | Urgencias/eventos/reportes | Migración **045** (no iniciar sin PASS 044) |
+| `044_m11_harden_campaign_aid_permissions.sql` | Hardening permisos (sin cambio funcional) | Aplicada + PASS (pruebas) |
+| `045_m11_shelter_emergencies_events_reports.sql` | Urgencias, eventos, reportes | **LOCAL ONLY** |
 
 Legacy `shelters` intacta. Detalle bloque 1: `docs/02-arquitectura/M11-operacion-refugios.md`.
 Detalle bloque 2: `docs/02-arquitectura/M11-campanas-insumos-red-ayuda.md`.
@@ -54,11 +54,25 @@ Hardening: `docs/05-operacion/M11-aplicacion-migracion-044-seguridad.md`.
 - Cliente: mutaciones solo vía RPC `SECURITY DEFINER`; tablas con `SELECT` + RLS (correctiva 044).
 - Apply: `docs/05-operacion/M11-aplicacion-migracion-043-supabase.md` + hardening 044 (**no apply desde Cursor**).
 
+## Bloque 3 — Urgencias, eventos y reportes
+
+> **Gate:** 044 PASS confirmado en pruebas. Apply remoto de **045** pendiente (manual).
+
+- Urgencias operativas (`DRAFT` → `ACTIVE` → `RESOLVED` / `EXPIRED` / `CANCELLED`); severidad incl. `CRITICAL` con hook M06.
+- Eventos institucionales sin pagos ni entradas; inscripciones gratuitas con cupo y waitlist.
+- Reportes agregados jsonb/CSV sin PII; permisos `shelter.emergency.*`, `shelter.event.*`, `shelter.report.*`.
+- Evidencia M05: `m05://` y `file_asset:` únicamente.
+- Migración **045** forward-only; no modifica 040–044.
+- Arquitectura: `docs/02-arquitectura/M11-urgencias-eventos-reportes.md`.
+- Apply: `docs/05-operacion/M11-aplicacion-migracion-045-supabase.md` (**LOCAL ONLY / no apply desde Cursor**).
+
 ## Pantallas
 
 Bloque 1: `shelters`, `my_shelters`, `shelter_ops_detail`, `shelter_dashboard`, formulario, mascotas/ingreso/detalle, voluntarios/invitación.
 
 Bloque 2: listado público/gestión de campañas y pedidos, detalle, formularios, novedades, aporte y recepción de contribuciones.
+
+Bloque 3: urgencias, eventos, inscripciones, reportes y export CSV (dashboard + rutas).
 
 ## Tests / build
 
@@ -68,9 +82,11 @@ Bloque 2: listado público/gestión de campañas y pedidos, detalle, formularios
 | `M11ShelterCampaignsAndAidTest` | Bloque 2 dominio mock (~40 casos) |
 | `M11CampaignMigrationStaticGuardsTest` | Contratos SQL 043 |
 | `M11CampaignSecurityGuardsTest` | Hardening permisos 044 |
+| `M11ShelterEmergenciesEventsReportsTest` | Bloque 3 dominio mock (36 casos) |
+| `M11Block3MigrationStaticGuardsTest` | Contratos SQL 045 (18 casos) |
 
 `compileLocalDebugKotlin` · `./gradlew :app:testLocalDebugUnitTest --tests "com.comunidapp.app.viewmodel.M11*"`
 
 ## Pendientes
 
-Apply remoto **044** (hardening) + PASS de seguridad; luego Bloque 3 (migración **045**). Push M06, reputación, chat, APK cuando se solicite.
+Apply remoto **045** + smoke manual. Cierre final M11 **no iniciado**. Push M06, reputación, chat, APK cuando se solicite.

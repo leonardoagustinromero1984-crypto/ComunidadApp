@@ -4,6 +4,9 @@ import com.comunidapp.app.data.model.FosterPlacementStatus
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.ShelterCampaign
 import com.comunidapp.app.data.model.ShelterCampaignUpdate
+import com.comunidapp.app.data.model.ShelterEmergency
+import com.comunidapp.app.data.model.ShelterEvent
+import com.comunidapp.app.data.model.ShelterEventRegistration
 import com.comunidapp.app.data.model.ShelterIntakeType
 import com.comunidapp.app.data.model.ShelterPetEndReason
 import com.comunidapp.app.data.model.ShelterPetPlacement
@@ -55,6 +58,10 @@ class M11ShelterMemoryStore {
     val campaignUpdates = MutableStateFlow<List<ShelterCampaignUpdate>>(emptyList())
     val supplyRequests = MutableStateFlow<List<ShelterSupplyRequest>>(emptyList())
     val supplyContributions = MutableStateFlow<List<ShelterSupplyContribution>>(emptyList())
+    /** M11 Bloque 3 — urgencias, eventos y reportes. */
+    val emergencies = MutableStateFlow<List<ShelterEmergency>>(emptyList())
+    val events = MutableStateFlow<List<ShelterEvent>>(emptyList())
+    val eventRegistrations = MutableStateFlow<List<ShelterEventRegistration>>(emptyList())
     val auditEvents = MutableStateFlow<List<M11AuditEvent>>(emptyList())
     val m06Hooks = MutableStateFlow<List<String>>(emptyList())
 
@@ -72,6 +79,9 @@ class M11ShelterMemoryStore {
         campaignUpdates.value = emptyList()
         supplyRequests.value = emptyList()
         supplyContributions.value = emptyList()
+        emergencies.value = emptyList()
+        events.value = emptyList()
+        eventRegistrations.value = emptyList()
         auditEvents.value = emptyList()
         m06Hooks.value = emptyList()
     }

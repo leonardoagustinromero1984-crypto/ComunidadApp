@@ -166,6 +166,14 @@ import com.comunidapp.app.ui.screens.shelters.ShelterCampaignUpdateScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterCampaignsScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterDashboardScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterDetailScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterEmergenciesScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterEmergencyDetailScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterEmergencyFormScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterEventDetailScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterEventFormScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterEventRegistrationsScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterEventsScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterReportsScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterIntakeScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterOpsDetailScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterOpsFormScreen
@@ -186,7 +194,15 @@ import com.comunidapp.app.viewmodel.ShelterCampaignFormViewModel
 import com.comunidapp.app.viewmodel.ShelterCampaignUpdateFormViewModel
 import com.comunidapp.app.viewmodel.ShelterCampaignsViewModel
 import com.comunidapp.app.viewmodel.ShelterDashboardViewModel
+import com.comunidapp.app.viewmodel.ShelterEmergenciesViewModel
+import com.comunidapp.app.viewmodel.ShelterEmergencyDetailViewModel
+import com.comunidapp.app.viewmodel.ShelterEmergencyFormViewModel
+import com.comunidapp.app.viewmodel.ShelterEventDetailViewModel
+import com.comunidapp.app.viewmodel.ShelterEventFormViewModel
+import com.comunidapp.app.viewmodel.ShelterEventRegistrationsViewModel
+import com.comunidapp.app.viewmodel.ShelterEventsViewModel
 import com.comunidapp.app.viewmodel.ShelterFormViewModel
+import com.comunidapp.app.viewmodel.ShelterReportsViewModel
 import com.comunidapp.app.viewmodel.ShelterIntakeViewModel
 import com.comunidapp.app.viewmodel.ShelterOpsDetailViewModel
 import com.comunidapp.app.viewmodel.ShelterPetDetailViewModel
@@ -1235,6 +1251,9 @@ private fun MainScreen(accountType: AccountType) {
                     onEdit = { sid -> navController.navigate(NavRoutes.shelterFormEdit(sid)) },
                     onCampaigns = { sid -> navController.navigate(NavRoutes.shelterCampaigns(sid)) },
                     onSupplyRequests = { sid -> navController.navigate(NavRoutes.shelterSupplyRequests(sid)) },
+                    onEmergencies = { sid -> navController.navigate(NavRoutes.shelterEmergencies(sid)) },
+                    onEvents = { sid -> navController.navigate(NavRoutes.shelterEvents(sid)) },
+                    onReports = { sid -> navController.navigate(NavRoutes.shelterReports(sid)) },
                     viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
                         factory = ShelterDashboardViewModel.factory(id)
                     )
@@ -1517,6 +1536,181 @@ private fun MainScreen(accountType: AccountType) {
                 ShelterSupplyContributionsScreen(
                     onNavigateBack = { navController.popBackStack() },
                     viewModel = viewModel(factory = ShelterSupplyContributionsViewModel.factory(rid))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_EMERGENCIES,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterEmergenciesScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreate = { navController.navigate(NavRoutes.shelterEmergencyForm(id)) },
+                    onDetail = { eid -> navController.navigate(NavRoutes.shelterEmergencyDetail(eid)) },
+                    viewModel = viewModel(factory = ShelterEmergenciesViewModel.factory(id))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_EMERGENCY_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_EMERGENCY_ID) { type = NavType.StringType })
+            ) { entry ->
+                val eid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_EMERGENCY_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterEmergencyDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onEdit = { sid, emergId ->
+                        navController.navigate(NavRoutes.shelterEmergencyFormEdit(sid, emergId))
+                    },
+                    viewModel = viewModel(factory = ShelterEmergencyDetailViewModel.factory(eid))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_EMERGENCY_FORM,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterEmergencyFormScreen(
+                    shelterId = id,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { emergId ->
+                        navController.navigate(NavRoutes.shelterEmergencyDetail(emergId)) {
+                            popUpTo(NavRoutes.shelterEmergencies(id)) { inclusive = false }
+                        }
+                    },
+                    viewModel = viewModel(factory = ShelterEmergencyFormViewModel.factory(id))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_EMERGENCY_FORM_EDIT,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType },
+                    navArgument(NavRoutes.ARG_EMERGENCY_ID) { type = NavType.StringType }
+                )
+            ) { entry ->
+                val sid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                val eid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_EMERGENCY_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterEmergencyFormScreen(
+                    shelterId = sid,
+                    editEmergencyId = eid,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = viewModel(factory = ShelterEmergencyFormViewModel.factory(sid, eid))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_EVENTS,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterEventsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreate = { navController.navigate(NavRoutes.shelterEventForm(id)) },
+                    onDetail = { evId -> navController.navigate(NavRoutes.shelterEventDetail(evId)) },
+                    viewModel = viewModel(factory = ShelterEventsViewModel.factory(id))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_EVENT_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_EVENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val evId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_EVENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterEventDetailScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onEdit = { sid, eventId ->
+                        navController.navigate(NavRoutes.shelterEventFormEdit(sid, eventId))
+                    },
+                    onRegistrations = { eventId ->
+                        navController.navigate(NavRoutes.shelterEventRegistrations(eventId))
+                    },
+                    viewModel = viewModel(factory = ShelterEventDetailViewModel.factory(evId))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_EVENT_FORM,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterEventFormScreen(
+                    shelterId = id,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { evId ->
+                        navController.navigate(NavRoutes.shelterEventDetail(evId)) {
+                            popUpTo(NavRoutes.shelterEvents(id)) { inclusive = false }
+                        }
+                    },
+                    viewModel = viewModel(factory = ShelterEventFormViewModel.factory(id))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_EVENT_FORM_EDIT,
+                arguments = listOf(
+                    navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType },
+                    navArgument(NavRoutes.ARG_EVENT_ID) { type = NavType.StringType }
+                )
+            ) { entry ->
+                val sid = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                val evId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_EVENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterEventFormScreen(
+                    shelterId = sid,
+                    editEventId = evId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onSaved = { navController.popBackStack() },
+                    viewModel = viewModel(factory = ShelterEventFormViewModel.factory(sid, evId))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_EVENT_REGISTRATIONS,
+                arguments = listOf(navArgument(NavRoutes.ARG_EVENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val evId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_EVENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterEventRegistrationsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(factory = ShelterEventRegistrationsViewModel.factory(evId))
+                )
+            }
+            composable(
+                route = NavRoutes.SHELTER_REPORTS,
+                arguments = listOf(navArgument(NavRoutes.ARG_SHELTER_ID) { type = NavType.StringType })
+            ) { entry ->
+                val id = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SHELTER_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                ShelterReportsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    viewModel = viewModel(factory = ShelterReportsViewModel.factory(id))
                 )
             }
             composable(

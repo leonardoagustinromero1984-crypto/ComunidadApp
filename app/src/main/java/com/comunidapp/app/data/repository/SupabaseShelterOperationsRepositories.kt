@@ -4,6 +4,22 @@ import com.comunidapp.app.data.model.ShelterCampaign
 import com.comunidapp.app.data.model.ShelterCampaignStatus
 import com.comunidapp.app.data.model.ShelterCampaignUpdate
 import com.comunidapp.app.data.model.ShelterCampaignPublicListing
+import com.comunidapp.app.data.model.ShelterCampaignMetrics
+import com.comunidapp.app.data.model.ShelterCapacityMetrics
+import com.comunidapp.app.data.model.ShelterEmergency
+import com.comunidapp.app.data.model.ShelterEmergencyMetrics
+import com.comunidapp.app.data.model.ShelterEmergencyPublicListing
+import com.comunidapp.app.data.model.ShelterEmergencyStatus
+import com.comunidapp.app.data.model.ShelterEvent
+import com.comunidapp.app.data.model.ShelterEventMetrics
+import com.comunidapp.app.data.model.ShelterEventPublicListing
+import com.comunidapp.app.data.model.ShelterEventRegistration
+import com.comunidapp.app.data.model.ShelterEventStatus
+import com.comunidapp.app.data.model.ShelterOperationalSummary
+import com.comunidapp.app.data.model.ShelterPetMetrics
+import com.comunidapp.app.data.model.ShelterReportExport
+import com.comunidapp.app.data.model.ShelterSupplyMetrics
+import com.comunidapp.app.data.model.ShelterVolunteerMetrics
 import com.comunidapp.app.data.model.ShelterIntakeType
 import com.comunidapp.app.data.model.ShelterPetEndReason
 import com.comunidapp.app.data.model.ShelterPetPlacement
@@ -453,5 +469,354 @@ class SupabaseShelterSupplyRepository(
             runCatching { remote.listSupplyContributions(requestId).map { it.toDomain() } }
                 .getOrElse { emptyList() }
         )
+    }
+}
+
+class SupabaseShelterEmergencyRepository(
+    private val remote: SupabaseShelterM11RemoteDataSource = SupabaseShelterM11RemoteDataSource()
+) : ShelterEmergencyRepository {
+    override fun observePublicEmergencies(): Flow<List<ShelterEmergencyPublicListing>> = flow {
+        emit(
+            runCatching {
+                remote.listPublicEmergencies().map { row ->
+                    row.toDomain().toPublicListing(row.shelterDisplayName)
+                }
+            }.getOrElse { emptyList() }
+        )
+    }
+
+    override fun observeShelterEmergencies(shelterId: String): Flow<List<ShelterEmergency>> = flow {
+        emit(
+            runCatching { remote.listShelterEmergencies(shelterId).map { it.toDomain() } }
+                .getOrElse { emptyList() }
+        )
+    }
+
+    override suspend fun getEmergency(id: String): Result<ShelterEmergency> = try {
+        if (id.isBlank()) M11ShelterErrorMapper.fail("SHELTER_EMERGENCY_NOT_FOUND")
+        else Result.success(remote.getEmergency(id).toDomain())
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun createEmergency(input: CreateShelterEmergencyInput): Result<ShelterEmergency> = try {
+        Result.success(
+            remote.createEmergency(
+                buildJsonObject {
+                    put("p_shelter_profile_id", input.shelterProfileId)
+                    put("p_pet_id", input.petId)
+                    put("p_title", input.title)
+                    put("p_description", input.description)
+                    put("p_category", input.category.name)
+                    put("p_severity", input.severity.name)
+                    put("p_visibility", input.visibility.name)
+                    put("p_starts_at", input.startsAt)
+                    input.expiresAt?.let { put("p_expires_at", it) }
+                    put("p_evidence_ref", input.evidenceRef)
+                    put("p_activate", input.activate)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun updateEmergency(input: UpdateShelterEmergencyInput): Result<ShelterEmergency> = try {
+        Result.success(
+            remote.updateEmergency(
+                buildJsonObject {
+                    put("p_emergency_id", input.emergencyId)
+                    put("p_title", input.title)
+                    put("p_description", input.description)
+                    put("p_category", input.category.name)
+                    put("p_severity", input.severity.name)
+                    put("p_visibility", input.visibility.name)
+                    put("p_starts_at", input.startsAt)
+                    input.expiresAt?.let { put("p_expires_at", it) }
+                    put("p_evidence_ref", input.evidenceRef)
+                    put("p_pet_id", input.petId)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun changeEmergencyStatus(
+        emergencyId: String,
+        status: ShelterEmergencyStatus
+    ): Result<ShelterEmergency> = try {
+        Result.success(remote.changeEmergencyStatus(emergencyId, status.name).toDomain())
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun resolveEmergency(emergencyId: String, notes: String): Result<ShelterEmergency> = try {
+        Result.success(remote.resolveEmergency(emergencyId, notes).toDomain())
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun expireIfNeeded(emergencyId: String): Result<ShelterEmergency> =
+        getEmergency(emergencyId)
+}
+
+class SupabaseShelterEventRepository(
+    private val remote: SupabaseShelterM11RemoteDataSource = SupabaseShelterM11RemoteDataSource()
+) : ShelterEventRepository {
+    override fun observePublicEvents(): Flow<List<ShelterEventPublicListing>> = flow {
+        emit(
+            runCatching {
+                remote.listPublicEvents().map { row ->
+                    row.toDomain().toPublicListing(row.shelterDisplayName)
+                }
+            }.getOrElse { emptyList() }
+        )
+    }
+
+    override fun observeShelterEvents(shelterId: String): Flow<List<ShelterEvent>> = flow {
+        emit(
+            runCatching { remote.listShelterEvents(shelterId).map { it.toDomain() } }
+                .getOrElse { emptyList() }
+        )
+    }
+
+    override suspend fun getEvent(id: String): Result<ShelterEvent> = try {
+        if (id.isBlank()) M11ShelterErrorMapper.fail("SHELTER_EVENT_NOT_FOUND")
+        else Result.success(remote.getEvent(id).toDomain())
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun createEvent(input: CreateShelterEventInput): Result<ShelterEvent> = try {
+        Result.success(
+            remote.createEvent(
+                buildJsonObject {
+                    put("p_shelter_profile_id", input.shelterProfileId)
+                    put("p_title", input.title)
+                    put("p_description", input.description)
+                    put("p_event_type", input.eventType.name)
+                    put("p_visibility", input.visibility.name)
+                    put("p_starts_at", input.startsAt)
+                    put("p_ends_at", input.endsAt)
+                    put("p_capacity", input.capacity)
+                    put("p_public_location_text", input.publicLocationText)
+                    put("p_private_location_text", input.privateLocationText)
+                    put("p_cover_asset_ref", input.coverAssetRef)
+                    put("p_publish", input.publish)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun updateEvent(input: UpdateShelterEventInput): Result<ShelterEvent> = try {
+        Result.success(
+            remote.updateEvent(
+                buildJsonObject {
+                    put("p_event_id", input.eventId)
+                    put("p_title", input.title)
+                    put("p_description", input.description)
+                    put("p_event_type", input.eventType.name)
+                    put("p_visibility", input.visibility.name)
+                    put("p_starts_at", input.startsAt)
+                    put("p_ends_at", input.endsAt)
+                    put("p_capacity", input.capacity)
+                    put("p_public_location_text", input.publicLocationText)
+                    put("p_private_location_text", input.privateLocationText)
+                    put("p_cover_asset_ref", input.coverAssetRef)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun changeEventStatus(
+        eventId: String,
+        status: ShelterEventStatus
+    ): Result<ShelterEvent> = try {
+        Result.success(remote.changeEventStatus(eventId, status.name).toDomain())
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun register(eventId: String, notes: String?): Result<ShelterEventRegistration> = try {
+        Result.success(
+            remote.registerEvent(
+                buildJsonObject {
+                    put("p_event_id", eventId)
+                    put("p_notes", notes)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun cancelRegistration(registrationId: String): Result<ShelterEventRegistration> = try {
+        Result.success(remote.cancelEventRegistration(registrationId).toDomain())
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun markAttendance(
+        registrationId: String,
+        attended: Boolean
+    ): Result<ShelterEventRegistration> = try {
+        Result.success(remote.markEventAttendance(registrationId, attended).toDomain())
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override fun observeRegistrations(eventId: String): Flow<List<ShelterEventRegistration>> = flow {
+        emit(
+            runCatching { remote.listEventRegistrations(eventId).map { it.toDomain() } }
+                .getOrElse { emptyList() }
+        )
+    }
+}
+
+class SupabaseShelterReportRepository(
+    private val remote: SupabaseShelterM11RemoteDataSource = SupabaseShelterM11RemoteDataSource()
+) : ShelterReportRepository {
+    override suspend fun getOperationalSummary(
+        shelterId: String,
+        from: Long,
+        to: Long
+    ): Result<ShelterOperationalSummary> = try {
+        if (shelterId.isBlank()) M11ShelterErrorMapper.fail("SHELTER_NOT_FOUND")
+        else if (from > to) M11ShelterErrorMapper.fail("SHELTER_REPORT_INVALID_RANGE")
+        else Result.success(remote.getOperationalSummary(shelterId, from, to).toDomain())
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun getCapacityMetrics(
+        shelterId: String,
+        from: Long,
+        to: Long
+    ): Result<ShelterCapacityMetrics> = metricCall(shelterId, from, to) {
+        remote.getCapacityMetrics(shelterId, from, to).toDomain()
+    }
+
+    override suspend fun getPetMetrics(
+        shelterId: String,
+        from: Long,
+        to: Long
+    ): Result<ShelterPetMetrics> = metricCall(shelterId, from, to) {
+        remote.getPetMetrics(shelterId, from, to).toDomain()
+    }
+
+    override suspend fun getVolunteerMetrics(
+        shelterId: String,
+        from: Long,
+        to: Long
+    ): Result<ShelterVolunteerMetrics> = metricCall(shelterId, from, to) {
+        remote.getVolunteerMetrics(shelterId, from, to).toDomain()
+    }
+
+    override suspend fun getCampaignMetrics(
+        shelterId: String,
+        from: Long,
+        to: Long
+    ): Result<ShelterCampaignMetrics> = metricCall(shelterId, from, to) {
+        remote.getCampaignMetrics(shelterId, from, to).toDomain()
+    }
+
+    override suspend fun getSupplyMetrics(
+        shelterId: String,
+        from: Long,
+        to: Long
+    ): Result<ShelterSupplyMetrics> = metricCall(shelterId, from, to) {
+        remote.getSupplyMetrics(shelterId, from, to).toDomain()
+    }
+
+    override suspend fun getEmergencyMetrics(
+        shelterId: String,
+        from: Long,
+        to: Long
+    ): Result<ShelterEmergencyMetrics> = metricCall(shelterId, from, to) {
+        remote.getEmergencyMetrics(shelterId, from, to).toDomain()
+    }
+
+    override suspend fun getEventMetrics(
+        shelterId: String,
+        from: Long,
+        to: Long
+    ): Result<ShelterEventMetrics> = metricCall(shelterId, from, to) {
+        remote.getEventMetrics(shelterId, from, to).toDomain()
+    }
+
+    override suspend fun exportOperationalCsv(
+        shelterId: String,
+        from: Long,
+        to: Long
+    ): Result<ShelterReportExport> {
+        return try {
+            if (shelterId.isBlank()) return M11ShelterErrorMapper.fail("SHELTER_NOT_FOUND")
+            if (from > to) return M11ShelterErrorMapper.fail("SHELTER_REPORT_INVALID_RANGE")
+            val summary = getOperationalSummary(shelterId, from, to)
+                .getOrElse { return M11ShelterErrorMapper.failure(it) }
+            val fileName = "leover_refugio_${shelterId}_operativo_${from}_${to}.csv"
+            val csv = buildOperationalCsv(summary)
+            if (csv.isBlank()) {
+                M11ShelterErrorMapper.fail("SHELTER_REPORT_EXPORT_FAILED")
+            } else {
+                Result.success(
+                    ShelterReportExport(
+                        csvContent = csv,
+                        fileName = fileName,
+                        generatedAt = summary.generatedAt
+                    )
+                )
+            }
+        } catch (t: Throwable) {
+            M11ShelterErrorMapper.failure(t)
+        }
+    }
+
+    private suspend inline fun <T> metricCall(
+        shelterId: String,
+        from: Long,
+        to: Long,
+        block: suspend () -> T
+    ): Result<T> = try {
+        if (shelterId.isBlank()) M11ShelterErrorMapper.fail("SHELTER_NOT_FOUND")
+        else if (from > to) M11ShelterErrorMapper.fail("SHELTER_REPORT_INVALID_RANGE")
+        else Result.success(block())
+    } catch (t: Throwable) {
+        M11ShelterErrorMapper.failure(t)
+    }
+
+    private fun buildOperationalCsv(summary: ShelterOperationalSummary): String = buildString {
+        appendLine("metric,value")
+        appendLine("shelter_id,${summary.shelterProfileId}")
+        appendLine("from,${summary.from}")
+        appendLine("to,${summary.to}")
+        appendLine("total_capacity,${summary.capacity.totalCapacity}")
+        appendLine("current_occupancy,${summary.capacity.currentOccupancy}")
+        appendLine("reserved_capacity,${summary.capacity.reservedCapacity}")
+        appendLine("free_slots,${summary.capacity.freeSlots}")
+        appendLine("pets_active,${summary.pets.activeCount}")
+        appendLine("pets_quarantine,${summary.pets.quarantineCount}")
+        appendLine("pets_medical_care,${summary.pets.medicalCareCount}")
+        appendLine("pets_releases,${summary.pets.releasesCount}")
+        appendLine("pets_adoptions,${summary.pets.adoptionsCount}")
+        appendLine("volunteers_active,${summary.volunteers.activeCount}")
+        appendLine("volunteers_paused,${summary.volunteers.pausedCount}")
+        appendLine("volunteers_ended,${summary.volunteers.endedCount}")
+        appendLine("campaigns_active,${summary.campaigns.activeCount}")
+        appendLine("campaigns_completed,${summary.campaigns.completedCount}")
+        appendLine("supply_open_requests,${summary.supplies.openRequestsCount}")
+        appendLine("supply_fulfilled_requests,${summary.supplies.fulfilledRequestsCount}")
+        appendLine("supply_quantity_received,${summary.supplies.quantityReceivedTotal}")
+        appendLine("emergencies_active,${summary.emergencies.activeCount}")
+        appendLine("emergencies_critical,${summary.emergencies.criticalCount}")
+        appendLine("emergencies_resolved,${summary.emergencies.resolvedCount}")
+        appendLine("events_upcoming,${summary.events.upcomingCount}")
+        appendLine("events_completed,${summary.events.completedCount}")
+        appendLine("event_registrations,${summary.events.registrationsCount}")
     }
 }

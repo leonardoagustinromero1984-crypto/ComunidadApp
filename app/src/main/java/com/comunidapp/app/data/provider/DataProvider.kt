@@ -82,15 +82,24 @@ import com.comunidapp.app.data.repository.MockShelterCampaignRepository
 import com.comunidapp.app.data.repository.MockShelterProfileRepository
 import com.comunidapp.app.data.repository.MockShelterSupplyRepository
 import com.comunidapp.app.data.repository.MockShelterVolunteerRepository
+import com.comunidapp.app.data.repository.MockShelterEmergencyRepository
+import com.comunidapp.app.data.repository.MockShelterEventRepository
+import com.comunidapp.app.data.repository.MockShelterReportRepository
 import com.comunidapp.app.data.repository.M11ShelterMemoryStore
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.ShelterCampaignRepository
+import com.comunidapp.app.data.repository.ShelterEmergencyRepository
+import com.comunidapp.app.data.repository.ShelterEventRepository
+import com.comunidapp.app.data.repository.ShelterReportRepository
 import com.comunidapp.app.data.repository.ShelterPetRepository
 import com.comunidapp.app.data.repository.ShelterProfileRepository
 import com.comunidapp.app.data.repository.ShelterSupplyRepository
 import com.comunidapp.app.data.repository.ShelterVolunteerRepository
 import com.comunidapp.app.data.repository.SupabaseShelterCampaignRepository
+import com.comunidapp.app.data.repository.SupabaseShelterEmergencyRepository
+import com.comunidapp.app.data.repository.SupabaseShelterEventRepository
+import com.comunidapp.app.data.repository.SupabaseShelterReportRepository
 import com.comunidapp.app.data.repository.SupabaseShelterPetRepository
 import com.comunidapp.app.data.repository.SupabaseShelterProfileRepository
 import com.comunidapp.app.data.repository.SupabaseShelterSupplyRepository
@@ -482,6 +491,39 @@ object DataProvider {
             SupabaseShelterSupplyRepository()
         } else {
             MockShelterSupplyRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m11ShelterStore
+            )
+        }
+    }
+
+    val shelterEmergencyRepository: ShelterEmergencyRepository by lazy {
+        if (useSupabase) {
+            SupabaseShelterEmergencyRepository()
+        } else {
+            MockShelterEmergencyRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m11ShelterStore
+            )
+        }
+    }
+
+    val shelterEventRepository: ShelterEventRepository by lazy {
+        if (useSupabase) {
+            SupabaseShelterEventRepository()
+        } else {
+            MockShelterEventRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m11ShelterStore
+            )
+        }
+    }
+
+    val shelterReportRepository: ShelterReportRepository by lazy {
+        if (useSupabase) {
+            SupabaseShelterReportRepository()
+        } else {
+            MockShelterReportRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m11ShelterStore
             )

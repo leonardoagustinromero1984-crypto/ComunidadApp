@@ -93,6 +93,18 @@ object NavRoutes {
     const val SHELTER_SUPPLY_CONTRIBUTE = "shelter_supply_contribute/{requestId}"
     const val SHELTER_SUPPLY_CONTRIBUTIONS = "shelter_supply_contributions/{requestId}"
 
+    // M11 Block 3 — urgencias, eventos y reportes
+    const val SHELTER_EMERGENCIES = "shelter_emergencies/{shelterId}"
+    const val SHELTER_EMERGENCY_DETAIL = "shelter_emergency_detail/{emergencyId}"
+    const val SHELTER_EMERGENCY_FORM = "shelter_emergency_form/{shelterId}"
+    const val SHELTER_EMERGENCY_FORM_EDIT = "shelter_emergency_form/{shelterId}/{emergencyId}"
+    const val SHELTER_EVENTS = "shelter_events/{shelterId}"
+    const val SHELTER_EVENT_DETAIL = "shelter_event_detail/{eventId}"
+    const val SHELTER_EVENT_FORM = "shelter_event_form/{shelterId}"
+    const val SHELTER_EVENT_FORM_EDIT = "shelter_event_form/{shelterId}/{eventId}"
+    const val SHELTER_EVENT_REGISTRATIONS = "shelter_event_registrations/{eventId}"
+    const val SHELTER_REPORTS = "shelter_reports/{shelterId}"
+
     const val PET_DETAIL = "pet_detail/{petId}"
 
     // M08 Etapa 5 — gobierno de responsables, autorizaciones y transferencias
@@ -186,6 +198,8 @@ object NavRoutes {
     const val ARG_SHELTER_PLACEMENT_ID = "placementId"
     const val ARG_CAMPAIGN_ID = "campaignId"
     const val ARG_SUPPLY_REQUEST_ID = "requestId"
+    const val ARG_EMERGENCY_ID = "emergencyId"
+    const val ARG_EVENT_ID = "eventId"
     const val ARG_PET_ID = "petId"
     const val ARG_TRANSFER_ID = "transferId"
     const val ARG_EMAIL = "email"
@@ -287,6 +301,28 @@ object NavRoutes {
         "shelter_supply_contribute/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
     fun shelterSupplyContributions(requestId: String) =
         "shelter_supply_contributions/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
+    fun shelterEmergencies(shelterId: String) =
+        "shelter_emergencies/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun shelterEmergencyDetail(emergencyId: String) =
+        "shelter_emergency_detail/${java.net.URLEncoder.encode(emergencyId, Charsets.UTF_8.name())}"
+    fun shelterEmergencyForm(shelterId: String) =
+        "shelter_emergency_form/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun shelterEmergencyFormEdit(shelterId: String, emergencyId: String) =
+        "shelter_emergency_form/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}/" +
+            java.net.URLEncoder.encode(emergencyId, Charsets.UTF_8.name())
+    fun shelterEvents(shelterId: String) =
+        "shelter_events/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun shelterEventDetail(eventId: String) =
+        "shelter_event_detail/${java.net.URLEncoder.encode(eventId, Charsets.UTF_8.name())}"
+    fun shelterEventForm(shelterId: String) =
+        "shelter_event_form/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun shelterEventFormEdit(shelterId: String, eventId: String) =
+        "shelter_event_form/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}/" +
+            java.net.URLEncoder.encode(eventId, Charsets.UTF_8.name())
+    fun shelterEventRegistrations(eventId: String) =
+        "shelter_event_registrations/${java.net.URLEncoder.encode(eventId, Charsets.UTF_8.name())}"
+    fun shelterReports(shelterId: String) =
+        "shelter_reports/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
     fun serviceDetail(serviceId: String) =
         "service_detail/${java.net.URLEncoder.encode(serviceId, Charsets.UTF_8.name())}"
     fun petDetail(petId: String) = "pet_detail/$petId"
