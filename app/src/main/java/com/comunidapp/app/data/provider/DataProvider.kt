@@ -88,11 +88,24 @@ import com.comunidapp.app.data.repository.MockShelterReportRepository
 import com.comunidapp.app.data.repository.M11ShelterMemoryStore
 import com.comunidapp.app.data.repository.M12VeterinaryMemoryStore
 import com.comunidapp.app.data.repository.MockVeterinaryClinicRepository
+import com.comunidapp.app.data.repository.MockVeterinaryClinicLifecycle
 import com.comunidapp.app.data.repository.MockVeterinaryDirectoryRepository
+import com.comunidapp.app.data.repository.MockVeterinaryOpeningHoursRepository
+import com.comunidapp.app.data.repository.MockVeterinaryProfessionalOpsRepository
 import com.comunidapp.app.data.repository.MockVeterinaryProfessionalRepository
+import com.comunidapp.app.data.repository.MockVeterinaryServiceRepository
+import com.comunidapp.app.data.repository.SupabaseVeterinaryClinicRepository
+import com.comunidapp.app.data.repository.SupabaseVeterinaryDirectoryRepository
+import com.comunidapp.app.data.repository.SupabaseVeterinaryOpeningHoursRepository
+import com.comunidapp.app.data.repository.SupabaseVeterinaryProfessionalRepository
+import com.comunidapp.app.data.repository.SupabaseVeterinaryServiceRepository
+import com.comunidapp.app.data.repository.VeterinaryClinicLifecycle
 import com.comunidapp.app.data.repository.VeterinaryClinicRepository
 import com.comunidapp.app.data.repository.VeterinaryDirectoryRepository
+import com.comunidapp.app.data.repository.VeterinaryOpeningHoursRepository
+import com.comunidapp.app.data.repository.VeterinaryProfessionalOpsRepository
 import com.comunidapp.app.data.repository.VeterinaryProfessionalRepository
+import com.comunidapp.app.data.repository.VeterinaryServiceRepository
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.ShelterCampaignRepository
@@ -543,18 +556,74 @@ object DataProvider {
     }
 
     val veterinaryClinicRepository: VeterinaryClinicRepository by lazy {
-        MockVeterinaryClinicRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
-            store = m12VeterinaryStore
-        )
+        if (useSupabase) {
+            SupabaseVeterinaryClinicRepository()
+        } else {
+            MockVeterinaryClinicRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m12VeterinaryStore
+            )
+        }
+    }
+
+    val veterinaryClinicLifecycle: VeterinaryClinicLifecycle by lazy {
+        if (useSupabase) {
+            veterinaryClinicRepository as VeterinaryClinicLifecycle
+        } else {
+            MockVeterinaryClinicLifecycle(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m12VeterinaryStore
+            )
+        }
     }
 
     val veterinaryProfessionalRepository: VeterinaryProfessionalRepository by lazy {
-        MockVeterinaryProfessionalRepository(store = m12VeterinaryStore)
+        if (useSupabase) {
+            SupabaseVeterinaryProfessionalRepository()
+        } else {
+            MockVeterinaryProfessionalRepository(store = m12VeterinaryStore)
+        }
+    }
+
+    val veterinaryProfessionalOpsRepository: VeterinaryProfessionalOpsRepository by lazy {
+        if (useSupabase) {
+            veterinaryProfessionalRepository as VeterinaryProfessionalOpsRepository
+        } else {
+            MockVeterinaryProfessionalOpsRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m12VeterinaryStore
+            )
+        }
     }
 
     val veterinaryDirectoryRepository: VeterinaryDirectoryRepository by lazy {
-        MockVeterinaryDirectoryRepository(store = m12VeterinaryStore)
+        if (useSupabase) {
+            SupabaseVeterinaryDirectoryRepository()
+        } else {
+            MockVeterinaryDirectoryRepository(store = m12VeterinaryStore)
+        }
+    }
+
+    val veterinaryServiceRepository: VeterinaryServiceRepository by lazy {
+        if (useSupabase) {
+            SupabaseVeterinaryServiceRepository()
+        } else {
+            MockVeterinaryServiceRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m12VeterinaryStore
+            )
+        }
+    }
+
+    val veterinaryOpeningHoursRepository: VeterinaryOpeningHoursRepository by lazy {
+        if (useSupabase) {
+            SupabaseVeterinaryOpeningHoursRepository()
+        } else {
+            MockVeterinaryOpeningHoursRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m12VeterinaryStore
+            )
+        }
     }
 
     val serviceRepository: ServiceRepository by lazy {

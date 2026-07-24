@@ -111,8 +111,25 @@ data class VeterinaryClinicProfile(
     val coverAssetRef: String? = null,
     val offersEmergencyCare: Boolean = false,
     val isOpen24Hours: Boolean = false,
+    val publicContactEnabled: Boolean = false,
     val createdAt: Instant,
-    val updatedAt: Instant
+    val updatedAt: Instant,
+    val archivedAt: Instant? = null
+)
+
+/**
+ * Vínculo clínica–profesional (M12 Bloque 2). Una vinculación activa por
+ * clínica/profesional; el historial se preserva vía [unlinkedAt].
+ */
+data class VeterinaryClinicProfessionalLink(
+    val id: String,
+    val clinicId: String,
+    val professionalId: String,
+    val roleTitle: String? = null,
+    val active: Boolean = true,
+    val linkedBy: String,
+    val linkedAt: Instant,
+    val unlinkedAt: Instant? = null
 )
 
 /** Proyección pública: sin dirección privada ni notas internas. */
@@ -199,15 +216,24 @@ object VeterinaryPermissionCodes {
 }
 
 object VeterinaryAuditEvents {
-    const val VETERINARY_CLINIC_DRAFT_CREATED = "VETERINARY_CLINIC_DRAFT_CREATED"
-    const val VETERINARY_CLINIC_PROFILE_UPDATED = "VETERINARY_CLINIC_PROFILE_UPDATED"
+    const val VETERINARY_CLINIC_DRAFT_CREATED = "VETERINARY_CLINIC_CREATED"
+    const val VETERINARY_CLINIC_PROFILE_UPDATED = "VETERINARY_CLINIC_UPDATED"
+    const val VETERINARY_CLINIC_STATUS_CHANGED = "VETERINARY_CLINIC_STATUS_CHANGED"
+    const val VETERINARY_CLINIC_VERIFICATION_CHANGED = "VETERINARY_CLINIC_VERIFICATION_CHANGED"
+    const val VETERINARY_PROFESSIONAL_CREATED = "VETERINARY_PROFESSIONAL_CREATED"
     const val VETERINARY_PROFESSIONAL_LINKED = "VETERINARY_PROFESSIONAL_LINKED"
-    const val VETERINARY_SERVICE_UPDATED = "VETERINARY_SERVICE_UPDATED"
+    const val VETERINARY_PROFESSIONAL_UNLINKED = "VETERINARY_PROFESSIONAL_UNLINKED"
+    const val VETERINARY_SERVICE_UPDATED = "VETERINARY_SERVICE_CHANGED"
+    const val VETERINARY_OPENING_HOURS_REPLACED = "VETERINARY_OPENING_HOURS_REPLACED"
 }
 
 object VeterinaryM06Hooks {
     const val VETERINARY_CLINIC_DRAFT_CREATED = "VETERINARY_CLINIC_DRAFT_CREATED"
     const val VETERINARY_CLINIC_PROFILE_UPDATED = "VETERINARY_CLINIC_PROFILE_UPDATED"
+    const val VETERINARY_CLINIC_STATUS_CHANGED = "VETERINARY_CLINIC_STATUS_CHANGED"
+    const val VETERINARY_CLINIC_VERIFICATION_REQUESTED = "VETERINARY_CLINIC_VERIFICATION_REQUESTED"
     const val VETERINARY_PROFESSIONAL_LINKED = "VETERINARY_PROFESSIONAL_LINKED"
+    const val VETERINARY_PROFESSIONAL_UNLINKED = "VETERINARY_PROFESSIONAL_UNLINKED"
     const val VETERINARY_SERVICE_UPDATED = "VETERINARY_SERVICE_UPDATED"
+    const val VETERINARY_OPENING_HOURS_REPLACED = "VETERINARY_OPENING_HOURS_REPLACED"
 }

@@ -12,18 +12,35 @@ class M12VeterinaryException(
 
 object M12VeterinaryErrorMapper {
 
+    // Ordered so more specific codes match before their substrings in [codeOf]
+    // (e.g. VETERINARY_CLINIC_INVALID_TRANSITION before VETERINARY_CLINIC_INVALID).
     private val knownCodes = listOf(
         "VETERINARY_CLINIC_NOT_FOUND",
         "VETERINARY_CLINIC_FORBIDDEN",
-        "VETERINARY_CLINIC_INVALID",
         "VETERINARY_CLINIC_INACTIVE",
         "VETERINARY_CLINIC_UNVERIFIED",
+        "VETERINARY_CLINIC_ALREADY_EXISTS",
+        "VETERINARY_CLINIC_INVALID_TRANSITION",
+        "VETERINARY_CLINIC_ACTIVATION_REQUIREMENTS",
+        "VETERINARY_CLINIC_INVALID",
+        "VETERINARY_ORGANIZATION_REQUIRED",
+        "VETERINARY_BRANCH_INVALID",
+        "VETERINARY_VERIFICATION_FORBIDDEN",
+        "VETERINARY_VERIFICATION_INVALID_TRANSITION",
         "VETERINARY_PROFESSIONAL_NOT_FOUND",
-        "VETERINARY_PROFESSIONAL_INVALID",
+        "VETERINARY_PROFESSIONAL_ALREADY_LINKED",
+        "VETERINARY_PROFESSIONAL_NOT_LINKED",
         "VETERINARY_PROFESSIONAL_UNVERIFIED",
+        "VETERINARY_PROFESSIONAL_INVALID",
+        "VETERINARY_SPECIALTY_INVALID",
         "VETERINARY_SERVICE_NOT_FOUND",
+        "VETERINARY_SERVICE_DUPLICATE",
+        "VETERINARY_SERVICE_INVALID",
+        "VETERINARY_OPENING_HOURS_INCOMPLETE",
+        "VETERINARY_OPENING_HOURS_DUPLICATE_DAY",
         "VETERINARY_OPENING_HOURS_INVALID",
         "VETERINARY_PUBLIC_CONTACT_DISABLED",
+        "VETERINARY_PUBLIC_PROJECTION_FORBIDDEN",
         "VETERINARY_MEDIA_REF_INVALID",
         "VETERINARY_REPOSITORY_FAILURE",
         "ORGANIZATION_NOT_ELIGIBLE",
@@ -61,12 +78,32 @@ object M12VeterinaryErrorMapper {
         "VETERINARY_CLINIC_INVALID" -> "Los datos de la veterinaria no son válidos."
         "VETERINARY_CLINIC_INACTIVE" -> "Esa veterinaria no está activa."
         "VETERINARY_CLINIC_UNVERIFIED" -> "Esa veterinaria todavía no está verificada."
+        "VETERINARY_CLINIC_ALREADY_EXISTS" ->
+            "Ya existe una veterinaria activa para esa organización y sede."
+        "VETERINARY_CLINIC_INVALID_TRANSITION" -> "No se puede cambiar el estado de esa forma."
+        "VETERINARY_CLINIC_ACTIVATION_REQUIREMENTS" ->
+            "Para activar necesitás zona pública, horarios (o 24 h) y al menos un servicio activo."
+        "VETERINARY_ORGANIZATION_REQUIRED" -> "Tenés que indicar la organización."
+        "VETERINARY_BRANCH_INVALID" -> "La sede no pertenece a esa organización."
+        "VETERINARY_VERIFICATION_FORBIDDEN" -> "No tenés permiso para revisar verificaciones."
+        "VETERINARY_VERIFICATION_INVALID_TRANSITION" ->
+            "No se puede cambiar la verificación de esa forma."
         "VETERINARY_PROFESSIONAL_NOT_FOUND" -> "No encontramos ese profesional."
         "VETERINARY_PROFESSIONAL_INVALID" -> "Los datos del profesional no son válidos."
         "VETERINARY_PROFESSIONAL_UNVERIFIED" -> "Ese profesional todavía no está verificado."
+        "VETERINARY_PROFESSIONAL_ALREADY_LINKED" ->
+            "Ese profesional ya está vinculado a la veterinaria."
+        "VETERINARY_PROFESSIONAL_NOT_LINKED" ->
+            "Ese profesional no está vinculado a la veterinaria."
+        "VETERINARY_SPECIALTY_INVALID" -> "Alguna especialidad no es válida."
         "VETERINARY_SERVICE_NOT_FOUND" -> "No encontramos ese servicio."
+        "VETERINARY_SERVICE_DUPLICATE" -> "Ya existe un servicio activo con ese nombre y categoría."
+        "VETERINARY_SERVICE_INVALID" -> "Los datos del servicio no son válidos."
         "VETERINARY_OPENING_HOURS_INVALID" -> "Los horarios no son válidos."
+        "VETERINARY_OPENING_HOURS_INCOMPLETE" -> "Faltan horarios de apertura o cierre."
+        "VETERINARY_OPENING_HOURS_DUPLICATE_DAY" -> "Hay un día repetido en los horarios."
         "VETERINARY_PUBLIC_CONTACT_DISABLED" -> "El contacto público no está habilitado."
+        "VETERINARY_PUBLIC_PROJECTION_FORBIDDEN" -> "No se puede mostrar esa información pública."
         "VETERINARY_MEDIA_REF_INVALID" -> "La referencia de media no es válida."
         "VETERINARY_REPOSITORY_FAILURE" -> "No pudimos completar la operación de veterinarias."
         "ORGANIZATION_NOT_ELIGIBLE" -> "Esa organización no puede operar una veterinaria."

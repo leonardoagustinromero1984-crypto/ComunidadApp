@@ -2,7 +2,12 @@
 
 **Fecha:** 2026-07-23
 **HEAD base:** `ec03064577d6bf936f29411c48af2c93835da0f1`
-**Persistencia remota:** no (no existe migración `046`).
+**Persistencia remota:** migración `046` creada en repo; **no aplicada** en este documento operativo hasta apply autorizado.
+
+## Bloque 2
+
+Ver `docs/02-arquitectura/M12-persistencia-perfiles-servicios.md` y `docs/05-operacion/M12-aplicacion-migracion-046-supabase.md`.
+
 
 ## Estado inicial
 

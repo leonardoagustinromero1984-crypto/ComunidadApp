@@ -1,101 +1,38 @@
 # M12 — Veterinarias
 
-**Estado del módulo (Bloque 1):** `EN_CURSO` — auditoría, dominio, contratos y directorio público **local/fake**.
-**Sin persistencia remota.** No existe migración `046`.
+**Estado del módulo:** Bloque 1 cerrado · **Bloque 2 (persistencia) en curso / entregado en repo**.
+**Migración 046:** creada en repo — **no aplicada remotamente** desde Cursor.
 
-> Nota de numeración: en el catálogo de producto (D01), **M12** es “Mascotas perdidas y encontradas”. Este documento describe el **módulo técnico M12 — Veterinarias** en la secuencia de implementación Android (post-M11 Refugios), alineado a prestadores (catálogo D01 M22) sin reemplazar el M12 de producto.
+> Nota D01: M12 técnico (Veterinarias) ≠ M12 producto (mascotas perdidas). Ver nota en D01.
 
-## Objetivo del Bloque 1
+## Bloque 1 — dominio y directorio local
 
-1. Auditar el estado real del repo respecto de veterinarias / servicios / agenda.
-2. Definir dominio inicial sin SQL remoto.
-3. Contratos de repositorio, errores tipados y fakes en memoria.
-4. Directorio público local con filtros y detalle.
-5. Gestión mínima de borradores locales vinculados a org M03.
-6. Documentación y pruebas focalizadas.
+Modelos, fakes, directorio público, errores tipados, permisos `veterinary.*` (IDs).
 
-## Auditoría (resumen)
+## Bloque 2 — persistencia
 
-| Hallazgo | Clasificación |
-|----------|----------------|
-| `ServiceProfile` / `service_profiles` / bookings legacy | **LEGACY_COMPATIBLE** — no eliminar ni migrar destructivamente |
-| Organizaciones / sedes / membresías M03 | **REUTILIZABLE** |
-| Verificación M04 | **PARCIAL** — contratos preparados; sin casos reales |
-| Referencias M05 (`m05://`, `file_asset:`) | **REUTILIZABLE** via `FosterSecureRefValidator` |
-| Permisos org + `AccountType` | **REUTILIZABLE** patrón: AccountType no concede autoridad |
-| Navegación Sumate / dashboards | **PARCIAL** — entrada nueva al directorio |
-| Agenda / turnos / pagos / historia clínica | **FUERA_DE_ALCANCE** / **AUSENTE** en Bloque 1 |
-| Modelos `Veterinary*` previos | **AUSENTE** |
-
-Detalle: `docs/02-arquitectura/M12-auditoria-y-contratos-iniciales.md`.
-
-## Decisiones
-
-- Clínica institucional ↔ organización M03 **ACTIVE**.
-- Sede opcional reutiliza branch M03 cuando exista.
-- Sin sistema paralelo de usuarios/orgs/permisos.
-- Matrícula = dato declarado; no verificación oficial sin M04.
-- Contactos públicos opt-in; sin direcciones privadas en listados públicos.
-- Sin historia clínica, diagnósticos, precios, turnos reales ni pagos.
-- Legacy `service_profiles` intacto.
-
-## Modelos
-
-- `VeterinaryClinicProfile` + `VeterinaryPublicListing`
-- `VeterinaryProfessional`
-- `VeterinaryService` + `AnimalSpecies`
-- `VeterinaryOpeningHours`
-- `VeterinaryDirectoryFilter`
-- `VeterinaryPermissionCodes` (solo registro de dominio)
-
-## Repositorios (fake)
-
-- `VeterinaryClinicRepository` — `createLocalDraft` / `updateLocalDraft` / managed observe
-- `VeterinaryProfessionalRepository`
-- `VeterinaryDirectoryRepository` — `observePublicClinics(filter)` / `getPublicClinic`
-- Store: `M12VeterinaryMemoryStore` (+ seed demo ficticio)
-
-## Errores tipados
-
-`M12VeterinaryException` / `M12VeterinaryErrorMapper` (`VETERINARY_CLINIC_*`, `VETERINARY_PROFESSIONAL_*`, etc.).
-
-## UI / rutas
-
-| Ruta | Pantalla |
-|------|----------|
-| `veterinary_directory` | Directorio público + filtros |
-| `veterinary_clinic_detail/{clinicId}` | Detalle público |
-| `my_veterinary_clinics` | Gestión local |
-| `veterinary_clinic_draft[/{clinicId}]` | Borrador local |
-
-Entrada: Sumate → Refugios → **Directorio de veterinarias (M12)** (no rompe M11).
+- SQL: `046_m12_veterinary_profiles_and_services.sql` (6 tablas, RLS, 26 RPC, permisos sembrados).
+- Android: mocks B2 + `SupabaseVeterinary*` (RPC).
+- UI: hub de gestión, profesionales, servicios, horarios.
+- Docs: `M12-persistencia-perfiles-servicios.md`, `M12-aplicacion-migracion-046-supabase.md`.
 
 ## Integraciones
 
-| Módulo | Bloque 1 |
-|--------|----------|
-| M03 | org/sede canónica; miembros para manage futuro |
-| M04 | sin auto-VERIFIED |
-| M05 | refs `m05://` / `file_asset:`; rechazo http(s) |
-| M06/M07 | hooks/eventos mock (`VETERINARY_CLINIC_DRAFT_CREATED`, …) |
+| Módulo | Uso |
+|--------|-----|
+| M03 | org ACTIVE, sede, `has_org_permission` |
+| M04 | `organizations.review_verification` en `m12_review_*` |
+| M05 | logo/cover/avatar |
+| M06/M07 | hooks / `m07_best_effort_audit` |
 
-## Pruebas
+## Límites
 
-- `M12VeterinaryFoundationTest`
-- `M12VeterinaryStaticGuardsTest`
+Sin agenda/turnos reales, historia clínica ni pagos. Legacy `service_profiles` intacto.
 
-## Límites del Bloque 1
+## Plan Bloque 3 (exacto)
 
-- Sin migración 046 / sin SQL remoto.
-- Sin agenda/turnos reales.
-- Sin historia clínica ni pagos.
-- Sin APK / sin suite completa.
-- Sin Supabase real en M12.
-
-## Plan exacto del Bloque 2
-
-1. Migración SQL nueva (siguiente número disponible; **no 046 si ya quedó descartada por cierre M11** — usar el siguiente libre tras inventario) para perfiles de clínica, profesionales, servicios y horarios.
-2. RLS + RPCs; permisos `veterinary.*` en `organization_permissions`.
-3. Repos Supabase + mappers; retirar “solo local” de borradores.
-4. Flujo de publicación DRAFT→ACTIVE y solicitud de verificación M04.
-5. Ampliación UI de gestión (servicios/horarios/profesionales) sin turnos ni pagos.
+1. Agenda/disponibilidad (sin pagos).
+2. Solicitud de turno y estados (sin cobro).
+3. Notificaciones M06 de recordatorio.
+4. Proyecciones de cupos sin inventar disponibilidad ficticia.
+5. Tests + migración siguiente (047+) si hace falta.

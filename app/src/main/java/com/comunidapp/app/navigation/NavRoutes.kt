@@ -72,6 +72,9 @@ object NavRoutes {
     const val MY_VETERINARY_CLINICS = "my_veterinary_clinics"
     const val VETERINARY_CLINIC_DRAFT = "veterinary_clinic_draft"
     const val VETERINARY_CLINIC_DRAFT_EDIT = "veterinary_clinic_draft/{clinicId}"
+    const val VETERINARY_CLINIC_PROFESSIONALS = "veterinary_clinic_professionals/{clinicId}"
+    const val VETERINARY_CLINIC_SERVICES = "veterinary_clinic_services/{clinicId}"
+    const val VETERINARY_CLINIC_HOURS = "veterinary_clinic_hours/{clinicId}"
 
     // M11 — operación de refugios (legacy Sumate sigue en SHELTER_DETAIL; SHELTERS = listado ops)
     const val MY_SHELTERS = "my_shelters"
@@ -274,6 +277,12 @@ object NavRoutes {
         "veterinary_clinic_detail/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
     fun veterinaryClinicDraftEdit(clinicId: String) =
         "veterinary_clinic_draft/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
+    fun veterinaryClinicProfessionals(clinicId: String) =
+        "veterinary_clinic_professionals/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
+    fun veterinaryClinicServices(clinicId: String) =
+        "veterinary_clinic_services/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
+    fun veterinaryClinicHours(clinicId: String) =
+        "veterinary_clinic_hours/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
     fun shelterDetail(shelterId: String) = "shelter_detail/$shelterId"
     fun shelterOpsDetail(shelterId: String) =
         "shelter_ops_detail/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"

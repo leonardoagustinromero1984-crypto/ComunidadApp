@@ -194,6 +194,10 @@ import com.comunidapp.app.ui.screens.shelters.ShelterVolunteerInviteScreen
 import com.comunidapp.app.ui.screens.veterinary.ManagedVeterinaryClinicsScreen
 import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicDetailScreen
 import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicDraftScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicHoursScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicManageHubScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicProfessionalsScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicServicesScreen
 import com.comunidapp.app.ui.screens.veterinary.VeterinaryDirectoryScreen
 import com.comunidapp.app.viewmodel.ShelterCampaignDetailViewModel
 import com.comunidapp.app.viewmodel.ShelterCampaignFormViewModel
@@ -1788,10 +1792,57 @@ private fun MainScreen(accountType: AccountType) {
                     entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
                     Charsets.UTF_8.name()
                 )
-                VeterinaryClinicDraftScreen(
+                VeterinaryClinicManageHubScreen(
                     clinicId = clinicId,
                     onNavigateBack = { navController.popBackStack() },
-                    onSaved = { navController.popBackStack() }
+                    onProfessionals = {
+                        navController.navigate(NavRoutes.veterinaryClinicProfessionals(clinicId))
+                    },
+                    onServices = {
+                        navController.navigate(NavRoutes.veterinaryClinicServices(clinicId))
+                    },
+                    onHours = {
+                        navController.navigate(NavRoutes.veterinaryClinicHours(clinicId))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_CLINIC_PROFESSIONALS,
+                arguments = listOf(navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType })
+            ) { entry ->
+                val clinicId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryClinicProfessionalsScreen(
+                    clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_CLINIC_SERVICES,
+                arguments = listOf(navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType })
+            ) { entry ->
+                val clinicId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryClinicServicesScreen(
+                    clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_CLINIC_HOURS,
+                arguments = listOf(navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType })
+            ) { entry ->
+                val clinicId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryClinicHoursScreen(
+                    clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(

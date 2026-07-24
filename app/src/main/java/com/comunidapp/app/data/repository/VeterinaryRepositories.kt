@@ -1,6 +1,7 @@
 package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.AnimalSpecies
+import com.comunidapp.app.data.model.VeterinaryClinicProfessionalLink
 import com.comunidapp.app.data.model.VeterinaryClinicProfile
 import com.comunidapp.app.data.model.VeterinaryClinicStatus
 import com.comunidapp.app.data.model.VeterinaryDirectoryFilter
@@ -92,6 +93,7 @@ class M12VeterinaryMemoryStore {
             verificationStatus = VeterinaryVerificationStatus.VERIFIED,
             publicZoneText = "Zona Norte",
             publicAddressText = "Av. Ejemplo 100",
+            publicContactEnabled = true,
             publicPhone = "+54 11 5555-0100",
             publicEmail = "contacto@clinicademonorte.test",
             websiteUrl = "https://clinicademonorte.test",
@@ -111,6 +113,7 @@ class M12VeterinaryMemoryStore {
             status = VeterinaryClinicStatus.ACTIVE,
             verificationStatus = VeterinaryVerificationStatus.UNVERIFIED,
             publicZoneText = "Zona Sur",
+            publicContactEnabled = false,
             publicPhone = null,
             publicEmail = null,
             offersEmergencyCare = true,
@@ -237,6 +240,35 @@ class M12VeterinaryMemoryStore {
                 emergencyOnly = false
             )
         )
+        orgBranches.value = mapOf("branch-norte" to "org-vet-demo-1")
+        platformReviewers.value = setOf("m04-reviewer-1")
+        clinicProfessionalLinks.value = listOf(
+            VeterinaryClinicProfessionalLink(
+                id = "link-demo-1",
+                clinicId = clinicA.id,
+                professionalId = "pro-demo-1",
+                roleTitle = "Titular",
+                active = true,
+                linkedBy = "manager-vet-1",
+                linkedAt = now
+            ),
+            VeterinaryClinicProfessionalLink(
+                id = "link-demo-2",
+                clinicId = clinicA.id,
+                professionalId = "pro-demo-2",
+                active = true,
+                linkedBy = "manager-vet-1",
+                linkedAt = now
+            ),
+            VeterinaryClinicProfessionalLink(
+                id = "link-demo-3",
+                clinicId = clinicB.id,
+                professionalId = "pro-demo-3",
+                active = true,
+                linkedBy = "viewer-vet-2",
+                linkedAt = now
+            )
+        )
     }
 }
 
@@ -307,6 +339,9 @@ private fun M12VeterinaryMemoryStore.requireOrgEligible(orgId: String) {
     val st = organizationStatus.value[orgId] ?: failM12("ORGANIZATION_NOT_ELIGIBLE")
     if (st != "ACTIVE") failM12("ORGANIZATION_NOT_ELIGIBLE")
 }
+
+internal fun M12VeterinaryMemoryStore.requireOrgEligibleInternal(orgId: String) =
+    requireOrgEligible(orgId)
 
 private fun M12VeterinaryMemoryStore.checkForcedFailure() {
     if (forceFailure) failM12("VETERINARY_REPOSITORY_FAILURE")
@@ -403,6 +438,8 @@ class MockVeterinaryClinicRepository(
     ): Result<VeterinaryClinicProfile> = runCatching {
         store.checkForcedFailure()
         val actor = actorUserId() ?: failM12("NOT_AUTHENTICATED")
+        if (input.organizationId.isBlank()) failM12("VETERINARY_ORGANIZATION_REQUIRED")
+        store.validateDraftExtras(input.organizationId, input.branchId)
         val orgId = VeterinaryValidators.requireOrganizationId(input.organizationId)
         store.requireOrgEligible(orgId)
         if (!store.canManage(actor, orgId)) failM12("VETERINARY_CLINIC_FORBIDDEN")
@@ -435,6 +472,7 @@ class MockVeterinaryClinicRepository(
             coverAssetRef = input.coverAssetRef?.trim()?.takeIf { it.isNotEmpty() },
             offersEmergencyCare = input.offersEmergencyCare,
             isOpen24Hours = input.isOpen24Hours,
+            publicContactEnabled = false,
             createdAt = now,
             updatedAt = now
         )
@@ -550,7 +588,7 @@ class MockVeterinaryDirectoryRepository(
                 }
             }
             if (!clinic.status.isPubliclyListable) failM12("VETERINARY_CLINIC_INACTIVE")
-            clinic
+            redactClinicForPublic(clinic)
         }.fold({ Result.success(it) }, { M12VeterinaryErrorMapper.failure(it) })
 }
 

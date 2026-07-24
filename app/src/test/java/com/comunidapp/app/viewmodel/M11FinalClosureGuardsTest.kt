@@ -56,10 +56,15 @@ class M11FinalClosureGuardsTest {
     }
 
     @Test
-    fun applied_migrations_immutable_no_046() {
+    fun applied_migrations_042_045_immutable() {
         val names = migrationDir().listFiles()?.map { it.name }.orEmpty()
-        assertFalse("046 must not exist", names.any { it.startsWith("046_") })
-        // Closure must not introduce DROP TABLE of block tables in 043–045
+        // 046 may exist as M12 veterinary; must not be an M11 rewrite of 042–045
+        names.filter { it.startsWith("046_") }.forEach { name ->
+            assertTrue(
+                "046 must be M12 veterinary, not M11",
+                name.contains("m12") && name.contains("veterinary")
+            )
+        }
         listOf(
             "043_m11_shelter_campaigns_and_aid.sql",
             "044_m11_harden_campaign_aid_permissions.sql",
@@ -310,8 +315,14 @@ class M11FinalClosureGuardsTest {
     }
 
     @Test
-    fun no_migration_046_file() {
+    fun no_m11_placeholder_046() {
         assertFalse(File(migrationDir(), "046_m11_placeholder.sql").exists())
-        assertFalse(migrationDir().listFiles()?.any { it.name.startsWith("046_") } == true)
+        val m046 = migrationDir().listFiles()?.filter { it.name.startsWith("046_") }.orEmpty()
+        m046.forEach {
+            assertTrue(
+                "046 debe ser M12 veterinarias",
+                it.name.contains("m12") && it.name.contains("veterinary")
+            )
+        }
     }
 }

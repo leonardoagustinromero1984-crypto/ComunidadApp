@@ -282,3 +282,177 @@ class VeterinaryClinicDraftViewModel(
         }
     }
 }
+
+sealed class VeterinaryManageListUiState {
+    data object Loading : VeterinaryManageListUiState()
+    data object Empty : VeterinaryManageListUiState()
+    data class Content(val lines: List<String>) : VeterinaryManageListUiState()
+    data class Error(val message: String) : VeterinaryManageListUiState()
+    data object Saving : VeterinaryManageListUiState()
+}
+
+class VeterinaryClinicProfessionalsViewModel(
+    private val clinicId: String,
+    private val ops: com.comunidapp.app.data.repository.VeterinaryProfessionalOpsRepository =
+        DataProvider.veterinaryProfessionalOpsRepository
+) : ViewModel() {
+    private val _ui = MutableStateFlow<VeterinaryManageListUiState>(VeterinaryManageListUiState.Loading)
+    val uiState = _ui.asStateFlow()
+    private val _submitting = MutableStateFlow(false)
+    val submitting = _submitting.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            ops.observeManagedProfessionals(clinicId).collect { list ->
+                _ui.value = when {
+                    list.isEmpty() -> VeterinaryManageListUiState.Empty
+                    else -> VeterinaryManageListUiState.Content(
+                        list.map { "${it.displayName} · ${it.verificationStatus.name}" }
+                    )
+                }
+            }
+        }
+    }
+
+    companion object {
+        fun factory(clinicId: String) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                VeterinaryClinicProfessionalsViewModel(clinicId) as T
+        }
+    }
+}
+
+class VeterinaryClinicServicesViewModel(
+    private val clinicId: String,
+    private val repo: com.comunidapp.app.data.repository.VeterinaryServiceRepository =
+        DataProvider.veterinaryServiceRepository
+) : ViewModel() {
+    private val _ui = MutableStateFlow<VeterinaryManageListUiState>(VeterinaryManageListUiState.Loading)
+    val uiState = _ui.asStateFlow()
+    private val _submitting = MutableStateFlow(false)
+    val submitting = _submitting.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            repo.observeClinicServices(clinicId).collect { list ->
+                _ui.value = when {
+                    list.isEmpty() -> VeterinaryManageListUiState.Empty
+                    else -> VeterinaryManageListUiState.Content(
+                        list.map { "${it.name} (${it.category.name}) active=${it.active}" }
+                    )
+                }
+            }
+        }
+    }
+
+    fun createQuickService() {
+        if (_submitting.value) return
+        viewModelScope.launch {
+            _submitting.value = true
+            _ui.value = VeterinaryManageListUiState.Saving
+            repo.createService(
+                com.comunidapp.app.data.repository.CreateVeterinaryServiceInput(
+                    clinicId = clinicId,
+                    name = "Consulta",
+                    category = com.comunidapp.app.data.model.VeterinaryServiceCategory.CONSULTATION
+                )
+            ).onFailure {
+                _ui.value = VeterinaryManageListUiState.Error(
+                    M12VeterinaryErrorMapper.userMessage(M12VeterinaryErrorMapper.codeOf(it))
+                )
+            }
+            _submitting.value = false
+        }
+    }
+
+    companion object {
+        fun factory(clinicId: String) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                VeterinaryClinicServicesViewModel(clinicId) as T
+        }
+    }
+}
+
+class VeterinaryClinicHoursViewModel(
+    private val clinicId: String,
+    private val repo: com.comunidapp.app.data.repository.VeterinaryOpeningHoursRepository =
+        DataProvider.veterinaryOpeningHoursRepository
+) : ViewModel() {
+    private val _ui = MutableStateFlow<VeterinaryManageListUiState>(VeterinaryManageListUiState.Loading)
+    val uiState = _ui.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            repo.observeClinicOpeningHours(clinicId).collect { list ->
+                _ui.value = when {
+                    list.isEmpty() -> VeterinaryManageListUiState.Empty
+                    else -> VeterinaryManageListUiState.Content(
+                        list.map {
+                            if (it.closed) "${it.dayOfWeek}: cerrado"
+                            else "${it.dayOfWeek}: ${it.opensAt}–${it.closesAt}"
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    companion object {
+        fun factory(clinicId: String) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                VeterinaryClinicHoursViewModel(clinicId) as T
+        }
+    }
+}
+
+class VeterinaryClinicManageActionsViewModel(
+    private val clinicId: String,
+    private val lifecycle: com.comunidapp.app.data.repository.VeterinaryClinicLifecycle =
+        DataProvider.veterinaryClinicLifecycle
+) : ViewModel() {
+    private val _submitting = MutableStateFlow(false)
+    val submitting = _submitting.asStateFlow()
+    private val _error = MutableStateFlow<String?>(null)
+    val error = _error.asStateFlow()
+    private val _message = MutableStateFlow<String?>(null)
+    val message = _message.asStateFlow()
+
+    fun requestVerification() {
+        if (_submitting.value) return
+        viewModelScope.launch {
+            _submitting.value = true
+            _error.value = null
+            lifecycle.requestVerification(clinicId)
+                .onSuccess { _message.value = "Verificación solicitada (${it.verificationStatus.name})" }
+                .onFailure {
+                    _error.value = M12VeterinaryErrorMapper.userMessage(M12VeterinaryErrorMapper.codeOf(it))
+                }
+            _submitting.value = false
+        }
+    }
+
+    fun changeStatus(status: com.comunidapp.app.data.model.VeterinaryClinicStatus) {
+        if (_submitting.value) return
+        viewModelScope.launch {
+            _submitting.value = true
+            _error.value = null
+            lifecycle.changeStatus(clinicId, status)
+                .onSuccess { _message.value = "Estado: ${it.status.name}" }
+                .onFailure {
+                    _error.value = M12VeterinaryErrorMapper.userMessage(M12VeterinaryErrorMapper.codeOf(it))
+                }
+            _submitting.value = false
+        }
+    }
+
+    companion object {
+        fun factory(clinicId: String) = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                VeterinaryClinicManageActionsViewModel(clinicId) as T
+        }
+    }
+}

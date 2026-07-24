@@ -1,6 +1,7 @@
 package com.comunidapp.app.viewmodel
 
 import java.io.File
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -42,9 +43,10 @@ class M12VeterinaryStaticGuardsTest {
         findAppFile(*candidates).readText()
 
     @Test
-    fun no_migration_046() {
+    fun migration_046_is_m12_when_present() {
         val names = migrationDir().listFiles()?.map { it.name }.orEmpty()
-        assertFalse("046 must not exist", names.any { it.startsWith("046_") })
+        val m046 = names.filter { it.startsWith("046_") }
+        assertTrue("Bloque 2 requiere 046 M12", m046.any { it.contains("m12") && it.contains("veterinary") })
     }
 
     @Test
@@ -61,30 +63,31 @@ class M12VeterinaryStaticGuardsTest {
     }
 
     @Test
-    fun no_new_m12_sql_in_migrations() {
+    fun m12_sql_is_only_046() {
         val names = migrationDir().listFiles()?.map { it.name }.orEmpty()
-        assertFalse(names.any { it.contains("m12", ignoreCase = true) })
-        assertFalse(names.any { it.contains("veterinary", ignoreCase = true) })
+        val m12Files = names.filter { it.contains("m12", ignoreCase = true) }
+        assertEquals(1, m12Files.size)
+        assertTrue(m12Files.first().startsWith("046_"))
     }
 
     @Test
-    fun no_supabase_real_repository_for_m12() {
+    fun mock_and_supabase_wired_without_service_role() {
         val repo = readSource(
             "app/src/main/java/com/comunidapp/app/data/repository/VeterinaryRepositories.kt"
         )
-        assertFalse(repo.contains("createSupabaseClient"))
-        assertFalse(repo.contains("Postgrest"))
         assertFalse(repo.contains("service_role"))
-        assertFalse(repo.contains("class Supabase"))
         val provider = readSource(
             "app/src/main/java/com/comunidapp/app/data/provider/DataProvider.kt"
         )
-        assertTrue(provider.contains("veterinaryDirectoryRepository"))
         assertTrue(provider.contains("MockVeterinaryDirectoryRepository"))
-        assertFalse(provider.contains("SupabaseVeterinary"))
-        val block = provider.substringAfter("m12VeterinaryStore").substringBefore("serviceRepository")
-        assertFalse(block.contains("if (useSupabase)"))
-        assertFalse(block.contains("Supabase"))
+        assertTrue(provider.contains("SupabaseVeterinaryDirectoryRepository"))
+        assertTrue(provider.contains("if (useSupabase)"))
+        assertFalse(provider.contains("service_role"))
+        val remote = readSource(
+            "app/src/main/java/com/comunidapp/app/data/remote/supabase/m12/SupabaseVeterinaryM12RemoteDataSource.kt"
+        )
+        assertTrue(remote.contains("m12_"))
+        assertFalse(remote.contains("service_role"))
     }
 
     @Test
@@ -186,9 +189,8 @@ class M12VeterinaryStaticGuardsTest {
             "app/src/main/java/com/comunidapp/app/data/model/VeterinaryModels.kt"
         )
         assertTrue(models.contains("service_profiles") || models.contains("ServiceProfile"))
-        val names = migrationDir().listFiles()?.map { it.name }.orEmpty()
-        assertFalse(names.any { it.startsWith("046_") })
-        // No DROP of service_profiles in any new file — there is no new SQL.
+        val sql046 = File(migrationDir(), "046_m12_veterinary_profiles_and_services.sql").readText()
+        assertFalse(Regex("drop\\s+table\\s+.*service_profiles", RegexOption.IGNORE_CASE).containsMatchIn(sql046))
         assertTrue(immutableMigrations.isNotEmpty())
     }
 }
