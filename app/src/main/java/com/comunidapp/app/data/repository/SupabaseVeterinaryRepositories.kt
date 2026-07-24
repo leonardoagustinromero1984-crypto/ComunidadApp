@@ -1,8 +1,14 @@
 package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.VeterinaryAppointment
+import com.comunidapp.app.data.model.VeterinaryAppointmentOperationalMetrics
 import com.comunidapp.app.data.model.VeterinaryAppointmentSlot
+import com.comunidapp.app.data.model.VeterinaryAppointmentStatus
 import com.comunidapp.app.data.model.VeterinaryAppointmentStatusHistory
+import com.comunidapp.app.data.model.VeterinaryAppointmentTimelineStep
+import com.comunidapp.app.data.model.VeterinaryReminderSchedule
+import com.comunidapp.app.data.model.VeterinaryReminderState
+import com.comunidapp.app.data.model.VeterinaryReminderType
 import com.comunidapp.app.data.model.VeterinaryAvailabilityException
 import com.comunidapp.app.data.model.VeterinaryAvailabilityRule
 import com.comunidapp.app.data.model.VeterinaryClinicProfile
@@ -18,6 +24,7 @@ import com.comunidapp.app.data.remote.supabase.m12.M12VeterinaryErrorMapper
 import com.comunidapp.app.data.remote.supabase.m12.M12VeterinaryException
 import com.comunidapp.app.data.remote.supabase.m12.SupabaseVeterinaryM12RemoteDataSource
 import com.comunidapp.app.data.remote.supabase.m12.toDomain
+import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
@@ -719,5 +726,72 @@ class SupabaseVeterinaryAppointmentRepository(
             runCatching { remote.listAppointmentHistory(appointmentId).map { it.toDomain() } }
                 .getOrElse { emptyList() }
         )
+    }
+
+    // --- Bloque 4 — recordatorios (sin infraestructura remota real en M12) ---
+
+    override suspend fun prepareRemindersForConfirmed(
+        appointmentId: String
+    ): Result<VeterinaryReminderSchedule> =
+        M12VeterinaryErrorMapper.fail("VETERINARY_REMINDER_INFRASTRUCTURE_UNAVAILABLE")
+
+    override suspend fun cancelReminders(
+        appointmentId: String,
+        reason: String?
+    ): Result<VeterinaryReminderSchedule> =
+        M12VeterinaryErrorMapper.fail("VETERINARY_REMINDER_INFRASTRUCTURE_UNAVAILABLE")
+
+    override suspend fun fireDueReminder(
+        appointmentId: String,
+        type: VeterinaryReminderType,
+        now: Instant
+    ): Result<VeterinaryReminderState> =
+        M12VeterinaryErrorMapper.fail("VETERINARY_REMINDER_INFRASTRUCTURE_UNAVAILABLE")
+
+    override fun observeReminderSchedule(
+        appointmentId: String
+    ): Flow<VeterinaryReminderSchedule?> = flow { emit(null) }
+
+    override suspend fun getOperationalMetrics(
+        clinicId: String,
+        from: Instant,
+        to: Instant,
+        serviceId: String?,
+        professionalId: String?
+    ): Result<VeterinaryAppointmentOperationalMetrics> {
+        if (!from.isBefore(to)) {
+            return M12VeterinaryErrorMapper.fail("VETERINARY_APPOINTMENT_METRICS_INVALID_RANGE")
+        }
+        // Sin RPC de métricas en 047: no computamos en el cliente.
+        return M12VeterinaryErrorMapper.fail("VETERINARY_REPOSITORY_FAILURE")
+    }
+
+    override fun buildTimeline(
+        appointmentId: String,
+        isManager: Boolean
+    ): Result<List<VeterinaryAppointmentTimelineStep>> =
+        M12VeterinaryErrorMapper.fail("VETERINARY_REPOSITORY_FAILURE")
+
+    override suspend fun retrySafeTransition(
+        appointmentId: String,
+        expectedFrom: VeterinaryAppointmentStatus,
+        action: VeterinaryRetryAction
+    ): Result<VeterinaryAppointment> = try {
+        val current = remote.getAppointment(appointmentId).toDomain()
+        if (current.status != expectedFrom) {
+            throw M12VeterinaryException(
+                "VETERINARY_APPOINTMENT_RETRY_CONFLICT",
+                M12VeterinaryErrorMapper.userMessage("VETERINARY_APPOINTMENT_RETRY_CONFLICT")
+            )
+        }
+        when (action) {
+            VeterinaryRetryAction.CONFIRM -> confirmAppointment(appointmentId)
+            VeterinaryRetryAction.REJECT -> rejectAppointment(appointmentId, "")
+            VeterinaryRetryAction.CANCEL_MY -> cancelMyAppointment(appointmentId, null)
+            VeterinaryRetryAction.CANCEL_MANAGED -> cancelManagedAppointment(appointmentId, null)
+            VeterinaryRetryAction.EXPIRE -> expireAppointment(appointmentId)
+        }
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
     }
 }

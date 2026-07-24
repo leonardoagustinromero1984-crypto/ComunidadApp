@@ -136,8 +136,87 @@ object VeterinaryAppointmentM06Hooks {
     const val CONFIRMED = "VETERINARY_APPOINTMENT_CONFIRMED"
     const val REJECTED = "VETERINARY_APPOINTMENT_REJECTED"
     const val CANCELLED = "VETERINARY_APPOINTMENT_CANCELLED"
-    const val REMINDER_DUE = "VETERINARY_APPOINTMENT_REMINDER_DUE"
+
+    /** Compat Bloque 3 — mapea a REMINDER_24H_DUE en Bloque 4. */
+    const val REMINDER_DUE = "VETERINARY_APPOINTMENT_REMINDER_24H_DUE"
+    const val REMINDER_24H_DUE = "VETERINARY_APPOINTMENT_REMINDER_24H_DUE"
+    const val REMINDER_2H_DUE = "VETERINARY_APPOINTMENT_REMINDER_2H_DUE"
+    const val REMINDER_CANCELLED = "VETERINARY_APPOINTMENT_REMINDER_CANCELLED"
+    const val REMINDER_INFRASTRUCTURE = "VETERINARY_APPOINTMENT_REMINDER_INFRASTRUCTURE"
     const val COMPLETED = "VETERINARY_APPOINTMENT_COMPLETED"
+}
+
+// --- M12 Bloque 4 — recordatorios (sin push real), métricas y timeline ---
+
+enum class VeterinaryReminderType { REMINDER_24H, REMINDER_2H }
+
+enum class VeterinaryReminderDeliveryStatus {
+    /** Hook registrado, push NO entregado (Bloque 4 no reclama push real). */
+    PREPARED,
+
+    /** Vencimiento disparado local/idempotente, sin reclamo de push. */
+    FIRED_PREPARED,
+    CANCELLED,
+    NOT_ELIGIBLE
+}
+
+data class VeterinaryReminderState(
+    val appointmentId: String,
+    val type: VeterinaryReminderType,
+    val dueAt: Instant,
+    val status: VeterinaryReminderDeliveryStatus,
+    val timezoneName: String,
+    /** Siempre false en B4 — no hay push real. */
+    val pushClaimed: Boolean = false
+)
+
+data class VeterinaryReminderSchedule(
+    val appointmentId: String,
+    val reminders: List<VeterinaryReminderState>,
+    /** false cuando la infraestructura push M06 no está disponible para M12. */
+    val infrastructureAvailable: Boolean
+)
+
+data class VeterinaryAppointmentOperationalMetrics(
+    val clinicId: String,
+    val from: Instant,
+    val to: Instant,
+    val requested: Int,
+    val confirmed: Int,
+    val rejected: Int,
+    val cancelledByUser: Int,
+    val cancelledByClinic: Int,
+    val completed: Int,
+    val noShow: Int,
+    val expired: Int,
+    /**
+     * Ocupación en [0.0, 1.0]:
+     * confirmed+completed sobre el total de turnos de la ventana (por startsAt).
+     * occupancy = (confirmed+completed) / max(1, requested+confirmed+rejected+
+     *   cancelledByUser+cancelledByClinic+completed+noShow+expired)
+     */
+    val occupancyRate: Double,
+    /** null si no hubo confirmaciones en la ventana. */
+    val averageConfirmationMinutes: Double?
+)
+
+data class VeterinaryAppointmentTimelineStep(
+    val status: VeterinaryAppointmentStatus,
+    val at: Instant,
+    val label: String,
+    val reason: String? = null
+)
+
+object VeterinaryAppointmentFollowUp {
+    fun nextStep(status: VeterinaryAppointmentStatus, isManager: Boolean): String = when (status) {
+        VeterinaryAppointmentStatus.REQUESTED ->
+            if (isManager) "Confirmá o rechazá la solicitud."
+            else "Esperá la confirmación de la clínica."
+        VeterinaryAppointmentStatus.CONFIRMED ->
+            if (isManager) "Registrá asistencia o no-show cuando corresponda."
+            else "Podés cancelar dentro de la ventana permitida."
+        else -> "Este turno ya está finalizado."
+    }
 }
 
 object VeterinarySchedulePermissionCodes {

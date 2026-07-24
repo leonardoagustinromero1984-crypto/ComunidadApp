@@ -3,16 +3,23 @@ package com.comunidapp.app.data.repository
 import com.comunidapp.app.data.model.VeterinaryAppointment
 import com.comunidapp.app.data.model.VeterinaryAppointmentAuditEvents
 import com.comunidapp.app.data.model.VeterinaryAppointmentM06Hooks
+import com.comunidapp.app.data.model.VeterinaryAppointmentOperationalMetrics
 import com.comunidapp.app.data.model.VeterinaryAppointmentSlot
 import com.comunidapp.app.data.model.VeterinaryAppointmentStatus
 import com.comunidapp.app.data.model.VeterinaryAppointmentStatusHistory
+import com.comunidapp.app.data.model.VeterinaryAppointmentTimelineStep
 import com.comunidapp.app.data.model.VeterinaryAvailabilityException
 import com.comunidapp.app.data.model.VeterinaryAvailabilityExceptionType
 import com.comunidapp.app.data.model.VeterinaryAvailabilityRule
+import com.comunidapp.app.data.model.VeterinaryReminderDeliveryStatus
+import com.comunidapp.app.data.model.VeterinaryReminderSchedule
+import com.comunidapp.app.data.model.VeterinaryReminderState
+import com.comunidapp.app.data.model.VeterinaryReminderType
 import com.comunidapp.app.data.model.VeterinaryScheduleSettings
 import com.comunidapp.app.data.remote.supabase.m12.M12VeterinaryErrorMapper
 import com.comunidapp.app.data.remote.supabase.m12.M12VeterinaryException
 import java.time.DayOfWeek
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
@@ -55,6 +62,15 @@ private val storePetAuthorizedActors =
 private val storePetOrgCustody =
     mutableMapOf<M12VeterinaryMemoryStore, MutableStateFlow<Map<String, String>>>()
 
+// --- Store extensions (Bloque 4) — recordatorios (sin push real) e infraestructura M06 ---
+
+private val storeReminderStates =
+    mutableMapOf<M12VeterinaryMemoryStore, MutableStateFlow<Map<String, List<VeterinaryReminderState>>>>()
+private val storeReminderIdempotency =
+    mutableMapOf<M12VeterinaryMemoryStore, MutableStateFlow<Set<String>>>()
+private val storeM06InfrastructureAvailable =
+    mutableMapOf<M12VeterinaryMemoryStore, MutableStateFlow<Boolean>>()
+
 /** clinicId → configuración de agenda persistida. */
 val M12VeterinaryMemoryStore.scheduleSettings: MutableStateFlow<Map<String, VeterinaryScheduleSettings>>
     get() = storeScheduleSettings.getOrPut(this) { MutableStateFlow(emptyMap()) }
@@ -79,6 +95,22 @@ val M12VeterinaryMemoryStore.petAuthorizedActors: MutableStateFlow<Map<String, S
 val M12VeterinaryMemoryStore.petOrgCustody: MutableStateFlow<Map<String, String>>
     get() = storePetOrgCustody.getOrPut(this) { MutableStateFlow(emptyMap()) }
 
+/** appointmentId → recordatorios preparados (PREPARED/FIRED_PREPARED/CANCELLED). */
+val M12VeterinaryMemoryStore.reminderStates: MutableStateFlow<Map<String, List<VeterinaryReminderState>>>
+    get() = storeReminderStates.getOrPut(this) { MutableStateFlow(emptyMap()) }
+
+/** Claves de idempotencia "appointmentId|TYPE" ya programadas. */
+val M12VeterinaryMemoryStore.reminderIdempotency: MutableStateFlow<Set<String>>
+    get() = storeReminderIdempotency.getOrPut(this) { MutableStateFlow(emptySet()) }
+
+/**
+ * Infraestructura push M06 disponible para M12. Cuando es false, `prepareReminders`
+ * sigue creando estados PREPARED pero con `infrastructureAvailable=false` (nunca hay
+ * reclamo de push real en el Bloque 4).
+ */
+val M12VeterinaryMemoryStore.m06InfrastructureAvailable: MutableStateFlow<Boolean>
+    get() = storeM06InfrastructureAvailable.getOrPut(this) { MutableStateFlow(true) }
+
 fun M12VeterinaryMemoryStore.clearBlock3() {
     scheduleSettings.value = emptyMap()
     availabilityRules.value = emptyList()
@@ -87,6 +119,13 @@ fun M12VeterinaryMemoryStore.clearBlock3() {
     appointmentHistory.value = emptyList()
     petAuthorizedActors.value = emptyMap()
     petOrgCustody.value = emptyMap()
+    clearBlock4()
+}
+
+fun M12VeterinaryMemoryStore.clearBlock4() {
+    reminderStates.value = emptyMap()
+    reminderIdempotency.value = emptySet()
+    m06InfrastructureAvailable.value = true
 }
 
 // --- Autoridad (misma fuente que Bloque 2: orgManagers / orgViewers) ---
@@ -161,6 +200,9 @@ data class ManagedVeterinaryAvailability(
     val exceptions: List<VeterinaryAvailabilityException>
 )
 
+/** Acciones idempotentes de transición usadas por [VeterinaryAppointmentRepository.retrySafeTransition]. */
+enum class VeterinaryRetryAction { CONFIRM, REJECT, CANCEL_MY, CANCEL_MANAGED, EXPIRE }
+
 // --- Contratos ---
 
 interface VeterinaryScheduleRepository {
@@ -204,6 +246,52 @@ interface VeterinaryAppointmentRepository {
     suspend fun markNoShow(appointmentId: String): Result<VeterinaryAppointment>
     suspend fun expireAppointment(appointmentId: String): Result<VeterinaryAppointment>
     fun observeAppointmentHistory(appointmentId: String): Flow<List<VeterinaryAppointmentStatusHistory>>
+
+    // --- Bloque 4 — recordatorios (sin push real), métricas y timeline ---
+    suspend fun prepareRemindersForConfirmed(appointmentId: String): Result<VeterinaryReminderSchedule>
+    suspend fun cancelReminders(
+        appointmentId: String,
+        reason: String? = null
+    ): Result<VeterinaryReminderSchedule>
+    suspend fun fireDueReminder(
+        appointmentId: String,
+        type: VeterinaryReminderType,
+        now: Instant = Instant.now()
+    ): Result<VeterinaryReminderState>
+    fun observeReminderSchedule(appointmentId: String): Flow<VeterinaryReminderSchedule?>
+    suspend fun getOperationalMetrics(
+        clinicId: String,
+        from: Instant,
+        to: Instant,
+        serviceId: String? = null,
+        professionalId: String? = null
+    ): Result<VeterinaryAppointmentOperationalMetrics>
+    fun buildTimeline(
+        appointmentId: String,
+        isManager: Boolean
+    ): Result<List<VeterinaryAppointmentTimelineStep>>
+    suspend fun retrySafeTransition(
+        appointmentId: String,
+        expectedFrom: VeterinaryAppointmentStatus,
+        action: VeterinaryRetryAction
+    ): Result<VeterinaryAppointment>
+}
+
+/**
+ * Redacta un turno según el observador: quita la nota operativa de clínica a quien no
+ * gestiona y la nota de solicitud a extraños (ni solicitante ni manager).
+ */
+fun redactAppointmentForViewer(
+    appointment: VeterinaryAppointment,
+    actor: String,
+    isManager: Boolean
+): VeterinaryAppointment {
+    if (isManager) return appointment
+    val isRequester = appointment.requesterUserId == actor
+    return appointment.copy(
+        clinicOperationalNote = null,
+        requestNote = if (isRequester) appointment.requestNote else null
+    )
 }
 
 // --- Helpers de dominio ---
@@ -257,6 +345,8 @@ private fun computeSlots(
     exceptions: List<VeterinaryAvailabilityException>,
     appts: List<VeterinaryAppointment>
 ): List<VeterinaryAppointmentSlot> {
+    // La zona resuelve el instante de cada slot con reglas de DST correctas
+    // (p. ej. America/Santiago cruza transiciones; America/Argentina/Buenos_Aires no).
     val zone = zoneOf(settings)
     val dayOfWeek = date.dayOfWeek
     val matchingRules = rules.filter { rule ->
@@ -379,10 +469,26 @@ class MockVeterinaryScheduleRepository(
             ?: failM12b3("VETERINARY_CLINIC_NOT_FOUND")
         if (!store.canManageB3(actor, clinic.organizationId)) failM12b3("VETERINARY_CLINIC_FORBIDDEN")
         validateScheduleSettings(settings)
+        val previous = store.scheduleSettings.value[settings.clinicId]
         store.scheduleSettings.value = store.scheduleSettings.value + (settings.clinicId to settings)
         store.recordAudit("VETERINARY_SCHEDULE_SETTINGS_UPDATED", settings.clinicId)
+        // Los turnos guardan Instant absoluto: al cambiar la zona no se recalculan, pero los
+        // slots proyectados usan la nueva zona (soporta DST). Solo dejamos rastro auditable.
+        if (previous != null && previous.timezoneName != settings.timezoneName) {
+            noteTimezoneChanged(settings.clinicId)
+        }
         settings
     }.fold({ Result.success(it) }, { M12VeterinaryErrorMapper.failure(it) })
+
+    /** Registra auditoría si hay turnos abiertos al cambiar la zona horaria de la clínica. */
+    fun noteTimezoneChanged(clinicId: String) {
+        val hasOpen = store.appointments.value.any {
+            it.clinicId == clinicId &&
+                (it.status == VeterinaryAppointmentStatus.REQUESTED ||
+                    it.status == VeterinaryAppointmentStatus.CONFIRMED)
+        }
+        if (hasOpen) store.recordAudit("VETERINARY_APPOINTMENT_TIMEZONE_CHANGED", clinicId)
+    }
 
     override fun observeManagedAvailability(clinicId: String): Flow<ManagedVeterinaryAvailability> =
         combine(store.availabilityRules, store.availabilityExceptions) { rules, exceptions ->
@@ -836,6 +942,14 @@ class MockVeterinaryAppointmentRepository(
         appendHistory(appointment.id, appointment.status, to, changedBy, reason, now)
         store.recordAudit(auditEvent, appointment.id)
         if (m06Hook != null) store.recordM06Hook(m06Hook)
+        // Al salir de CONFIRMED por cancelación/rechazo/expiración, cancelamos recordatorios.
+        val cancelsReminders = to == VeterinaryAppointmentStatus.CANCELLED_BY_USER ||
+            to == VeterinaryAppointmentStatus.CANCELLED_BY_CLINIC ||
+            to == VeterinaryAppointmentStatus.EXPIRED ||
+            to == VeterinaryAppointmentStatus.REJECTED
+        if (appointment.status == VeterinaryAppointmentStatus.CONFIRMED && cancelsReminders) {
+            cancelRemindersInternal(appointment.id)
+        }
         return updated
     }
 
@@ -850,10 +964,25 @@ class MockVeterinaryAppointmentRepository(
             if (!appointment.startsAt.isAfter(Instant.now())) {
                 failM12b3("VETERINARY_APPOINTMENT_PAST_SLOT")
             }
-            applyTransition(
+            val service = store.services.value.find { it.id == appointment.serviceId }
+            if (service == null || !service.active) {
+                failM12b3("VETERINARY_APPOINTMENT_SERVICE_INACTIVE")
+            }
+            if (appointment.professionalId != null) {
+                val linked = store.clinicProfessionalLinks.value.any {
+                    it.clinicId == appointment.clinicId &&
+                        it.professionalId == appointment.professionalId &&
+                        it.active
+                }
+                if (!linked) failM12b3("VETERINARY_APPOINTMENT_PROFESSIONAL_INACTIVE")
+            }
+            val updated = applyTransition(
                 appointment, VeterinaryAppointmentStatus.CONFIRMED, actor, null,
                 VeterinaryAppointmentAuditEvents.CONFIRMED, VeterinaryAppointmentM06Hooks.CONFIRMED
             )
+            // Hardening: al confirmar, preparamos los recordatorios (idempotente, sin push real).
+            prepareRemindersInternal(updated)
+            updated
         }.fold({ Result.success(it) }, { M12VeterinaryErrorMapper.failure(it) })
 
     override suspend fun rejectAppointment(
@@ -971,4 +1100,287 @@ class MockVeterinaryAppointmentRepository(
         store.appointmentHistory.map { list ->
             list.filter { it.appointmentId == appointmentId }.sortedBy { it.changedAt }
         }
+
+    // --- Bloque 4 — recordatorios (sin push real) ---
+
+    private fun idempoKey(appointmentId: String, type: VeterinaryReminderType): String =
+        "$appointmentId|${type.name}"
+
+    private fun dueAtFor(startsAt: Instant, type: VeterinaryReminderType): Instant = when (type) {
+        VeterinaryReminderType.REMINDER_24H -> startsAt.minusSeconds(24L * 3600L)
+        VeterinaryReminderType.REMINDER_2H -> startsAt.minusSeconds(2L * 3600L)
+    }
+
+    private fun hookFor(type: VeterinaryReminderType): String = when (type) {
+        VeterinaryReminderType.REMINDER_24H -> VeterinaryAppointmentM06Hooks.REMINDER_24H_DUE
+        VeterinaryReminderType.REMINDER_2H -> VeterinaryAppointmentM06Hooks.REMINDER_2H_DUE
+    }
+
+    /**
+     * Prepara (idempotente) los recordatorios 24h/2h de un turno CONFIRMED.
+     * Payload de hooks: solo appointmentId + type + dueAt (sin nota, email ni teléfono).
+     * Nunca reclama push real (pushClaimed=false).
+     */
+    private fun prepareRemindersInternal(appointment: VeterinaryAppointment): VeterinaryReminderSchedule {
+        val settings = store.settingsFor(appointment.clinicId)
+        val tz = settings.timezoneName
+        val infra = store.m06InfrastructureAvailable.value
+        val current = store.reminderStates.value[appointment.id].orEmpty().toMutableList()
+        var idempo = store.reminderIdempotency.value
+
+        for (type in VeterinaryReminderType.entries) {
+            val key = idempoKey(appointment.id, type)
+            val existing = current.firstOrNull { it.type == type }
+            if (existing != null && key in idempo) continue // ya programado: no duplicar
+            current.removeAll { it.type == type }
+            current += VeterinaryReminderState(
+                appointmentId = appointment.id,
+                type = type,
+                dueAt = dueAtFor(appointment.startsAt, type),
+                status = VeterinaryReminderDeliveryStatus.PREPARED,
+                timezoneName = tz,
+                pushClaimed = false
+            )
+            idempo = idempo + key
+            store.recordM06Hook(hookFor(type))
+            store.recordAudit(hookFor(type), appointment.id)
+            if (!infra) store.recordM06Hook(VeterinaryAppointmentM06Hooks.REMINDER_INFRASTRUCTURE)
+        }
+        store.reminderStates.value = store.reminderStates.value + (appointment.id to current)
+        store.reminderIdempotency.value = idempo
+        return VeterinaryReminderSchedule(
+            appointmentId = appointment.id,
+            reminders = current.sortedBy { it.dueAt },
+            infrastructureAvailable = infra
+        )
+    }
+
+    /** Cancela (idempotente) los recordatorios de un turno; registra REMINDER_CANCELLED una vez. */
+    private fun cancelRemindersInternal(appointmentId: String): VeterinaryReminderSchedule {
+        val infra = store.m06InfrastructureAvailable.value
+        val current = store.reminderStates.value[appointmentId].orEmpty()
+        val alreadyAllCancelled = current.isNotEmpty() &&
+            current.all { it.status == VeterinaryReminderDeliveryStatus.CANCELLED }
+        if (current.isEmpty() || alreadyAllCancelled) {
+            return VeterinaryReminderSchedule(appointmentId, current.sortedBy { it.dueAt }, infra)
+        }
+        val cancelled = current.map {
+            it.copy(status = VeterinaryReminderDeliveryStatus.CANCELLED)
+        }
+        store.reminderStates.value = store.reminderStates.value + (appointmentId to cancelled)
+        store.recordM06Hook(VeterinaryAppointmentM06Hooks.REMINDER_CANCELLED)
+        store.recordAudit(VeterinaryAppointmentM06Hooks.REMINDER_CANCELLED, appointmentId)
+        return VeterinaryReminderSchedule(appointmentId, cancelled.sortedBy { it.dueAt }, infra)
+    }
+
+    private fun requireViewer(appointment: VeterinaryAppointment, actor: String): Boolean {
+        val clinicOrg = store.clinics.value.find { it.id == appointment.clinicId }?.organizationId
+        val manager = clinicOrg != null && store.canManageB3(actor, clinicOrg)
+        val requester = appointment.requesterUserId == actor
+        if (!manager && !requester) failM12b3("VETERINARY_APPOINTMENT_FORBIDDEN")
+        return manager
+    }
+
+    override suspend fun prepareRemindersForConfirmed(
+        appointmentId: String
+    ): Result<VeterinaryReminderSchedule> = runCatching {
+        if (store.forceFailure) failM12b3("VETERINARY_REPOSITORY_FAILURE")
+        val actor = actorUserId() ?: failM12b3("NOT_AUTHENTICATED")
+        val appointment = store.appointments.value.find { it.id == appointmentId }
+            ?: failM12b3("VETERINARY_APPOINTMENT_NOT_FOUND")
+        requireViewer(appointment, actor)
+        if (appointment.status != VeterinaryAppointmentStatus.CONFIRMED) {
+            failM12b3("VETERINARY_REMINDER_NOT_ELIGIBLE")
+        }
+        prepareRemindersInternal(appointment)
+    }.fold({ Result.success(it) }, { M12VeterinaryErrorMapper.failure(it) })
+
+    override suspend fun cancelReminders(
+        appointmentId: String,
+        reason: String?
+    ): Result<VeterinaryReminderSchedule> = runCatching {
+        if (store.forceFailure) failM12b3("VETERINARY_REPOSITORY_FAILURE")
+        val actor = actorUserId() ?: failM12b3("NOT_AUTHENTICATED")
+        val appointment = store.appointments.value.find { it.id == appointmentId }
+            ?: failM12b3("VETERINARY_APPOINTMENT_NOT_FOUND")
+        requireViewer(appointment, actor)
+        cancelRemindersInternal(appointmentId)
+    }.fold({ Result.success(it) }, { M12VeterinaryErrorMapper.failure(it) })
+
+    override suspend fun fireDueReminder(
+        appointmentId: String,
+        type: VeterinaryReminderType,
+        now: Instant
+    ): Result<VeterinaryReminderState> = runCatching {
+        if (store.forceFailure) failM12b3("VETERINARY_REPOSITORY_FAILURE")
+        val actor = actorUserId() ?: failM12b3("NOT_AUTHENTICATED")
+        val appointment = store.appointments.value.find { it.id == appointmentId }
+            ?: failM12b3("VETERINARY_APPOINTMENT_NOT_FOUND")
+        requireViewer(appointment, actor)
+        if (appointment.status != VeterinaryAppointmentStatus.CONFIRMED) {
+            failM12b3("VETERINARY_REMINDER_NOT_ELIGIBLE")
+        }
+        val states = store.reminderStates.value[appointmentId].orEmpty()
+        val state = states.firstOrNull { it.type == type }
+            ?: failM12b3("VETERINARY_REMINDER_NOT_ELIGIBLE")
+        when (state.status) {
+            VeterinaryReminderDeliveryStatus.CANCELLED,
+            VeterinaryReminderDeliveryStatus.NOT_ELIGIBLE ->
+                failM12b3("VETERINARY_REMINDER_NOT_ELIGIBLE")
+            VeterinaryReminderDeliveryStatus.FIRED_PREPARED ->
+                failM12b3("VETERINARY_REMINDER_ALREADY_SCHEDULED")
+            VeterinaryReminderDeliveryStatus.PREPARED -> Unit
+        }
+        if (state.dueAt.isAfter(now)) failM12b3("VETERINARY_REMINDER_NOT_ELIGIBLE")
+        val fired = state.copy(
+            status = VeterinaryReminderDeliveryStatus.FIRED_PREPARED,
+            pushClaimed = false
+        )
+        store.reminderStates.value = store.reminderStates.value +
+            (appointmentId to states.map { if (it.type == type) fired else it })
+        store.recordM06Hook(hookFor(type))
+        store.recordAudit(hookFor(type), appointmentId)
+        fired
+    }.fold({ Result.success(it) }, { M12VeterinaryErrorMapper.failure(it) })
+
+    override fun observeReminderSchedule(appointmentId: String): Flow<VeterinaryReminderSchedule?> =
+        combine(store.reminderStates, store.m06InfrastructureAvailable) { statesMap, infra ->
+            val states = statesMap[appointmentId] ?: return@combine null
+            VeterinaryReminderSchedule(appointmentId, states.sortedBy { it.dueAt }, infra)
+        }
+
+    // --- Bloque 4 — métricas operativas ---
+
+    override suspend fun getOperationalMetrics(
+        clinicId: String,
+        from: Instant,
+        to: Instant,
+        serviceId: String?,
+        professionalId: String?
+    ): Result<VeterinaryAppointmentOperationalMetrics> = runCatching {
+        if (store.forceFailure) failM12b3("VETERINARY_REPOSITORY_FAILURE")
+        val actor = actorUserId() ?: failM12b3("NOT_AUTHENTICATED")
+        val clinicOrg = store.clinics.value.find { it.id == clinicId }?.organizationId
+            ?: failM12b3("VETERINARY_CLINIC_NOT_FOUND")
+        if (!store.canManageB3(actor, clinicOrg)) failM12b3("VETERINARY_APPOINTMENT_FORBIDDEN")
+        if (!from.isBefore(to)) failM12b3("VETERINARY_APPOINTMENT_METRICS_INVALID_RANGE")
+
+        val windowAppts = store.appointments.value.filter { a ->
+            a.clinicId == clinicId &&
+                !a.startsAt.isBefore(from) && a.startsAt.isBefore(to) &&
+                (serviceId == null || a.serviceId == serviceId) &&
+                (professionalId == null || a.professionalId == professionalId)
+        }
+        fun count(status: VeterinaryAppointmentStatus) = windowAppts.count { it.status == status }
+        val requested = count(VeterinaryAppointmentStatus.REQUESTED)
+        val confirmed = count(VeterinaryAppointmentStatus.CONFIRMED)
+        val rejected = count(VeterinaryAppointmentStatus.REJECTED)
+        val cancelledByUser = count(VeterinaryAppointmentStatus.CANCELLED_BY_USER)
+        val cancelledByClinic = count(VeterinaryAppointmentStatus.CANCELLED_BY_CLINIC)
+        val completed = count(VeterinaryAppointmentStatus.COMPLETED)
+        val noShow = count(VeterinaryAppointmentStatus.NO_SHOW)
+        val expired = count(VeterinaryAppointmentStatus.EXPIRED)
+
+        val denominator = requested + confirmed + rejected + cancelledByUser +
+            cancelledByClinic + completed + noShow + expired
+        val occupancyRate = (confirmed + completed).toDouble() / maxOf(1, denominator)
+
+        val history = store.appointmentHistory.value
+        val confirmationMinutes = windowAppts.mapNotNull { appt ->
+            val entries = history.filter { it.appointmentId == appt.id }
+            val requestedAt = entries
+                .filter { it.toStatus == VeterinaryAppointmentStatus.REQUESTED }
+                .minByOrNull { it.changedAt }?.changedAt
+            val confirmedAt = entries
+                .filter { it.toStatus == VeterinaryAppointmentStatus.CONFIRMED }
+                .minByOrNull { it.changedAt }?.changedAt
+            if (requestedAt != null && confirmedAt != null && !confirmedAt.isBefore(requestedAt)) {
+                Duration.between(requestedAt, confirmedAt).toMillis() / 60000.0
+            } else {
+                null
+            }
+        }
+        val averageConfirmationMinutes =
+            if (confirmationMinutes.isEmpty()) null else confirmationMinutes.average()
+
+        VeterinaryAppointmentOperationalMetrics(
+            clinicId = clinicId,
+            from = from,
+            to = to,
+            requested = requested,
+            confirmed = confirmed,
+            rejected = rejected,
+            cancelledByUser = cancelledByUser,
+            cancelledByClinic = cancelledByClinic,
+            completed = completed,
+            noShow = noShow,
+            expired = expired,
+            occupancyRate = occupancyRate,
+            averageConfirmationMinutes = averageConfirmationMinutes
+        )
+    }.fold({ Result.success(it) }, { M12VeterinaryErrorMapper.failure(it) })
+
+    // --- Bloque 4 — timeline ---
+
+    private fun timelineLabel(status: VeterinaryAppointmentStatus): String = when (status) {
+        VeterinaryAppointmentStatus.REQUESTED -> "Turno solicitado"
+        VeterinaryAppointmentStatus.CONFIRMED -> "Turno confirmado"
+        VeterinaryAppointmentStatus.REJECTED -> "Turno rechazado"
+        VeterinaryAppointmentStatus.CANCELLED_BY_USER -> "Cancelado por el usuario"
+        VeterinaryAppointmentStatus.CANCELLED_BY_CLINIC -> "Cancelado por la clínica"
+        VeterinaryAppointmentStatus.COMPLETED -> "Turno realizado"
+        VeterinaryAppointmentStatus.NO_SHOW -> "No asistió"
+        VeterinaryAppointmentStatus.EXPIRED -> "Turno vencido"
+        VeterinaryAppointmentStatus.UNKNOWN -> "Estado desconocido"
+    }
+
+    override fun buildTimeline(
+        appointmentId: String,
+        isManager: Boolean
+    ): Result<List<VeterinaryAppointmentTimelineStep>> = runCatching {
+        if (store.forceFailure) failM12b3("VETERINARY_REPOSITORY_FAILURE")
+        val actor = actorUserId() ?: failM12b3("NOT_AUTHENTICATED")
+        val appointment = store.appointments.value.find { it.id == appointmentId }
+            ?: failM12b3("VETERINARY_APPOINTMENT_NOT_FOUND")
+        val manager = requireViewer(appointment, actor)
+        // Solo un manager real ve motivos de rechazo/cancelación de clínica en el timeline.
+        val effectiveManager = isManager && manager
+        store.appointmentHistory.value
+            .filter { it.appointmentId == appointmentId }
+            .sortedBy { it.changedAt }
+            .map { entry ->
+                val reason = when {
+                    effectiveManager -> entry.reason
+                    entry.toStatus == VeterinaryAppointmentStatus.CANCELLED_BY_USER -> entry.reason
+                    else -> null // el solicitante no ve notas operativas de la clínica
+                }
+                VeterinaryAppointmentTimelineStep(
+                    status = entry.toStatus,
+                    at = entry.changedAt,
+                    label = timelineLabel(entry.toStatus),
+                    reason = reason
+                )
+            }
+    }.fold({ Result.success(it) }, { M12VeterinaryErrorMapper.failure(it) })
+
+    // --- Bloque 4 — transición idempotente con guardia de conflicto ---
+
+    override suspend fun retrySafeTransition(
+        appointmentId: String,
+        expectedFrom: VeterinaryAppointmentStatus,
+        action: VeterinaryRetryAction
+    ): Result<VeterinaryAppointment> = runCatching {
+        if (store.forceFailure) failM12b3("VETERINARY_REPOSITORY_FAILURE")
+        val appointment = store.appointments.value.find { it.id == appointmentId }
+            ?: failM12b3("VETERINARY_APPOINTMENT_NOT_FOUND")
+        if (appointment.status != expectedFrom) failM12b3("VETERINARY_APPOINTMENT_RETRY_CONFLICT")
+        val result = when (action) {
+            VeterinaryRetryAction.CONFIRM -> confirmAppointment(appointmentId)
+            VeterinaryRetryAction.REJECT -> rejectAppointment(appointmentId, "")
+            VeterinaryRetryAction.CANCEL_MY -> cancelMyAppointment(appointmentId, null)
+            VeterinaryRetryAction.CANCEL_MANAGED -> cancelManagedAppointment(appointmentId, null)
+            VeterinaryRetryAction.EXPIRE -> expireAppointment(appointmentId)
+        }
+        result.getOrThrow()
+    }.fold({ Result.success(it) }, { M12VeterinaryErrorMapper.failure(it) })
 }

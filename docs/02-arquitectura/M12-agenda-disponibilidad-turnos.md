@@ -57,6 +57,21 @@ Reserva, mis turnos, detalle, agenda gestionada, settings, reglas, gestión de t
 
 `M12VeterinaryAppointmentsTest`, `M12VeterinaryAppointmentMappingTest`, `M12VeterinaryAppointmentMigrationGuardsTest` (+ regresión B2 / M08 focalizada).
 
+## Endurecimiento (Bloque 4)
+
+- **Recordatorios preparados** (sin push): estado `PREPARED` → `FIRED_PREPARED`, `pushClaimed = false`.
+  Solo turnos `CONFIRMED`; idempotencia por turno + tipo; `dueAt` en zona IANA de la clínica.
+- **Reintento seguro:** `retrySafeTransition` no duplica efectos; expone
+  `VETERINARY_APPOINTMENT_RETRY_CONFLICT` si el estado ya cambió.
+- **Zonas horarias / DST:** el cálculo de slots y `dueAt` usa `ZoneId` real; cambios de zona en
+  settings mantienen consistentes los `Instant` de turnos abiertos.
+- **Concurrencia:** confirmación simultánea resuelve en conflicto o transición inválida; sin doble
+  transición ni doble notificación.
+- **Servicio/profesional inactivo** tras solicitar → rechazo en confirmación.
+- **Métricas agregadas sin PII** por clínica/rango/servicio/profesional; rango inválido →
+  `VETERINARY_APPOINTMENT_METRICS_INVALID_RANGE`.
+- Detalle completo en `M12-recordatorios-endurecimiento-seguimiento.md`.
+
 ## Límites
 
-Sin pagos, señas, Mercado Pago, historia clínica, diagnóstico, recetas, laboratorio, chat, video ni push real. No afirmar aplicación remota de 047.
+Sin pagos, señas, Mercado Pago, historia clínica, diagnóstico, recetas, laboratorio, chat, video ni push real. No afirmar aplicación remota de 047 más allá de la validación estructural (13/13). Smoke funcional del Bloque 3: pendiente externo.

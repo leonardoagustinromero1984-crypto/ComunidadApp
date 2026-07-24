@@ -1,8 +1,11 @@
 # M12 — Veterinarias
 
-**Estado del módulo:** Bloque 1–2 cerrados · **Bloque 3 (agenda/turnos) entregado en repo**.
+**Estado del módulo:** Bloque 1–2 cerrados · Bloque 3 entregado en repo · **Bloque 4 cerrado localmente**.
 **Migración 046:** aplicada y validada en Supabase de pruebas (Bloque 2).
-**Migración 047:** creada en repo — **no aplicada remotamente** desde Cursor.
+**Migración 047:** aplicada en Supabase de pruebas · validación **estructural** remota **13/13 PASS**.
+**Smoke funcional Bloque 3:** **pendiente externo** (diferido por decisión del usuario). No se afirma smoke aprobado.
+
+> Estado global: **M12 no está cerrado todavía**. Falta el smoke funcional remoto del Bloque 3.
 
 > Nota D01: M12 técnico (Veterinarias) ≠ M12 producto (mascotas perdidas). Ver nota en D01.
 
@@ -41,9 +44,38 @@ Modelos, fakes, directorio público, errores tipados, permisos `veterinary.*` (I
 
 Sin pagos, señas, checkout, Mercado Pago, historia clínica, diagnóstico, recetas, laboratorio, chat, video ni push real. Legacy `service_profiles` / `bookings` intactos.
 
-## Plan Bloque 4 (exacto, no iniciado)
+## Bloque 4 — recordatorios, endurecimiento y seguimiento (cerrado localmente)
 
-1. Recordatorios M06 operativos (sin inventar canal no aprobado).
-2. Endurecimiento operativo de agenda (excepciones masivas / reportes livianos si el prompt lo define).
-3. Integraciones de experiencia (seguimiento de solicitud) sin pagos ni HC.
-4. Tests + migración siguiente solo si el prompt de Bloque 4 lo exige.
+- Recordatorios idempotentes para turnos `CONFIRMED` en estado **preparado** (sin push):
+  `REMINDER_24H_DUE`, `REMINDER_2H_DUE`, `REMINDER_CANCELLED`. Nunca afirma push enviado.
+- Endurecimiento: expiración de `REQUESTED`, confirmación simultánea, doble transición,
+  ventana de cancelación, servicio/profesional inactivo al confirmar, DST/zona horaria,
+  reintento seguro (`retrySafeTransition` → `VETERINARY_APPOINTMENT_RETRY_CONFLICT`).
+- Seguimiento en UI: línea de tiempo, próximo paso, indicador de recordatorio preparado,
+  motivo de rechazo/cancelación según autoridad, reintento y recuperación de conectividad.
+- Métricas agregadas sin PII por clínica/rango/servicio/profesional.
+- **Sin migración 048** en este bloque (ver arquitectura).
+- Docs: `M12-recordatorios-endurecimiento-seguimiento.md`, `M12-validacion-bloque-4.md`.
+
+### Estado
+
+```text
+M12 BLOQUE 4 CERRADO LOCALMENTE
+M12 BLOQUE 3 SMOKE FUNCIONAL PENDIENTE EXTERNO
+Validación estructural 047: 13/13 PASS
+```
+
+No se declara `M12 CERRADO`: falta el smoke funcional remoto del Bloque 3.
+
+## Pendientes externos antes del cierre final de M12
+
+- smoke completo agenda/disponibilidad
+- solicitud mascota autorizada
+- rechazo mascota ajena
+- sobrecupo
+- confirmación/rechazo/cancelaciones
+- historial
+- privacidad requester/gestor
+- ausencia pagos e HC
+- push M06 real / cron / enqueue M12 (si aplica)
+- decisión: sin migración 048 en este bloque

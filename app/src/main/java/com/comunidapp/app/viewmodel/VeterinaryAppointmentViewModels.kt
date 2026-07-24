@@ -5,8 +5,11 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.model.VeterinaryAppointment
 import com.comunidapp.app.data.model.VeterinaryAppointmentSlot
+import com.comunidapp.app.data.model.VeterinaryAppointmentStatus
 import com.comunidapp.app.data.model.VeterinaryAppointmentStatusHistory
+import com.comunidapp.app.data.model.VeterinaryAppointmentTimelineStep
 import com.comunidapp.app.data.model.VeterinaryProfessional
+import com.comunidapp.app.data.model.VeterinaryReminderSchedule
 import com.comunidapp.app.data.model.VeterinaryScheduleSettings
 import com.comunidapp.app.data.model.VeterinaryService
 import com.comunidapp.app.data.provider.DataProvider
@@ -16,6 +19,7 @@ import com.comunidapp.app.data.repository.ManagedVeterinaryAvailability
 import com.comunidapp.app.data.repository.RequestVeterinaryAppointmentInput
 import com.comunidapp.app.data.repository.VeterinaryAppointmentRepository
 import com.comunidapp.app.data.repository.VeterinaryClinicRepository
+import com.comunidapp.app.data.repository.VeterinaryRetryAction
 import com.comunidapp.app.data.repository.VeterinaryScheduleRepository
 import com.comunidapp.app.data.repository.VeterinaryServiceRepository
 import java.time.Instant
@@ -30,6 +34,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -264,6 +269,17 @@ class VeterinaryAppointmentDetailViewModel(
         repo.observeAppointmentHistory(appointmentId)
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Línea de tiempo redactada para el solicitante (no ve notas operativas de clínica). */
+    val timeline: StateFlow<List<VeterinaryAppointmentTimelineStep>> =
+        repo.observeAppointmentHistory(appointmentId)
+            .map { repo.buildTimeline(appointmentId, isManager = false).getOrDefault(emptyList()) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Recordatorios preparados (sin push real). null si aún no hay programación. */
+    val reminders: StateFlow<VeterinaryReminderSchedule?> =
+        repo.observeReminderSchedule(appointmentId)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     init { reload() }
 
     fun reload() {
@@ -277,13 +293,20 @@ class VeterinaryAppointmentDetailViewModel(
         }
     }
 
+    /** Cancelación segura ante reintentos: si el turno cambió de estado, mapea RETRY_CONFLICT. */
     fun cancel(reason: String?) {
         if (_submitting.value) return
+        val current = (_ui.value as? VeterinaryAppointmentDetailUiState.Content)?.appointment
         viewModelScope.launch {
             _submitting.value = true
             _error.value = null
             _message.value = null
-            repo.cancelMyAppointment(appointmentId, reason?.takeIf { it.isNotBlank() })
+            val result = if (current != null) {
+                repo.retrySafeTransition(appointmentId, current.status, VeterinaryRetryAction.CANCEL_MY)
+            } else {
+                repo.cancelMyAppointment(appointmentId, reason?.takeIf { it.isNotBlank() })
+            }
+            result
                 .onSuccess {
                     _message.value = "Turno cancelado"
                     _ui.value = VeterinaryAppointmentDetailUiState.Content(it)
@@ -319,6 +342,17 @@ class VeterinaryAppointmentManagementViewModel(
         repo.observeAppointmentHistory(appointmentId)
             .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
+    /** Línea de tiempo completa para el gestor (incluye motivos operativos). */
+    val timeline: StateFlow<List<VeterinaryAppointmentTimelineStep>> =
+        repo.observeAppointmentHistory(appointmentId)
+            .map { repo.buildTimeline(appointmentId, isManager = true).getOrDefault(emptyList()) }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+    /** Recordatorios preparados (sin push real). */
+    val reminders: StateFlow<VeterinaryReminderSchedule?> =
+        repo.observeReminderSchedule(appointmentId)
+            .stateIn(viewModelScope, SharingStarted.Eagerly, null)
+
     init { reload() }
 
     fun reload() {
@@ -332,7 +366,16 @@ class VeterinaryAppointmentManagementViewModel(
         }
     }
 
-    fun confirm() = runAction { repo.confirmAppointment(appointmentId) }
+    private fun currentStatus(): VeterinaryAppointmentStatus? =
+        (_ui.value as? VeterinaryAppointmentDetailUiState.Content)?.appointment?.status
+
+    // Confirmar usa retrySafeTransition: si otro gestor confirmó primero (confirmación
+    // simultánea), el repo devuelve RETRY_CONFLICT en lugar de duplicar la transición.
+    fun confirm() {
+        val from = currentStatus() ?: return
+        runAction { repo.retrySafeTransition(appointmentId, from, VeterinaryRetryAction.CONFIRM) }
+    }
+
     fun reject(reason: String) = runAction { repo.rejectAppointment(appointmentId, reason) }
     fun cancel(reason: String?) =
         runAction { repo.cancelManagedAppointment(appointmentId, reason?.takeIf { it.isNotBlank() }) }

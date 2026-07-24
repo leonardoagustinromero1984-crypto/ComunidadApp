@@ -32,7 +32,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.VeterinaryAppointment
+import com.comunidapp.app.data.model.VeterinaryAppointmentFollowUp
 import com.comunidapp.app.data.model.VeterinaryAppointmentStatus
+import com.comunidapp.app.data.model.VeterinaryAppointmentTimelineStep
+import com.comunidapp.app.data.model.VeterinaryReminderDeliveryStatus
+import com.comunidapp.app.data.model.VeterinaryReminderSchedule
 import com.comunidapp.app.data.repository.CreateVeterinaryAvailabilityRuleInput
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.state.EmptyState
@@ -75,6 +79,67 @@ private fun statusLabel(status: VeterinaryAppointmentStatus): String = when (sta
     VeterinaryAppointmentStatus.NO_SHOW -> "No asistió"
     VeterinaryAppointmentStatus.EXPIRED -> "Vencido"
     VeterinaryAppointmentStatus.UNKNOWN -> "Desconocido"
+}
+
+private fun reminderTypeLabel(type: com.comunidapp.app.data.model.VeterinaryReminderType): String =
+    when (type) {
+        com.comunidapp.app.data.model.VeterinaryReminderType.REMINDER_24H -> "24 h antes"
+        com.comunidapp.app.data.model.VeterinaryReminderType.REMINDER_2H -> "2 h antes"
+    }
+
+/** Próximo paso sugerido según estado y rol. */
+@Composable
+private fun NextStepSection(status: VeterinaryAppointmentStatus, isManager: Boolean) {
+    Text("Próximo paso", fontWeight = FontWeight.SemiBold)
+    Text(
+        VeterinaryAppointmentFollowUp.nextStep(status, isManager),
+        style = MaterialTheme.typography.bodyMedium
+    )
+}
+
+/**
+ * Indicador de recordatorio. Nunca afirma push enviado: solo estado "preparado".
+ */
+@Composable
+private fun ReminderSection(schedule: VeterinaryReminderSchedule?) {
+    val active = schedule?.reminders?.filter {
+        it.status == VeterinaryReminderDeliveryStatus.PREPARED ||
+            it.status == VeterinaryReminderDeliveryStatus.FIRED_PREPARED
+    }.orEmpty()
+    if (active.isEmpty()) return
+    Spacer(Modifier.height(12.dp))
+    Text("Recordatorios", fontWeight = FontWeight.SemiBold)
+    Text("Recordatorio preparado (sin push)", style = MaterialTheme.typography.bodyMedium)
+    active.forEach { r ->
+        Text(
+            "• ${reminderTypeLabel(r.type)} · ${formatDateTime(r.dueAt)}",
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+    if (schedule?.infrastructureAvailable == false) {
+        Text(
+            "El envío automático depende de infraestructura externa.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+/** Línea de tiempo de estados (etiquetas y motivos ya redactados por el repositorio). */
+@Composable
+private fun TimelineSection(steps: List<VeterinaryAppointmentTimelineStep>) {
+    Text("Línea de tiempo", fontWeight = FontWeight.SemiBold)
+    if (steps.isEmpty()) {
+        Text("Sin cambios registrados.", style = MaterialTheme.typography.bodySmall)
+    } else {
+        steps.forEach { step ->
+            Text(
+                "${formatDateTime(step.at)} · ${step.label}" +
+                    (step.reason?.let { " — $it" } ?: ""),
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+    }
 }
 
 // --- Reserva de turno ---
@@ -286,7 +351,8 @@ fun VeterinaryAppointmentDetailScreen(
     )
 ) {
     val state by viewModel.uiState.collectAsState()
-    val history by viewModel.history.collectAsState()
+    val timeline by viewModel.timeline.collectAsState()
+    val reminders by viewModel.reminders.collectAsState()
     val submitting by viewModel.submitting.collectAsState()
     val error by viewModel.error.collectAsState()
     val message by viewModel.message.collectAsState()
@@ -317,8 +383,12 @@ fun VeterinaryAppointmentDetailScreen(
                         .verticalScroll(rememberScrollState())
                 ) {
                     AppointmentSummary(appt)
+                    // Motivos visibles al solicitante solo cuando existen.
                     appt.rejectionReason?.let { Text("Motivo de rechazo: $it") }
                     appt.cancellationReason?.let { Text("Motivo de cancelación: $it") }
+                    Spacer(Modifier.height(12.dp))
+                    NextStepSection(appt.status, isManager = false)
+                    ReminderSection(reminders)
                     Spacer(Modifier.height(12.dp))
                     if (canCancel) {
                         OutlinedTextField(
@@ -336,7 +406,7 @@ fun VeterinaryAppointmentDetailScreen(
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     message?.let { Text(it) }
                     Spacer(Modifier.height(12.dp))
-                    HistorySection(history)
+                    TimelineSection(timeline)
                 }
             }
         }
@@ -351,22 +421,6 @@ private fun AppointmentSummary(appt: VeterinaryAppointment) {
     Text("Servicio: ${appt.serviceId}")
     appt.professionalId?.let { Text("Profesional: $it") }
     appt.requestNote?.let { Text("Nota: $it") }
-}
-
-@Composable
-private fun HistorySection(history: List<com.comunidapp.app.data.model.VeterinaryAppointmentStatusHistory>) {
-    Text("Historial", fontWeight = FontWeight.SemiBold)
-    if (history.isEmpty()) {
-        Text("Sin cambios registrados.", style = MaterialTheme.typography.bodySmall)
-    } else {
-        history.forEach { h ->
-            Text(
-                "${formatDateTime(h.changedAt)} · ${statusLabel(h.toStatus)}" +
-                    (h.reason?.let { " — $it" } ?: ""),
-                style = MaterialTheme.typography.bodySmall
-            )
-        }
-    }
 }
 
 // --- Agenda gestionada (clínica) ---
@@ -452,7 +506,8 @@ fun VeterinaryAppointmentManagementScreen(
     )
 ) {
     val state by viewModel.uiState.collectAsState()
-    val history by viewModel.history.collectAsState()
+    val timeline by viewModel.timeline.collectAsState()
+    val reminders by viewModel.reminders.collectAsState()
     val submitting by viewModel.submitting.collectAsState()
     val error by viewModel.error.collectAsState()
     val message by viewModel.message.collectAsState()
@@ -481,6 +536,12 @@ fun VeterinaryAppointmentManagementScreen(
                         .verticalScroll(rememberScrollState())
                 ) {
                     AppointmentSummary(appt)
+                    // Gestor autorizado: ve motivos operativos cuando existen.
+                    appt.rejectionReason?.let { Text("Motivo de rechazo: $it") }
+                    appt.cancellationReason?.let { Text("Motivo de cancelación: $it") }
+                    Spacer(Modifier.height(12.dp))
+                    NextStepSection(appt.status, isManager = true)
+                    ReminderSection(reminders)
                     Spacer(Modifier.height(12.dp))
                     OutlinedTextField(
                         value = reason,
@@ -525,7 +586,7 @@ fun VeterinaryAppointmentManagementScreen(
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     message?.let { Text(it) }
                     Spacer(Modifier.height(12.dp))
-                    HistorySection(history)
+                    TimelineSection(timeline)
                 }
             }
         }
