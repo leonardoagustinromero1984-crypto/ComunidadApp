@@ -24,6 +24,18 @@ object NavRoutes {
     const val SHELTERS = "shelters"
     const val MY_PETS = "my_pets"
     const val LOST_FOUND = "lost_found"
+    const val LOST_FOUND_MAP = "lost_found_map"
+    const val PUBLISH_LOST_FOUND = "publish_lost_found"
+
+    // M13 — Avistamientos y coincidencias (enriquece Lost/Found; Bloque 1 local)
+    const val M13_SIGHTINGS = "m13/sightings"
+    const val M13_SIGHTING_NEW = "m13/sightings/new"
+    const val M13_SIGHTING_NEW_FOR_CASE = "m13/sightings/new/{caseId}"
+    const val M13_SIGHTING_DETAIL = "m13/sightings/{sightingId}"
+    const val M13_CASE_MATCHES = "m13/cases/{caseId}/matches"
+    const val M13_MATCH_DETAIL = "m13/matches/{candidateId}"
+    const val ARG_SIGHTING_ID = "sightingId"
+    const val ARG_CANDIDATE_ID = "candidateId"
 
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
@@ -156,11 +168,9 @@ object NavRoutes {
     const val PUBLISH_QUESTION = "publish_question"
     const val PUBLISH_PROMO = "publish_promo"
     const val PUBLISH_ADOPTION = "publish_adoption"
-    const val PUBLISH_LOST_FOUND = "publish_lost_found"
     const val PUBLISH_URGENT = "publish_urgent"
     const val SEARCH = "search"
     const val MY_ADOPTIONS = "my_adoptions"
-    const val LOST_FOUND_MAP = "lost_found_map"
     const val CHAT = "chat"
     const val FRIEND_REQUESTS = "friend_requests"
     const val CHAT_THREAD = "chat_thread/{conversationId}/{peerName}"
@@ -415,4 +425,13 @@ object NavRoutes {
         "support_ticket/${java.net.URLEncoder.encode(ticketId, Charsets.UTF_8.name())}"
     fun supportAdminTicket(ticketId: String) =
         "support_admin_ticket/${java.net.URLEncoder.encode(ticketId, Charsets.UTF_8.name())}"
+
+    fun m13SightingDetail(sightingId: String) =
+        "m13/sightings/${java.net.URLEncoder.encode(sightingId, Charsets.UTF_8.name())}"
+    fun m13SightingNewForCase(caseId: String) =
+        "m13/sightings/new/${java.net.URLEncoder.encode(caseId, Charsets.UTF_8.name())}"
+    fun m13CaseMatches(caseId: String) =
+        "m13/cases/${java.net.URLEncoder.encode(caseId, Charsets.UTF_8.name())}/matches"
+    fun m13MatchDetail(candidateId: String) =
+        "m13/matches/${java.net.URLEncoder.encode(candidateId, Charsets.UTF_8.name())}"
 }

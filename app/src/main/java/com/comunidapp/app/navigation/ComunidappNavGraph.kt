@@ -112,6 +112,11 @@ import com.comunidapp.app.ui.screens.legal.PrivacyDraftScreen
 import com.comunidapp.app.ui.screens.legal.TermsDraftScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundMapScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundScreen
+import com.comunidapp.app.ui.screens.m13.M13CaseMatchesScreen
+import com.comunidapp.app.ui.screens.m13.M13MatchDetailScreen
+import com.comunidapp.app.ui.screens.m13.M13SightingCreateScreen
+import com.comunidapp.app.ui.screens.m13.M13SightingDetailScreen
+import com.comunidapp.app.ui.screens.m13.M13SightingListScreen
 import com.comunidapp.app.ui.screens.pets.AddPetScreen
 import com.comunidapp.app.ui.screens.pets.EditPetScreen
 import com.comunidapp.app.ui.screens.pets.MyPetsScreen
@@ -799,7 +804,93 @@ private fun MainScreen(accountType: AccountType) {
             composable(NavRoutes.LOST_FOUND) {
                 LostFoundScreen(
                     onNavigateBack = { navController.popBackStack() },
-                    onNavigateToMap = { navController.navigate(NavRoutes.LOST_FOUND_MAP) }
+                    onNavigateToMap = { navController.navigate(NavRoutes.LOST_FOUND_MAP) },
+                    onNavigateToM13Sightings = { navController.navigate(NavRoutes.M13_SIGHTINGS) },
+                    onNavigateToCaseMatches = { caseId ->
+                        navController.navigate(NavRoutes.m13CaseMatches(caseId))
+                    },
+                    onNavigateToM13NewSighting = { caseId ->
+                        if (caseId.isNullOrBlank()) {
+                            navController.navigate(NavRoutes.M13_SIGHTING_NEW)
+                        } else {
+                            navController.navigate(NavRoutes.m13SightingNewForCase(caseId))
+                        }
+                    }
+                )
+            }
+            composable(NavRoutes.M13_SIGHTINGS) {
+                M13SightingListScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onSightingClick = { id -> navController.navigate(NavRoutes.m13SightingDetail(id)) },
+                    onCreate = { navController.navigate(NavRoutes.M13_SIGHTING_NEW) }
+                )
+            }
+            composable(NavRoutes.M13_SIGHTING_NEW) {
+                M13SightingCreateScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreated = { id ->
+                        navController.navigate(NavRoutes.m13SightingDetail(id)) {
+                            popUpTo(NavRoutes.M13_SIGHTINGS) { inclusive = false }
+                        }
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.M13_SIGHTING_NEW_FOR_CASE,
+                arguments = listOf(navArgument(NavRoutes.ARG_CASE_ID) { type = NavType.StringType })
+            ) { entry ->
+                val caseId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CASE_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                M13SightingCreateScreen(
+                    caseId = caseId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onCreated = { id ->
+                        navController.navigate(NavRoutes.m13SightingDetail(id)) {
+                            popUpTo(NavRoutes.LOST_FOUND) { inclusive = false }
+                        }
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.M13_SIGHTING_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_SIGHTING_ID) { type = NavType.StringType })
+            ) { entry ->
+                val sightingId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_SIGHTING_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                M13SightingDetailScreen(
+                    sightingId = sightingId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.M13_CASE_MATCHES,
+                arguments = listOf(navArgument(NavRoutes.ARG_CASE_ID) { type = NavType.StringType })
+            ) { entry ->
+                val caseId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CASE_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                M13CaseMatchesScreen(
+                    caseId = caseId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onMatchClick = { id -> navController.navigate(NavRoutes.m13MatchDetail(id)) }
+                )
+            }
+            composable(
+                route = NavRoutes.M13_MATCH_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_CANDIDATE_ID) { type = NavType.StringType })
+            ) { entry ->
+                val candidateId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CANDIDATE_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                M13MatchDetailScreen(
+                    candidateId = candidateId,
+                    onNavigateBack = { navController.popBackStack() }
                 )
             }
             composable(

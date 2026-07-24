@@ -57,6 +57,9 @@ import com.comunidapp.app.viewmodel.LostFoundViewModel
 fun LostFoundScreen(
     onNavigateBack: () -> Unit,
     onNavigateToMap: () -> Unit = {},
+    onNavigateToM13Sightings: () -> Unit = {},
+    onNavigateToCaseMatches: (String) -> Unit = {},
+    onNavigateToM13NewSighting: (String?) -> Unit = {},
     viewModel: LostFoundViewModel = viewModel()
 ) {
     val message by viewModel.message.collectAsState()
@@ -83,6 +86,9 @@ fun LostFoundScreen(
             topPadding = padding.calculateTopPadding(),
             bottomPadding = padding.calculateBottomPadding(),
             onNavigateToMap = onNavigateToMap,
+            onNavigateToM13Sightings = onNavigateToM13Sightings,
+            onNavigateToCaseMatches = onNavigateToCaseMatches,
+            onNavigateToM13NewSighting = onNavigateToM13NewSighting,
             viewModel = viewModel
         )
     }
@@ -93,6 +99,9 @@ fun LostFoundContent(
     topPadding: Dp = 0.dp,
     bottomPadding: Dp = 0.dp,
     onNavigateToMap: () -> Unit = {},
+    onNavigateToM13Sightings: () -> Unit = {},
+    onNavigateToCaseMatches: (String) -> Unit = {},
+    onNavigateToM13NewSighting: (String?) -> Unit = {},
     viewModel: LostFoundViewModel = viewModel()
 ) {
     val posts by viewModel.posts.collectAsState()
@@ -218,6 +227,12 @@ fun LostFoundContent(
             ) {
                 Text("Ver mapa de alertas")
             }
+            OutlinedButton(
+                onClick = onNavigateToM13Sightings,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Avistamientos y coincidencias (M13)")
+            }
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -250,6 +265,16 @@ fun LostFoundContent(
                         }
                     } else {
                         null
+                    },
+                    onOpenM13Matches = if (post.status == LostFoundStatus.ACTIVE) {
+                        { onNavigateToCaseMatches(post.id) }
+                    } else {
+                        null
+                    },
+                    onOpenM13StructuredSighting = if (post.status == LostFoundStatus.ACTIVE) {
+                        { onNavigateToM13NewSighting(post.id) }
+                    } else {
+                        null
                     }
                 )
             }
@@ -263,7 +288,9 @@ fun LostFoundCard(
     sightings: List<LostFoundSighting> = emptyList(),
     onMarkResolved: (() -> Unit)? = null,
     onOpenMap: (() -> Unit)? = null,
-    onReportSighting: (() -> Unit)? = null
+    onReportSighting: (() -> Unit)? = null,
+    onOpenM13Matches: (() -> Unit)? = null,
+    onOpenM13StructuredSighting: (() -> Unit)? = null
 ) {
     val badgeText = if (post.type == LostFoundType.LOST) "PERDIDO" else "ENCONTRADO"
 
@@ -337,7 +364,13 @@ fun LostFoundCard(
                         OutlinedButton(onClick = open) { Text("Abrir en mapa") }
                     }
                     onReportSighting?.let { report ->
-                        OutlinedButton(onClick = report) { Text("Reportar avistamiento") }
+                        OutlinedButton(onClick = report) { Text("Avistamiento rápido") }
+                    }
+                    onOpenM13StructuredSighting?.let { open ->
+                        OutlinedButton(onClick = open) { Text("Avistamiento M13") }
+                    }
+                    onOpenM13Matches?.let { open ->
+                        OutlinedButton(onClick = open) { Text("Coincidencias") }
                     }
                     onMarkResolved?.let { resolve ->
                         Button(onClick = resolve) { Text("Marcar resuelta") }
