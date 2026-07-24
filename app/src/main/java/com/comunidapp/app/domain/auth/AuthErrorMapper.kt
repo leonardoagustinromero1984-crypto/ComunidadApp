@@ -20,6 +20,8 @@ enum class AuthErrorCode {
     RATE_LIMITED,
     NETWORK_UNAVAILABLE,
     CONFIGURATION_ERROR,
+    /** 403 / RLS / permiso — no implica cerrar sesión. */
+    PERMISSION_DENIED,
     ACCOUNT_DELETION_FAILED,
     /** Sin sesión de recovery válida para completar el reset. */
     PASSWORD_RESET_NOT_AVAILABLE,
@@ -60,7 +62,13 @@ object AuthErrorMapper {
             is AuthException -> return throwable.authError
         }
 
-        val raw = throwable.message.orEmpty()
+        val raw = buildString {
+            append(throwable.message.orEmpty())
+            append(' ')
+            append(throwable.cause?.message.orEmpty())
+            append(' ')
+            append(throwable::class.java.name)
+        }
         val code = detectCode(throwable, raw)
         val technical = when (code) {
             AuthErrorCode.UNKNOWN_AUTH_ERROR ->
@@ -76,74 +84,105 @@ object AuthErrorMapper {
     }
 
     private fun detectCode(throwable: Throwable, raw: String): AuthErrorCode {
+        val lower = raw.lowercase()
+
         if (throwable is UnknownHostException ||
             throwable is ConnectException ||
             throwable is SocketTimeoutException ||
-            throwable is IOException
+            throwable is IOException ||
+            lower.contains("timeout") ||
+            lower.contains("timed out") ||
+            lower.contains("unable to resolve host") ||
+            lower.contains("failed to connect") ||
+            lower.contains("connection refused") ||
+            lower.contains("cleartext") ||
+            lower.contains("cleartexttrafficpermitted") ||
+            (lower.contains("network") &&
+                !lower.contains("unauthorized") &&
+                !lower.contains("invalid login"))
         ) {
             return AuthErrorCode.NETWORK_UNAVAILABLE
         }
 
         return when {
-            raw.contains("Password reset is not available", ignoreCase = true) ||
-                raw.contains("Abrí el link que te enviamos", ignoreCase = true) ->
+            lower.contains("password reset is not available") ||
+                lower.contains("abrí el link que te enviamos") ->
                 AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE
 
-            raw.contains("Invalid login credentials", ignoreCase = true) ||
-                raw.contains("Email o contraseña incorrectos", ignoreCase = true) ->
+            lower.contains("invalid login credentials") ||
+                lower.contains("email o contraseña incorrectos") ||
+                lower.contains("invalid_credentials") ->
                 AuthErrorCode.INVALID_CREDENTIALS
 
-            raw.contains("Debés confirmar tu email", ignoreCase = true) ||
-                raw.contains("Email not confirmed", ignoreCase = true) ||
-                raw.contains("email_not_confirmed", ignoreCase = true) ->
+            lower.contains("debés confirmar tu email") ||
+                lower.contains("email not confirmed") ||
+                lower.contains("email_not_confirmed") ->
                 AuthErrorCode.EMAIL_NOT_VERIFIED
 
-            raw.contains("User already registered", ignoreCase = true) ||
-                raw.contains("already been registered", ignoreCase = true) ||
-                raw.contains("Ya existe una cuenta", ignoreCase = true) ->
+            lower.contains("user already registered") ||
+                lower.contains("already been registered") ||
+                lower.contains("ya existe una cuenta") ->
                 AuthErrorCode.EMAIL_ALREADY_REGISTERED
 
-            raw.contains("Password should be at least", ignoreCase = true) ||
-                raw.contains("contraseña debe tener al menos", ignoreCase = true) ->
+            lower.contains("password should be at least") ||
+                lower.contains("contraseña debe tener al menos") ->
                 AuthErrorCode.WEAK_PASSWORD
 
-            raw.contains("rate limit", ignoreCase = true) ||
-                raw.contains("over_email_send_rate_limit", ignoreCase = true) ||
-                raw.contains("email rate limit exceeded", ignoreCase = true) ->
+            lower.contains("rate limit") ||
+                lower.contains("over_email_send_rate_limit") ||
+                lower.contains("email rate limit exceeded") ->
                 AuthErrorCode.RATE_LIMITED
 
-            raw.contains("Email link is invalid or has expired", ignoreCase = true) ||
-                raw.contains("otp_expired", ignoreCase = true) ||
-                raw.contains("Token has expired", ignoreCase = true) ||
-                raw.contains("Código inválido o expirado", ignoreCase = true) ->
-                AuthErrorCode.RECOVERY_LINK_EXPIRED
-
-            raw.contains("invalid", ignoreCase = true) &&
-                (raw.contains("link", ignoreCase = true) ||
-                    raw.contains("token", ignoreCase = true) ||
-                    raw.contains("otp", ignoreCase = true) ||
-                    raw.contains("código", ignoreCase = true) ||
-                    raw.contains("codigo", ignoreCase = true)) ->
-                AuthErrorCode.RECOVERY_LINK_INVALID
-
-            raw.contains("session", ignoreCase = true) &&
-                (raw.contains("expired", ignoreCase = true) || raw.contains("missing", ignoreCase = true)) ->
+            // 401 / JWT / sesión — antes que recovery link para que "invalid jwt"
+            // o "refresh token invalid" no se confundan con un OTP/enlace de recuperación.
+            lower.contains("401") ||
+                lower.contains("unauthorized") ||
+                lower.contains("invalid jwt") ||
+                lower.contains("jwt expired") ||
+                lower.contains("session_not_found") ||
+                (lower.contains("refresh") && (lower.contains("invalid") || lower.contains("expired"))) ||
+                (lower.contains("session") &&
+                    (lower.contains("expired") || lower.contains("missing") || lower.contains("not found"))) ->
                 AuthErrorCode.SESSION_EXPIRED
 
-            raw.contains("SUPABASE", ignoreCase = true) &&
-                raw.contains("config", ignoreCase = true) ->
+            lower.contains("email link is invalid or has expired") ||
+                lower.contains("otp_expired") ||
+                lower.contains("token has expired") ||
+                lower.contains("código inválido o expirado") ->
+                AuthErrorCode.RECOVERY_LINK_EXPIRED
+
+            lower.contains("invalid") &&
+                (lower.contains("link") ||
+                    lower.contains("token") ||
+                    lower.contains("otp") ||
+                    lower.contains("código") ||
+                    lower.contains("codigo")) ->
+                AuthErrorCode.RECOVERY_LINK_INVALID
+
+            // 403 / RLS — no forzar logout
+            lower.contains("403") ||
+                lower.contains("forbidden") ||
+                lower.contains("row-level security") ||
+                lower.contains("rls") ||
+                lower.contains("permission denied") ||
+                lower.contains("not authorized") && !lower.contains("login") ->
+                AuthErrorCode.PERMISSION_DENIED
+
+            lower.contains("supabase") &&
+                (lower.contains("config") || lower.contains("not configured") ||
+                    lower.contains("not available") || lower.contains("client requires")) ->
                 AuthErrorCode.CONFIGURATION_ERROR
 
-            raw.contains("account deletion", ignoreCase = true) ||
-                raw.contains("ACCOUNT_DELETION", ignoreCase = true) ->
+            lower.contains("account deletion") ||
+                lower.contains("account_deletion") ->
                 AuthErrorCode.ACCOUNT_DELETION_FAILED
 
-            raw.contains("CONSENT", ignoreCase = true) ||
-                raw.contains("legal consent", ignoreCase = true) ->
+            lower.contains("consent") ||
+                lower.contains("legal consent") ->
                 AuthErrorCode.LEGAL_CONSENT_REQUIRED
 
-            raw.contains("email", ignoreCase = true) &&
-                (raw.contains("invalid", ignoreCase = true) || raw.contains("formato", ignoreCase = true)) ->
+            lower.contains("email") &&
+                (lower.contains("invalid") || lower.contains("formato")) ->
                 AuthErrorCode.INVALID_EMAIL
 
             else -> AuthErrorCode.UNKNOWN_AUTH_ERROR
@@ -154,6 +193,7 @@ object AuthErrorMapper {
         AuthErrorCode.INVALID_CREDENTIALS,
         AuthErrorCode.EMAIL_NOT_VERIFIED,
         AuthErrorCode.SESSION_EXPIRED -> AppErrorKind.UNAUTHORIZED
+        AuthErrorCode.PERMISSION_DENIED -> AppErrorKind.FORBIDDEN
         AuthErrorCode.EMAIL_ALREADY_REGISTERED -> AppErrorKind.CONFLICT
         AuthErrorCode.WEAK_PASSWORD,
         AuthErrorCode.INVALID_EMAIL,
@@ -170,9 +210,9 @@ object AuthErrorMapper {
 
     private fun userMessageFor(code: AuthErrorCode): String = when (code) {
         AuthErrorCode.INVALID_CREDENTIALS ->
-            "Email o contraseña incorrectos."
+            "El correo o la contraseña son incorrectos."
         AuthErrorCode.EMAIL_NOT_VERIFIED ->
-            "Debés confirmar tu email antes de iniciar sesión."
+            "Tu correo todavía no fue confirmado."
         AuthErrorCode.EMAIL_ALREADY_REGISTERED ->
             "No se pudo completar el registro. Revisá tu email o iniciá sesión."
         AuthErrorCode.WEAK_PASSWORD ->
@@ -184,13 +224,15 @@ object AuthErrorMapper {
         AuthErrorCode.RECOVERY_LINK_EXPIRED ->
             "El enlace o código expiró. Solicitá uno nuevo."
         AuthErrorCode.SESSION_EXPIRED ->
-            "Tu sesión expiró. Volvé a iniciar sesión."
+            "Tu sesión venció. Iniciá sesión nuevamente."
         AuthErrorCode.RATE_LIMITED ->
             "Demasiados intentos. Probá más tarde."
         AuthErrorCode.NETWORK_UNAVAILABLE ->
-            "Sin conexión o el servicio no responde."
+            "No pudimos conectarnos. Revisá tu conexión."
         AuthErrorCode.CONFIGURATION_ERROR ->
-            "La aplicación no está configurada correctamente."
+            "La configuración de Supabase no está disponible en esta versión."
+        AuthErrorCode.PERMISSION_DENIED ->
+            "No tenés permisos para realizar esta acción."
         AuthErrorCode.ACCOUNT_DELETION_FAILED ->
             "No se pudo eliminar la cuenta. Intentá más tarde."
         AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE ->
@@ -198,6 +240,6 @@ object AuthErrorMapper {
         AuthErrorCode.LEGAL_CONSENT_REQUIRED ->
             "Debés aceptar los términos y la política de privacidad vigentes."
         AuthErrorCode.UNKNOWN_AUTH_ERROR ->
-            "Ocurrió un problema de autenticación. Intentá de nuevo."
+            "No pudimos completar el inicio de sesión. Intentá de nuevo."
     }
 }

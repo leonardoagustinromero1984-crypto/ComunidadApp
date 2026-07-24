@@ -9,9 +9,16 @@ sdk.dir=C\:\\Users\\TU_USUARIO\\AppData\\Local\\Android\\Sdk
 # Si falta URL o ANON_KEY, la app usa modo mock (sin crash).
 # La UI y el código nuevo deben leer configuración vía AppConfigProvider
 # (no BuildConfig / este archivo directamente). Ver ADR-0005.
+#
+# IMPORTANTE (APK localDebug en dispositivo físico):
+# - No usar http://10.0.2.2 ni localhost: cleartext está deshabilitado y
+#   10.0.2.2 solo existe en el emulador.
+# - Preferí HTTPS remoto en SUPABASE_URL, o dejá staging configurado:
+#   el flavor `local` hace fallback automático a SUPABASE_STAGING_* cuando
+#   SUPABASE_URL es local/emulador/http.
 # ---------------------------------------------------------------------------
 
-# URL del proyecto (ejemplo ficticio; se expone solo el host en AppConfig)
+# URL del proyecto remoto (HTTPS). Ejemplo ficticio:
 SUPABASE_URL=https://TU_PROJECT_REF.supabase.co
 
 # Clave anon/public (placeholder ficticio; no uses credenciales privilegiadas aquí)
@@ -19,20 +26,15 @@ SUPABASE_URL=https://TU_PROJECT_REF.supabase.co
 SUPABASE_ANON_KEY=<LOCAL_ANON_KEY>
 
 # ---------------------------------------------------------------------------
-# M08 Etapa 4C — Supabase LOCAL (solo debug / smoke APK)
-# Obtener valores con: npx supabase status -o env
-# Emulador Android: host 10.0.2.2 + puerto API local (no inventar puerto).
-# Dispositivo físico: adb reverse tcp:<API_PORT> tcp:<API_PORT>
-# Nunca service_role. Nunca commitear este archivo.
-# Ejemplo (ficticio / placeholder):
+# Solo emulador + Supabase CLI local (NO para APK físico sin adb reverse)
+# Ejemplo (ficticio). El flavor local IGNORA este host y usa staging si está.
 # SUPABASE_URL=http://10.0.2.2:55321
 # SUPABASE_ANON_KEY=<anon_from_supabase_status_env>
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# M08 Etapa 4D — STAGING (placeholders ficticios)
-# Solo HTTPS remoto. Nunca localhost, 127.0.0.1 ni 10.0.2.2.
-# Usar una publishable key; el fallback ANON es solo compatibilidad legacy.
+# STAGING (HTTPS remoto). Usado también como fallback de localDebug.
+# Nunca localhost, 127.0.0.1 ni 10.0.2.2. Nunca service_role.
 # ---------------------------------------------------------------------------
 SUPABASE_STAGING_URL=https://<STAGING_PROJECT_REF>.supabase.co
 SUPABASE_STAGING_PUBLISHABLE_KEY=<STAGING_PUBLISHABLE_KEY>

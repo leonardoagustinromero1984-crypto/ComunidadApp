@@ -14,7 +14,7 @@ object AppConfigProvider {
     private var flagsCached: FeatureFlags? = null
 
     /**
-     * Configuración actual. Si faltan credenciales Supabase, modo mock seguro.
+     * Configuración actual. Si faltan credenciales Supabase usables, modo mock seguro.
      */
     fun get(
         overrides: FeatureFlagOverrides = FeatureFlagOverrides.NONE
@@ -52,20 +52,24 @@ object AppConfigProvider {
             "production" -> AppEnvironment.PRODUCTION
             else -> if (isDebug) AppEnvironment.LOCAL else AppEnvironment.PRODUCTION
         }
-        val url = BuildConfig.SUPABASE_URL.trim().ifBlank { null }
+        val rawUrl = BuildConfig.SUPABASE_URL.trim().ifBlank { null }
         val hasKey = BuildConfig.SUPABASE_ANON_KEY.trim().isNotBlank()
-        val credentialsOk = !url.isNullOrBlank() && hasKey && BuildConfig.SUPABASE_ENABLED
+        val urlUsable = SupabaseUrlPolicy.isUsableRemoteUrl(rawUrl)
+        val credentialsOk = BuildConfig.SUPABASE_ENABLED && urlUsable && hasKey
         val useRemote = overrides.useSupabase ?: credentialsOk
 
         val missingMessage = when {
             credentialsOk -> null
+            rawUrl != null && SupabaseUrlPolicy.isForbiddenHost(rawUrl) ->
+                "Supabase URL local/emulador no usable en este APK; se requiere HTTPS remoto."
             environment == AppEnvironment.STAGING ->
                 "Supabase staging no configurado: completá SUPABASE_STAGING_URL y " +
                     "SUPABASE_STAGING_PUBLISHABLE_KEY (o ANON) en local.properties."
             environment == AppEnvironment.PRODUCTION ->
                 "Supabase production no configurado: modo mock."
-            url.isNullOrBlank() && !hasKey ->
-                "Supabase no configurado: modo mock. Completá SUPABASE_URL y SUPABASE_ANON_KEY en local.properties."
+            rawUrl.isNullOrBlank() && !hasKey ->
+                "Supabase no configurado: modo mock. Completá SUPABASE_URL (HTTPS remoto) " +
+                    "o SUPABASE_STAGING_* en local.properties."
             else ->
                 "Credenciales Supabase incompletas o inválidas: modo mock."
         }
@@ -83,7 +87,7 @@ object AppConfigProvider {
             environment = environment,
             isDebug = isDebug,
             useRemoteBackend = useRemote,
-            supabaseUrl = url,
+            supabaseUrl = if (urlUsable) rawUrl else null,
             appVersionName = BuildConfig.VERSION_NAME,
             appVersionCode = BuildConfig.VERSION_CODE,
             logging = LoggingConfig(

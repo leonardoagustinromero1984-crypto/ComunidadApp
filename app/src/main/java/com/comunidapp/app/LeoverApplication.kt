@@ -23,6 +23,9 @@ class LeoverApplication : Application() {
             "startup env=${config.environment} mock=${config.isMockMode} version=${config.appVersionName}"
         )
         config.missingConfigMessage?.let { AppLog.warning("LeoverApp", it) }
+        if (config.isDebug) {
+            com.comunidapp.app.core.config.AuthConfigDiagnostics.logSafe("startup")
+        }
         LeoverNotificationHelper.ensureChannel(this)
         appScope.launch {
             PushTokenRegistrar.syncCurrentToken()

@@ -1,6 +1,11 @@
 package com.comunidapp.app.data.remote.supabase
 
 import com.comunidapp.app.BuildConfig
+import com.comunidapp.app.core.config.AuthConfigDiagnostics
+import com.comunidapp.app.core.config.SupabaseUrlPolicy
+import com.comunidapp.app.core.logging.AppLog
+import com.comunidapp.app.domain.auth.AuthErrorCode
+import com.comunidapp.app.domain.auth.AuthErrorMapper
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
@@ -46,10 +51,25 @@ object SupabaseTables {
 
 object SupabaseClientProvider {
 
+    private const val TAG = "SupabaseClient"
+
     val instance: SupabaseClient by lazy {
+        val url = BuildConfig.SUPABASE_URL.trim()
+        val key = BuildConfig.SUPABASE_ANON_KEY.trim()
+        if (!BuildConfig.SUPABASE_ENABLED ||
+            !SupabaseUrlPolicy.isUsableRemoteUrl(url) ||
+            key.isBlank()
+        ) {
+            AuthConfigDiagnostics.logSafe("client_config_invalid")
+            throw AuthErrorMapper.toException(
+                AuthErrorCode.CONFIGURATION_ERROR,
+                "supabase client requires remote HTTPS url + anon key"
+            )
+        }
+        AppLog.info(TAG, "creating shared client host=${SupabaseUrlPolicy.hostOf(url)}")
         createSupabaseClient(
-            supabaseUrl = BuildConfig.SUPABASE_URL,
-            supabaseKey = BuildConfig.SUPABASE_ANON_KEY
+            supabaseUrl = url,
+            supabaseKey = key
         ) {
             install(Auth) {
                 scheme = SupabaseAuthConfig.SCHEME

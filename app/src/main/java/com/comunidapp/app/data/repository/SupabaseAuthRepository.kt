@@ -39,6 +39,15 @@ class SupabaseAuthRepository(
     private var reauthFailures = 0
 
     override suspend fun login(email: String, password: String): Result<User> {
+        if (!com.comunidapp.app.core.config.SupabaseUrlPolicy.credentialsPresent()) {
+            com.comunidapp.app.core.config.AuthConfigDiagnostics.logSafe("login_config_invalid")
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.CONFIGURATION_ERROR,
+                    "supabase credentials missing or non-remote"
+                )
+            )
+        }
         AuthValidators.validateEmail(email).getOrElse {
             return Result.failure(AuthErrorMapper.fromThrowableToException(it))
         }
@@ -53,7 +62,6 @@ class SupabaseAuthRepository(
                 this.email = normalizedEmail
                 this.password = password
             }
-            supabase.auth.refreshCurrentSession()
             val authUser = supabase.auth.currentUserOrNull()
                 ?: return Result.failure(
                     AuthErrorMapper.toException(AuthErrorCode.INVALID_CREDENTIALS, "no session")
@@ -68,6 +76,10 @@ class SupabaseAuthRepository(
             val profile = fetchUserProfile(authUser, normalizedEmail)
             Result.success(profile)
         } catch (e: Exception) {
+            com.comunidapp.app.core.config.AuthConfigDiagnostics.logSafe(
+                "login_failure",
+                exceptionClass = e::class.java.simpleName
+            )
             Result.failure(mapSupabaseException(e))
         }
     }
@@ -438,7 +450,18 @@ class SupabaseAuthRepository(
 
     override suspend fun logout() {
         runCatching { PushTokenRegistrar.unlinkForCurrentUser() }
-        supabase.auth.signOut()
+        runCatching { supabase.auth.signOut() }
+            .onFailure { error ->
+                val mapped = AuthErrorMapper.fromThrowable(error)
+                // Refresh/sesión inválida: limpiar localmente sin brickear en AuthError.
+                if (mapped.code == AuthErrorCode.SESSION_EXPIRED.name ||
+                    mapped.code == AuthErrorCode.NETWORK_UNAVAILABLE.name
+                ) {
+                    AppLog.warning(TAG, "signOut cleaned after ${mapped.code}")
+                } else {
+                    throw AuthErrorMapper.fromThrowableToException(error)
+                }
+            }
     }
 
     override fun observeAuthState(): Flow<User?> =
@@ -448,6 +471,7 @@ class SupabaseAuthRepository(
                     val authUser = status.session.user ?: return@map null
                     if (authUser.isEmailConfirmed()) authUser.toUser() else null
                 }
+                // Sin sesión válida → null (Unauthenticated). No elevar a AuthError permanente.
                 else -> null
             }
         }

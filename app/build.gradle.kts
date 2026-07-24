@@ -49,6 +49,51 @@ fun isForbiddenLocalHost(url: String): Boolean {
         u.startsWith("http://")
 }
 
+fun isRemoteHttpsSupabaseUrl(url: String): Boolean =
+    url.isNotBlank() &&
+        url.startsWith("https://", ignoreCase = true) &&
+        !isForbiddenLocalHost(url)
+
+/**
+ * localDebug APK must not embed emulator-only hosts (10.0.2.2 / localhost / cleartext).
+ * Prefer SUPABASE_URL when it is remote HTTPS; otherwise fall back to staging credentials.
+ */
+data class ResolvedLocalSupabase(
+    val url: String,
+    val key: String,
+    val enabled: Boolean,
+    val source: String
+)
+
+fun resolveLocalSupabase(): ResolvedLocalSupabase {
+    if (isRemoteHttpsSupabaseUrl(localUrl) && localKey.isNotBlank()) {
+        if (localKey.contains("service_role", ignoreCase = true)) {
+            throw GradleException("service_role is forbidden in Android local credentials.")
+        }
+        return ResolvedLocalSupabase(localUrl, localKey, true, "SUPABASE_URL")
+    }
+    if (isRemoteHttpsSupabaseUrl(stagingUrl) && stagingKey.isNotBlank()) {
+        if (stagingKey.contains("service_role", ignoreCase = true)) {
+            throw GradleException("service_role is forbidden in Android staging credentials.")
+        }
+        logger.warn(
+            "local flavor: SUPABASE_URL missing or points to localhost/http/10.0.2.2; " +
+                "using SUPABASE_STAGING_* for localDebug (physical APK / cleartext-safe)."
+        )
+        return ResolvedLocalSupabase(stagingUrl, stagingKey, true, "STAGING_FALLBACK")
+    }
+    logger.warn(
+        "local flavor: no usable remote Supabase credentials; SUPABASE_ENABLED=false (mock mode)."
+    )
+    return ResolvedLocalSupabase("", "", false, "NONE")
+}
+
+val resolvedLocal = resolveLocalSupabase()
+val resolvedLocalUrl = resolvedLocal.url
+val resolvedLocalKey = resolvedLocal.key
+val resolvedLocalEnabled = resolvedLocal.enabled
+val resolvedLocalSource = resolvedLocal.source
+
 android {
     namespace = "com.comunidapp.app"
     compileSdk {
@@ -73,11 +118,11 @@ android {
             applicationIdSuffix = ".local"
             versionNameSuffix = "-local"
             resValue("string", "app_name", "LeoVer Local")
-            val enabled = localUrl.isNotBlank() && localKey.isNotBlank()
-            buildConfigField("Boolean", "SUPABASE_ENABLED", enabled.toString())
-            buildConfigField("String", "SUPABASE_URL", "\"${escapeBc(localUrl)}\"")
-            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(localKey)}\"")
+            buildConfigField("Boolean", "SUPABASE_ENABLED", resolvedLocalEnabled.toString())
+            buildConfigField("String", "SUPABASE_URL", "\"${escapeBc(resolvedLocalUrl)}\"")
+            buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(resolvedLocalKey)}\"")
             buildConfigField("String", "LEOVER_ENV", "\"local\"")
+            buildConfigField("String", "SUPABASE_CREDENTIAL_SOURCE", "\"${escapeBc(resolvedLocalSource)}\"")
         }
         create("staging") {
             dimension = "environment"
@@ -89,6 +134,7 @@ android {
             buildConfigField("String", "SUPABASE_URL", "\"${escapeBc(stagingUrl)}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(stagingKey)}\"")
             buildConfigField("String", "LEOVER_ENV", "\"staging\"")
+            buildConfigField("String", "SUPABASE_CREDENTIAL_SOURCE", "\"STAGING\"")
         }
         create("production") {
             dimension = "environment"
@@ -99,6 +145,7 @@ android {
             buildConfigField("String", "SUPABASE_URL", "\"${escapeBc(productionUrl)}\"")
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(productionKey)}\"")
             buildConfigField("String", "LEOVER_ENV", "\"production\"")
+            buildConfigField("String", "SUPABASE_CREDENTIAL_SOURCE", "\"PRODUCTION\"")
         }
     }
 
@@ -148,6 +195,22 @@ androidComponents {
 // Staging assemble must use HTTPS remote — never local hosts / cleartext.
 tasks.configureEach {
     val n = name
+    if (n.startsWith("assembleLocal") || n.startsWith("bundleLocal") ||
+        n.startsWith("packageLocal") || n.startsWith("installLocal")
+    ) {
+        doFirst {
+            if (resolvedLocalEnabled) {
+                if (!isRemoteHttpsSupabaseUrl(resolvedLocalUrl)) {
+                    throw GradleException(
+                        "localDebug Supabase URL must be remote HTTPS (not localhost / 10.0.2.2 / http)."
+                    )
+                }
+                if (resolvedLocalKey.contains("service_role", ignoreCase = true)) {
+                    throw GradleException("service_role is forbidden in Android local credentials.")
+                }
+            }
+        }
+    }
     if (n.startsWith("assembleStaging") || n.startsWith("bundleStaging") ||
         n.startsWith("packageStaging") || n.startsWith("installStaging")
     ) {
