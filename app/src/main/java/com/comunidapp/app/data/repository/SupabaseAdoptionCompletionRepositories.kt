@@ -184,7 +184,15 @@ class SupabaseAdoptionCompletionRepository(
             )
 
     override suspend fun finalizeAdoption(adoptionId: String): Result<FinalizedAdoption> = try {
-        Result.success(remote.finalizeAdoption(adoptionId).toDomain())
+        val finalized = remote.finalizeAdoption(adoptionId).toDomain()
+        finalized.petId?.takeIf { it.isNotBlank() }?.let { petId ->
+            runCatching {
+                // Best-effort M11 hook; remote stub is no-op until future migration 046
+                com.comunidapp.app.data.provider.DataProvider.shelterPetRepository
+                    .onAdoptionFinalized(petId)
+            }
+        }
+        Result.success(finalized)
     } catch (e: Exception) {
         M09AdoptionErrorMapper.failure(e)
     }

@@ -120,8 +120,9 @@ shelter_reports/{shelterId}
 ## Limitaciones
 
 - Sin pagos, entradas, chat, push real, reputación.
-- Apply remoto 045 pendiente; smoke manual post-apply.
-- Cierre final M11 **no iniciado**.
+- Migración 045 aplicada + PASS estructural/seguridad en pruebas.
+- Smoke UI manual completo: **PENDIENTE_EXTERNO** (no inventar como aprobado).
+- Cierre técnico M11: `docs/03-modulos/M11-cierre-final.md`.
 
 ## Operación
 

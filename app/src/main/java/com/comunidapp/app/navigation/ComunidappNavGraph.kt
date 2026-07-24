@@ -182,6 +182,8 @@ import com.comunidapp.app.ui.screens.shelters.ShelterOpsPetDetailScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterOpsPetsScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterOpsVolunteersScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterPublicCampaignsScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterPublicEmergenciesScreen
+import com.comunidapp.app.ui.screens.shelters.ShelterPublicEventsScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterPublicSupplyRequestsScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterSupplyContributeScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterSupplyContributionsScreen
@@ -202,6 +204,8 @@ import com.comunidapp.app.viewmodel.ShelterEventFormViewModel
 import com.comunidapp.app.viewmodel.ShelterEventRegistrationsViewModel
 import com.comunidapp.app.viewmodel.ShelterEventsViewModel
 import com.comunidapp.app.viewmodel.ShelterFormViewModel
+import com.comunidapp.app.viewmodel.ShelterPublicEmergenciesViewModel
+import com.comunidapp.app.viewmodel.ShelterPublicEventsViewModel
 import com.comunidapp.app.viewmodel.ShelterReportsViewModel
 import com.comunidapp.app.viewmodel.ShelterIntakeViewModel
 import com.comunidapp.app.viewmodel.ShelterOpsDetailViewModel
@@ -1183,7 +1187,9 @@ private fun MainScreen(accountType: AccountType) {
                     onShelterClick = { id -> navController.navigate(NavRoutes.shelterOpsDetail(id)) },
                     onMyShelters = { navController.navigate(NavRoutes.MY_SHELTERS) },
                     onPublicCampaigns = { navController.navigate(NavRoutes.SHELTER_PUBLIC_CAMPAIGNS) },
-                    onPublicSupplyRequests = { navController.navigate(NavRoutes.SHELTER_PUBLIC_SUPPLY_REQUESTS) }
+                    onPublicSupplyRequests = { navController.navigate(NavRoutes.SHELTER_PUBLIC_SUPPLY_REQUESTS) },
+                    onPublicEmergencies = { navController.navigate(NavRoutes.SHELTER_PUBLIC_EMERGENCIES) },
+                    onPublicEvents = { navController.navigate(NavRoutes.SHELTER_PUBLIC_EVENTS) }
                 )
             }
             composable(NavRoutes.MY_SHELTERS) {
@@ -1350,6 +1356,24 @@ private fun MainScreen(accountType: AccountType) {
                     onNavigateBack = { navController.popBackStack() },
                     onRequestClick = { rid -> navController.navigate(NavRoutes.shelterSupplyRequestDetail(rid)) },
                     onContribute = { rid -> navController.navigate(NavRoutes.shelterSupplyContribute(rid)) }
+                )
+            }
+            composable(NavRoutes.SHELTER_PUBLIC_EMERGENCIES) {
+                ShelterPublicEmergenciesScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onEmergencyClick = { eid -> navController.navigate(NavRoutes.shelterEmergencyDetail(eid)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterPublicEmergenciesViewModel.factory()
+                    )
+                )
+            }
+            composable(NavRoutes.SHELTER_PUBLIC_EVENTS) {
+                ShelterPublicEventsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onEventClick = { eid -> navController.navigate(NavRoutes.shelterEventDetail(eid)) },
+                    viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                        factory = ShelterPublicEventsViewModel.factory()
+                    )
                 )
             }
             composable(

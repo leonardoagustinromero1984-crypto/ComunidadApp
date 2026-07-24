@@ -100,8 +100,9 @@ Unit tests: `./gradlew :app:testLocalDebugUnitTest --tests "com.comunidapp.app.v
 ## Limitaciones
 
 - Sin dinero, reputación, chat, push real.
-- Migración 043 LOCAL ONLY hasta apply remoto autorizado.
-- Apply remoto 043 pendiente; smoke Supabase manual post-apply.
+- Migraciones 043–044 aplicadas en pruebas; 043 inmutable; hardening 044 PASS.
+- Smoke UI manual de campañas/insumos: **PENDIENTE_EXTERNO** (no inventar PASS).
+- Módulo M11: ver cierre `docs/03-modulos/M11-cierre-final.md`.
 
 ## Operación
 

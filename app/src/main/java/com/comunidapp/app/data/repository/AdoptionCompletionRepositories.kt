@@ -635,6 +635,13 @@ class MockAdoptionCompletionRepository(
             followUpPlanId = planId
         )
         store.finalized.value = listOf(finalizedRow) + store.finalized.value
+        if (!petId.isNullOrBlank()) {
+            runCatching {
+                // Best-effort M11 hook; mock store shares via DataProvider when wired
+                com.comunidapp.app.data.provider.DataProvider.shelterPetRepository
+                    .onAdoptionFinalized(petId)
+            }
+        }
         return Result.success(finalizedRow)
     }
 

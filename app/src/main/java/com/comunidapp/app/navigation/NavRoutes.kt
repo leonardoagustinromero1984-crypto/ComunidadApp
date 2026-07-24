@@ -94,6 +94,8 @@ object NavRoutes {
     const val SHELTER_SUPPLY_CONTRIBUTIONS = "shelter_supply_contributions/{requestId}"
 
     // M11 Block 3 — urgencias, eventos y reportes
+    const val SHELTER_PUBLIC_EMERGENCIES = "shelter_public_emergencies"
+    const val SHELTER_PUBLIC_EVENTS = "shelter_public_events"
     const val SHELTER_EMERGENCIES = "shelter_emergencies/{shelterId}"
     const val SHELTER_EMERGENCY_DETAIL = "shelter_emergency_detail/{emergencyId}"
     const val SHELTER_EMERGENCY_FORM = "shelter_emergency_form/{shelterId}"

@@ -65,6 +65,8 @@ fun ShelterOpsListScreen(
     onMyShelters: () -> Unit,
     onPublicCampaigns: () -> Unit = {},
     onPublicSupplyRequests: () -> Unit = {},
+    onPublicEmergencies: () -> Unit = {},
+    onPublicEvents: () -> Unit = {},
     viewModel: ShelterPublicListViewModel = viewModel(factory = ShelterPublicListViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -82,6 +84,12 @@ fun ShelterOpsListScreen(
             }
             OutlinedButton(onClick = onPublicSupplyRequests, modifier = Modifier.fillMaxWidth()) {
                 Text("Pedidos de insumos")
+            }
+            OutlinedButton(onClick = onPublicEmergencies, modifier = Modifier.fillMaxWidth()) {
+                Text("Urgencias públicas")
+            }
+            OutlinedButton(onClick = onPublicEvents, modifier = Modifier.fillMaxWidth()) {
+                Text("Eventos públicos")
             }
             Spacer(Modifier.height(12.dp))
             when (val s = state) {
