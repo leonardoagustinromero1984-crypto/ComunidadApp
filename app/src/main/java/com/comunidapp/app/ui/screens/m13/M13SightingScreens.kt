@@ -33,6 +33,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M13MatchDecisionType
 import com.comunidapp.app.data.model.M13MatchReason
+import com.comunidapp.app.data.model.M13MatchStatus
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.state.EmptyState
@@ -314,7 +315,10 @@ fun M13MatchDetailScreen(
     )
 ) {
     val candidate by viewModel.candidate.collectAsState()
+    val decisions by viewModel.decisions.collectAsState()
+    val history by viewModel.history.collectAsState()
     val message by viewModel.message.collectAsState()
+    val busy by viewModel.busy.collectAsState()
     Scaffold(
         topBar = {
             ComunidappTopBar(
@@ -336,31 +340,69 @@ fun M13MatchDetailScreen(
                     Text("• ${r.labelEs}")
                 }
                 Text(
-                    "Sin autoconfirmación: se requiere decisión humana.",
+                    "Sin autoconfirmación: se requiere decisión humana. " +
+                        "La confirmación no cierra automáticamente el caso Lost/Found.",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
-                OutlinedButton(onClick = { viewModel.openReview() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Abrir revisión")
-                }
+                val canOpen = c.status == M13MatchStatus.PROPOSED && !busy
+                val canDecide = c.status == M13MatchStatus.UNDER_REVIEW && !busy
+                val canWithdraw =
+                    (c.status == M13MatchStatus.PROPOSED || c.status == M13MatchStatus.UNDER_REVIEW) &&
+                        !busy
+                OutlinedButton(
+                    onClick = { viewModel.openReview() },
+                    enabled = canOpen,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Abrir revisión") }
                 Button(
                     onClick = {
                         viewModel.decide(M13MatchDecisionType.CONFIRMED, "HUMAN_CONFIRM")
                     },
+                    enabled = canDecide,
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Confirmar") }
                 OutlinedButton(
                     onClick = {
                         viewModel.decide(M13MatchDecisionType.REJECTED, "HUMAN_REJECT")
                     },
+                    enabled = canDecide,
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Rechazar") }
                 OutlinedButton(
                     onClick = {
                         viewModel.decide(M13MatchDecisionType.INCONCLUSIVE, "HUMAN_INCONCLUSIVE")
                     },
+                    enabled = canDecide,
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Inconclusa") }
+                OutlinedButton(
+                    onClick = { viewModel.withdraw() },
+                    enabled = canWithdraw,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Retirar coincidencia") }
+
+                if (history.isNotEmpty()) {
+                    Text(
+                        "Historial",
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 16.dp)
+                    )
+                    history.forEach { h ->
+                        val from = h.fromStatus?.name ?: "—"
+                        Text("• $from → ${h.toStatus.name}${h.reason?.let { " ($it)" } ?: ""}")
+                    }
+                }
+                if (decisions.isNotEmpty()) {
+                    Text(
+                        "Decisiones",
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
+                    decisions.forEach { d ->
+                        Text("• ${d.decision.name} · ${d.reasonCode} · ${d.actorAuthority}")
+                    }
+                }
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         }

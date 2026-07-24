@@ -240,31 +240,53 @@ class M13MatchDetailViewModel(
 ) : ViewModel() {
     private val _candidate = MutableStateFlow<M13MatchCandidate?>(null)
     val candidate: StateFlow<M13MatchCandidate?> = _candidate.asStateFlow()
+    private val _decisions = MutableStateFlow<List<com.comunidapp.app.data.model.M13MatchDecision>>(emptyList())
+    val decisions: StateFlow<List<com.comunidapp.app.data.model.M13MatchDecision>> = _decisions.asStateFlow()
+    private val _history =
+        MutableStateFlow<List<com.comunidapp.app.data.model.M13MatchStatusHistoryEntry>>(emptyList())
+    val history: StateFlow<List<com.comunidapp.app.data.model.M13MatchStatusHistoryEntry>> =
+        _history.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
+    private val _busy = MutableStateFlow(false)
+    val busy: StateFlow<Boolean> = _busy.asStateFlow()
 
     init {
         viewModelScope.launch {
             matchRepository.observeMatch(candidateId).collect { _candidate.value = it }
         }
-    }
-
-    fun openReview() {
         viewModelScope.launch {
-            matchRepository.openReview(candidateId)
-                .onFailure { e ->
-                    _message.value = M13ErrorMapper.userMessage(M13ErrorMapper.codeOf(e))
-                }
+            matchRepository.observeDecisions(candidateId).collect { _decisions.value = it }
+        }
+        viewModelScope.launch {
+            matchRepository.observeStatusHistory(candidateId).collect { _history.value = it }
         }
     }
 
-    fun decide(decision: M13MatchDecisionType, reasonCode: String) {
+    fun openReview() = runAction { matchRepository.openReview(candidateId) }
+
+    fun decide(decision: M13MatchDecisionType, reasonCode: String) = runAction {
+        matchRepository.decide(candidateId, decision, reasonCode)
+            .onSuccess { _message.value = "Decisión registrada: ${decision.name}" }
+    }
+
+    fun withdraw() = runAction {
+        matchRepository.withdrawMatch(candidateId)
+            .onSuccess { _message.value = "Coincidencia retirada" }
+    }
+
+    fun clearMessage() {
+        _message.value = null
+    }
+
+    private fun runAction(block: suspend () -> Result<*>) {
+        if (_busy.value) return
         viewModelScope.launch {
-            matchRepository.decide(candidateId, decision, reasonCode)
-                .onSuccess { _message.value = "Decisión registrada: ${decision.name}" }
-                .onFailure { e ->
-                    _message.value = M13ErrorMapper.userMessage(M13ErrorMapper.codeOf(e))
-                }
+            _busy.value = true
+            block().onFailure { e ->
+                _message.value = M13ErrorMapper.userMessage(M13ErrorMapper.codeOf(e))
+            }
+            _busy.value = false
         }
     }
 

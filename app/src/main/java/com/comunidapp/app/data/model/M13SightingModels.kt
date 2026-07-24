@@ -143,6 +143,17 @@ data class M13MatchDecision(
     val createdAt: Long
 )
 
+/** Historial append-only de transiciones de candidato (Bloque 3). */
+data class M13MatchStatusHistoryEntry(
+    val id: String,
+    val candidateId: String,
+    val fromStatus: M13MatchStatus?,
+    val toStatus: M13MatchStatus,
+    val changedByUserId: String?,
+    val reason: String? = null,
+    val createdAt: Long
+)
+
 object M13PermissionCodes {
     const val SIGHTING_READ = "lostfound.sighting.read"
     const val SIGHTING_CREATE = "lostfound.sighting.create"
@@ -167,9 +178,12 @@ object M13AuditEvents {
     const val SIGHTING_CREATED = "m13.sighting.created"
     const val SIGHTING_WITHDRAWN = "m13.sighting.withdrawn"
     const val MATCH_PROPOSED = "m13.match.proposed"
+    const val MATCH_UNDER_REVIEW = "m13.match.under_review"
     const val MATCH_CONFIRMED = "m13.match.confirmed"
     const val MATCH_REJECTED = "m13.match.rejected"
     const val MATCH_INCONCLUSIVE = "m13.match.inconclusive"
+    const val MATCH_WITHDRAWN = "m13.match.withdrawn"
+    const val MATCH_EXPIRED = "m13.match.expired"
 }
 
 object M13MatchingDefaults {

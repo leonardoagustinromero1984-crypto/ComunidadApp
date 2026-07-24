@@ -337,13 +337,11 @@ Fuera del alcance de M13:
 
 ### Bloque 3 — Revisión y confirmación
 
-- flujo `PROPOSED → UNDER_REVIEW → decisión`;
-- autoridad M08/M03/M04;
-- moderación;
-- historial;
-- idempotencia y concurrencia;
-- eventos M07;
-- smoke remoto.
+- flujo local `PROPOSED → UNDER_REVIEW → decisión` (**CERRADO LOCALMENTE**);
+- withdraw/expire; historial; autoridad; concurrencia/idempotencia;
+- UI timeline;
+- RPC remotas: **propuesta 049** (no creada automáticamente);
+- smoke remoto de revisión: pendiente post-049.
 
 ### Bloque 4 — Endurecimiento y cierre
 

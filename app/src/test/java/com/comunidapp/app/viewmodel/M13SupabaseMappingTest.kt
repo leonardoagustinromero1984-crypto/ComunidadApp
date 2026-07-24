@@ -98,6 +98,12 @@ class M13SupabaseMappingTest {
         assertTrue(src.contains("m13_create_sighting"))
         assertTrue(src.contains("postgrest.rpc"))
         assertFalse(src.contains(".insert("))
-        assertFalse(src.contains("m13_confirm"))
+        assertFalse(src.contains("m13_confirm_match"))
+        assertFalse(src.contains("m13_open_match_review"))
+    }
+
+    @Test
+    fun review_rpc_unavailable_message_mentions_049() {
+        assertTrue(M13ErrorMapper.userMessage("MATCH_REVIEW_RPC_UNAVAILABLE").contains("049"))
     }
 }

@@ -17,7 +17,7 @@ Registrar avistamientos seguros, proponer coincidencias explicables con casos Lo
 
 ## Exclusiones
 
-Pagos, historia clínica, chat, IA, biometría, GPS background, push real, confirm/reject remoto (Bloque 3), cierre automático de caso, reemplazo destructivo del legacy, apply remoto de 048 en este bloque.
+Pagos, historia clínica, chat, IA, biometría, GPS background, push real, cierre automático de caso, reemplazo destructivo del legacy, creación automática de 049, apply remoto de SQL en este bloque.
 
 ## Dependencias
 
@@ -31,15 +31,21 @@ UI (m13/*) → ViewModels → MockM13*Repository → M13MemoryStore
                               ↘ M13LegacySightingAdapter → InMemoryDataStore.addSighting (opcional)
 ```
 
-## Bloque 2 (implementado localmente)
+## Bloque 2 (cerrado localmente; remoto estructural PASS)
 
-- Migración `048_m13_sightings_and_match_candidates.sql` (no aplicada remotamente).
-- Tabla lateral + candidatos + decisiones + historial.
-- 13 RPC; RLS; grants authenticated; helpers `_m13_*` revocados.
-- `SupabaseM13*` + switching en `DataProvider`.
-- Docs: `M13-persistencia-y-seguridad.md`, `M13-Bloque-2-validacion.md`, runbook 048.
-- Guard CI highest = **048**.
+- Migración `048` aplicada en Supabase de pruebas; validación estructural **13/13 PASS**.
+- Smoke funcional B2: **PENDIENTE EXTERNO** (no declarar PASS).
+- Tabla lateral + candidatos + decisiones + historial (estructura).
+- 13 RPC de sighting/generate/list; **sin** RPC de confirm/reject.
 
-## Bloque 3 (propuesta exacta)
+## Bloque 3 (cerrado localmente)
 
-RPC `m13_open_match_review`, `m13_confirm_match_candidate`, `m13_reject_match_candidate` (o equivalentes), escritura en `lost_found_match_decisions` + historial, autoridad dueño/org, sin autoconfirmación, UI remota de decisión, smoke remoto post-048.
+- Flujo humano mock: open → confirm/reject/inconclusive; withdraw/expire.
+- Historial append-only + timeline UI; autoridad dueño/org; concurrencia/idempotencia.
+- Supabase review stubs → `MATCH_REVIEW_RPC_UNAVAILABLE` hasta 049.
+- Propuesta exacta: `docs/02-arquitectura/M13-propuesta-migracion-049-match-review.md`.
+- Riesgo: smoke B2 externo pendiente.
+
+## Bloque 4 (propuesta)
+
+Privacidad final, expiraciones remotas, métricas, preparación M06, cierre técnico post-smoke.

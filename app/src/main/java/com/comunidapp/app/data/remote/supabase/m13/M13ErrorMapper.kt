@@ -26,6 +26,9 @@ object M13ErrorMapper {
         "MATCH_AUTO_CONFIRM_FORBIDDEN" -> "Las coincidencias requieren confirmación humana."
         "MATCH_GENERATION_NOT_ALLOWED" -> "No tenés permiso para generar coincidencias."
         "MATCH_DATA_INSUFFICIENT" -> "Faltan datos para calcular la coincidencia."
+        "MATCH_TERMINAL" -> "La coincidencia ya está en un estado final."
+        "MATCH_REVIEW_RPC_UNAVAILABLE" ->
+            "La revisión remota de coincidencias requiere la migración 049 (RPC)."
         "CONFLICT" -> "Conflicto al guardar el avistamiento o la coincidencia."
         "MEDIA_REF_INVALID" -> "La referencia de media no es segura."
         "M13_REPOSITORY_FAILURE" -> "No pudimos completar la operación (M13)."
@@ -48,6 +51,8 @@ object M13ErrorMapper {
         "MATCH_AUTO_CONFIRM_FORBIDDEN",
         "MATCH_GENERATION_NOT_ALLOWED",
         "MATCH_DATA_INSUFFICIENT",
+        "MATCH_TERMINAL",
+        "MATCH_REVIEW_RPC_UNAVAILABLE",
         "CONFLICT",
         "MEDIA_REF_INVALID",
         "M13_REPOSITORY_FAILURE"

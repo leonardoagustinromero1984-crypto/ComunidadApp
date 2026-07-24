@@ -2,7 +2,9 @@
 
 ```text
 M13 BLOQUE 2 CERRADO LOCALMENTE
-MIGRACIÓN 048 PENDIENTE DE APLICACIÓN REMOTA
+MIGRACIÓN 048 APLICADA EN SUPABASE DE PRUEBAS
+VALIDACIÓN ESTRUCTURAL 048: 13/13 PASS
+M13 BLOQUE 2 SMOKE FUNCIONAL PENDIENTE EXTERNO
 M12 SMOKE FUNCIONAL PENDIENTE EXTERNO
 M12 CIERRE OFICIAL PENDIENTE
 ```
@@ -20,16 +22,10 @@ M12 CIERRE OFICIAL PENDIENTE
 | 7 | RLS + grants authenticated; helpers revocados | PASS |
 | 8 | Repos Supabase + DataProvider switching | PASS |
 | 9 | Guard CI highest = 048 | PASS |
-| 10 | Sin apply remoto / sin APK | PASS |
-| 11 | M12 no declarado cerrado | PASS |
+| 10 | Apply remoto estructural | **13/13 PASS** (operación externa) |
+| 11 | Smoke funcional remoto B2 | **PENDIENTE EXTERNO** |
+| 12 | M12 no declarado cerrado | PASS |
 
-## Validaciones locales
+## Fuera de alcance histórico de B2
 
-- `bash -n scripts/ci/m07_quality_checks.sh`
-- `bash scripts/ci/m07_quality_checks.sh` → highest **048**
-- Suites focalizadas M13 (+ regresiones highest-migration)
-- `.\gradlew.bat compileLocalDebugKotlin`
-
-## Fuera de alcance (Bloque 3)
-
-Confirmación/rechazo remoto final, RPC de decisión, UI de cierre remoto de match, migración 049.
+Confirmación/rechazo remoto final → Bloque 3 local + propuesta 049.

@@ -1,6 +1,9 @@
 package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.M13MatchCandidate
+import com.comunidapp.app.data.model.M13MatchDecision
+import com.comunidapp.app.data.model.M13MatchDecisionType
+import com.comunidapp.app.data.model.M13MatchStatusHistoryEntry
 import com.comunidapp.app.data.model.M13Sighting
 import com.comunidapp.app.data.model.M13SightingPublic
 import com.comunidapp.app.data.remote.supabase.m13.CreateM13SightingParamsJson
@@ -11,6 +14,7 @@ import com.comunidapp.app.data.remote.supabase.m13.toPublic
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOf
 
 /**
  * LeoVer M13 Bloque 2 — repositorios Supabase (solo RPC; sin DML directo).
@@ -132,6 +136,12 @@ class SupabaseM13MatchRepository(
         )
     }
 
+    override fun observeDecisions(candidateId: String): Flow<List<M13MatchDecision>> =
+        flowOf(emptyList()) // RPC list_match_decisions → migración 049
+
+    override fun observeStatusHistory(candidateId: String): Flow<List<M13MatchStatusHistoryEntry>> =
+        flowOf(emptyList()) // RPC list_match_status_history → migración 049
+
     override suspend fun recalculateForSighting(sightingId: String): Result<List<M13MatchCandidate>> =
         try {
             Result.success(remote.generateForSighting(sightingId).map { it.toDomain() })
@@ -140,15 +150,21 @@ class SupabaseM13MatchRepository(
         }
 
     override suspend fun openReview(candidateId: String): Result<M13MatchCandidate> =
-        resultFailM13("MATCH_INVALID_TRANSITION") // Bloque 3
+        resultFailM13("MATCH_REVIEW_RPC_UNAVAILABLE")
 
     override suspend fun decide(
         candidateId: String,
-        decision: com.comunidapp.app.data.model.M13MatchDecisionType,
+        decision: M13MatchDecisionType,
         reasonCode: String,
         notePrivate: String?
     ): Result<M13MatchCandidate> =
-        resultFailM13("MATCH_AUTO_CONFIRM_FORBIDDEN") // Bloque 3 — sin confirm remoto
+        resultFailM13("MATCH_REVIEW_RPC_UNAVAILABLE")
+
+    override suspend fun withdrawMatch(candidateId: String, reasonCode: String): Result<M13MatchCandidate> =
+        resultFailM13("MATCH_REVIEW_RPC_UNAVAILABLE")
+
+    override suspend fun expireMatch(candidateId: String, reasonCode: String): Result<M13MatchCandidate> =
+        resultFailM13("MATCH_REVIEW_RPC_UNAVAILABLE")
 
     suspend fun generateForCase(caseId: String): Result<List<M13MatchCandidate>> =
         try {

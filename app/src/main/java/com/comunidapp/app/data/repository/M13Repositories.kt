@@ -10,6 +10,7 @@ import com.comunidapp.app.data.model.M13MatchCandidate
 import com.comunidapp.app.data.model.M13MatchDecision
 import com.comunidapp.app.data.model.M13MatchDecisionType
 import com.comunidapp.app.data.model.M13MatchStatus
+import com.comunidapp.app.data.model.M13MatchStatusHistoryEntry
 import com.comunidapp.app.data.model.M13PermissionCodes
 import com.comunidapp.app.data.model.M13Sighting
 import com.comunidapp.app.data.model.M13SightingPublic
@@ -19,6 +20,8 @@ import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.toPublic
 import java.util.concurrent.atomic.AtomicLong
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -90,14 +93,19 @@ class M13MemoryStore {
     private val _sightings = MutableStateFlow<List<M13Sighting>>(emptyList())
     private val _candidates = MutableStateFlow<List<M13MatchCandidate>>(emptyList())
     private val _decisions = MutableStateFlow<List<M13MatchDecision>>(emptyList())
+    private val _statusHistory = MutableStateFlow<List<M13MatchStatusHistoryEntry>>(emptyList())
     private val _audit = MutableStateFlow<List<Pair<String, String>>>(emptyList())
+    private val transitionLock = ReentrantLock()
 
     val sightings: StateFlow<List<M13Sighting>> = _sightings.asStateFlow()
     val candidates: StateFlow<List<M13MatchCandidate>> = _candidates.asStateFlow()
     val decisions: StateFlow<List<M13MatchDecision>> = _decisions.asStateFlow()
+    val statusHistory: StateFlow<List<M13MatchStatusHistoryEntry>> = _statusHistory.asStateFlow()
     val auditTrail: StateFlow<List<Pair<String, String>>> = _audit.asStateFlow()
 
     var forceFailure: Boolean = false
+
+    fun <T> withTransitionLock(block: () -> T): T = transitionLock.withLock(block)
 
     fun nextId(prefix: String): String = "${prefix}_${idSeq.incrementAndGet()}_${System.currentTimeMillis()}"
 
@@ -120,7 +128,8 @@ class M13MemoryStore {
             val stable = candidate.copy(
                 id = "match_${candidate.caseId}_${candidate.sightingId}",
                 createdAt = existing?.createdAt ?: candidate.createdAt,
-                status = existing?.status?.takeIf { it.isTerminal } ?: candidate.status,
+                status = existing?.status?.takeIf { it.isTerminal || it == M13MatchStatus.UNDER_REVIEW }
+                    ?: candidate.status,
                 updatedAt = candidate.updatedAt
             )
             listOf(stable) + current.filterNot {
@@ -135,6 +144,10 @@ class M13MemoryStore {
 
     fun addDecision(decision: M13MatchDecision) {
         _decisions.update { listOf(decision) + it }
+    }
+
+    fun appendStatusHistory(entry: M13MatchStatusHistoryEntry) {
+        _statusHistory.update { listOf(entry) + it }
     }
 
     fun audit(event: String, entityId: String) {
@@ -175,7 +188,7 @@ class M13MemoryStore {
             longitudeApprox = -58.4240,
             accuracyMeters = 400.0,
             description = "Vi una perra marrón cerca de Plaza Serrano",
-                mediaRefs = listOf("m05://lostfound/demo/sighting1.jpg"),
+            mediaRefs = listOf("m05://lostfound/demo/sighting1.jpg"),
             status = M13SightingStatus.ACTIVE,
             createdAt = now,
             updatedAt = now
@@ -197,6 +210,8 @@ interface M13SightingRepository {
 interface M13MatchRepository {
     fun observeMatchesForCase(caseId: String): Flow<List<M13MatchCandidate>>
     fun observeMatch(candidateId: String): Flow<M13MatchCandidate?>
+    fun observeDecisions(candidateId: String): Flow<List<M13MatchDecision>>
+    fun observeStatusHistory(candidateId: String): Flow<List<M13MatchStatusHistoryEntry>>
     suspend fun recalculateForSighting(sightingId: String): Result<List<M13MatchCandidate>>
     suspend fun openReview(candidateId: String): Result<M13MatchCandidate>
     suspend fun decide(
@@ -205,6 +220,8 @@ interface M13MatchRepository {
         reasonCode: String,
         notePrivate: String? = null
     ): Result<M13MatchCandidate>
+    suspend fun withdrawMatch(candidateId: String, reasonCode: String = "HUMAN_WITHDRAW"): Result<M13MatchCandidate>
+    suspend fun expireMatch(candidateId: String, reasonCode: String = "EXPIRED"): Result<M13MatchCandidate>
 }
 
 object M13Authority {
@@ -214,8 +231,38 @@ object M13Authority {
     fun canManageOwn(actorId: String?, sighting: M13Sighting): Boolean =
         !actorId.isNullOrBlank() && actorId == sighting.reporterUserId
 
+    /** Dueño del caso Lost/Found (author_id). */
     fun canReviewCase(actorId: String?, casePost: LostFoundPost?): Boolean =
         !actorId.isNullOrBlank() && casePost != null && casePost.authorId == actorId
+
+    /**
+     * Autoridad de confirmación/revisión:
+     * dueño del caso, o permisos declarados MATCH_REVIEW / MATCH_CONFIRM / SIGHTING_MODERATE.
+     * El reportante solo confirma si también es dueño del caso.
+     */
+    fun resolveReviewAuthority(
+        actorId: String?,
+        casePost: LostFoundPost?,
+        grantedPermissionCodes: Set<String> = emptySet()
+    ): M13ActorAuthority? {
+        if (actorId.isNullOrBlank() || casePost == null) return null
+        if (casePost.authorId == actorId) return M13ActorAuthority.CASE_OWNER
+        if (grantedPermissionCodes.contains(M13PermissionCodes.SIGHTING_MODERATE)) {
+            return M13ActorAuthority.MODERATOR
+        }
+        if (grantedPermissionCodes.contains(M13PermissionCodes.MATCH_CONFIRM) ||
+            grantedPermissionCodes.contains(M13PermissionCodes.MATCH_REVIEW)
+        ) {
+            return M13ActorAuthority.ORG_MANAGER
+        }
+        return null
+    }
+
+    fun canDecideMatch(
+        actorId: String?,
+        casePost: LostFoundPost?,
+        grantedPermissionCodes: Set<String> = emptySet()
+    ): Boolean = resolveReviewAuthority(actorId, casePost, grantedPermissionCodes) != null
 }
 
 class MockM13SightingRepository(
@@ -316,7 +363,14 @@ class MockM13SightingRepository(
 class MockM13MatchRepository(
     private val actorUserId: () -> String?,
     private val store: M13MemoryStore,
-    private val resolveCases: () -> List<LostFoundPost>
+    private val resolveCases: () -> List<LostFoundPost>,
+    /** Permisos org/plataforma simulados para el actor (M03/M04). */
+    private val grantedPermissions: () -> Set<String> = { emptySet() },
+    /**
+     * Snapshot del caso Lost/Found tras una decisión (para asertar que no se cierra solo).
+     * Tests pueden observar mutaciones; producción no cierra el caso automáticamente.
+     */
+    private val onCaseTouched: (LostFoundPost) -> Unit = {}
 ) : M13MatchRepository {
 
     override fun observeMatchesForCase(caseId: String): Flow<List<M13MatchCandidate>> =
@@ -326,6 +380,16 @@ class MockM13MatchRepository(
 
     override fun observeMatch(candidateId: String): Flow<M13MatchCandidate?> =
         store.candidates.map { list -> list.find { it.id == candidateId } }
+
+    override fun observeDecisions(candidateId: String): Flow<List<M13MatchDecision>> =
+        store.decisions.map { list ->
+            list.filter { it.candidateId == candidateId }.sortedByDescending { it.createdAt }
+        }
+
+    override fun observeStatusHistory(candidateId: String): Flow<List<M13MatchStatusHistoryEntry>> =
+        store.statusHistory.map { list ->
+            list.filter { it.candidateId == candidateId }.sortedByDescending { it.createdAt }
+        }
 
     override suspend fun recalculateForSighting(sightingId: String): Result<List<M13MatchCandidate>> {
         if (store.forceFailure) return resultFailM13("M13_REPOSITORY_FAILURE")
@@ -339,72 +403,173 @@ class MockM13MatchRepository(
         return Result.success(produced.sortedByDescending { it.score })
     }
 
-    override suspend fun openReview(candidateId: String): Result<M13MatchCandidate> {
-        if (store.forceFailure) return resultFailM13("M13_REPOSITORY_FAILURE")
-        val actor = actorUserId() ?: return resultFailM13("NOT_AUTHENTICATED")
-        val candidate = store.candidates.value.find { it.id == candidateId }
-            ?: return resultFailM13("MATCH_NOT_FOUND")
-        val casePost = resolveCases().find { it.id == candidate.caseId }
-        if (!M13Authority.canReviewCase(actor, casePost)) return resultFailM13("MATCH_FORBIDDEN")
-        if (candidate.status.isTerminal) return resultFailM13("MATCH_INVALID_TRANSITION")
-        if (candidate.status == M13MatchStatus.UNDER_REVIEW) return Result.success(candidate)
-        val updated = candidate.copy(
-            status = M13MatchStatus.UNDER_REVIEW,
-            updatedAt = System.currentTimeMillis()
-        )
-        store.updateCandidate(updated)
-        return Result.success(updated)
-    }
+    override suspend fun openReview(candidateId: String): Result<M13MatchCandidate> =
+        store.withTransitionLock {
+            if (store.forceFailure) return@withTransitionLock resultFailM13("M13_REPOSITORY_FAILURE")
+            val actor = actorUserId() ?: return@withTransitionLock resultFailM13("NOT_AUTHENTICATED")
+            val candidate = store.candidates.value.find { it.id == candidateId }
+                ?: return@withTransitionLock resultFailM13("MATCH_NOT_FOUND")
+            val casePost = resolveCases().find { it.id == candidate.caseId }
+            if (M13Authority.resolveReviewAuthority(actor, casePost, grantedPermissions()) == null) {
+                return@withTransitionLock resultFailM13("MATCH_FORBIDDEN")
+            }
+            if (candidate.status.isTerminal) return@withTransitionLock resultFailM13("MATCH_TERMINAL")
+            // Idempotencia: ya en revisión.
+            if (candidate.status == M13MatchStatus.UNDER_REVIEW) return@withTransitionLock Result.success(candidate)
+            if (candidate.status != M13MatchStatus.PROPOSED) {
+                return@withTransitionLock resultFailM13("MATCH_INVALID_TRANSITION")
+            }
+            val now = System.currentTimeMillis()
+            val updated = candidate.copy(status = M13MatchStatus.UNDER_REVIEW, updatedAt = now)
+            store.updateCandidate(updated)
+            appendHistory(candidate, updated, actor, "OPEN_REVIEW")
+            store.audit(M13AuditEvents.MATCH_UNDER_REVIEW, updated.id)
+            Result.success(updated)
+        }
 
     override suspend fun decide(
         candidateId: String,
         decision: M13MatchDecisionType,
         reasonCode: String,
         notePrivate: String?
-    ): Result<M13MatchCandidate> {
-        if (store.forceFailure) return resultFailM13("M13_REPOSITORY_FAILURE")
-        val actor = actorUserId() ?: return resultFailM13("NOT_AUTHENTICATED")
-        val candidate = store.candidates.value.find { it.id == candidateId }
-            ?: return resultFailM13("MATCH_NOT_FOUND")
-        val casePost = resolveCases().find { it.id == candidate.caseId }
-        if (!M13Authority.canReviewCase(actor, casePost)) return resultFailM13("MATCH_FORBIDDEN")
-        if (candidate.status.isTerminal) return resultFailM13("MATCH_INVALID_TRANSITION")
-        // Sin autoconfirmación: siempre requiere actor humano (ya autenticado + autoridad).
-        val newStatus = when (decision) {
-            M13MatchDecisionType.CONFIRMED -> M13MatchStatus.CONFIRMED
-            M13MatchDecisionType.REJECTED -> M13MatchStatus.REJECTED
-            M13MatchDecisionType.INCONCLUSIVE -> M13MatchStatus.INCONCLUSIVE
-        }
-        val now = System.currentTimeMillis()
-        val updated = candidate.copy(status = newStatus, updatedAt = now)
-        store.updateCandidate(updated)
-        store.addDecision(
-            M13MatchDecision(
-                id = store.nextId("m13_decision"),
-                candidateId = candidate.id,
-                decision = decision,
-                actorUserId = actor,
-                actorAuthority = M13ActorAuthority.CASE_OWNER,
-                reasonCode = reasonCode.ifBlank { decision.name },
-                notePrivate = notePrivate?.trim()?.ifBlank { null },
-                createdAt = now
+    ): Result<M13MatchCandidate> =
+        store.withTransitionLock {
+            if (store.forceFailure) return@withTransitionLock resultFailM13("M13_REPOSITORY_FAILURE")
+            val actor = actorUserId() ?: return@withTransitionLock resultFailM13("NOT_AUTHENTICATED")
+            val candidate = store.candidates.value.find { it.id == candidateId }
+                ?: return@withTransitionLock resultFailM13("MATCH_NOT_FOUND")
+            val casePost = resolveCases().find { it.id == candidate.caseId }
+            val authority = M13Authority.resolveReviewAuthority(actor, casePost, grantedPermissions())
+                ?: return@withTransitionLock resultFailM13("MATCH_FORBIDDEN")
+
+            val targetStatus = when (decision) {
+                M13MatchDecisionType.CONFIRMED -> M13MatchStatus.CONFIRMED
+                M13MatchDecisionType.REJECTED -> M13MatchStatus.REJECTED
+                M13MatchDecisionType.INCONCLUSIVE -> M13MatchStatus.INCONCLUSIVE
+            }
+
+            // Idempotencia: mismo estado final → éxito sin duplicar decisión.
+            if (candidate.status.isTerminal) {
+                val existing = store.decisions.value.firstOrNull { it.candidateId == candidate.id }
+                if (candidate.status == targetStatus && existing?.decision == decision) {
+                    return@withTransitionLock Result.success(candidate)
+                }
+                return@withTransitionLock resultFailM13("MATCH_TERMINAL")
+            }
+
+            if (candidate.status != M13MatchStatus.UNDER_REVIEW) {
+                return@withTransitionLock resultFailM13("MATCH_INVALID_TRANSITION")
+            }
+
+            // Una sola decisión final por candidato.
+            if (store.decisions.value.any { it.candidateId == candidate.id }) {
+                return@withTransitionLock resultFailM13("CONFLICT")
+            }
+
+            val now = System.currentTimeMillis()
+            val updated = candidate.copy(status = targetStatus, updatedAt = now)
+            store.updateCandidate(updated)
+            store.addDecision(
+                M13MatchDecision(
+                    id = store.nextId("m13_decision"),
+                    candidateId = candidate.id,
+                    decision = decision,
+                    actorUserId = actor,
+                    actorAuthority = authority,
+                    reasonCode = reasonCode.ifBlank { decision.name },
+                    notePrivate = notePrivate?.trim()?.ifBlank { null },
+                    createdAt = now
+                )
             )
-        )
-        val event = when (decision) {
-            M13MatchDecisionType.CONFIRMED -> M13AuditEvents.MATCH_CONFIRMED
-            M13MatchDecisionType.REJECTED -> M13AuditEvents.MATCH_REJECTED
-            M13MatchDecisionType.INCONCLUSIVE -> M13AuditEvents.MATCH_INCONCLUSIVE
-        }
-        store.audit(event, updated.id)
-        if (decision == M13MatchDecisionType.CONFIRMED) {
-            store.sightings.value.find { it.id == candidate.sightingId }?.let { s ->
-                if (s.status == M13SightingStatus.ACTIVE) {
-                    store.upsertSighting(
-                        s.copy(status = M13SightingStatus.CONFIRMED, updatedAt = now)
-                    )
+            appendHistory(candidate, updated, actor, reasonCode.ifBlank { decision.name })
+            val event = when (decision) {
+                M13MatchDecisionType.CONFIRMED -> M13AuditEvents.MATCH_CONFIRMED
+                M13MatchDecisionType.REJECTED -> M13AuditEvents.MATCH_REJECTED
+                M13MatchDecisionType.INCONCLUSIVE -> M13AuditEvents.MATCH_INCONCLUSIVE
+            }
+            store.audit(event, updated.id)
+            if (decision == M13MatchDecisionType.CONFIRMED) {
+                store.sightings.value.find { it.id == candidate.sightingId }?.let { s ->
+                    if (s.status == M13SightingStatus.ACTIVE) {
+                        store.upsertSighting(
+                            s.copy(status = M13SightingStatus.CONFIRMED, updatedAt = now)
+                        )
+                    }
                 }
             }
+            // No cerrar automáticamente el caso Lost/Found.
+            casePost?.let(onCaseTouched)
+            Result.success(updated)
         }
-        return Result.success(updated)
+
+    override suspend fun withdrawMatch(
+        candidateId: String,
+        reasonCode: String
+    ): Result<M13MatchCandidate> =
+        transitionToNonDecisionTerminal(
+            candidateId = candidateId,
+            target = M13MatchStatus.WITHDRAWN,
+            reasonCode = reasonCode,
+            auditEvent = M13AuditEvents.MATCH_WITHDRAWN
+        )
+
+    override suspend fun expireMatch(
+        candidateId: String,
+        reasonCode: String
+    ): Result<M13MatchCandidate> =
+        transitionToNonDecisionTerminal(
+            candidateId = candidateId,
+            target = M13MatchStatus.EXPIRED,
+            reasonCode = reasonCode,
+            auditEvent = M13AuditEvents.MATCH_EXPIRED
+        )
+
+    private fun transitionToNonDecisionTerminal(
+        candidateId: String,
+        target: M13MatchStatus,
+        reasonCode: String,
+        auditEvent: String
+    ): Result<M13MatchCandidate> =
+        store.withTransitionLock {
+            if (store.forceFailure) return@withTransitionLock resultFailM13("M13_REPOSITORY_FAILURE")
+            val actor = actorUserId() ?: return@withTransitionLock resultFailM13("NOT_AUTHENTICATED")
+            val candidate = store.candidates.value.find { it.id == candidateId }
+                ?: return@withTransitionLock resultFailM13("MATCH_NOT_FOUND")
+            val casePost = resolveCases().find { it.id == candidate.caseId }
+            if (M13Authority.resolveReviewAuthority(actor, casePost, grantedPermissions()) == null) {
+                return@withTransitionLock resultFailM13("MATCH_FORBIDDEN")
+            }
+            if (candidate.status == target) return@withTransitionLock Result.success(candidate)
+            if (candidate.status.isTerminal) return@withTransitionLock resultFailM13("MATCH_TERMINAL")
+            if (candidate.status != M13MatchStatus.PROPOSED &&
+                candidate.status != M13MatchStatus.UNDER_REVIEW
+            ) {
+                return@withTransitionLock resultFailM13("MATCH_INVALID_TRANSITION")
+            }
+            val now = System.currentTimeMillis()
+            val updated = candidate.copy(status = target, updatedAt = now)
+            store.updateCandidate(updated)
+            appendHistory(candidate, updated, actor, reasonCode)
+            store.audit(auditEvent, updated.id)
+            Result.success(updated)
+        }
+
+    private fun appendHistory(
+        from: M13MatchCandidate,
+        to: M13MatchCandidate,
+        actor: String,
+        reason: String
+    ) {
+        store.appendStatusHistory(
+            M13MatchStatusHistoryEntry(
+                id = store.nextId("m13_hist"),
+                candidateId = to.id,
+                fromStatus = from.status,
+                toStatus = to.status,
+                changedByUserId = actor,
+                reason = reason,
+                createdAt = to.updatedAt
+            )
+        )
     }
 }
