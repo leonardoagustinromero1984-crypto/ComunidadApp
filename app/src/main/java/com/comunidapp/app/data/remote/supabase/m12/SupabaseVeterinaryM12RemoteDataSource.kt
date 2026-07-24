@@ -1,11 +1,19 @@
 package com.comunidapp.app.data.remote.supabase.m12
 
 import com.comunidapp.app.data.model.AnimalSpecies
+import com.comunidapp.app.data.model.VeterinaryAppointment
+import com.comunidapp.app.data.model.VeterinaryAppointmentSlot
+import com.comunidapp.app.data.model.VeterinaryAppointmentStatus
+import com.comunidapp.app.data.model.VeterinaryAppointmentStatusHistory
+import com.comunidapp.app.data.model.VeterinaryAvailabilityException
+import com.comunidapp.app.data.model.VeterinaryAvailabilityExceptionType
+import com.comunidapp.app.data.model.VeterinaryAvailabilityRule
 import com.comunidapp.app.data.model.VeterinaryClinicProfile
 import com.comunidapp.app.data.model.VeterinaryClinicStatus
 import com.comunidapp.app.data.model.VeterinaryOpeningHours
 import com.comunidapp.app.data.model.VeterinaryProfessional
 import com.comunidapp.app.data.model.VeterinaryProfessionalStatus
+import com.comunidapp.app.data.model.VeterinaryScheduleSettings
 import com.comunidapp.app.data.model.VeterinaryService
 import com.comunidapp.app.data.model.VeterinaryServiceCategory
 import com.comunidapp.app.data.model.VeterinarySpecialty
@@ -14,7 +22,11 @@ import com.comunidapp.app.data.remote.supabase.supabase
 import io.github.jan.supabase.postgrest.postgrest
 import java.time.DayOfWeek
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalDateTime
 import java.time.LocalTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
@@ -164,6 +176,193 @@ fun VeterinaryOpeningHoursRow.toDomain(): VeterinaryOpeningHours = VeterinaryOpe
     emergencyOnly = emergencyOnly
 )
 
+// ---------------------------------------------------------------------------
+// M12 Bloque 3 — agenda, disponibilidad y turnos (DTOs RPC + mappers).
+// ---------------------------------------------------------------------------
+
+private fun parseTimestamp(value: String?): Instant {
+    if (value.isNullOrBlank()) return Instant.EPOCH
+    return runCatching { Instant.parse(value) }.getOrNull()
+        ?: runCatching { OffsetDateTime.parse(value).toInstant() }.getOrNull()
+        ?: runCatching { LocalDateTime.parse(value).toInstant(ZoneOffset.UTC) }.getOrNull()
+        ?: Instant.EPOCH
+}
+
+private fun parseLocalDate(value: String?): LocalDate? {
+    if (value.isNullOrBlank()) return null
+    return runCatching { LocalDate.parse(value.take(10)) }.getOrNull()
+}
+
+@Serializable
+data class VeterinaryScheduleSettingsRow(
+    @SerialName("clinic_id") val clinicId: String,
+    @SerialName("timezone_name") val timezoneName: String = "America/Argentina/Buenos_Aires",
+    @SerialName("booking_horizon_days") val bookingHorizonDays: Int = 30,
+    @SerialName("minimum_notice_minutes") val minimumNoticeMinutes: Int = 60,
+    @SerialName("cancellation_notice_minutes") val cancellationNoticeMinutes: Int = 120,
+    @SerialName("default_slot_duration_minutes") val defaultSlotDurationMinutes: Int = 30,
+    val active: Boolean = true
+)
+
+@Serializable
+data class VeterinaryAvailabilityRuleRow(
+    val id: String,
+    @SerialName("clinic_id") val clinicId: String,
+    @SerialName("professional_id") val professionalId: String? = null,
+    @SerialName("service_id") val serviceId: String? = null,
+    // ISO day_of_week (1=Monday ... 7=Sunday).
+    @SerialName("day_of_week") val dayOfWeek: Int,
+    @SerialName("starts_at") val startsAt: String,
+    @SerialName("ends_at") val endsAt: String,
+    @SerialName("slot_duration_minutes") val slotDurationMinutes: Int,
+    @SerialName("capacity_per_slot") val capacityPerSlot: Int,
+    @SerialName("valid_from") val validFrom: String? = null,
+    @SerialName("valid_until") val validUntil: String? = null,
+    val active: Boolean = true
+)
+
+@Serializable
+data class VeterinaryAvailabilityExceptionRow(
+    val id: String,
+    @SerialName("clinic_id") val clinicId: String,
+    @SerialName("rule_id") val ruleId: String? = null,
+    @SerialName("exception_date") val exceptionDate: String,
+    val type: String,
+    @SerialName("starts_at") val startsAt: String? = null,
+    @SerialName("ends_at") val endsAt: String? = null,
+    @SerialName("capacity_per_slot") val capacityPerSlot: Int? = null,
+    val reason: String? = null,
+    val active: Boolean = true
+)
+
+@Serializable
+data class VeterinaryAppointmentSlotRow(
+    @SerialName("clinic_id") val clinicId: String,
+    @SerialName("professional_id") val professionalId: String? = null,
+    @SerialName("service_id") val serviceId: String,
+    @SerialName("starts_at") val startsAt: String,
+    @SerialName("ends_at") val endsAt: String,
+    val capacity: Int,
+    val reserved: Int,
+    val available: Int
+)
+
+@Serializable
+data class VeterinaryAppointmentRow(
+    val id: String,
+    @SerialName("clinic_id") val clinicId: String,
+    @SerialName("professional_id") val professionalId: String? = null,
+    @SerialName("service_id") val serviceId: String,
+    @SerialName("pet_id") val petId: String,
+    @SerialName("requester_user_id") val requesterUserId: String,
+    @SerialName("starts_at") val startsAt: String,
+    @SerialName("ends_at") val endsAt: String,
+    val status: String = "REQUESTED",
+    @SerialName("request_note") val requestNote: String? = null,
+    @SerialName("clinic_operational_note") val clinicOperationalNote: String? = null,
+    @SerialName("rejection_reason") val rejectionReason: String? = null,
+    @SerialName("cancellation_reason") val cancellationReason: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
+@Serializable
+data class VeterinaryAppointmentStatusHistoryRow(
+    val id: String,
+    @SerialName("appointment_id") val appointmentId: String,
+    @SerialName("from_status") val fromStatus: String? = null,
+    @SerialName("to_status") val toStatus: String,
+    @SerialName("changed_by") val changedBy: String,
+    val reason: String? = null,
+    @SerialName("changed_at") val changedAt: String? = null
+)
+
+@Serializable
+data class ManagedVeterinaryAvailabilityRow(
+    @SerialName("clinic_id") val clinicId: String? = null,
+    val rules: List<VeterinaryAvailabilityRuleRow> = emptyList(),
+    val exceptions: List<VeterinaryAvailabilityExceptionRow> = emptyList()
+)
+
+fun VeterinaryScheduleSettingsRow.toDomain(): VeterinaryScheduleSettings = VeterinaryScheduleSettings(
+    clinicId = clinicId,
+    timezoneName = timezoneName,
+    bookingHorizonDays = bookingHorizonDays,
+    minimumNoticeMinutes = minimumNoticeMinutes,
+    cancellationNoticeMinutes = cancellationNoticeMinutes,
+    defaultSlotDurationMinutes = defaultSlotDurationMinutes,
+    active = active
+)
+
+fun VeterinaryAvailabilityRuleRow.toDomain(): VeterinaryAvailabilityRule = VeterinaryAvailabilityRule(
+    id = id,
+    clinicId = clinicId,
+    professionalId = professionalId,
+    serviceId = serviceId,
+    dayOfWeek = DayOfWeek.of(dayOfWeek.coerceIn(1, 7)),
+    startsAt = parseTime(startsAt) ?: LocalTime.MIN,
+    endsAt = parseTime(endsAt) ?: LocalTime.MIN,
+    slotDurationMinutes = slotDurationMinutes,
+    capacityPerSlot = capacityPerSlot,
+    validFrom = parseLocalDate(validFrom),
+    validUntil = parseLocalDate(validUntil),
+    active = active
+)
+
+fun VeterinaryAvailabilityExceptionRow.toDomain(): VeterinaryAvailabilityException =
+    VeterinaryAvailabilityException(
+        id = id,
+        clinicId = clinicId,
+        ruleId = ruleId,
+        exceptionDate = parseLocalDate(exceptionDate) ?: LocalDate.now(),
+        type = VeterinaryAvailabilityExceptionType.fromString(type),
+        startsAt = parseTime(startsAt),
+        endsAt = parseTime(endsAt),
+        capacityPerSlot = capacityPerSlot,
+        reason = reason,
+        active = active
+    )
+
+fun VeterinaryAppointmentSlotRow.toDomain(): VeterinaryAppointmentSlot = VeterinaryAppointmentSlot(
+    clinicId = clinicId,
+    professionalId = professionalId,
+    serviceId = serviceId,
+    startsAt = parseTimestamp(startsAt),
+    endsAt = parseTimestamp(endsAt),
+    capacity = capacity,
+    reserved = reserved,
+    available = available
+)
+
+fun VeterinaryAppointmentRow.toDomain(): VeterinaryAppointment = VeterinaryAppointment(
+    id = id,
+    clinicId = clinicId,
+    professionalId = professionalId,
+    serviceId = serviceId,
+    petId = petId,
+    requesterUserId = requesterUserId,
+    startsAt = parseTimestamp(startsAt),
+    endsAt = parseTimestamp(endsAt),
+    status = VeterinaryAppointmentStatus.fromString(status),
+    requestNote = requestNote,
+    clinicOperationalNote = clinicOperationalNote,
+    rejectionReason = rejectionReason,
+    cancellationReason = cancellationReason,
+    createdAt = parseTimestamp(createdAt),
+    updatedAt = parseTimestamp(updatedAt)
+)
+
+fun VeterinaryAppointmentStatusHistoryRow.toDomain(): VeterinaryAppointmentStatusHistory =
+    VeterinaryAppointmentStatusHistory(
+        id = id,
+        appointmentId = appointmentId,
+        fromStatus = fromStatus?.let { VeterinaryAppointmentStatus.fromString(it) },
+        toStatus = VeterinaryAppointmentStatus.fromString(toStatus),
+        changedBy = changedBy,
+        reason = reason,
+        changedAt = parseTimestamp(changedAt)
+    )
+
 class SupabaseVeterinaryM12RemoteDataSource {
     private suspend inline fun <reified T : Any> rpc(
         name: String,
@@ -284,5 +483,159 @@ class SupabaseVeterinaryM12RemoteDataSource {
         rpcList(
             "m12_list_managed_veterinary_opening_hours",
             buildJsonObject { put("p_clinic_id", clinicId) }
+        )
+
+    // --- M12 Bloque 3: configuración de agenda y disponibilidad ---
+
+    suspend fun upsertScheduleSettings(params: JsonObject): VeterinaryScheduleSettingsRow =
+        rpc("m12_upsert_veterinary_schedule_settings", params)
+
+    suspend fun getScheduleSettings(clinicId: String): List<VeterinaryScheduleSettingsRow> =
+        rpcList(
+            "m12_get_veterinary_schedule_settings",
+            buildJsonObject { put("p_clinic_id", clinicId) }
+        )
+
+    suspend fun createAvailabilityRule(params: JsonObject): VeterinaryAvailabilityRuleRow =
+        rpc("m12_create_veterinary_availability_rule", params)
+
+    suspend fun updateAvailabilityRule(params: JsonObject): VeterinaryAvailabilityRuleRow =
+        rpc("m12_update_veterinary_availability_rule", params)
+
+    suspend fun changeAvailabilityRuleStatus(
+        ruleId: String,
+        active: Boolean
+    ): VeterinaryAvailabilityRuleRow =
+        rpc(
+            "m12_change_veterinary_availability_rule_status",
+            buildJsonObject {
+                put("p_rule_id", ruleId)
+                put("p_active", active)
+            }
+        )
+
+    suspend fun createAvailabilityException(params: JsonObject): VeterinaryAvailabilityExceptionRow =
+        rpc("m12_create_veterinary_availability_exception", params)
+
+    suspend fun updateAvailabilityException(params: JsonObject): VeterinaryAvailabilityExceptionRow =
+        rpc("m12_update_veterinary_availability_exception", params)
+
+    suspend fun changeAvailabilityExceptionStatus(
+        exceptionId: String,
+        active: Boolean
+    ): VeterinaryAvailabilityExceptionRow =
+        rpc(
+            "m12_change_veterinary_availability_exception_status",
+            buildJsonObject {
+                put("p_exception_id", exceptionId)
+                put("p_active", active)
+            }
+        )
+
+    suspend fun listManagedAvailability(clinicId: String): ManagedVeterinaryAvailabilityRow =
+        rpc(
+            "m12_list_managed_veterinary_availability",
+            buildJsonObject { put("p_clinic_id", clinicId) }
+        )
+
+    // Orden de parámetros según 047: p_clinic_id, p_service_id, p_date, p_professional_id default null.
+    suspend fun listAvailableSlots(
+        clinicId: String,
+        serviceId: String,
+        date: String,
+        professionalId: String? = null
+    ): List<VeterinaryAppointmentSlotRow> =
+        rpcList(
+            "m12_list_available_veterinary_appointment_slots",
+            buildJsonObject {
+                put("p_clinic_id", clinicId)
+                put("p_service_id", serviceId)
+                put("p_date", date)
+                put("p_professional_id", professionalId)
+            }
+        )
+
+    // --- M12 Bloque 3: solicitudes y ciclo de vida de turnos ---
+
+    // Orden de parámetros según 047: p_clinic_id, p_service_id, p_pet_id, p_starts_at, p_ends_at,
+    // p_professional_id default null, p_request_note default null.
+    suspend fun requestAppointment(params: JsonObject): VeterinaryAppointmentRow =
+        rpc("m12_request_veterinary_appointment", params)
+
+    suspend fun getAppointment(appointmentId: String): VeterinaryAppointmentRow =
+        rpc(
+            "m12_get_veterinary_appointment",
+            buildJsonObject { put("p_appointment_id", appointmentId) }
+        )
+
+    suspend fun listMyAppointments(): List<VeterinaryAppointmentRow> =
+        rpcList("m12_list_my_veterinary_appointments")
+
+    suspend fun listManagedAppointments(clinicId: String): List<VeterinaryAppointmentRow> =
+        rpcList(
+            "m12_list_managed_veterinary_appointments",
+            buildJsonObject { put("p_clinic_id", clinicId) }
+        )
+
+    suspend fun confirmAppointment(appointmentId: String): VeterinaryAppointmentRow =
+        rpc(
+            "m12_confirm_veterinary_appointment",
+            buildJsonObject { put("p_appointment_id", appointmentId) }
+        )
+
+    suspend fun rejectAppointment(appointmentId: String, reason: String?): VeterinaryAppointmentRow =
+        rpc(
+            "m12_reject_veterinary_appointment",
+            buildJsonObject {
+                put("p_appointment_id", appointmentId)
+                put("p_reason", reason)
+            }
+        )
+
+    suspend fun cancelMyAppointment(appointmentId: String, reason: String?): VeterinaryAppointmentRow =
+        rpc(
+            "m12_cancel_my_veterinary_appointment",
+            buildJsonObject {
+                put("p_appointment_id", appointmentId)
+                put("p_reason", reason)
+            }
+        )
+
+    suspend fun cancelManagedAppointment(
+        appointmentId: String,
+        reason: String?
+    ): VeterinaryAppointmentRow =
+        rpc(
+            "m12_cancel_managed_veterinary_appointment",
+            buildJsonObject {
+                put("p_appointment_id", appointmentId)
+                put("p_reason", reason)
+            }
+        )
+
+    suspend fun completeAppointment(appointmentId: String): VeterinaryAppointmentRow =
+        rpc(
+            "m12_complete_veterinary_appointment",
+            buildJsonObject { put("p_appointment_id", appointmentId) }
+        )
+
+    suspend fun markNoShow(appointmentId: String): VeterinaryAppointmentRow =
+        rpc(
+            "m12_mark_veterinary_appointment_no_show",
+            buildJsonObject { put("p_appointment_id", appointmentId) }
+        )
+
+    suspend fun expireAppointment(appointmentId: String): VeterinaryAppointmentRow =
+        rpc(
+            "m12_expire_veterinary_appointment",
+            buildJsonObject { put("p_appointment_id", appointmentId) }
+        )
+
+    suspend fun listAppointmentHistory(
+        appointmentId: String
+    ): List<VeterinaryAppointmentStatusHistoryRow> =
+        rpcList(
+            "m12_list_veterinary_appointment_history",
+            buildJsonObject { put("p_appointment_id", appointmentId) }
         )
 }

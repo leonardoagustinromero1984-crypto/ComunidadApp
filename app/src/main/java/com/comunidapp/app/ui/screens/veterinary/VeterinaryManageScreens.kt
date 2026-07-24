@@ -94,6 +94,7 @@ fun VeterinaryClinicManageHubScreen(
     onProfessionals: () -> Unit,
     onServices: () -> Unit,
     onHours: () -> Unit,
+    onAgenda: () -> Unit = {},
     viewModel: VeterinaryClinicManageActionsViewModel = viewModel(
         factory = VeterinaryClinicManageActionsViewModel.factory(clinicId)
     )
@@ -120,6 +121,9 @@ fun VeterinaryClinicManageHubScreen(
             }
             OutlinedButton(onClick = onHours, modifier = Modifier.fillMaxWidth()) {
                 Text("Horarios")
+            }
+            OutlinedButton(onClick = onAgenda, modifier = Modifier.fillMaxWidth()) {
+                Text("Agenda de turnos")
             }
             Spacer(Modifier.height(8.dp))
             Button(

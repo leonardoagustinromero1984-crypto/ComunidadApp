@@ -1,7 +1,6 @@
 package com.comunidapp.app.viewmodel
 
 import java.io.File
-import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -63,11 +62,19 @@ class M12VeterinaryStaticGuardsTest {
     }
 
     @Test
-    fun m12_sql_is_only_046() {
+    fun m12_sql_is_046_and_047() {
         val names = migrationDir().listFiles()?.map { it.name }.orEmpty()
         val m12Files = names.filter { it.contains("m12", ignoreCase = true) }
-        assertEquals(1, m12Files.size)
-        assertTrue(m12Files.first().startsWith("046_"))
+        assertTrue("debe haber al menos una migración M12", m12Files.isNotEmpty())
+        assertTrue(
+            "las migraciones M12 deben ser 046_/047_ veterinary",
+            m12Files.all {
+                (it.startsWith("046_") || it.startsWith("047_")) &&
+                    it.contains("veterinary", ignoreCase = true)
+            }
+        )
+        assertTrue("falta 046 M12", m12Files.any { it.startsWith("046_") })
+        assertTrue("falta 047 M12", m12Files.any { it.startsWith("047_") })
     }
 
     @Test

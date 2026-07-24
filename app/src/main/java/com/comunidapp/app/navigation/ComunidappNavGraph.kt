@@ -199,6 +199,13 @@ import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicManageHubScreen
 import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicProfessionalsScreen
 import com.comunidapp.app.ui.screens.veterinary.VeterinaryClinicServicesScreen
 import com.comunidapp.app.ui.screens.veterinary.VeterinaryDirectoryScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryBookAppointmentScreen
+import com.comunidapp.app.ui.screens.veterinary.MyVeterinaryAppointmentsScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryAppointmentDetailScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryManagedAgendaScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryScheduleSettingsScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryAvailabilityRulesScreen
+import com.comunidapp.app.ui.screens.veterinary.VeterinaryAppointmentManagementScreen
 import com.comunidapp.app.viewmodel.ShelterCampaignDetailViewModel
 import com.comunidapp.app.viewmodel.ShelterCampaignFormViewModel
 import com.comunidapp.app.viewmodel.ShelterCampaignUpdateFormViewModel
@@ -1750,7 +1757,8 @@ private fun MainScreen(accountType: AccountType) {
                 VeterinaryDirectoryScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onClinicClick = { id -> navController.navigate(NavRoutes.veterinaryClinicDetail(id)) },
-                    onMyClinics = { navController.navigate(NavRoutes.MY_VETERINARY_CLINICS) }
+                    onMyClinics = { navController.navigate(NavRoutes.MY_VETERINARY_CLINICS) },
+                    onMyAppointments = { navController.navigate(NavRoutes.MY_VETERINARY_APPOINTMENTS) }
                 )
             }
             composable(
@@ -1763,7 +1771,10 @@ private fun MainScreen(accountType: AccountType) {
                 )
                 VeterinaryClinicDetailScreen(
                     clinicId = clinicId,
-                    onNavigateBack = { navController.popBackStack() }
+                    onNavigateBack = { navController.popBackStack() },
+                    onBookAppointment = { id ->
+                        navController.navigate(NavRoutes.veterinaryBookAppointment(id))
+                    }
                 )
             }
             composable(NavRoutes.MY_VETERINARY_CLINICS) {
@@ -1803,6 +1814,9 @@ private fun MainScreen(accountType: AccountType) {
                     },
                     onHours = {
                         navController.navigate(NavRoutes.veterinaryClinicHours(clinicId))
+                    },
+                    onAgenda = {
+                        navController.navigate(NavRoutes.veterinaryManagedAgenda(clinicId))
                     }
                 )
             }
@@ -1842,6 +1856,106 @@ private fun MainScreen(accountType: AccountType) {
                 )
                 VeterinaryClinicHoursScreen(
                     clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_BOOK_APPOINTMENT,
+                arguments = listOf(navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType })
+            ) { entry ->
+                val clinicId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryBookAppointmentScreen(
+                    clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onBooked = { appointmentId ->
+                        navController.navigate(NavRoutes.veterinaryAppointmentDetail(appointmentId)) {
+                            popUpTo(NavRoutes.VETERINARY_BOOK_APPOINTMENT) { inclusive = true }
+                        }
+                    }
+                )
+            }
+            composable(NavRoutes.MY_VETERINARY_APPOINTMENTS) {
+                MyVeterinaryAppointmentsScreen(
+                    onNavigateBack = { navController.popBackStack() },
+                    onAppointmentClick = { id ->
+                        navController.navigate(NavRoutes.veterinaryAppointmentDetail(id))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_APPOINTMENT_DETAIL,
+                arguments = listOf(navArgument(NavRoutes.ARG_APPOINTMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val appointmentId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_APPOINTMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryAppointmentDetailScreen(
+                    appointmentId = appointmentId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_MANAGED_AGENDA,
+                arguments = listOf(navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType })
+            ) { entry ->
+                val clinicId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryManagedAgendaScreen(
+                    clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() },
+                    onManageAppointment = { id ->
+                        navController.navigate(NavRoutes.veterinaryAppointmentManagement(id))
+                    },
+                    onSettings = {
+                        navController.navigate(NavRoutes.veterinaryScheduleSettings(clinicId))
+                    },
+                    onRules = {
+                        navController.navigate(NavRoutes.veterinaryAvailabilityRules(clinicId))
+                    }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_SCHEDULE_SETTINGS,
+                arguments = listOf(navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType })
+            ) { entry ->
+                val clinicId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryScheduleSettingsScreen(
+                    clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_AVAILABILITY_RULES,
+                arguments = listOf(navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType })
+            ) { entry ->
+                val clinicId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryAvailabilityRulesScreen(
+                    clinicId = clinicId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(
+                route = NavRoutes.VETERINARY_APPOINTMENT_MANAGEMENT,
+                arguments = listOf(navArgument(NavRoutes.ARG_APPOINTMENT_ID) { type = NavType.StringType })
+            ) { entry ->
+                val appointmentId = java.net.URLDecoder.decode(
+                    entry.arguments?.getString(NavRoutes.ARG_APPOINTMENT_ID).orEmpty(),
+                    Charsets.UTF_8.name()
+                )
+                VeterinaryAppointmentManagementScreen(
+                    appointmentId = appointmentId,
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

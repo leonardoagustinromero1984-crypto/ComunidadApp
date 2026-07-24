@@ -76,6 +76,15 @@ object NavRoutes {
     const val VETERINARY_CLINIC_SERVICES = "veterinary_clinic_services/{clinicId}"
     const val VETERINARY_CLINIC_HOURS = "veterinary_clinic_hours/{clinicId}"
 
+    // M12 Bloque 3 — agenda, disponibilidad y turnos
+    const val VETERINARY_BOOK_APPOINTMENT = "veterinary_book_appointment/{clinicId}"
+    const val MY_VETERINARY_APPOINTMENTS = "my_veterinary_appointments"
+    const val VETERINARY_APPOINTMENT_DETAIL = "veterinary_appointment_detail/{appointmentId}"
+    const val VETERINARY_MANAGED_AGENDA = "veterinary_managed_agenda/{clinicId}"
+    const val VETERINARY_SCHEDULE_SETTINGS = "veterinary_schedule_settings/{clinicId}"
+    const val VETERINARY_AVAILABILITY_RULES = "veterinary_availability_rules/{clinicId}"
+    const val VETERINARY_APPOINTMENT_MANAGEMENT = "veterinary_appointment_management/{appointmentId}"
+
     // M11 — operación de refugios (legacy Sumate sigue en SHELTER_DETAIL; SHELTERS = listado ops)
     const val MY_SHELTERS = "my_shelters"
     const val SHELTER_DASHBOARD = "shelter_dashboard/{shelterId}"
@@ -207,6 +216,7 @@ object NavRoutes {
     const val ARG_FOSTER_PLACEMENT_ID = "placementId"
     const val ARG_FOSTER_HELP_REQUEST_ID = "helpRequestId"
     const val ARG_CLINIC_ID = "clinicId"
+    const val ARG_APPOINTMENT_ID = "appointmentId"
     const val ARG_SHELTER_ID = "shelterId"
     const val ARG_SHELTER_PLACEMENT_ID = "placementId"
     const val ARG_CAMPAIGN_ID = "campaignId"
@@ -283,6 +293,18 @@ object NavRoutes {
         "veterinary_clinic_services/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
     fun veterinaryClinicHours(clinicId: String) =
         "veterinary_clinic_hours/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
+    fun veterinaryBookAppointment(clinicId: String) =
+        "veterinary_book_appointment/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
+    fun veterinaryAppointmentDetail(appointmentId: String) =
+        "veterinary_appointment_detail/${java.net.URLEncoder.encode(appointmentId, Charsets.UTF_8.name())}"
+    fun veterinaryManagedAgenda(clinicId: String) =
+        "veterinary_managed_agenda/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
+    fun veterinaryScheduleSettings(clinicId: String) =
+        "veterinary_schedule_settings/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
+    fun veterinaryAvailabilityRules(clinicId: String) =
+        "veterinary_availability_rules/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}"
+    fun veterinaryAppointmentManagement(appointmentId: String) =
+        "veterinary_appointment_management/${java.net.URLEncoder.encode(appointmentId, Charsets.UTF_8.name())}"
     fun shelterDetail(shelterId: String) = "shelter_detail/$shelterId"
     fun shelterOpsDetail(shelterId: String) =
         "shelter_ops_detail/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"

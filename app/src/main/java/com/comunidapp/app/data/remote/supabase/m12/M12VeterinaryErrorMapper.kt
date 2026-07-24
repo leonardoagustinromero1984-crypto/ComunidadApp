@@ -42,6 +42,21 @@ object M12VeterinaryErrorMapper {
         "VETERINARY_PUBLIC_CONTACT_DISABLED",
         "VETERINARY_PUBLIC_PROJECTION_FORBIDDEN",
         "VETERINARY_MEDIA_REF_INVALID",
+        // M12 Bloque 3 — agenda / turnos (specific before generic parents)
+        "VETERINARY_SCHEDULE_SETTINGS_INVALID",
+        "VETERINARY_TIMEZONE_INVALID",
+        "VETERINARY_AVAILABILITY_RULE_OVERLAP",
+        "VETERINARY_AVAILABILITY_RULE_INVALID",
+        "VETERINARY_AVAILABILITY_EXCEPTION_INVALID",
+        "VETERINARY_SLOT_CAPACITY_EXHAUSTED",
+        "VETERINARY_SLOT_NOT_AVAILABLE",
+        "VETERINARY_APPOINTMENT_NOT_FOUND",
+        "VETERINARY_APPOINTMENT_FORBIDDEN",
+        "VETERINARY_APPOINTMENT_PET_FORBIDDEN",
+        "VETERINARY_APPOINTMENT_INVALID_TRANSITION",
+        "VETERINARY_APPOINTMENT_PAST_SLOT",
+        "VETERINARY_APPOINTMENT_CANCELLATION_WINDOW",
+        "VETERINARY_APPOINTMENT_ALREADY_FINAL",
         "VETERINARY_REPOSITORY_FAILURE",
         "ORGANIZATION_NOT_ELIGIBLE",
         "ORGANIZATION_MEMBERSHIP_REQUIRED",
@@ -105,6 +120,22 @@ object M12VeterinaryErrorMapper {
         "VETERINARY_PUBLIC_CONTACT_DISABLED" -> "El contacto público no está habilitado."
         "VETERINARY_PUBLIC_PROJECTION_FORBIDDEN" -> "No se puede mostrar esa información pública."
         "VETERINARY_MEDIA_REF_INVALID" -> "La referencia de media no es válida."
+        "VETERINARY_SCHEDULE_SETTINGS_INVALID" -> "La configuración de agenda no es válida."
+        "VETERINARY_TIMEZONE_INVALID" -> "La zona horaria no es válida."
+        "VETERINARY_AVAILABILITY_RULE_INVALID" -> "La regla de disponibilidad no es válida."
+        "VETERINARY_AVAILABILITY_RULE_OVERLAP" -> "Esa regla se solapa con otra existente."
+        "VETERINARY_AVAILABILITY_EXCEPTION_INVALID" -> "La excepción de disponibilidad no es válida."
+        "VETERINARY_SLOT_NOT_AVAILABLE" -> "Ese horario ya no está disponible."
+        "VETERINARY_SLOT_CAPACITY_EXHAUSTED" -> "No quedan cupos en ese horario."
+        "VETERINARY_APPOINTMENT_NOT_FOUND" -> "No encontramos ese turno."
+        "VETERINARY_APPOINTMENT_FORBIDDEN" -> "No tenés permiso para ese turno."
+        "VETERINARY_APPOINTMENT_PET_FORBIDDEN" ->
+            "No tenés autoridad sobre esa mascota para solicitar el turno."
+        "VETERINARY_APPOINTMENT_INVALID_TRANSITION" -> "No se puede cambiar el estado de ese turno así."
+        "VETERINARY_APPOINTMENT_PAST_SLOT" -> "No se puede operar sobre un horario pasado."
+        "VETERINARY_APPOINTMENT_CANCELLATION_WINDOW" ->
+            "Ya pasó el plazo para cancelar ese turno."
+        "VETERINARY_APPOINTMENT_ALREADY_FINAL" -> "Ese turno ya está finalizado."
         "VETERINARY_REPOSITORY_FAILURE" -> "No pudimos completar la operación de veterinarias."
         "ORGANIZATION_NOT_ELIGIBLE" -> "Esa organización no puede operar una veterinaria."
         "ORGANIZATION_MEMBERSHIP_REQUIRED" -> "Necesitás ser miembro activo de la organización."

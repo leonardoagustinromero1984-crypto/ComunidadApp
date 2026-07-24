@@ -1,16 +1,25 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.model.VeterinaryAppointment
+import com.comunidapp.app.data.model.VeterinaryAppointmentSlot
+import com.comunidapp.app.data.model.VeterinaryAppointmentStatusHistory
+import com.comunidapp.app.data.model.VeterinaryAvailabilityException
+import com.comunidapp.app.data.model.VeterinaryAvailabilityRule
 import com.comunidapp.app.data.model.VeterinaryClinicProfile
 import com.comunidapp.app.data.model.VeterinaryClinicStatus
 import com.comunidapp.app.data.model.VeterinaryDirectoryFilter
 import com.comunidapp.app.data.model.VeterinaryOpeningHours
 import com.comunidapp.app.data.model.VeterinaryProfessional
 import com.comunidapp.app.data.model.VeterinaryPublicListing
+import com.comunidapp.app.data.model.VeterinaryScheduleSettings
 import com.comunidapp.app.data.model.VeterinaryService
 import com.comunidapp.app.data.model.VeterinaryVerificationStatus
 import com.comunidapp.app.data.remote.supabase.m12.M12VeterinaryErrorMapper
+import com.comunidapp.app.data.remote.supabase.m12.M12VeterinaryException
 import com.comunidapp.app.data.remote.supabase.m12.SupabaseVeterinaryM12RemoteDataSource
 import com.comunidapp.app.data.remote.supabase.m12.toDomain
+import java.time.LocalDate
+import java.time.ZoneId
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.json.JsonPrimitive
@@ -412,6 +421,302 @@ class SupabaseVeterinaryOpeningHoursRepository(
     override fun observeClinicOpeningHours(clinicId: String): Flow<List<VeterinaryOpeningHours>> = flow {
         emit(
             runCatching { remote.listManagedHours(clinicId).map { it.toDomain() } }
+                .getOrElse { emptyList() }
+        )
+    }
+}
+
+private const val M12_DEFAULT_TIMEZONE = "America/Argentina/Buenos_Aires"
+
+class SupabaseVeterinaryScheduleRepository(
+    private val remote: SupabaseVeterinaryM12RemoteDataSource = SupabaseVeterinaryM12RemoteDataSource()
+) : VeterinaryScheduleRepository {
+
+    override suspend fun getSettings(clinicId: String): Result<VeterinaryScheduleSettings> = try {
+        val rows = remote.getScheduleSettings(clinicId)
+        Result.success(
+            rows.firstOrNull()?.toDomain() ?: VeterinaryScheduleSettings(clinicId = clinicId)
+        )
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun saveSettings(
+        settings: VeterinaryScheduleSettings
+    ): Result<VeterinaryScheduleSettings> = try {
+        Result.success(
+            remote.upsertScheduleSettings(
+                buildJsonObject {
+                    put("p_clinic_id", settings.clinicId)
+                    put("p_timezone_name", settings.timezoneName)
+                    put("p_booking_horizon_days", settings.bookingHorizonDays)
+                    put("p_minimum_notice_minutes", settings.minimumNoticeMinutes)
+                    put("p_cancellation_notice_minutes", settings.cancellationNoticeMinutes)
+                    put("p_default_slot_duration_minutes", settings.defaultSlotDurationMinutes)
+                    put("p_active", settings.active)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override fun observeManagedAvailability(clinicId: String): Flow<ManagedVeterinaryAvailability> = flow {
+        emit(
+            runCatching {
+                val row = remote.listManagedAvailability(clinicId)
+                ManagedVeterinaryAvailability(
+                    rules = row.rules.map { it.toDomain() },
+                    exceptions = row.exceptions.map { it.toDomain() }
+                )
+            }.getOrElse { ManagedVeterinaryAvailability(emptyList(), emptyList()) }
+        )
+    }
+
+    override suspend fun createRule(
+        input: CreateVeterinaryAvailabilityRuleInput
+    ): Result<VeterinaryAvailabilityRule> = try {
+        Result.success(
+            remote.createAvailabilityRule(
+                buildJsonObject {
+                    put("p_clinic_id", input.clinicId)
+                    put("p_day_of_week", input.dayOfWeek.value)
+                    put("p_starts_at", input.startsAt.toString())
+                    put("p_ends_at", input.endsAt.toString())
+                    put("p_slot_duration_minutes", input.slotDurationMinutes)
+                    put("p_capacity_per_slot", input.capacityPerSlot)
+                    put("p_professional_id", input.professionalId)
+                    put("p_service_id", input.serviceId)
+                    put("p_valid_from", input.validFrom?.toString())
+                    put("p_valid_until", input.validUntil?.toString())
+                    put("p_active", true)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun updateRule(
+        input: UpdateVeterinaryAvailabilityRuleInput
+    ): Result<VeterinaryAvailabilityRule> = try {
+        Result.success(
+            remote.updateAvailabilityRule(
+                buildJsonObject {
+                    put("p_rule_id", input.ruleId)
+                    put("p_day_of_week", input.dayOfWeek.value)
+                    put("p_starts_at", input.startsAt.toString())
+                    put("p_ends_at", input.endsAt.toString())
+                    put("p_slot_duration_minutes", input.slotDurationMinutes)
+                    put("p_capacity_per_slot", input.capacityPerSlot)
+                    put("p_professional_id", input.professionalId)
+                    put("p_service_id", input.serviceId)
+                    put("p_valid_from", input.validFrom?.toString())
+                    put("p_valid_until", input.validUntil?.toString())
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun changeRuleStatus(
+        ruleId: String,
+        active: Boolean
+    ): Result<VeterinaryAvailabilityRule> = try {
+        Result.success(remote.changeAvailabilityRuleStatus(ruleId, active).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun createException(
+        input: CreateVeterinaryAvailabilityExceptionInput
+    ): Result<VeterinaryAvailabilityException> = try {
+        Result.success(
+            remote.createAvailabilityException(
+                buildJsonObject {
+                    put("p_clinic_id", input.clinicId)
+                    put("p_exception_date", input.exceptionDate.toString())
+                    put("p_type", input.type.name)
+                    put("p_rule_id", input.ruleId)
+                    put("p_starts_at", input.startsAt?.toString())
+                    put("p_ends_at", input.endsAt?.toString())
+                    put("p_capacity_per_slot", input.capacityPerSlot)
+                    put("p_reason", input.reason)
+                    put("p_active", true)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun updateException(
+        input: UpdateVeterinaryAvailabilityExceptionInput
+    ): Result<VeterinaryAvailabilityException> = try {
+        Result.success(
+            remote.updateAvailabilityException(
+                buildJsonObject {
+                    put("p_exception_id", input.exceptionId)
+                    put("p_exception_date", input.exceptionDate.toString())
+                    put("p_type", input.type.name)
+                    put("p_rule_id", input.ruleId)
+                    put("p_starts_at", input.startsAt?.toString())
+                    put("p_ends_at", input.endsAt?.toString())
+                    put("p_capacity_per_slot", input.capacityPerSlot)
+                    put("p_reason", input.reason)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun changeExceptionStatus(
+        exceptionId: String,
+        active: Boolean
+    ): Result<VeterinaryAvailabilityException> = try {
+        Result.success(remote.changeAvailabilityExceptionStatus(exceptionId, active).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override fun observeAvailableSlots(
+        clinicId: String,
+        serviceId: String,
+        date: LocalDate,
+        professionalId: String?
+    ): Flow<List<VeterinaryAppointmentSlot>> = flow {
+        emit(
+            runCatching {
+                remote.listAvailableSlots(clinicId, serviceId, date.toString(), professionalId)
+                    .map { it.toDomain() }
+            }.getOrElse { emptyList() }
+        )
+    }
+}
+
+class SupabaseVeterinaryAppointmentRepository(
+    private val remote: SupabaseVeterinaryM12RemoteDataSource = SupabaseVeterinaryM12RemoteDataSource()
+) : VeterinaryAppointmentRepository {
+
+    override suspend fun requestAppointment(
+        input: RequestVeterinaryAppointmentInput
+    ): Result<VeterinaryAppointment> = try {
+        // El RPC 047 exige p_ends_at; la ventana se resuelve consultando el slot calculado
+        // (mismo criterio de cupo que el servidor), sin tabla de slots pre-generados.
+        val settings = remote.getScheduleSettings(input.clinicId).firstOrNull()?.toDomain()
+            ?: throw M12VeterinaryException(
+                "VETERINARY_SLOT_NOT_AVAILABLE",
+                M12VeterinaryErrorMapper.userMessage("VETERINARY_SLOT_NOT_AVAILABLE")
+            )
+        val zone = runCatching { ZoneId.of(settings.timezoneName) }
+            .getOrElse { ZoneId.of(M12_DEFAULT_TIMEZONE) }
+        val date = input.startsAt.atZone(zone).toLocalDate()
+        val slot = remote.listAvailableSlots(
+            input.clinicId, input.serviceId, date.toString(), input.professionalId
+        ).map { it.toDomain() }.firstOrNull {
+            it.startsAt == input.startsAt &&
+                (input.professionalId == null || it.professionalId == null ||
+                    it.professionalId == input.professionalId)
+        } ?: throw M12VeterinaryException(
+            "VETERINARY_SLOT_NOT_AVAILABLE",
+            M12VeterinaryErrorMapper.userMessage("VETERINARY_SLOT_NOT_AVAILABLE")
+        )
+
+        Result.success(
+            remote.requestAppointment(
+                buildJsonObject {
+                    put("p_clinic_id", input.clinicId)
+                    put("p_service_id", input.serviceId)
+                    put("p_pet_id", input.petId)
+                    put("p_starts_at", input.startsAt.toString())
+                    put("p_ends_at", slot.endsAt.toString())
+                    put("p_professional_id", input.professionalId)
+                    put("p_request_note", input.requestNote)
+                }
+            ).toDomain()
+        )
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun getAppointment(appointmentId: String): Result<VeterinaryAppointment> = try {
+        Result.success(remote.getAppointment(appointmentId).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override fun observeMyAppointments(): Flow<List<VeterinaryAppointment>> = flow {
+        emit(
+            runCatching { remote.listMyAppointments().map { it.toDomain() } }
+                .getOrElse { emptyList() }
+        )
+    }
+
+    override fun observeManagedAppointments(clinicId: String): Flow<List<VeterinaryAppointment>> = flow {
+        emit(
+            runCatching { remote.listManagedAppointments(clinicId).map { it.toDomain() } }
+                .getOrElse { emptyList() }
+        )
+    }
+
+    override suspend fun confirmAppointment(appointmentId: String): Result<VeterinaryAppointment> = try {
+        Result.success(remote.confirmAppointment(appointmentId).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun rejectAppointment(
+        appointmentId: String,
+        reason: String
+    ): Result<VeterinaryAppointment> = try {
+        Result.success(remote.rejectAppointment(appointmentId, reason).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun cancelMyAppointment(
+        appointmentId: String,
+        reason: String?
+    ): Result<VeterinaryAppointment> = try {
+        Result.success(remote.cancelMyAppointment(appointmentId, reason).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun cancelManagedAppointment(
+        appointmentId: String,
+        reason: String?
+    ): Result<VeterinaryAppointment> = try {
+        Result.success(remote.cancelManagedAppointment(appointmentId, reason).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun completeAppointment(appointmentId: String): Result<VeterinaryAppointment> = try {
+        Result.success(remote.completeAppointment(appointmentId).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun markNoShow(appointmentId: String): Result<VeterinaryAppointment> = try {
+        Result.success(remote.markNoShow(appointmentId).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override suspend fun expireAppointment(appointmentId: String): Result<VeterinaryAppointment> = try {
+        Result.success(remote.expireAppointment(appointmentId).toDomain())
+    } catch (t: Throwable) {
+        M12VeterinaryErrorMapper.failure(t)
+    }
+
+    override fun observeAppointmentHistory(
+        appointmentId: String
+    ): Flow<List<VeterinaryAppointmentStatusHistory>> = flow {
+        emit(
+            runCatching { remote.listAppointmentHistory(appointmentId).map { it.toDomain() } }
                 .getOrElse { emptyList() }
         )
     }

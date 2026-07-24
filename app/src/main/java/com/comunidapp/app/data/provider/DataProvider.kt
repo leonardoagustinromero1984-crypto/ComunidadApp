@@ -94,10 +94,14 @@ import com.comunidapp.app.data.repository.MockVeterinaryOpeningHoursRepository
 import com.comunidapp.app.data.repository.MockVeterinaryProfessionalOpsRepository
 import com.comunidapp.app.data.repository.MockVeterinaryProfessionalRepository
 import com.comunidapp.app.data.repository.MockVeterinaryServiceRepository
+import com.comunidapp.app.data.repository.MockVeterinaryScheduleRepository
+import com.comunidapp.app.data.repository.MockVeterinaryAppointmentRepository
+import com.comunidapp.app.data.repository.SupabaseVeterinaryAppointmentRepository
 import com.comunidapp.app.data.repository.SupabaseVeterinaryClinicRepository
 import com.comunidapp.app.data.repository.SupabaseVeterinaryDirectoryRepository
 import com.comunidapp.app.data.repository.SupabaseVeterinaryOpeningHoursRepository
 import com.comunidapp.app.data.repository.SupabaseVeterinaryProfessionalRepository
+import com.comunidapp.app.data.repository.SupabaseVeterinaryScheduleRepository
 import com.comunidapp.app.data.repository.SupabaseVeterinaryServiceRepository
 import com.comunidapp.app.data.repository.VeterinaryClinicLifecycle
 import com.comunidapp.app.data.repository.VeterinaryClinicRepository
@@ -106,6 +110,8 @@ import com.comunidapp.app.data.repository.VeterinaryOpeningHoursRepository
 import com.comunidapp.app.data.repository.VeterinaryProfessionalOpsRepository
 import com.comunidapp.app.data.repository.VeterinaryProfessionalRepository
 import com.comunidapp.app.data.repository.VeterinaryServiceRepository
+import com.comunidapp.app.data.repository.VeterinaryScheduleRepository
+import com.comunidapp.app.data.repository.VeterinaryAppointmentRepository
 import com.comunidapp.app.data.repository.MockUserRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.ShelterCampaignRepository
@@ -622,6 +628,28 @@ object DataProvider {
             MockVeterinaryOpeningHoursRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m12VeterinaryStore
+            )
+        }
+    }
+
+    val veterinaryScheduleRepository: VeterinaryScheduleRepository by lazy {
+        if (useSupabase) {
+            SupabaseVeterinaryScheduleRepository()
+        } else {
+            MockVeterinaryScheduleRepository(
+                { AuthProvider.repository.getCurrentUser()?.id },
+                m12VeterinaryStore
+            )
+        }
+    }
+
+    val veterinaryAppointmentRepository: VeterinaryAppointmentRepository by lazy {
+        if (useSupabase) {
+            SupabaseVeterinaryAppointmentRepository()
+        } else {
+            MockVeterinaryAppointmentRepository(
+                { AuthProvider.repository.getCurrentUser()?.id },
+                m12VeterinaryStore
             )
         }
     }

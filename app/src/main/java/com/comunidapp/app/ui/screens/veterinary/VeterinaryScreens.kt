@@ -55,6 +55,7 @@ fun VeterinaryDirectoryScreen(
     onNavigateBack: () -> Unit,
     onClinicClick: (String) -> Unit,
     onMyClinics: () -> Unit,
+    onMyAppointments: () -> Unit = {},
     viewModel: VeterinaryDirectoryViewModel = viewModel(factory = VeterinaryDirectoryViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -74,6 +75,9 @@ fun VeterinaryDirectoryScreen(
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             OutlinedButton(onClick = onMyClinics, modifier = Modifier.fillMaxWidth()) {
                 Text("Mis veterinarias (borrador local)")
+            }
+            OutlinedButton(onClick = onMyAppointments, modifier = Modifier.fillMaxWidth()) {
+                Text("Mis turnos")
             }
             Spacer(Modifier.height(8.dp))
             OutlinedTextField(
@@ -181,6 +185,7 @@ fun VeterinaryDirectoryScreen(
 fun VeterinaryClinicDetailScreen(
     clinicId: String,
     onNavigateBack: () -> Unit,
+    onBookAppointment: (String) -> Unit = {},
     viewModel: VeterinaryClinicDetailViewModel = viewModel(
         factory = VeterinaryClinicDetailViewModel.factory(clinicId)
     )
@@ -220,6 +225,11 @@ fun VeterinaryClinicDetailScreen(
                     clinic.description?.let { Text(it) }
                     if (clinic.offersEmergencyCare) Text("Ofrece guardia / emergencias")
                     if (clinic.isOpen24Hours) Text("Abierta 24 horas")
+                    Spacer(Modifier.height(8.dp))
+                    Button(
+                        onClick = { onBookAppointment(clinic.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Solicitar turno") }
                     Spacer(Modifier.height(8.dp))
                     Text("Horarios", fontWeight = FontWeight.SemiBold)
                     hours.forEach { h ->
