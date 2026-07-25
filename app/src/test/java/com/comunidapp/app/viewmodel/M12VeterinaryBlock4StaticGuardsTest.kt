@@ -59,7 +59,8 @@ class M12VeterinaryBlock4StaticGuardsTest {
             "049 debe ser M13 match review",
             names.any { it == "049_m13_match_review_workflow.sql" }
         )
-        assertFalse("no debe existir 050 todavía", names.any { it.startsWith("050") })
+        assertTrue("debe existir 050 M14", names.any { it.startsWith("050") })
+        assertFalse("no debe existir 051", names.any { it.startsWith("051") })
     }
 
     @Test

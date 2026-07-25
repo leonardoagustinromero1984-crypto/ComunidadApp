@@ -60,10 +60,11 @@ class M08Stage4DStagingGuardsTest {
     }
 
     @Test
-    fun migration049IsM13Review_and050Absent() {
+    fun migration050IsM14Passport_and051Absent() {
         val migrations = File(repoRoot(), "supabase/migrations")
         val names = migrations.listFiles().orEmpty().map { it.name }
         assertTrue(names.any { it == "049_m13_match_review_workflow.sql" })
-        assertFalse(names.any { it.matches(Regex("^050_.*\\.sql$")) })
+        assertTrue(names.any { it == "050_m14_pet_passports_and_credentials.sql" })
+        assertFalse(names.any { it.matches(Regex("^051_.*\\.sql$")) })
     }
 }

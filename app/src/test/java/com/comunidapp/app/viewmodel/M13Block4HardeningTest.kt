@@ -177,7 +177,7 @@ class M13Block4HardeningTest {
         val names = dir.listFiles()?.map { it.name }.orEmpty()
         assertTrue(names.any { it.startsWith("048_") })
         assertTrue(names.any { it.startsWith("049_") })
-        assertFalse(names.any { it.startsWith("050_") })
+        assertTrue(names.any { it.startsWith("050_") }); assertFalse(names.any { it.startsWith("051_") })
     }
 
     @Test

@@ -433,16 +433,13 @@ Fuera de M14:
 
 ### Bloque 2 — Persistencia y seguridad
 
-- migración 050, solo con aprobación;
-- pasaportes;
-- credenciales;
-- solicitudes;
-- decisiones;
-- historial;
-- RLS/RPC;
-- autoridad M08/M03/M04/M12;
-- repositorios Supabase;
-- validación estructural remota.
+**Estado:** CERRADO LOCALMENTE. Migración `050_m14_pet_passports_and_credentials.sql` creada; **no aplicada** remotamente.
+
+- pasaportes, credenciales, solicitudes, decisiones (prep B3), historial;
+- 18 RPC + RLS; autoridad M08 (`m08_actor_has_active_responsibility`) + permisos `passport.*`;
+- `passport_number` / `public_code` server-side (`extensions.gen_random_bytes`);
+- repositorios Supabase + DataProvider;
+- validación estructural remota y smoke: pendientes tras apply.
 
 ### Bloque 3 — Emisión, verificación y código público
 
@@ -480,7 +477,22 @@ Fuera de M14:
 10. Las pruebas focalizadas pasan.
 11. `compileLocalDebugKotlin` pasa.
 12. Migraciones 001–049 permanecen intactas.
-13. No existe migración 050.
+13. No existe migración 050 **en Bloque 1** (050 llega en Bloque 2).
 14. Los documentos de calidad 048/049 son revisados y versionados si son seguros.
 15. Un único commit y push.
 16. M12 y M13 siguen pendientes de smoke y cierre oficial.
+
+## 14. Definición de terminado del Bloque 2
+
+1. Existe únicamente migración 050 nueva; sin 051.
+2. M08 es autoridad de mascota/responsables en SQL.
+3. `public_code` criptográficamente no predecible.
+4. 18 RPC cliente; anon solo en proyección pública.
+5. Sin DML directo; helpers `_m14_*` protegidos.
+6. Sin resolución remota de verificaciones; sin historia clínica.
+7. Repositorios Supabase cableados; mocks conservados.
+8. Guard CI highest = 050.
+9. Tests focalizados + `compileLocalDebugKotlin` PASS.
+10. 050 no aplicada remotamente.
+11. M12/M13 smokes y cierres oficiales siguen pendientes externos.
+12. Un único commit y push; M15 no iniciado.

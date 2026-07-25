@@ -13,8 +13,12 @@ object M14ErrorMapper {
     fun userMessage(code: String): String = when (code) {
         "NOT_AUTHENTICATED" -> "Debés iniciar sesión."
         "PET_NOT_FOUND" -> "No encontramos esa mascota."
+        "PET_NOT_ELIGIBLE" -> "La mascota no está habilitada para tener pasaporte."
         "PASSPORT_NOT_FOUND" -> "No encontramos ese pasaporte."
         "PASSPORT_ALREADY_EXISTS" -> "Ya existe un pasaporte activo para esta mascota."
+        "PASSPORT_ALREADY_ACTIVE" -> "El pasaporte ya está activo."
+        "PASSPORT_NUMBER_GENERATION_FAILED" -> "No pudimos generar el número de pasaporte."
+        "PUBLIC_CODE_GENERATION_FAILED" -> "No pudimos generar el código público."
         "INVALID_PASSPORT_STATUS" -> "El estado del pasaporte no permite esta acción."
         "INVALID_TRANSITION" -> "Esa transición de estado no está permitida."
         "UNAUTHORIZED" -> "No tenés autorización para esta acción."
@@ -22,8 +26,12 @@ object M14ErrorMapper {
         "INVALID_CREDENTIAL_DATES" -> "Las fechas de la credencial no son coherentes."
         "INVALID_MEDIA_REFERENCE" -> "La referencia de media no es segura."
         "CREDENTIAL_NOT_FOUND" -> "No encontramos esa credencial."
+        "CREDENTIAL_NOT_ELIGIBLE" -> "La credencial no cumple los requisitos para esta acción."
         "VERIFICATION_NOT_ALLOWED" -> "No está permitida la verificación (sin autoverificación)."
         "VERIFICATION_ALREADY_FINAL" -> "La solicitud de verificación ya está resuelta."
+        "VERIFICATION_REQUEST_ALREADY_PENDING" -> "Ya hay una solicitud de verificación pendiente."
+        "ISSUER_NOT_AUTHORIZED" -> "El emisor no está autorizado para verificar esta credencial."
+        "PUBLIC_PASSPORT_NOT_AVAILABLE" -> "Este pasaporte no está disponible públicamente."
         "PUBLIC_PROJECTION_REDACTED" -> "Solo está disponible la vista pública resumida."
         "INFRASTRUCTURE_UNAVAILABLE" ->
             "La persistencia remota de pasaportes requiere la migración 050 (aún no creada)."
@@ -36,8 +44,12 @@ object M14ErrorMapper {
     private val knownCodes = listOf(
         "NOT_AUTHENTICATED",
         "PET_NOT_FOUND",
+        "PET_NOT_ELIGIBLE",
         "PASSPORT_NOT_FOUND",
         "PASSPORT_ALREADY_EXISTS",
+        "PASSPORT_ALREADY_ACTIVE",
+        "PASSPORT_NUMBER_GENERATION_FAILED",
+        "PUBLIC_CODE_GENERATION_FAILED",
         "INVALID_PASSPORT_STATUS",
         "INVALID_TRANSITION",
         "UNAUTHORIZED",
@@ -45,8 +57,12 @@ object M14ErrorMapper {
         "INVALID_CREDENTIAL_DATES",
         "INVALID_MEDIA_REFERENCE",
         "CREDENTIAL_NOT_FOUND",
+        "CREDENTIAL_NOT_ELIGIBLE",
         "VERIFICATION_NOT_ALLOWED",
         "VERIFICATION_ALREADY_FINAL",
+        "VERIFICATION_REQUEST_ALREADY_PENDING",
+        "ISSUER_NOT_AUTHORIZED",
+        "PUBLIC_PASSPORT_NOT_AVAILABLE",
         "PUBLIC_PROJECTION_REDACTED",
         "INFRASTRUCTURE_UNAVAILABLE",
         "CONFLICT",

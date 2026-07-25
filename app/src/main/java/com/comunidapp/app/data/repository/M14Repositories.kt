@@ -451,7 +451,6 @@ class MockM14CredentialRepository(
             Result.success(req)
         }
 }
-
 class MockM14VerificationRepository(
     private val store: M14MemoryStore,
     private val actorUserId: () -> String?,
@@ -520,51 +519,4 @@ class MockM14VerificationRepository(
             store.audit(M14AuditEvents.VERIFICATION_RESOLVED, requestId)
             Result.success(updatedReq)
         }
-}
-
-/** Stub remoto B1: sin SQL / sin Supabase real. */
-class SupabaseM14PassportRepository : M14PassportRepository {
-    private fun fail(): Result<Nothing> = resultFailM14("INFRASTRUCTURE_UNAVAILABLE")
-    override fun observeMyPassports(): Flow<List<M14PetPassport>> =
-        MutableStateFlow(emptyList())
-    override fun observePassport(passportId: String): Flow<M14PetPassport?> =
-        MutableStateFlow(null)
-    override fun observePassportForPet(petId: String): Flow<M14PetPassport?> =
-        MutableStateFlow(null)
-    override suspend fun getPassport(passportId: String) = fail()
-    override suspend fun createPassport(input: CreateM14PassportInput) = fail()
-    override suspend fun updatePassport(passportId: String, input: UpdateM14PassportInput) = fail()
-    override suspend fun activatePassport(passportId: String) = fail()
-    override suspend fun transitionPassport(
-        passportId: String,
-        to: M14PassportStatus,
-        reason: String?
-    ) = fail()
-    override fun observeHistory(passportId: String): Flow<List<M14PassportHistory>> =
-        MutableStateFlow(emptyList())
-    override suspend fun getPublicProjection(publicCode: String) = fail()
-}
-
-class SupabaseM14CredentialRepository : M14CredentialRepository {
-    private fun fail(): Result<Nothing> = resultFailM14("INFRASTRUCTURE_UNAVAILABLE")
-    override fun observeCredentials(passportId: String): Flow<List<M14Credential>> =
-        MutableStateFlow(emptyList())
-    override fun observeCredential(credentialId: String): Flow<M14Credential?> =
-        MutableStateFlow(null)
-    override suspend fun getCredential(credentialId: String) = fail()
-    override suspend fun createCredential(input: CreateM14CredentialInput) = fail()
-    override suspend fun requestVerification(credentialId: String, targetOrganizationId: String?) =
-        fail()
-}
-
-class SupabaseM14VerificationRepository : M14VerificationRepository {
-    private fun fail(): Result<Nothing> = resultFailM14("INFRASTRUCTURE_UNAVAILABLE")
-    override fun observeRequests(passportId: String): Flow<List<M14VerificationRequest>> =
-        MutableStateFlow(emptyList())
-    override suspend fun resolveLocal(
-        requestId: String,
-        approve: Boolean,
-        reasonCode: String,
-        notePrivate: String?
-    ) = fail()
 }

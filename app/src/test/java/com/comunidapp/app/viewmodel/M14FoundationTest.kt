@@ -21,7 +21,6 @@ import com.comunidapp.app.data.repository.MockM14AuthorityPolicy
 import com.comunidapp.app.data.repository.MockM14CredentialRepository
 import com.comunidapp.app.data.repository.MockM14PassportRepository
 import com.comunidapp.app.data.repository.MockM14VerificationRepository
-import com.comunidapp.app.data.repository.SupabaseM14PassportRepository
 import com.comunidapp.app.navigation.NavRoutes
 import java.io.File
 import java.util.concurrent.atomic.AtomicInteger
@@ -298,12 +297,14 @@ class M14FoundationTest {
     }
 
     @Test
-    fun supabase_stub_infrastructure() = runTest {
-        val remote = SupabaseM14PassportRepository()
-        val r = remote.createPassport(
-            CreateM14PassportInput("x", "y", PetSpecies.DOG)
+    fun supabase_repository_is_wired_not_stub() {
+        assertNotNull(DataProvider.m14PassportRepository)
+        assertTrue(
+            DataProvider.m14PassportRepository::class.java.simpleName
+                .contains("M14Passport")
         )
-        assertEquals("INFRASTRUCTURE_UNAVAILABLE", M14ErrorMapper.codeOf(r.exceptionOrNull()!!))
+        assertTrue(M14ErrorMapper.userMessage("PUBLIC_PASSPORT_NOT_AVAILABLE").isNotBlank())
+        assertTrue(M14ErrorMapper.userMessage("PET_NOT_ELIGIBLE").isNotBlank())
     }
 
     @Test
@@ -332,7 +333,7 @@ class M14FoundationTest {
     }
 
     @Test
-    fun migrations_intact_no_050() {
+    fun migrations_include_050() {
         val dir = listOf(
             File("supabase/migrations"),
             File("../supabase/migrations"),
@@ -340,7 +341,7 @@ class M14FoundationTest {
         ).first { it.isDirectory }
         val names = dir.listFiles()?.map { it.name }.orEmpty()
         assertTrue(names.any { it.startsWith("049_") })
-        assertFalse(names.any { it.startsWith("050_") })
+        assertTrue(names.any { it.startsWith("050_") })
     }
 }
 
@@ -349,9 +350,9 @@ class M14StaticGuardsTest {
         .first { File(it, "supabase/migrations").isDirectory }
 
     @Test
-    fun no_migration_050_and_no_service_role_in_m14_sources() {
+    fun migration_050_and_m14_sources_have_no_service_role() {
         val names = File(repoRoot(), "supabase/migrations").listFiles()?.map { it.name }.orEmpty()
-        assertFalse(names.any { it.startsWith("050_") })
+        assertTrue(names.any { it.startsWith("050_") })
         val files = listOf(
             "app/src/main/java/com/comunidapp/app/data/repository/M14Repositories.kt",
             "app/src/main/java/com/comunidapp/app/data/model/M14PassportModels.kt"
