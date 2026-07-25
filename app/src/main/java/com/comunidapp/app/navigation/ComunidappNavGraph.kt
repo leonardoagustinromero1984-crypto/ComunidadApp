@@ -114,6 +114,7 @@ import com.comunidapp.app.ui.screens.lostfound.LostFoundMapScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundScreen
 import com.comunidapp.app.ui.screens.m13.M13CaseMatchesScreen
 import com.comunidapp.app.ui.screens.m13.M13MatchDetailScreen
+import com.comunidapp.app.ui.screens.m13.M13MetricsScreen
 import com.comunidapp.app.ui.screens.m13.M13SightingCreateScreen
 import com.comunidapp.app.ui.screens.m13.M13SightingDetailScreen
 import com.comunidapp.app.ui.screens.m13.M13SightingListScreen
@@ -822,7 +823,8 @@ private fun MainScreen(accountType: AccountType) {
                 M13SightingListScreen(
                     onNavigateBack = { navController.popBackStack() },
                     onSightingClick = { id -> navController.navigate(NavRoutes.m13SightingDetail(id)) },
-                    onCreate = { navController.navigate(NavRoutes.M13_SIGHTING_NEW) }
+                    onCreate = { navController.navigate(NavRoutes.M13_SIGHTING_NEW) },
+                    onOpenMetrics = { navController.navigate(NavRoutes.M13_METRICS) }
                 )
             }
             composable(NavRoutes.M13_SIGHTING_NEW) {
@@ -880,8 +882,7 @@ private fun MainScreen(accountType: AccountType) {
                     onMatchClick = { id -> navController.navigate(NavRoutes.m13MatchDetail(id)) }
                 )
             }
-            composable(
-                route = NavRoutes.M13_MATCH_DETAIL,
+            composable(NavRoutes.M13_MATCH_DETAIL,
                 arguments = listOf(navArgument(NavRoutes.ARG_CANDIDATE_ID) { type = NavType.StringType })
             ) { entry ->
                 val candidateId = java.net.URLDecoder.decode(
@@ -890,6 +891,11 @@ private fun MainScreen(accountType: AccountType) {
                 )
                 M13MatchDetailScreen(
                     candidateId = candidateId,
+                    onNavigateBack = { navController.popBackStack() }
+                )
+            }
+            composable(NavRoutes.M13_METRICS) {
+                M13MetricsScreen(
                     onNavigateBack = { navController.popBackStack() }
                 )
             }

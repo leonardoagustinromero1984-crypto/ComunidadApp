@@ -38,10 +38,13 @@ import com.comunidapp.app.data.mock.InMemoryDataStore
 import com.comunidapp.app.data.repository.M10FosterMemoryStore
 import com.comunidapp.app.data.repository.M13MatchRepository
 import com.comunidapp.app.data.repository.M13MemoryStore
+import com.comunidapp.app.data.repository.M13OperationsRepository
 import com.comunidapp.app.data.repository.M13SightingRepository
 import com.comunidapp.app.data.repository.MockM13MatchRepository
+import com.comunidapp.app.data.repository.MockM13OperationsRepository
 import com.comunidapp.app.data.repository.MockM13SightingRepository
 import com.comunidapp.app.data.repository.SupabaseM13MatchRepository
+import com.comunidapp.app.data.repository.SupabaseM13OperationsRepository
 import com.comunidapp.app.data.repository.SupabaseM13SightingRepository
 import com.comunidapp.app.data.repository.MockFosterEvolutionRepository
 import com.comunidapp.app.data.repository.MockFosterExpenseRepository
@@ -688,6 +691,17 @@ object DataProvider {
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m13Store,
                 resolveCases = { InMemoryDataStore.lostFoundPosts.value }
+            )
+        }
+    }
+
+    val m13OperationsRepository: M13OperationsRepository by lazy {
+        if (useSupabase) {
+            SupabaseM13OperationsRepository()
+        } else {
+            MockM13OperationsRepository(
+                store = m13Store,
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
         }
     }

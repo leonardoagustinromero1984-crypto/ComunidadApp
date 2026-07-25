@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.model.M13MatchCandidate
 import com.comunidapp.app.data.model.M13MatchDecisionType
+import com.comunidapp.app.data.model.M13OperationalMetrics
 import com.comunidapp.app.data.model.M13Sighting
 import com.comunidapp.app.data.model.M13SightingPublic
 import com.comunidapp.app.data.model.PetSex
@@ -14,7 +15,9 @@ import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m13.M13ErrorMapper
 import com.comunidapp.app.data.repository.CreateM13SightingInput
 import com.comunidapp.app.data.repository.M13MatchRepository
+import com.comunidapp.app.data.repository.M13OperationsRepository
 import com.comunidapp.app.data.repository.M13SightingRepository
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -297,5 +300,46 @@ class M13MatchDetailViewModel(
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
                     M13MatchDetailViewModel(candidateId) as T
             }
+    }
+}
+
+sealed class M13MetricsUiState {
+    data object Loading : M13MetricsUiState()
+    data class Content(val metrics: M13OperationalMetrics) : M13MetricsUiState()
+    data class Error(val message: String) : M13MetricsUiState()
+}
+
+/** Métricas agregadas sin PII para gestores (mock local; remoto = INFRASTRUCTURE_UNAVAILABLE). */
+class M13MetricsViewModel(
+    private val operations: M13OperationsRepository = DataProvider.m13OperationsRepository
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<M13MetricsUiState>(M13MetricsUiState.Loading)
+    val uiState: StateFlow<M13MetricsUiState> = _uiState.asStateFlow()
+
+    init {
+        refresh()
+    }
+
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.value = M13MetricsUiState.Loading
+            val to = System.currentTimeMillis()
+            val from = to - TimeUnit.DAYS.toMillis(30)
+            operations.getOperationalMetrics(from, to)
+                .onSuccess { _uiState.value = M13MetricsUiState.Content(it) }
+                .onFailure { e ->
+                    _uiState.value = M13MetricsUiState.Error(
+                        M13ErrorMapper.userMessage(M13ErrorMapper.codeOf(e))
+                    )
+                }
+        }
+    }
+
+    companion object {
+        fun factory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                M13MetricsViewModel() as T
+        }
     }
 }

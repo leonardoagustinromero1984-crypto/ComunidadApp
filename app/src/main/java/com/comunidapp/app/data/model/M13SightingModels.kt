@@ -177,6 +177,7 @@ object M13PermissionCodes {
 object M13AuditEvents {
     const val SIGHTING_CREATED = "m13.sighting.created"
     const val SIGHTING_WITHDRAWN = "m13.sighting.withdrawn"
+    const val SIGHTING_EXPIRED = "m13.sighting.expired"
     const val MATCH_PROPOSED = "m13.match.proposed"
     const val MATCH_UNDER_REVIEW = "m13.match.under_review"
     const val MATCH_CONFIRMED = "m13.match.confirmed"
@@ -184,6 +185,86 @@ object M13AuditEvents {
     const val MATCH_INCONCLUSIVE = "m13.match.inconclusive"
     const val MATCH_WITHDRAWN = "m13.match.withdrawn"
     const val MATCH_EXPIRED = "m13.match.expired"
+}
+
+/**
+ * Hooks M06 preparados (sin push real). Disparo/cron = REQUIERE_INFRA_EXTERNA.
+ */
+object M13M06Hooks {
+    const val MATCH_PROPOSED = "M13_MATCH_PROPOSED"
+    const val MATCH_REVIEW_OPENED = "M13_MATCH_REVIEW_OPENED"
+    const val MATCH_CONFIRMED = "M13_MATCH_CONFIRMED"
+    const val MATCH_REJECTED = "M13_MATCH_REJECTED"
+    const val MATCH_INCONCLUSIVE = "M13_MATCH_INCONCLUSIVE"
+    const val SIGHTING_EXPIRED = "M13_SIGHTING_EXPIRED"
+    const val MATCH_EXPIRED = "M13_MATCH_EXPIRED"
+    const val INFRASTRUCTURE = "M13_NOTIFICATION_INFRASTRUCTURE"
+
+    val all: Set<String> = setOf(
+        MATCH_PROPOSED,
+        MATCH_REVIEW_OPENED,
+        MATCH_CONFIRMED,
+        MATCH_REJECTED,
+        MATCH_INCONCLUSIVE,
+        SIGHTING_EXPIRED,
+        MATCH_EXPIRED,
+        INFRASTRUCTURE
+    )
+}
+
+/**
+ * Política local de expiración (America/Argentina/Buenos_Aires).
+ * Sin scheduler real en este bloque.
+ */
+data class M13ExpirationPolicy(
+    val sightingActiveTtlDays: Int = 30,
+    val matchProposedTtlDays: Int = 14,
+    val matchUnderReviewTtlDays: Int = 7,
+    val zoneIdName: String = "America/Argentina/Buenos_Aires"
+) {
+    init {
+        require(sightingActiveTtlDays > 0 && matchProposedTtlDays > 0 && matchUnderReviewTtlDays > 0)
+    }
+}
+
+data class M13ExpirationResult(
+    val expiredSightings: Int,
+    val expiredMatches: Int,
+    val infrastructureNote: String = "REQUIERE_INFRA_EXTERNA"
+)
+
+/** Métricas agregadas sin PII (sin user ids, coords, notas, contactos). */
+data class M13OperationalMetrics(
+    val fromEpochMs: Long,
+    val toEpochMs: Long,
+    val zoneIdName: String,
+    val sightingsByStatus: Map<String, Int>,
+    val candidatesByLevel: Map<String, Int>,
+    val candidatesByStatus: Map<String, Int>,
+    val confirmationRate: Double?,
+    val avgMinutesToReview: Double?,
+    val avgMinutesToDecision: Double?,
+    val expiredSightings: Int,
+    val expiredMatches: Int,
+    val reasonDistribution: Map<String, Int>
+)
+
+enum class M13MatchNextStep {
+    OPEN_REVIEW,
+    DECIDE,
+    TERMINAL,
+    EXPIRE_ELIGIBLE,
+    NONE
+}
+
+fun M13MatchStatus.nextStep(): M13MatchNextStep = when (this) {
+    M13MatchStatus.PROPOSED -> M13MatchNextStep.OPEN_REVIEW
+    M13MatchStatus.UNDER_REVIEW -> M13MatchNextStep.DECIDE
+    M13MatchStatus.CONFIRMED,
+    M13MatchStatus.REJECTED,
+    M13MatchStatus.INCONCLUSIVE,
+    M13MatchStatus.WITHDRAWN,
+    M13MatchStatus.EXPIRED -> M13MatchNextStep.TERMINAL
 }
 
 object M13MatchingDefaults {

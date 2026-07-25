@@ -35,6 +35,11 @@ object M13ErrorMapper {
         "DECISION_ALREADY_EXISTS" -> "Ya existe una decisión final para esta coincidencia."
         "MATCH_REVIEW_RPC_UNAVAILABLE" ->
             "La revisión remota de coincidencias requiere la migración 049 (RPC)."
+        "M13_EXPIRATION_INFRASTRUCTURE_UNAVAILABLE" ->
+            "La expiración programada remota requiere infraestructura externa (cron)."
+        "M13_METRICS_INFRASTRUCTURE_UNAVAILABLE" ->
+            "Las métricas agregadas remotas aún no están disponibles."
+        "M13_METRICS_INVALID_RANGE" -> "El rango temporal de métricas no es válido."
         "CONFLICT" -> "Conflicto al guardar el avistamiento o la coincidencia."
         "MEDIA_REF_INVALID" -> "La referencia de media no es segura."
         "M13_REPOSITORY_FAILURE" -> "No pudimos completar la operación (M13)."
@@ -65,6 +70,9 @@ object M13ErrorMapper {
         "UNAUTHORIZED",
         "DECISION_ALREADY_EXISTS",
         "MATCH_REVIEW_RPC_UNAVAILABLE",
+        "M13_EXPIRATION_INFRASTRUCTURE_UNAVAILABLE",
+        "M13_METRICS_INFRASTRUCTURE_UNAVAILABLE",
+        "M13_METRICS_INVALID_RANGE",
         "CONFLICT",
         "MEDIA_REF_INVALID",
         "M13_REPOSITORY_FAILURE"

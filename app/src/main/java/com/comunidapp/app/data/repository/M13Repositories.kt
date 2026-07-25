@@ -6,6 +6,7 @@ import com.comunidapp.app.data.model.LostFoundSighting
 import com.comunidapp.app.data.model.LostFoundStatus
 import com.comunidapp.app.data.model.M13ActorAuthority
 import com.comunidapp.app.data.model.M13AuditEvents
+import com.comunidapp.app.data.model.M13M06Hooks
 import com.comunidapp.app.data.model.M13MatchCandidate
 import com.comunidapp.app.data.model.M13MatchDecision
 import com.comunidapp.app.data.model.M13MatchDecisionType
@@ -399,7 +400,10 @@ class MockM13MatchRepository(
         val produced = cases.mapNotNull { case ->
             M13MatchingEngine.score(sighting, case)?.also { store.putCandidate(it) }
         }
-        produced.forEach { store.audit(M13AuditEvents.MATCH_PROPOSED, it.id) }
+        produced.forEach {
+            store.audit(M13AuditEvents.MATCH_PROPOSED, it.id)
+            store.recordM06Hook(M13M06Hooks.MATCH_PROPOSED, it.id)
+        }
         return Result.success(produced.sortedByDescending { it.score })
     }
 
@@ -424,6 +428,7 @@ class MockM13MatchRepository(
             store.updateCandidate(updated)
             appendHistory(candidate, updated, actor, "OPEN_REVIEW")
             store.audit(M13AuditEvents.MATCH_UNDER_REVIEW, updated.id)
+            store.recordM06Hook(M13M06Hooks.MATCH_REVIEW_OPENED, updated.id)
             Result.success(updated)
         }
 
@@ -487,7 +492,13 @@ class MockM13MatchRepository(
                 M13MatchDecisionType.REJECTED -> M13AuditEvents.MATCH_REJECTED
                 M13MatchDecisionType.INCONCLUSIVE -> M13AuditEvents.MATCH_INCONCLUSIVE
             }
+            val m06 = when (decision) {
+                M13MatchDecisionType.CONFIRMED -> M13M06Hooks.MATCH_CONFIRMED
+                M13MatchDecisionType.REJECTED -> M13M06Hooks.MATCH_REJECTED
+                M13MatchDecisionType.INCONCLUSIVE -> M13M06Hooks.MATCH_INCONCLUSIVE
+            }
             store.audit(event, updated.id)
+            store.recordM06Hook(m06, updated.id)
             if (decision == M13MatchDecisionType.CONFIRMED) {
                 store.sightings.value.find { it.id == candidate.sightingId }?.let { s ->
                     if (s.status == M13SightingStatus.ACTIVE) {
@@ -551,6 +562,9 @@ class MockM13MatchRepository(
             store.updateCandidate(updated)
             appendHistory(candidate, updated, actor, reasonCode)
             store.audit(auditEvent, updated.id)
+            if (target == M13MatchStatus.EXPIRED) {
+                store.recordM06Hook(M13M06Hooks.MATCH_EXPIRED, updated.id)
+            }
             Result.success(updated)
         }
 

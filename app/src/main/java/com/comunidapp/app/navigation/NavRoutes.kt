@@ -34,6 +34,7 @@ object NavRoutes {
     const val M13_SIGHTING_DETAIL = "m13/sightings/{sightingId}"
     const val M13_CASE_MATCHES = "m13/cases/{caseId}/matches"
     const val M13_MATCH_DETAIL = "m13/matches/{candidateId}"
+    const val M13_METRICS = "m13/metrics"
     const val ARG_SIGHTING_ID = "sightingId"
     const val ARG_CANDIDATE_ID = "candidateId"
 

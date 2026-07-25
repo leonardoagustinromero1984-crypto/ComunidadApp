@@ -1,8 +1,8 @@
 # Operación — aplicación y validación de migración 049 (M13 revisión humana)
 
-**LeoVer** · Supabase de pruebas · aplicar **solo** con autorización explícita.
+**LeoVer** · Supabase de pruebas.
 
-Esta guía **no** aplica la migración desde Cursor. 049 queda **creada y no aplicada**.
+Estado operativo confirmado: **049 aplicada**; validación estructural **14/14 PASS**. Smoke funcional remoto: **PENDIENTE EXTERNO** (no PASS). Esta guía no reaplica SQL desde Cursor.
 
 ## Archivo
 

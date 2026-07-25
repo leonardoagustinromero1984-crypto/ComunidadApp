@@ -32,8 +32,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M13MatchDecisionType
+import com.comunidapp.app.data.model.M13MatchNextStep
 import com.comunidapp.app.data.model.M13MatchReason
 import com.comunidapp.app.data.model.M13MatchStatus
+import com.comunidapp.app.data.model.nextStep
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.state.EmptyState
@@ -42,6 +44,8 @@ import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.viewmodel.M13CaseMatchesUiState
 import com.comunidapp.app.viewmodel.M13CaseMatchesViewModel
 import com.comunidapp.app.viewmodel.M13MatchDetailViewModel
+import com.comunidapp.app.viewmodel.M13MetricsUiState
+import com.comunidapp.app.viewmodel.M13MetricsViewModel
 import com.comunidapp.app.viewmodel.M13SightingCreateViewModel
 import com.comunidapp.app.viewmodel.M13SightingDetailUiState
 import com.comunidapp.app.viewmodel.M13SightingDetailViewModel
@@ -53,6 +57,7 @@ fun M13SightingListScreen(
     onNavigateBack: () -> Unit,
     onSightingClick: (String) -> Unit,
     onCreate: () -> Unit,
+    onOpenMetrics: (() -> Unit)? = null,
     viewModel: M13SightingListViewModel = viewModel(factory = M13SightingListViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -68,6 +73,12 @@ fun M13SightingListScreen(
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             OutlinedButton(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
                 Text("Reportar avistamiento")
+            }
+            if (onOpenMetrics != null) {
+                Spacer(Modifier.height(8.dp))
+                OutlinedButton(onClick = onOpenMetrics, modifier = Modifier.fillMaxWidth()) {
+                    Text("Métricas operativas (sin PII)")
+                }
             }
             Spacer(Modifier.height(12.dp))
             when (val s = state) {
@@ -335,13 +346,24 @@ fun M13MatchDetailScreen(
             } else {
                 Text("Score ${c.score} · ${c.level}", fontWeight = FontWeight.Bold)
                 Text("Estado: ${c.status}")
+                val next = when (c.status.nextStep()) {
+                    M13MatchNextStep.OPEN_REVIEW -> "Próximo paso: abrir revisión humana."
+                    M13MatchNextStep.DECIDE -> "Próximo paso: confirmar, rechazar o marcar inconclusa."
+                    M13MatchNextStep.TERMINAL -> "Estado final: no se reabre. Nueva revisión requiere otro candidato."
+                    M13MatchNextStep.EXPIRE_ELIGIBLE -> "Elegible a expiración por política local."
+                    M13MatchNextStep.NONE -> ""
+                }
+                if (next.isNotBlank()) {
+                    Text(next, style = MaterialTheme.typography.bodySmall)
+                }
                 Text("Razones:")
                 c.reasons.forEach { r: M13MatchReason ->
                     Text("• ${r.labelEs}")
                 }
                 Text(
                     "Sin autoconfirmación: se requiere decisión humana. " +
-                        "La confirmación no cierra automáticamente el caso Lost/Found.",
+                        "La confirmación no cierra automáticamente el caso Lost/Found. " +
+                        "Notas privadas solo para autoridad.",
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
@@ -350,6 +372,12 @@ fun M13MatchDetailScreen(
                 val canWithdraw =
                     (c.status == M13MatchStatus.PROPOSED || c.status == M13MatchStatus.UNDER_REVIEW) &&
                         !busy
+                if (c.status.isTerminal) {
+                    Text(
+                        "Acciones deshabilitadas (estado final).",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 OutlinedButton(
                     onClick = { viewModel.openReview() },
                     enabled = canOpen,
@@ -405,6 +433,77 @@ fun M13MatchDetailScreen(
                 }
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        }
+    }
+}
+
+@Composable
+fun M13MetricsScreen(
+    onNavigateBack: () -> Unit,
+    viewModel: M13MetricsViewModel = viewModel(factory = M13MetricsViewModel.factory())
+) {
+    val state by viewModel.uiState.collectAsState()
+    Scaffold(
+        topBar = {
+            ComunidappTopBar(
+                title = "Métricas M13",
+                showBackButton = true,
+                onBackClick = onNavigateBack
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .verticalScroll(rememberScrollState())
+        ) {
+            Text(
+                "Agregados sin PII (sin nombres, contactos, coords ni notas).",
+                style = MaterialTheme.typography.bodySmall
+            )
+            Spacer(Modifier.height(12.dp))
+            when (val s = state) {
+                M13MetricsUiState.Loading -> LoadingState()
+                is M13MetricsUiState.Error -> ErrorState(
+                    message = s.message,
+                    onRetry = { viewModel.refresh() }
+                )
+                is M13MetricsUiState.Content -> {
+                    val m = s.metrics
+                    Text("Zona horaria: ${m.zoneIdName}", style = MaterialTheme.typography.labelSmall)
+                    Text("Avistamientos por estado", fontWeight = FontWeight.SemiBold)
+                    m.sightingsByStatus.forEach { (k, v) -> Text("- $k: $v") }
+                    Spacer(Modifier.height(8.dp))
+                    Text("Candidatos por nivel", fontWeight = FontWeight.SemiBold)
+                    m.candidatesByLevel.forEach { (k, v) -> Text("- $k: $v") }
+                    Spacer(Modifier.height(8.dp))
+                    Text("Candidatos por estado", fontWeight = FontWeight.SemiBold)
+                    m.candidatesByStatus.forEach { (k, v) -> Text("- $k: $v") }
+                    Spacer(Modifier.height(8.dp))
+                    val rate = m.confirmationRate?.let { pct -> "${(pct * 100).toInt()}%" } ?: "-"
+                    val avgReview = m.avgMinutesToReview?.let { v -> "%.1f".format(v) } ?: "-"
+                    val avgDecision = m.avgMinutesToDecision?.let { v -> "%.1f".format(v) } ?: "-"
+                    Text("Tasa confirmación: $rate")
+                    Text("Media min. a revisión: $avgReview")
+                    Text("Media min. a decisión: $avgDecision")
+                    Text(
+                        "Expirados — avistamientos: ${m.expiredSightings}, matches: ${m.expiredMatches}"
+                    )
+                    if (m.reasonDistribution.isNotEmpty()) {
+                        Spacer(Modifier.height(8.dp))
+                        Text("Razones de coincidencia", fontWeight = FontWeight.SemiBold)
+                        m.reasonDistribution.forEach { (k, v) -> Text("- $k: $v") }
+                    }
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = { viewModel.refresh() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Actualizar")
+                    }
+                }
+            }
         }
     }
 }

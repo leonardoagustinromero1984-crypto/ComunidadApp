@@ -36,10 +36,26 @@ object M13Validators {
         return null
     }
 
-    /** Garantiza que la proyección pública no incluye lon/lat exactas. */
+    /** Garantiza que la proyección pública no incluye lon/lat exactas ni identidad. */
     fun publicProjectionHidesExactCoords(sighting: M13Sighting): Boolean {
         val publicView = sighting.toPublic()
-        return publicView.id == sighting.id && publicView.zoneText.isNotBlank()
+        return publicView.id == sighting.id &&
+            publicView.zoneText.isNotBlank() &&
+            !publicView.descriptionPreview.contains(sighting.reporterUserId, ignoreCase = false)
+    }
+
+    /** Redacción: la vista pública no debe filtrar contacto/coords como texto. */
+    fun publicProjectionHasNoSensitiveLeak(sighting: M13Sighting): Boolean {
+        val publicView = sighting.toPublic()
+        val blob = listOf(
+            publicView.zoneText,
+            publicView.descriptionPreview,
+            publicView.breedText.orEmpty(),
+            publicView.primaryColor
+        ).joinToString(" ").lowercase()
+        val banned = listOf("@", "tel:", "whatsapp", "latitude", "longitude", "contacto:")
+        return banned.none { blob.contains(it) } &&
+            publicView.hasApproximateLocation == (sighting.latitudeApprox != null)
     }
 }
 

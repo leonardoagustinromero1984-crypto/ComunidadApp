@@ -120,7 +120,7 @@ El catálogo de producto de este documento (M00–M27) se preserva. En el track 
 
 - **M11 técnico (Refugios)** ya cerrado — no altera el significado de producto de **M11 Web pública** ni de **M16 Refugios**.
 - **M12 técnico (Veterinarias)** — Bloque 1 local/fake — prepara dominio de clínicas/profesionales previo a prestadores (**M22**); **no reemplaza** el **M12 Mascotas perdidas y encontradas** del catálogo de producto.
-- **M13 técnico (Avistamientos y coincidencias)** — revisión humana remota **CERRADA LOCALMENTE** (migración **049** creada, **no aplicada**). 048 aplicada (estructural 13/13 PASS); smoke B2 **PENDIENTE EXTERNO**. M12 smoke **PENDIENTE EXTERNO**; M12 cierre oficial **PENDIENTE**. M13 **no** cerrado oficialmente.
+- **M13 técnico (Avistamientos y coincidencias)** — Bloques 1–4 **CERRADOS LOCALMENTE**; cierre técnico local completado. 048/049 aplicadas (estructural 13/13 y 14/14 PASS). Smoke funcional M13 **PENDIENTE EXTERNO**. Cierre oficial M13 **PENDIENTE**. M12 smoke **PENDIENTE EXTERNO**; M12 cierre oficial **PENDIENTE**. M14 no iniciado.
 
 ## Prompt base
 

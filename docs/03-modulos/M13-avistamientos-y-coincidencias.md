@@ -328,30 +328,26 @@ Fuera del alcance de M13:
 
 ### Bloque 2 — Persistencia y seguridad
 
-- migración `048_m13_sightings_and_match_candidates.sql` creada localmente;
+- migración `048` aplicada; validación estructural **13/13 PASS**;
 - tabla lateral `lost_found_sighting_details` + candidatos/decisiones/historial;
-- 13 RPC cliente; RLS/grants; sin confirm/reject remoto;
+- 13 RPC cliente; RLS/grants; sin confirm/reject remoto (eso es 049);
 - repositorios Supabase + DataProvider;
-- **048 pendiente de aplicación remota**;
-- validación estructural remota y smoke: pendientes.
+- smoke funcional B2: **PENDIENTE EXTERNO**.
 
 ### Bloque 3 — Revisión y confirmación
 
 - flujo local `PROPOSED → UNDER_REVIEW → decisión` (**CERRADO LOCALMENTE**);
 - withdraw/expire; historial; autoridad; concurrencia/idempotencia;
 - UI timeline;
-- RPC remotas: migración **049** creada localmente (**no aplicada**);
-- smoke remoto de revisión: pendiente.
+- migración **049** aplicada; estructural **14/14 PASS**;
+- smoke remoto de revisión: **PENDIENTE EXTERNO**.
 
-### Bloque 4 — Endurecimiento y cierre
+### Bloque 4 — Endurecimiento y cierre técnico
 
-- privacidad final;
-- expiraciones;
-- métricas sin PII;
-- preparación M06;
-- regresión;
-- documentación;
-- cierre técnico y oficial.
+- privacidad final; expiraciones locales; métricas sin PII; preparación M06; UI gestores;
+- **CERRADO LOCALMENTE** + cierre técnico local;
+- smoke funcional y cierre oficial: **PENDIENTE**;
+- sin 050; M14 no iniciado.
 
 ## 13. Definición de terminado del Bloque 1
 
