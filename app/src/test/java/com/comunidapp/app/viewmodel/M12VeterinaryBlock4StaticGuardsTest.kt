@@ -49,13 +49,17 @@ class M12VeterinaryBlock4StaticGuardsTest {
     // --- Migraciones ---
 
     @Test
-    fun migration_048_is_m13_and_no_049() {
+    fun migration_048_is_m13_and_049_is_review() {
         val names = migrationDir().listFiles()?.map { it.name }.orEmpty()
         assertTrue(
             "048 debe ser M13 sightings (no M12)",
             names.any { it == "048_m13_sightings_and_match_candidates.sql" }
         )
-        assertFalse("no debe existir 049 todavía", names.any { it.startsWith("049") })
+        assertTrue(
+            "049 debe ser M13 match review",
+            names.any { it == "049_m13_match_review_workflow.sql" }
+        )
+        assertFalse("no debe existir 050 todavía", names.any { it.startsWith("050") })
     }
 
     @Test

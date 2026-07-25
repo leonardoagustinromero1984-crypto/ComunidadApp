@@ -38,14 +38,14 @@ UI (m13/*) → ViewModels → MockM13*Repository → M13MemoryStore
 - Tabla lateral + candidatos + decisiones + historial (estructura).
 - 13 RPC de sighting/generate/list; **sin** RPC de confirm/reject.
 
-## Bloque 3 (cerrado localmente)
+## Bloque 3 (cerrado localmente) + 049 (revisión remota en repo)
 
 - Flujo humano mock: open → confirm/reject/inconclusive; withdraw/expire.
 - Historial append-only + timeline UI; autoridad dueño/org; concurrencia/idempotencia.
-- Supabase review stubs → `MATCH_REVIEW_RPC_UNAVAILABLE` hasta 049.
-- Propuesta exacta: `docs/02-arquitectura/M13-propuesta-migracion-049-match-review.md`.
-- Riesgo: smoke B2 externo pendiente.
+- Migración `049_m13_match_review_workflow.sql` creada; **no aplicada**; CI highest = **049**.
+- Android Supabase cableado a las 8 RPC de revisión.
+- Riesgo: smoke B2 externo + smoke 049 pendientes.
 
 ## Bloque 4 (propuesta)
 
-Privacidad final, expiraciones remotas, métricas, preparación M06, cierre técnico post-smoke.
+Privacidad final, expiraciones remotas programadas, métricas sin PII, preparación M06, regresión post-smoke, cierre técnico cuando smokes externos PASS.

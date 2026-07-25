@@ -27,6 +27,12 @@ object M13ErrorMapper {
         "MATCH_GENERATION_NOT_ALLOWED" -> "No tenés permiso para generar coincidencias."
         "MATCH_DATA_INSUFFICIENT" -> "Faltan datos para calcular la coincidencia."
         "MATCH_TERMINAL" -> "La coincidencia ya está en un estado final."
+        "MATCH_ALREADY_FINAL" -> "La coincidencia ya está en un estado final."
+        "MATCH_REVIEW_NOT_ALLOWED" -> "No tenés permiso para revisar esta coincidencia."
+        "MATCH_REVIEW_ALREADY_OPEN" -> "La revisión ya está abierta."
+        "INVALID_TRANSITION" -> "Esa transición de estado no está permitida."
+        "UNAUTHORIZED" -> "No tenés autorización para esta decisión."
+        "DECISION_ALREADY_EXISTS" -> "Ya existe una decisión final para esta coincidencia."
         "MATCH_REVIEW_RPC_UNAVAILABLE" ->
             "La revisión remota de coincidencias requiere la migración 049 (RPC)."
         "CONFLICT" -> "Conflicto al guardar el avistamiento o la coincidencia."
@@ -52,6 +58,12 @@ object M13ErrorMapper {
         "MATCH_GENERATION_NOT_ALLOWED",
         "MATCH_DATA_INSUFFICIENT",
         "MATCH_TERMINAL",
+        "MATCH_ALREADY_FINAL",
+        "MATCH_REVIEW_NOT_ALLOWED",
+        "MATCH_REVIEW_ALREADY_OPEN",
+        "INVALID_TRANSITION",
+        "UNAUTHORIZED",
+        "DECISION_ALREADY_EXISTS",
         "MATCH_REVIEW_RPC_UNAVAILABLE",
         "CONFLICT",
         "MEDIA_REF_INVALID",

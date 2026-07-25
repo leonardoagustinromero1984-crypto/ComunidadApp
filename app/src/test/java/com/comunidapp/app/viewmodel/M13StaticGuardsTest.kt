@@ -17,11 +17,12 @@ class M13StaticGuardsTest {
     ).first { File(it, "supabase/migrations").isDirectory }
 
     @Test
-    fun migration_048_present_and_047_intact() {
+    fun migration_049_present_and_048_intact() {
         val names = File(repoRoot(), "supabase/migrations").listFiles()?.map { it.name }.orEmpty()
         assertTrue(names.any { it.startsWith("047_") })
         assertTrue(names.any { it == "048_m13_sightings_and_match_candidates.sql" })
-        assertFalse(names.any { it.startsWith("049_") })
+        assertTrue(names.any { it == "049_m13_match_review_workflow.sql" })
+        assertFalse(names.any { it.startsWith("050_") })
     }
 
     @Test

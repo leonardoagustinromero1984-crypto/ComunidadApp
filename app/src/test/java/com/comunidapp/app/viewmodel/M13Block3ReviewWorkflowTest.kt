@@ -14,7 +14,6 @@ import com.comunidapp.app.data.remote.supabase.m13.M13ErrorMapper
 import com.comunidapp.app.data.repository.M13Authority
 import com.comunidapp.app.data.repository.M13MemoryStore
 import com.comunidapp.app.data.repository.MockM13MatchRepository
-import com.comunidapp.app.data.repository.SupabaseM13MatchRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
@@ -242,19 +241,31 @@ class M13Block3ReviewWorkflowTest {
     }
 
     @Test
-    fun supabase_review_path_reports_049_required() = runTest {
-        val remote = SupabaseM13MatchRepository()
-        val open = remote.openReview("any")
-        assertEquals("MATCH_REVIEW_RPC_UNAVAILABLE", M13ErrorMapper.codeOf(open.exceptionOrNull()!!))
-        val decide = remote.decide("any", M13MatchDecisionType.CONFIRMED, "X")
-        assertEquals("MATCH_REVIEW_RPC_UNAVAILABLE", M13ErrorMapper.codeOf(decide.exceptionOrNull()!!))
-        assertTrue(
-            M13ErrorMapper.userMessage("MATCH_REVIEW_RPC_UNAVAILABLE").contains("049")
-        )
+    fun supabase_remote_wires_review_rpcs_statically() {
+        val src = java.io.File(
+            listOf(
+                java.io.File("."),
+                java.io.File(".."),
+                java.io.File("../..")
+            ).first { java.io.File(it, "app").isDirectory },
+            "app/src/main/java/com/comunidapp/app/data/remote/supabase/m13/SupabaseM13RemoteDataSource.kt"
+        ).readText()
+        assertTrue(src.contains("m13_open_match_review"))
+        assertTrue(src.contains("m13_confirm_match_candidate"))
+        assertTrue(src.contains("m13_list_match_decisions"))
+        val repo = java.io.File(
+            listOf(
+                java.io.File("."),
+                java.io.File(".."),
+                java.io.File("../..")
+            ).first { java.io.File(it, "app").isDirectory },
+            "app/src/main/java/com/comunidapp/app/data/repository/SupabaseM13Repositories.kt"
+        ).readText()
+        assertFalse(repo.contains("MATCH_REVIEW_RPC_UNAVAILABLE"))
     }
 
     @Test
-    fun migrations_001_to_048_intact_no_049() {
+    fun migrations_001_to_049_intact_no_050() {
         val dir = listOf(
             java.io.File("supabase/migrations"),
             java.io.File("../supabase/migrations"),
@@ -262,7 +273,8 @@ class M13Block3ReviewWorkflowTest {
         ).first { it.isDirectory }
         val names = dir.listFiles()?.map { it.name }.orEmpty()
         assertTrue(names.any { it.startsWith("048_") })
-        assertFalse(names.any { it.startsWith("049_") })
+        assertTrue(names.any { it == "049_m13_match_review_workflow.sql" })
+        assertFalse(names.any { it.startsWith("050_") })
         (1..47).forEach { n ->
             assertTrue(names.any { it.startsWith("%03d_".format(n)) })
         }

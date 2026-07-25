@@ -340,8 +340,8 @@ Fuera del alcance de M13:
 - flujo local `PROPOSED → UNDER_REVIEW → decisión` (**CERRADO LOCALMENTE**);
 - withdraw/expire; historial; autoridad; concurrencia/idempotencia;
 - UI timeline;
-- RPC remotas: **propuesta 049** (no creada automáticamente);
-- smoke remoto de revisión: pendiente post-049.
+- RPC remotas: migración **049** creada localmente (**no aplicada**);
+- smoke remoto de revisión: pendiente.
 
 ### Bloque 4 — Endurecimiento y cierre
 

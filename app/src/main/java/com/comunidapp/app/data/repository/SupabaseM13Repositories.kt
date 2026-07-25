@@ -14,11 +14,10 @@ import com.comunidapp.app.data.remote.supabase.m13.toPublic
 import java.time.Instant
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOf
 
 /**
- * LeoVer M13 Bloque 2 — repositorios Supabase (solo RPC; sin DML directo).
- * No implementa confirm/reject remoto (Bloque 3).
+ * LeoVer M13 — repositorios Supabase (solo RPC; sin DML directo).
+ * Revisión humana remota vía migración 049.
  */
 class SupabaseM13SightingRepository(
     private val remote: SupabaseM13RemoteDataSource = SupabaseM13RemoteDataSource()
@@ -136,11 +135,26 @@ class SupabaseM13MatchRepository(
         )
     }
 
-    override fun observeDecisions(candidateId: String): Flow<List<M13MatchDecision>> =
-        flowOf(emptyList()) // RPC list_match_decisions → migración 049
+    override fun observeDecisions(candidateId: String): Flow<List<M13MatchDecision>> = flow {
+        emit(
+            try {
+                remote.listMatchDecisions(candidateId).map { it.toDomain() }
+            } catch (_: Throwable) {
+                emptyList()
+            }
+        )
+    }
 
     override fun observeStatusHistory(candidateId: String): Flow<List<M13MatchStatusHistoryEntry>> =
-        flowOf(emptyList()) // RPC list_match_status_history → migración 049
+        flow {
+            emit(
+                try {
+                    remote.listMatchStatusHistory(candidateId).map { it.toDomain() }
+                } catch (_: Throwable) {
+                    emptyList()
+                }
+            )
+        }
 
     override suspend fun recalculateForSighting(sightingId: String): Result<List<M13MatchCandidate>> =
         try {
@@ -150,7 +164,11 @@ class SupabaseM13MatchRepository(
         }
 
     override suspend fun openReview(candidateId: String): Result<M13MatchCandidate> =
-        resultFailM13("MATCH_REVIEW_RPC_UNAVAILABLE")
+        try {
+            Result.success(remote.openMatchReview(candidateId).toDomain())
+        } catch (t: Throwable) {
+            M13ErrorMapper.failure(t)
+        }
 
     override suspend fun decide(
         candidateId: String,
@@ -158,13 +176,33 @@ class SupabaseM13MatchRepository(
         reasonCode: String,
         notePrivate: String?
     ): Result<M13MatchCandidate> =
-        resultFailM13("MATCH_REVIEW_RPC_UNAVAILABLE")
+        try {
+            val row = when (decision) {
+                M13MatchDecisionType.CONFIRMED ->
+                    remote.confirmMatchCandidate(candidateId, reasonCode, notePrivate)
+                M13MatchDecisionType.REJECTED ->
+                    remote.rejectMatchCandidate(candidateId, reasonCode, notePrivate)
+                M13MatchDecisionType.INCONCLUSIVE ->
+                    remote.markMatchInconclusive(candidateId, reasonCode, notePrivate)
+            }
+            Result.success(row.toDomain())
+        } catch (t: Throwable) {
+            M13ErrorMapper.failure(t)
+        }
 
     override suspend fun withdrawMatch(candidateId: String, reasonCode: String): Result<M13MatchCandidate> =
-        resultFailM13("MATCH_REVIEW_RPC_UNAVAILABLE")
+        try {
+            Result.success(remote.withdrawMatchCandidate(candidateId, reasonCode).toDomain())
+        } catch (t: Throwable) {
+            M13ErrorMapper.failure(t)
+        }
 
     override suspend fun expireMatch(candidateId: String, reasonCode: String): Result<M13MatchCandidate> =
-        resultFailM13("MATCH_REVIEW_RPC_UNAVAILABLE")
+        try {
+            Result.success(remote.expireMatchCandidate(candidateId, reasonCode).toDomain())
+        } catch (t: Throwable) {
+            M13ErrorMapper.failure(t)
+        }
 
     suspend fun generateForCase(caseId: String): Result<List<M13MatchCandidate>> =
         try {

@@ -18,14 +18,14 @@ class M13Migration048StaticGuardsTest {
         File(repoRoot(), "supabase/migrations/048_m13_sightings_and_match_candidates.sql").readText()
 
     @Test
-    fun only_048_new_and_001_to_047_present() {
+    fun migration_048_present_and_intact_through_prior() {
         val names = File(repoRoot(), "supabase/migrations").listFiles()!!
             .map { it.name }
             .filter { it.matches(Regex("^\\d{3}_.*\\.sql$")) }
             .sorted()
         val nums = names.map { it.substring(0, 3).toInt() }
-        assertEquals(48, nums.maxOrNull())
-        assertFalse(nums.contains(49))
+        assertTrue(nums.contains(48))
+        assertTrue(names.any { it == "048_m13_sightings_and_match_candidates.sql" })
         (1..47).forEach { n ->
             assertTrue("falta migración ${n.toString().padStart(3, '0')}", nums.contains(n))
         }

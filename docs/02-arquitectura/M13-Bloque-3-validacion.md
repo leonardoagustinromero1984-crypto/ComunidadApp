@@ -33,10 +33,10 @@ M12 CIERRE OFICIAL PENDIENTE
 | 11 | Propuesta exacta 049 documentada | PASS |
 | 12 | M12 no declarado cerrado | PASS |
 
-## Limitación remota consciente
+## Limitación remota (actualizada)
 
-048 tiene tablas/helpers de decisión pero **sin RPC de revisión**. El path Supabase de open/decide/withdraw/expire queda tipado como pendiente de **049** (propuesta, no archivo SQL).
+Migración **049** crea las 8 RPC de revisión. Estado: **creada localmente, no aplicada remotamente**. Path Android Supabase cableado; smoke remoto pendiente.
 
 ## Riesgo funcional pendiente
 
-Hasta el smoke externo de Bloque 2, create/list/generate remoto y la autoridad real en pruebas no están verificados end-to-end. El cierre local de B3 no declara PASS remoto de B2.
+Smoke externo de Bloque 2 y smoke de revisión 049 pendientes. No declarar M13 cerrado.

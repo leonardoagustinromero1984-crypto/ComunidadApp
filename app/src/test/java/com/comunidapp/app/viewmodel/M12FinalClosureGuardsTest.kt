@@ -158,7 +158,11 @@ class M12FinalClosureGuardsTest {
             "048 debe ser M13",
             names.any { it == "048_m13_sightings_and_match_candidates.sql" }
         )
-        assertFalse("no debe existir migración 049", names.any { it.startsWith("049") })
+        assertTrue(
+            "049 debe ser M13 match review",
+            names.any { it == "049_m13_match_review_workflow.sql" }
+        )
+        assertFalse("no debe existir migración 050", names.any { it.startsWith("050") })
     }
 
     // 8 — Sin service_role en fuentes Android M12.

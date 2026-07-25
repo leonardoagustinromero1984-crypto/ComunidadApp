@@ -1,9 +1,13 @@
 package com.comunidapp.app.data.remote.supabase.m13
 
+import com.comunidapp.app.data.model.M13ActorAuthority
 import com.comunidapp.app.data.model.M13MatchCandidate
+import com.comunidapp.app.data.model.M13MatchDecision
+import com.comunidapp.app.data.model.M13MatchDecisionType
 import com.comunidapp.app.data.model.M13MatchLevel
 import com.comunidapp.app.data.model.M13MatchReason
 import com.comunidapp.app.data.model.M13MatchStatus
+import com.comunidapp.app.data.model.M13MatchStatusHistoryEntry
 import com.comunidapp.app.data.model.M13Sighting
 import com.comunidapp.app.data.model.M13SightingPublic
 import com.comunidapp.app.data.model.M13SightingStatus
@@ -63,6 +67,29 @@ data class M13MatchCandidateRow(
     @SerialName("algorithm_version") val algorithmVersion: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
+)
+
+@Serializable
+data class M13MatchDecisionRow(
+    val id: String,
+    @SerialName("candidate_id") val candidateId: String,
+    val decision: String,
+    @SerialName("actor_user_id") val actorUserId: String,
+    @SerialName("actor_authority") val actorAuthority: String,
+    @SerialName("reason_code") val reasonCode: String,
+    @SerialName("note_private") val notePrivate: String? = null,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+data class M13MatchStatusHistoryRow(
+    val id: String,
+    @SerialName("candidate_id") val candidateId: String,
+    @SerialName("from_status") val fromStatus: String? = null,
+    @SerialName("to_status") val toStatus: String,
+    @SerialName("changed_by") val changedBy: String? = null,
+    val reason: String? = null,
+    @SerialName("created_at") val createdAt: String? = null
 )
 
 fun M13SightingRow.toDomain(): M13Sighting = M13Sighting(
@@ -125,6 +152,32 @@ fun M13MatchCandidateRow.toDomain(): M13MatchCandidate = M13MatchCandidate(
         ?: M13MatchStatus.PROPOSED,
     createdAt = parseTs(createdAt),
     updatedAt = parseTs(updatedAt)
+)
+
+fun M13MatchDecisionRow.toDomain(): M13MatchDecision = M13MatchDecision(
+    id = id,
+    candidateId = candidateId,
+    decision = M13MatchDecisionType.entries.find { it.name.equals(decision, true) }
+        ?: M13MatchDecisionType.INCONCLUSIVE,
+    actorUserId = actorUserId,
+    actorAuthority = M13ActorAuthority.entries.find { it.name.equals(actorAuthority, true) }
+        ?: M13ActorAuthority.CASE_OWNER,
+    reasonCode = reasonCode,
+    notePrivate = notePrivate,
+    createdAt = parseTs(createdAt)
+)
+
+fun M13MatchStatusHistoryRow.toDomain(): M13MatchStatusHistoryEntry = M13MatchStatusHistoryEntry(
+    id = id,
+    candidateId = candidateId,
+    fromStatus = fromStatus?.let { s ->
+        M13MatchStatus.entries.find { it.name.equals(s, true) }
+    },
+    toStatus = M13MatchStatus.entries.find { it.name.equals(toStatus, true) }
+        ?: M13MatchStatus.PROPOSED,
+    changedByUserId = changedBy,
+    reason = reason,
+    createdAt = parseTs(createdAt)
 )
 
 private fun parseTs(raw: String?): Long {
@@ -202,6 +255,87 @@ class SupabaseM13RemoteDataSource {
     suspend fun recalculateCandidate(candidateId: String): M13MatchCandidateRow =
         rpc(
             "m13_recalculate_match_candidate",
+            buildJsonObject { put("p_candidate_id", candidateId) }
+        )
+
+    suspend fun openMatchReview(candidateId: String): M13MatchCandidateRow =
+        rpc("m13_open_match_review", buildJsonObject { put("p_candidate_id", candidateId) })
+
+    suspend fun confirmMatchCandidate(
+        candidateId: String,
+        reasonCode: String,
+        notePrivate: String?
+    ): M13MatchCandidateRow =
+        rpc(
+            "m13_confirm_match_candidate",
+            buildJsonObject {
+                put("p_candidate_id", candidateId)
+                put("p_reason_code", reasonCode)
+                putNullable("p_note_private", notePrivate)
+            }
+        )
+
+    suspend fun rejectMatchCandidate(
+        candidateId: String,
+        reasonCode: String,
+        notePrivate: String?
+    ): M13MatchCandidateRow =
+        rpc(
+            "m13_reject_match_candidate",
+            buildJsonObject {
+                put("p_candidate_id", candidateId)
+                put("p_reason_code", reasonCode)
+                putNullable("p_note_private", notePrivate)
+            }
+        )
+
+    suspend fun markMatchInconclusive(
+        candidateId: String,
+        reasonCode: String,
+        notePrivate: String?
+    ): M13MatchCandidateRow =
+        rpc(
+            "m13_mark_match_inconclusive",
+            buildJsonObject {
+                put("p_candidate_id", candidateId)
+                put("p_reason_code", reasonCode)
+                putNullable("p_note_private", notePrivate)
+            }
+        )
+
+    suspend fun withdrawMatchCandidate(
+        candidateId: String,
+        reasonCode: String
+    ): M13MatchCandidateRow =
+        rpc(
+            "m13_withdraw_match_candidate",
+            buildJsonObject {
+                put("p_candidate_id", candidateId)
+                put("p_reason_code", reasonCode)
+            }
+        )
+
+    suspend fun expireMatchCandidate(
+        candidateId: String,
+        reasonCode: String
+    ): M13MatchCandidateRow =
+        rpc(
+            "m13_expire_match_candidate",
+            buildJsonObject {
+                put("p_candidate_id", candidateId)
+                put("p_reason_code", reasonCode)
+            }
+        )
+
+    suspend fun listMatchDecisions(candidateId: String): List<M13MatchDecisionRow> =
+        rpcList(
+            "m13_list_match_decisions",
+            buildJsonObject { put("p_candidate_id", candidateId) }
+        )
+
+    suspend fun listMatchStatusHistory(candidateId: String): List<M13MatchStatusHistoryRow> =
+        rpcList(
+            "m13_list_match_status_history",
             buildJsonObject { put("p_candidate_id", candidateId) }
         )
 }

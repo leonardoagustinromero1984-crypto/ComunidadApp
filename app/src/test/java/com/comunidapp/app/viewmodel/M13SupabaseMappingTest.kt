@@ -96,14 +96,19 @@ class M13SupabaseMappingTest {
             "app/src/main/java/com/comunidapp/app/data/remote/supabase/m13/SupabaseM13RemoteDataSource.kt"
         ).readText()
         assertTrue(src.contains("m13_create_sighting"))
+        assertTrue(src.contains("m13_open_match_review"))
+        assertTrue(src.contains("m13_confirm_match_candidate"))
         assertTrue(src.contains("postgrest.rpc"))
         assertFalse(src.contains(".insert("))
-        assertFalse(src.contains("m13_confirm_match"))
-        assertFalse(src.contains("m13_open_match_review"))
     }
 
     @Test
-    fun review_rpc_unavailable_message_mentions_049() {
-        assertTrue(M13ErrorMapper.userMessage("MATCH_REVIEW_RPC_UNAVAILABLE").contains("049"))
+    fun error_mapper_covers_049_codes() {
+        assertEquals(
+            "UNAUTHORIZED",
+            M13ErrorMapper.codeOf(RuntimeException("Postgrest UNAUTHORIZED"))
+        )
+        assertTrue(M13ErrorMapper.userMessage("DECISION_ALREADY_EXISTS").isNotBlank())
+        assertTrue(M13ErrorMapper.userMessage("MATCH_ALREADY_FINAL").isNotBlank())
     }
 }
