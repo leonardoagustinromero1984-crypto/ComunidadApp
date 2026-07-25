@@ -1,58 +1,43 @@
-# Operación — aplicación y validación de migración 050 (M14 pasaportes)
+# Operación — migración 050 (M14 pasaportes)
 
-**LeoVer** · Supabase de pruebas · aplicar **solo** con autorización explícita.
+**LeoVer** · Supabase de pruebas.
 
-Esta guía **no** aplica la migración desde Cursor. 050 queda **creada y no aplicada**.
+## Estado remoto confirmado
 
-## Archivo
+```text
+050 aplicada (Success, versión corregida)
+Primer intento falló por delimitadores PL/pgSQL (sin commit)
+Validación inicial 17/18 PASS
+15 privilegios residuales → corregidos con 051
+050 permanece canónica e intacta en semántica (solo $$ reconciliados en repo)
+```
+
+## Archivo canónico
 
 ```text
 supabase/migrations/050_m14_pet_passports_and_credentials.sql
 ```
 
-Prerrequisito: migraciones **001–049** aplicadas (incluidas 048/049 M13).
+### Corrección sintáctica reconciliada en repo
 
-## Orden manual
+En `m14_archive_my_pet_passport` y `m14_create_verification_request`:
 
-1. Snapshot/backup si el proceso lo exige.
-2. Ejecutar el contenido completo del archivo (`begin`…`commit`).
-3. Si Success → **no reejecutar**.
-4. Validación estructural abajo.
-5. Smoke remoto pendiente (no simular aquí).
-6. **No editar 050** después de aplicada; defectos posteriores → **051**.
+- `as $` → `as $$`
+- `$;` → `$$;`
 
-## Validación estructural (orientativa)
+Sin cambios funcionales adicionales. El archivo versionado debe coincidir con el SQL aplicado remotamente.
 
-```sql
-select to_regclass('public.pet_passports') is not null as passports;
-select to_regclass('public.pet_passport_credentials') is not null as credentials;
-select to_regclass('public.pet_passport_verification_requests') is not null as requests;
-select to_regclass('public.pet_passport_verification_decisions') is not null as decisions;
-select to_regclass('public.pet_passport_status_history') is not null as history;
+## Validación estructural
 
-select p.proname
-from pg_proc p
-join pg_namespace n on n.oid = p.pronamespace
-where n.nspname = 'public'
-  and p.proname like 'm14_%'
-order by 1;
-```
+- Inicial post-050: **17/18** (fallo `DML_DIRECTO_CLIENTE` = 15).
+- Tras 051: validación final **18/18 pendiente de confirmación** del operador.
 
-Esperado: 18 funciones `m14_*` cliente.
+## Smoke remoto
 
-## Smoke remoto (pendiente)
-
-1. Crear pasaporte sobre mascota ACTIVE con responsabilidad M08.
-2. Duplicado no final → denegado.
-3. Activar / actualizar / archivar.
-4. Crear credencial con media `m05://`; rechazar URL http.
-5. Solicitar verificación; cancelar; sin resolución final.
-6. Proyección pública por `public_code` sin pet_id/user_id/microchip completo.
-7. anon solo en RPC pública.
+Pendiente de cierre de validación remota Bloque 2.
 
 ## Límites
 
-- No modificar 001–049.
-- No crear 051 en este bloque.
-- No declarar M12/M13/M14 cerrados oficialmente.
-- No iniciar M15.
+- No reejecutar ni editar 050.
+- Defectos posteriores → **052** (051 ya aplicada).
+- M12/M13 smokes y cierres oficiales siguen pendientes externos.

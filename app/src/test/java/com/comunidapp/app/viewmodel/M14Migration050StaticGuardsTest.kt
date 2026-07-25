@@ -15,10 +15,33 @@ class M14Migration050StaticGuardsTest {
         File(repoRoot(), "supabase/migrations/050_m14_pet_passports_and_credentials.sql").readText()
 
     @Test
-    fun migration_050_exists_without_051() {
+    fun migration_050_exists_and_remains_intact() {
         val names = File(repoRoot(), "supabase/migrations").listFiles()!!.map { it.name }
         assertTrue("050 migration missing", names.contains("050_m14_pet_passports_and_credentials.sql"))
-        assertFalse("051 must not be created for Block 2", names.any { it.startsWith("051_") })
+        assertTrue("051 hotfix missing", names.contains("051_m14_revoke_residual_table_privileges.sql"))
+        assertFalse("052 must not exist", names.any { it.startsWith("052_") })
+    }
+
+    @Test
+    fun plpgsql_dollar_delimiters_are_valid_for_archive_and_verification() {
+        val sql = sql050()
+        assertTrue(
+            sql.contains("m14_archive_my_pet_passport") &&
+                Regex(
+                    """m14_archive_my_pet_passport[\s\S]*?as \$\$[\s\S]*?\$\$;""",
+                    RegexOption.MULTILINE
+                ).containsMatchIn(sql)
+        )
+        assertTrue(
+            sql.contains("m14_create_verification_request") &&
+                Regex(
+                    """m14_create_verification_request[\s\S]*?as \$\$[\s\S]*?\$\$;""",
+                    RegexOption.MULTILINE
+                ).containsMatchIn(sql)
+        )
+        // Reject the exact broken single-dollar openers that blocked the first apply.
+        assertFalse(Regex("""as \$\s*\n\s*declare""").containsMatchIn(sql))
+        assertFalse(Regex("""(?m)^\$;""").containsMatchIn(sql))
     }
 
     @Test

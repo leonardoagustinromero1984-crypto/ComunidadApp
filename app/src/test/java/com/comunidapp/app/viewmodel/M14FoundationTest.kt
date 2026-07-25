@@ -333,7 +333,7 @@ class M14FoundationTest {
     }
 
     @Test
-    fun migrations_include_050() {
+    fun migrations_include_050_and_051() {
         val dir = listOf(
             File("supabase/migrations"),
             File("../supabase/migrations"),
@@ -342,6 +342,8 @@ class M14FoundationTest {
         val names = dir.listFiles()?.map { it.name }.orEmpty()
         assertTrue(names.any { it.startsWith("049_") })
         assertTrue(names.any { it.startsWith("050_") })
+        assertTrue(names.any { it.startsWith("051_") })
+        assertFalse(names.any { it.startsWith("052_") })
     }
 }
 

@@ -24,12 +24,13 @@ class M13Migration049StaticGuardsTest {
             .filter { it.matches(Regex("^\\d{3}_.*\\.sql$")) }
             .sorted()
         val nums = names.map { it.substring(0, 3).toInt() }
-        assertEquals(50, nums.maxOrNull())
-        assertFalse(nums.contains(51))
+        assertEquals(51, nums.maxOrNull())
+        assertFalse(nums.contains(52))
         (1..48).forEach { n ->
             assertTrue("falta migración ${n.toString().padStart(3, '0')}", nums.contains(n))
         }
         assertTrue(names.any { it == "049_m13_match_review_workflow.sql" })
+        assertTrue(names.any { it == "051_m14_revoke_residual_table_privileges.sql" })
     }
 
     @Test

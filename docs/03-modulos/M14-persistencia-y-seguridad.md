@@ -1,12 +1,16 @@
 # M14 — Persistencia y seguridad (Bloque 2)
 
-## Migración
+## Migraciones
 
 ```text
 supabase/migrations/050_m14_pet_passports_and_credentials.sql
+supabase/migrations/051_m14_revoke_residual_table_privileges.sql
 ```
 
-Forward-only sobre 001–049. **No aplicada** remotamente en este bloque.
+- **050** aplicada remotamente (versión con delimitadores `$$` correctos).
+- **051** aplicada remotamente (revoke residual + SELECT authenticated).
+- Validación estructural final 18/18: **pendiente de confirmación**.
+- No editar 050/051; siguientes correcciones → **052**.
 
 ## Tablas
 
@@ -33,10 +37,10 @@ Pasaporte (8), credenciales (5), solicitudes (5).
 ## Seguridad
 
 - SECURITY DEFINER + `search_path = public`
-- Sin DML directo cliente
+- Privilegio directo de tabla cliente: solo `SELECT` authenticated (RLS); anon sin grants de tabla (051)
 - Helpers `_m14_*` revocados a clientes
 - RLS en las 5 tablas
-- Sin `service_role` en el archivo 050
+- Sin `service_role` en 050/051
 - Sin resolución remota de verificaciones
 - Sin historia clínica
 
@@ -46,4 +50,4 @@ Pasaporte (8), credenciales (5), solicitudes (5).
 
 ## CI
 
-Guard highest migration: **050** (`scripts/ci/m07_quality_checks.sh`).
+Guard highest migration: **051** (`scripts/ci/m07_quality_checks.sh`).

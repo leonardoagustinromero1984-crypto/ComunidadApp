@@ -18,7 +18,9 @@ class M13Block4StaticGuardsTest {
         val names = File(repoRoot(), "supabase/migrations").listFiles()?.map { it.name }.orEmpty()
         assertTrue(names.any { it == "048_m13_sightings_and_match_candidates.sql" })
         assertTrue(names.any { it == "049_m13_match_review_workflow.sql" })
-        assertTrue(names.any { it.startsWith("050_") }); assertFalse(names.any { it.startsWith("051_") })
+        assertTrue(names.any { it.startsWith("050_") })
+        assertTrue(names.any { it.startsWith("051_") })
+        assertFalse(names.any { it.startsWith("052_") })
     }
 
     @Test

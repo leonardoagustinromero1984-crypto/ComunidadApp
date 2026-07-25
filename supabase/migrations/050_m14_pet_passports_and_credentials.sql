@@ -341,7 +341,7 @@ declare actor uuid := public._m14_require_auth(); v public.pet_passports; begin
  perform public._m14_append_passport_history(v.id,'DRAFT','ACTIVE',actor,'ACTIVATED'); perform public._m14_best_effort_audit('m14.passport.activated','ACTIVATE',v.id); return public._m14_passport_json(v); end; $$;
 
 create or replace function public.m14_archive_my_pet_passport(p_passport_id uuid, p_reason text default null) returns jsonb
-language plpgsql security definer set search_path = public as $
+language plpgsql security definer set search_path = public as $$
 declare
   actor uuid := public._m14_require_auth();
   v public.pet_passports;
@@ -360,7 +360,7 @@ begin
   perform public._m14_best_effort_audit('m14.passport.archived', 'ARCHIVE', v.id);
   return public._m14_passport_json(v);
 end;
-$;
+$$;
 
 -- Public endpoint deliberately has no auth requirement and never exposes identifiers,
 -- full microchips, media references, notes, creators, pet ids, or passport numbers.
@@ -409,7 +409,7 @@ declare actor uuid := public._m14_require_auth(); begin if not public._m14_can_m
 -- 5. Client RPCs — verification request queue only; no final decision endpoint.
 -- ---------------------------------------------------------------------------
 create or replace function public.m14_create_verification_request(p_credential_id uuid, p_target_organization_id uuid default null) returns jsonb
-language plpgsql security definer set search_path = public as $
+language plpgsql security definer set search_path = public as $$
 declare
   actor uuid := public._m14_require_auth();
   c public.pet_passport_credentials;
@@ -444,7 +444,7 @@ begin
   perform public._m14_best_effort_audit('m14.verification.requested', 'CREATE', c.passport_id);
   return jsonb_build_object('id', r.id, 'credential_id', r.credential_id, 'status', r.status, 'requested_at', r.requested_at);
 end;
-$;
+$$;
 
 create or replace function public.m14_cancel_my_verification_request(p_request_id uuid) returns jsonb
 language plpgsql security definer set search_path = public as $$
