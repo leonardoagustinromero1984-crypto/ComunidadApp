@@ -56,6 +56,7 @@ fun PetDetailScreen(
     onNavigateToAuthorizations: (String) -> Unit = {},
     onNavigateToTransfers: (String) -> Unit = {},
     onNavigateToStatusHistory: (String) -> Unit = {},
+    onNavigateToPassport: (String) -> Unit = {},
     viewModel: PetDetailViewModel = viewModel()
 ) {
     val pet by viewModel.pet.collectAsState()
@@ -247,6 +248,10 @@ fun PetDetailScreen(
                     TextButton(onClick = { onNavigateToStatusHistory(data.id) }) {
                         Text("Ver historial de estado")
                     }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                TextButton(onClick = { onNavigateToPassport(data.id) }) {
+                    Text("Pasaporte LeoVer")
                 }
                 Spacer(modifier = Modifier.height(16.dp))
                 ClinicalRecordsSection(

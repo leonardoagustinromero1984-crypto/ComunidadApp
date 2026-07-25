@@ -35,17 +35,29 @@ import com.comunidapp.app.data.repository.FosterHomeRepository
 import com.comunidapp.app.data.repository.FosterPlacementRepository
 import com.comunidapp.app.data.repository.FosterRequestRepository
 import com.comunidapp.app.data.mock.InMemoryDataStore
+import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.repository.M10FosterMemoryStore
 import com.comunidapp.app.data.repository.M13MatchRepository
 import com.comunidapp.app.data.repository.M13MemoryStore
 import com.comunidapp.app.data.repository.M13OperationsRepository
 import com.comunidapp.app.data.repository.M13SightingRepository
+import com.comunidapp.app.data.repository.M14CredentialRepository
+import com.comunidapp.app.data.repository.M14MemoryStore
+import com.comunidapp.app.data.repository.M14PassportRepository
+import com.comunidapp.app.data.repository.M14VerificationRepository
 import com.comunidapp.app.data.repository.MockM13MatchRepository
 import com.comunidapp.app.data.repository.MockM13OperationsRepository
 import com.comunidapp.app.data.repository.MockM13SightingRepository
+import com.comunidapp.app.data.repository.MockM14AuthorityPolicy
+import com.comunidapp.app.data.repository.MockM14CredentialRepository
+import com.comunidapp.app.data.repository.MockM14PassportRepository
+import com.comunidapp.app.data.repository.MockM14VerificationRepository
 import com.comunidapp.app.data.repository.SupabaseM13MatchRepository
 import com.comunidapp.app.data.repository.SupabaseM13OperationsRepository
 import com.comunidapp.app.data.repository.SupabaseM13SightingRepository
+import com.comunidapp.app.data.repository.SupabaseM14CredentialRepository
+import com.comunidapp.app.data.repository.SupabaseM14PassportRepository
+import com.comunidapp.app.data.repository.SupabaseM14VerificationRepository
 import com.comunidapp.app.data.repository.MockFosterEvolutionRepository
 import com.comunidapp.app.data.repository.MockFosterExpenseRepository
 import com.comunidapp.app.data.repository.MockFosterHelpRepository
@@ -702,6 +714,51 @@ object DataProvider {
             MockM13OperationsRepository(
                 store = m13Store,
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        }
+    }
+
+    /** M14 Bloque 1 — pasaporte local; sin SQL / sin Supabase real. */
+    private val m14Store by lazy { M14MemoryStore() }
+
+    private val m14Authority by lazy { MockM14AuthorityPolicy() }
+
+    private val m14ResolvePet: (String) -> Pet? = { id -> InMemoryDataStore.getPetById(id) }
+
+    val m14PassportRepository: M14PassportRepository by lazy {
+        if (useSupabase) {
+            SupabaseM14PassportRepository()
+        } else {
+            MockM14PassportRepository(
+                store = m14Store,
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                resolvePet = m14ResolvePet,
+                authority = m14Authority
+            )
+        }
+    }
+
+    val m14CredentialRepository: M14CredentialRepository by lazy {
+        if (useSupabase) {
+            SupabaseM14CredentialRepository()
+        } else {
+            MockM14CredentialRepository(
+                store = m14Store,
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                resolvePet = m14ResolvePet,
+                authority = m14Authority
+            )
+        }
+    }
+
+    val m14VerificationRepository: M14VerificationRepository by lazy {
+        if (useSupabase) {
+            SupabaseM14VerificationRepository()
+        } else {
+            MockM14VerificationRepository(
+                store = m14Store,
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                authority = m14Authority
             )
         }
     }

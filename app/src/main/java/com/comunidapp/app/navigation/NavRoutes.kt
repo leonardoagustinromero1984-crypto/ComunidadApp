@@ -38,6 +38,19 @@ object NavRoutes {
     const val ARG_SIGHTING_ID = "sightingId"
     const val ARG_CANDIDATE_ID = "candidateId"
 
+    // M14 — Pasaporte e identidad verificable (Bloque 1 local)
+    const val M14_PASSPORTS = "m14/passports"
+    const val M14_PET_PASSPORT = "m14/pets/{petId}/passport"
+    const val M14_PET_PASSPORT_EDIT = "m14/pets/{petId}/passport/edit"
+    const val M14_PASSPORT_CREDENTIALS = "m14/passports/{passportId}/credentials"
+    const val M14_PASSPORT_CREDENTIAL_NEW = "m14/passports/{passportId}/credentials/new"
+    const val M14_CREDENTIAL_DETAIL = "m14/credentials/{credentialId}"
+    const val M14_PASSPORT_VERIFICATION = "m14/passports/{passportId}/verification"
+    const val M14_PUBLIC = "m14/public/{publicCode}"
+    const val ARG_PASSPORT_ID = "passportId"
+    const val ARG_CREDENTIAL_ID = "credentialId"
+    const val ARG_PUBLIC_CODE = "publicCode"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -435,4 +448,19 @@ object NavRoutes {
         "m13/cases/${java.net.URLEncoder.encode(caseId, Charsets.UTF_8.name())}/matches"
     fun m13MatchDetail(candidateId: String) =
         "m13/matches/${java.net.URLEncoder.encode(candidateId, Charsets.UTF_8.name())}"
+
+    fun m14PetPassport(petId: String) =
+        "m14/pets/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}/passport"
+    fun m14PetPassportEdit(petId: String) =
+        "m14/pets/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}/passport/edit"
+    fun m14PassportCredentials(passportId: String) =
+        "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/credentials"
+    fun m14PassportCredentialNew(passportId: String) =
+        "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/credentials/new"
+    fun m14CredentialDetail(credentialId: String) =
+        "m14/credentials/${java.net.URLEncoder.encode(credentialId, Charsets.UTF_8.name())}"
+    fun m14PassportVerification(passportId: String) =
+        "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/verification"
+    fun m14Public(publicCode: String) =
+        "m14/public/${java.net.URLEncoder.encode(publicCode, Charsets.UTF_8.name())}"
 }
