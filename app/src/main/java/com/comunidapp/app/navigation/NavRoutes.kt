@@ -38,18 +38,26 @@ object NavRoutes {
     const val ARG_SIGHTING_ID = "sightingId"
     const val ARG_CANDIDATE_ID = "candidateId"
 
-    // M14 — Pasaporte e identidad verificable (Bloque 1 local)
+    // M14 — Pasaporte e identidad verificable (Bloque 1–3)
     const val M14_PASSPORTS = "m14/passports"
     const val M14_PET_PASSPORT = "m14/pets/{petId}/passport"
     const val M14_PET_PASSPORT_EDIT = "m14/pets/{petId}/passport/edit"
     const val M14_PASSPORT_CREDENTIALS = "m14/passports/{passportId}/credentials"
     const val M14_PASSPORT_CREDENTIAL_NEW = "m14/passports/{passportId}/credentials/new"
+    const val M14_PASSPORT_CREDENTIAL_ISSUE = "m14/passports/{passportId}/credentials/issue"
+    const val M14_CREDENTIALS_ISSUE = "m14/credentials/issue?passportId={passportId}"
     const val M14_CREDENTIAL_DETAIL = "m14/credentials/{credentialId}"
+    const val M14_CREDENTIAL_REVOKE = "m14/credentials/{credentialId}/revoke"
     const val M14_PASSPORT_VERIFICATION = "m14/passports/{passportId}/verification"
+    const val M14_VERIFICATIONS_MANAGED = "m14/verifications/managed"
+    const val M14_VERIFICATION_DETAIL = "m14/verifications/{requestId}"
+    const val M14_PASSPORT_SHARE = "m14/passports/{passportId}/share"
+    const val M14_PASSPORT_HISTORY = "m14/passports/{passportId}/history"
     const val M14_PUBLIC = "m14/public/{publicCode}"
     const val ARG_PASSPORT_ID = "passportId"
     const val ARG_CREDENTIAL_ID = "credentialId"
     const val ARG_PUBLIC_CODE = "publicCode"
+    const val ARG_M14_REQUEST_ID = "requestId"
 
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
@@ -457,10 +465,22 @@ object NavRoutes {
         "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/credentials"
     fun m14PassportCredentialNew(passportId: String) =
         "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/credentials/new"
+    fun m14PassportCredentialIssue(passportId: String) =
+        "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/credentials/issue"
+    fun m14CredentialsIssue(passportId: String) =
+        "m14/credentials/issue?passportId=${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}"
     fun m14CredentialDetail(credentialId: String) =
         "m14/credentials/${java.net.URLEncoder.encode(credentialId, Charsets.UTF_8.name())}"
+    fun m14CredentialRevoke(credentialId: String) =
+        "m14/credentials/${java.net.URLEncoder.encode(credentialId, Charsets.UTF_8.name())}/revoke"
     fun m14PassportVerification(passportId: String) =
         "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/verification"
+    fun m14VerificationDetail(requestId: String) =
+        "m14/verifications/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
+    fun m14PassportShare(passportId: String) =
+        "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/share"
+    fun m14PassportHistory(passportId: String) =
+        "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/history"
     fun m14Public(publicCode: String) =
         "m14/public/${java.net.URLEncoder.encode(publicCode, Charsets.UTF_8.name())}"
 }

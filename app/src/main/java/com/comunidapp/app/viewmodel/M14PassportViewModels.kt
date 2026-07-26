@@ -14,11 +14,9 @@ import com.comunidapp.app.data.model.M14VerificationRequest
 import com.comunidapp.app.data.model.M14Visibility
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.PetSex
-import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.UpdateM14PassportInput
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m14.M14ErrorMapper
-import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.M14CredentialRepository
 import com.comunidapp.app.data.repository.M14PassportRepository
 import com.comunidapp.app.data.repository.M14VerificationRepository

@@ -106,6 +106,9 @@ fun M14PetPassportScreen(
     onEdit: (String) -> Unit,
     onCredentials: (String) -> Unit,
     onVerification: (String) -> Unit,
+    onShare: (String) -> Unit,
+    onHistory: (String) -> Unit,
+    onManagedVerifications: () -> Unit,
     onPublic: (String) -> Unit,
     viewModel: M14PetPassportViewModel = viewModel(
         factory = M14PetPassportViewModel.factory(petId)
@@ -175,7 +178,19 @@ fun M14PetPassportScreen(
                 OutlinedButton(
                     onClick = { onVerification(p.id) },
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Verificación (local)") }
+                ) { Text("Mis solicitudes de verificación") }
+                OutlinedButton(
+                    onClick = onManagedVerifications,
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Cola de verificación (gestión)") }
+                OutlinedButton(
+                    onClick = { onShare(p.id) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Compartir / código público") }
+                OutlinedButton(
+                    onClick = { onHistory(p.id) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Historial") }
                 OutlinedButton(
                     onClick = { viewModel.setPublicRedacted() },
                     enabled = !busy,
@@ -299,6 +314,7 @@ fun M14CredentialsScreen(
     onNavigateBack: () -> Unit,
     onCredentialClick: (String) -> Unit,
     onCreate: () -> Unit,
+    onIssueVerified: () -> Unit,
     viewModel: M14CredentialsViewModel = viewModel(
         factory = M14CredentialsViewModel.factory(passportId)
     )
@@ -315,9 +331,17 @@ fun M14CredentialsScreen(
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
             OutlinedButton(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
-                Text("Nueva credencial")
+                Text("Nueva credencial (borrador)")
             }
-            Spacer(Modifier.height(12.dp))
+            OutlinedButton(onClick = onIssueVerified, modifier = Modifier.fillMaxWidth()) {
+                Text("Emitir credencial verificada")
+            }
+            Text(
+                "La emisión verificada es solo para emisores autorizados. Sin autoverificación.",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(vertical = 8.dp)
+            )
+            Spacer(Modifier.height(4.dp))
             if (items.isEmpty()) {
                 EmptyState(
                     title = "Sin credenciales",
@@ -425,6 +449,7 @@ fun M14CredentialCreateScreen(
 fun M14CredentialDetailScreen(
     credentialId: String,
     onNavigateBack: () -> Unit,
+    onRevoke: (String) -> Unit,
     viewModel: M14CredentialDetailViewModel = viewModel(
         factory = M14CredentialDetailViewModel.factory(credentialId)
     )
@@ -461,6 +486,12 @@ fun M14CredentialDetailScreen(
                     enabled = !busy && c.status.name == "DRAFT",
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Solicitar verificación") }
+                if (c.status.name == "VERIFIED") {
+                    OutlinedButton(
+                        onClick = { onRevoke(c.id) },
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Revocar credencial verificada") }
+                }
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
         }
@@ -471,6 +502,7 @@ fun M14CredentialDetailScreen(
 fun M14VerificationPrepScreen(
     passportId: String,
     onNavigateBack: () -> Unit,
+    onRequestClick: (String) -> Unit,
     viewModel: M14VerificationPrepViewModel = viewModel(
         factory = M14VerificationPrepViewModel.factory(passportId)
     )
@@ -487,7 +519,7 @@ fun M14VerificationPrepScreen(
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
             Text(
-                "Preparación local. La verificación remota y emisión autorizada llegan en Bloque 3.",
+                "Tus solicitudes. La revisión humana la hace un emisor autorizado (sin autoverificación).",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(12.dp))
@@ -497,8 +529,20 @@ fun M14VerificationPrepScreen(
                     message = "Solicitá verificación desde el detalle de una credencial."
                 )
             } else {
-                requests.forEach { r ->
-                    Text("• ${r.id} · ${r.status} · ${r.resolutionReason ?: "—"}")
+                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(requests, key = { it.id }) { r ->
+                        Card(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onRequestClick(r.id) }
+                        ) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text(r.status.name, fontWeight = FontWeight.Bold)
+                                Text(r.id, style = MaterialTheme.typography.bodySmall)
+                                Text(r.resolutionReason ?: "—")
+                            }
+                        }
+                    }
                 }
             }
         }

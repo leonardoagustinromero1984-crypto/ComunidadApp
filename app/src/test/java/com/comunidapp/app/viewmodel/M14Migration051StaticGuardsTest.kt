@@ -23,14 +23,15 @@ class M14Migration051StaticGuardsTest {
     )
 
     @Test
-    fun migration_051_exists_without_052() {
+    fun migration_051_exists_and_052_ceiling() {
         val names = File(repoRoot(), "supabase/migrations").listFiles()!!.map { it.name }
         assertTrue(names.contains("050_m14_pet_passports_and_credentials.sql"))
         assertTrue(names.contains("051_m14_revoke_residual_table_privileges.sql"))
-        assertFalse("052 must not exist for this hotfix", names.any { it.startsWith("052_") })
+        assertTrue(names.contains("052_m14_credential_verification_and_public_access.sql"))
+        assertFalse("053 must not exist", names.any { it.startsWith("053_") })
         val nums = names.filter { it.matches(Regex("^\\d{3}_.*\\.sql$")) }
             .map { it.substring(0, 3).toInt() }
-        assertEquals(51, nums.maxOrNull())
+        assertEquals(52, nums.maxOrNull())
     }
 
     @Test

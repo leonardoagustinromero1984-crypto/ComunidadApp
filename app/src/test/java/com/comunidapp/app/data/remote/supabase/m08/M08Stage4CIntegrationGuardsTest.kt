@@ -17,7 +17,7 @@ class M08Stage4CIntegrationGuardsTest {
     ).first { File(it, "supabase/migrations").isDirectory }
 
     @Test
-    fun highestMigrationIs051_and052Absent() {
+    fun highestMigrationIs052_and053Absent() {
         val mig = File(repoRoot(), "supabase/migrations")
         val nums = mig.listFiles()!!
             .map { it.name }
@@ -26,8 +26,9 @@ class M08Stage4CIntegrationGuardsTest {
         assertTrue(nums.contains(48))
         assertTrue(nums.contains(49))
         assertTrue(nums.contains(50))
-        assertFalse(nums.contains(52))
-        assertTrue("expected highest migration 051, got ${nums.maxOrNull()}", nums.maxOrNull() == 51)
+        assertTrue(nums.contains(51))
+        assertFalse(nums.contains(53))
+        assertTrue("expected highest migration 052, got ${nums.maxOrNull()}", nums.maxOrNull() == 52)
     }
 
     @Test

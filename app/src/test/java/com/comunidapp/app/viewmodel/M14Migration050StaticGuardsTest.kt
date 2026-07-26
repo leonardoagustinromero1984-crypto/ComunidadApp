@@ -19,7 +19,8 @@ class M14Migration050StaticGuardsTest {
         val names = File(repoRoot(), "supabase/migrations").listFiles()!!.map { it.name }
         assertTrue("050 migration missing", names.contains("050_m14_pet_passports_and_credentials.sql"))
         assertTrue("051 hotfix missing", names.contains("051_m14_revoke_residual_table_privileges.sql"))
-        assertFalse("052 must not exist", names.any { it.startsWith("052_") })
+        assertTrue("052 B3 missing", names.contains("052_m14_credential_verification_and_public_access.sql"))
+        assertFalse("053 must not exist", names.any { it.startsWith("053_") })
     }
 
     @Test

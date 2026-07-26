@@ -179,7 +179,7 @@ class M13Block4HardeningTest {
         assertTrue(names.any { it.startsWith("049_") })
         assertTrue(names.any { it.startsWith("050_") })
         assertTrue(names.any { it.startsWith("051_") })
-        assertFalse(names.any { it.startsWith("052_") })
+        assertTrue(names.any { it.startsWith("052_") }); assertFalse(names.any { it.startsWith("053_") })
     }
 
     @Test

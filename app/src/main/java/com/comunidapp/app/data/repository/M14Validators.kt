@@ -2,6 +2,7 @@ package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.CreateM14CredentialInput
 import com.comunidapp.app.data.model.CreateM14PassportInput
+import com.comunidapp.app.data.model.IssueVerifiedM14CredentialInput
 import com.comunidapp.app.data.model.M14CredentialStatus
 import com.comunidapp.app.data.model.M14PassportStatus
 import com.comunidapp.app.data.model.M14Visibility
@@ -51,6 +52,24 @@ object M14Validators {
     fun validateCredential(input: CreateM14CredentialInput): String? {
         if (input.passportId.isBlank()) return "PASSPORT_NOT_FOUND"
         if (input.title.isBlank() || input.title.length > MAX_TITLE) return "INVALID_CREDENTIAL"
+        if (input.notePrivate != null && input.notePrivate.length > MAX_NOTE) {
+            return "INVALID_CREDENTIAL"
+        }
+        if (input.issuedAt != null && input.expiresAt != null && input.expiresAt <= input.issuedAt) {
+            return "INVALID_CREDENTIAL_DATES"
+        }
+        input.mediaRefs.forEach { ref ->
+            if (!isSafeMediaRef(ref)) return "INVALID_MEDIA_REFERENCE"
+        }
+        return null
+    }
+
+    fun validateIssueVerified(input: IssueVerifiedM14CredentialInput): String? {
+        if (input.passportId.isBlank()) return "PASSPORT_NOT_FOUND"
+        if (input.title.isBlank() || input.title.length > MAX_TITLE) return "INVALID_CREDENTIAL"
+        if (input.issuerOrganizationId.isNullOrBlank() && input.issuerProfessionalId.isNullOrBlank()) {
+            // Mock/local may rely on authority policy; remote RPC can derive professional id.
+        }
         if (input.notePrivate != null && input.notePrivate.length > MAX_NOTE) {
             return "INVALID_CREDENTIAL"
         }

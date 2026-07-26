@@ -433,25 +433,19 @@ Fuera de M14:
 
 ### Bloque 2 — Persistencia y seguridad
 
-**Estado:** CERRADO LOCALMENTE. Migración `050_m14_pet_passports_and_credentials.sql` creada; **no aplicada** remotamente.
-
-- pasaportes, credenciales, solicitudes, decisiones (prep B3), historial;
-- 18 RPC + RLS; autoridad M08 (`m08_actor_has_active_responsibility`) + permisos `passport.*`;
-- `passport_number` / `public_code` server-side (`extensions.gen_random_bytes`);
-- repositorios Supabase + DataProvider;
-- validación estructural remota y smoke: pendientes tras apply.
+**Estado:** CERRADO LOCALMENTE + remoto PASS (050/051 aplicadas; 18/18).
 
 ### Bloque 3 — Emisión, verificación y código público
 
-- emisión autorizada;
-- verificación humana;
-- rechazo y revocación;
-- concurrencia;
-- idempotencia;
-- historial;
-- publicCode y QR seguro;
-- UI remota;
-- smoke funcional.
+**Estado:** CERRADO LOCALMENTE. Migración `052_m14_credential_verification_and_public_access.sql` creada; **no aplicada**.
+
+- revisión humana (open/approve/reject/expire);
+- emisión directa y revocación;
+- concurrencia e idempotencia;
+- rotación de publicCode;
+- QR/deep link sin PII;
+- UI y repos remotas;
+- smoke funcional pendiente tras apply.
 
 ### Bloque 4 — Endurecimiento y cierre
 

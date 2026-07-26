@@ -164,7 +164,8 @@ class M12FinalClosureGuardsTest {
         )
         assertTrue("debe existir migración 050 M14", names.any { it.startsWith("050") })
         assertTrue("debe existir migración 051 hotfix M14", names.any { it.startsWith("051") })
-        assertFalse("no debe existir migración 052", names.any { it.startsWith("052") })
+        assertTrue("debe existir migración 052 M14 B3", names.any { it.startsWith("052") })
+        assertFalse("no debe existir migración 053", names.any { it.startsWith("053") })
     }
 
     // 8 — Sin service_role en fuentes Android M12.

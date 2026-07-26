@@ -33,6 +33,7 @@ enum class M14CredentialStatus {
 
 enum class M14VerificationRequestStatus {
     PENDING,
+    UNDER_REVIEW,
     APPROVED,
     REJECTED,
     CANCELLED,
@@ -96,6 +97,13 @@ object M14M06Hooks {
     const val PASSPORT_ACTIVATED = "M14_PASSPORT_ACTIVATED"
     const val CREDENTIAL_ADDED = "M14_CREDENTIAL_ADDED"
     const val VERIFICATION_REQUESTED = "M14_VERIFICATION_REQUESTED"
+    const val VERIFICATION_REVIEW_OPENED = "M14_VERIFICATION_REVIEW_OPENED"
+    const val VERIFICATION_APPROVED = "M14_VERIFICATION_APPROVED"
+    const val VERIFICATION_REJECTED = "M14_VERIFICATION_REJECTED"
+    const val VERIFICATION_EXPIRED = "M14_VERIFICATION_EXPIRED"
+    const val CREDENTIAL_ISSUED = "M14_CREDENTIAL_ISSUED"
+    const val CREDENTIAL_REVOKED = "M14_CREDENTIAL_REVOKED"
+    const val PUBLIC_CODE_ROTATED = "M14_PUBLIC_CODE_ROTATED"
     const val INFRASTRUCTURE = "M14_NOTIFICATION_INFRASTRUCTURE"
 
     val all: Set<String> = setOf(
@@ -103,6 +111,13 @@ object M14M06Hooks {
         PASSPORT_ACTIVATED,
         CREDENTIAL_ADDED,
         VERIFICATION_REQUESTED,
+        VERIFICATION_REVIEW_OPENED,
+        VERIFICATION_APPROVED,
+        VERIFICATION_REJECTED,
+        VERIFICATION_EXPIRED,
+        CREDENTIAL_ISSUED,
+        CREDENTIAL_REVOKED,
+        PUBLIC_CODE_ROTATED,
         INFRASTRUCTURE
     )
 }
@@ -176,7 +191,8 @@ data class M14PassportHistory(
     val toStatus: M14PassportStatus,
     val actorUserId: String?,
     val reason: String?,
-    val createdAt: Long
+    val createdAt: Long,
+    val metadataEvent: String? = null
 )
 
 /** Vista pública redactada — sin petId, userId, docs, notas ni microchip completo. */
@@ -229,6 +245,20 @@ data class CreateM14CredentialInput(
     val passportId: String,
     val type: M14CredentialType,
     val title: String,
+    val issuedAt: Long? = null,
+    val expiresAt: Long? = null,
+    val visibility: M14Visibility = M14Visibility.PRIVATE,
+    val mediaRefs: List<String> = emptyList(),
+    val externalReferenceMasked: String? = null,
+    val notePrivate: String? = null
+)
+
+data class IssueVerifiedM14CredentialInput(
+    val passportId: String,
+    val type: M14CredentialType,
+    val title: String,
+    val issuerOrganizationId: String? = null,
+    val issuerProfessionalId: String? = null,
     val issuedAt: Long? = null,
     val expiresAt: Long? = null,
     val visibility: M14Visibility = M14Visibility.PRIVATE,

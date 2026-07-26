@@ -2,6 +2,7 @@ package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.CreateM14CredentialInput
 import com.comunidapp.app.data.model.CreateM14PassportInput
+import com.comunidapp.app.data.model.IssueVerifiedM14CredentialInput
 import com.comunidapp.app.data.model.M14AuditEvents
 import com.comunidapp.app.data.model.M14Credential
 import com.comunidapp.app.data.model.M14CredentialStatus
@@ -16,7 +17,6 @@ import com.comunidapp.app.data.model.M14VerificationRequestStatus
 import com.comunidapp.app.data.model.M14Visibility
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.UpdateM14PassportInput
-import com.comunidapp.app.data.remote.supabase.m14.M14Exception
 import java.util.concurrent.atomic.AtomicLong
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -49,6 +49,7 @@ class M14MemoryStore(
     val passports: StateFlow<List<M14PetPassport>> = _passports.asStateFlow()
     val credentials: StateFlow<List<M14Credential>> = _credentials.asStateFlow()
     val verificationRequests: StateFlow<List<M14VerificationRequest>> = _requests.asStateFlow()
+    val decisions: StateFlow<List<M14VerificationDecision>> = _decisions.asStateFlow()
     val history: StateFlow<List<M14PassportHistory>> = _history.asStateFlow()
     val auditLog: StateFlow<List<Pair<String, String>>> = _audit.asStateFlow()
     val m06PreparedHooks: StateFlow<List<Pair<String, String>>> = _m06.asStateFlow()
@@ -142,6 +143,7 @@ interface M14PassportRepository {
     ): Result<M14PetPassport>
     fun observeHistory(passportId: String): Flow<List<M14PassportHistory>>
     suspend fun getPublicProjection(publicCode: String): Result<M14PublicPassportProjection>
+    suspend fun rotatePublicCode(passportId: String): Result<M14PetPassport>
 }
 
 interface M14CredentialRepository {
@@ -153,10 +155,33 @@ interface M14CredentialRepository {
         credentialId: String,
         targetOrganizationId: String? = null
     ): Result<M14VerificationRequest>
+    suspend fun issueVerified(input: IssueVerifiedM14CredentialInput): Result<M14Credential>
+    suspend fun revokeVerified(
+        credentialId: String,
+        reasonCode: String,
+        notePrivate: String? = null
+    ): Result<M14Credential>
 }
 
 interface M14VerificationRepository {
     fun observeRequests(passportId: String): Flow<List<M14VerificationRequest>>
+    suspend fun listManaged(): Result<List<M14VerificationRequest>>
+    suspend fun getRequest(requestId: String): Result<M14VerificationRequest>
+    suspend fun openReview(requestId: String): Result<M14VerificationRequest>
+    suspend fun approve(
+        requestId: String,
+        reasonCode: String,
+        notePrivate: String? = null
+    ): Result<M14VerificationRequest>
+    suspend fun reject(
+        requestId: String,
+        reasonCode: String,
+        notePrivate: String? = null
+    ): Result<M14VerificationRequest>
+    suspend fun expire(requestId: String): Result<M14VerificationRequest>
+    suspend fun getDecision(requestId: String): Result<M14VerificationDecision>
+    suspend fun listDecisions(requestId: String): Result<List<M14VerificationDecision>>
+    /** Maps to approve/reject (opens review first when still PENDING — mock/UI parity). */
     suspend fun resolveLocal(
         requestId: String,
         approve: Boolean,
@@ -349,6 +374,45 @@ class MockM14PassportRepository(
             ?: return resultFailM14("PUBLIC_PROJECTION_REDACTED")
         return Result.success(projection)
     }
+
+    override suspend fun rotatePublicCode(passportId: String): Result<M14PetPassport> =
+        store.withLock {
+            if (store.forceFailure) return@withLock resultFailM14("M14_REPOSITORY_FAILURE")
+            val uid = actorUserId() ?: return@withLock resultFailM14("NOT_AUTHENTICATED")
+            val current = store.passports.value.find { it.id == passportId }
+                ?: return@withLock resultFailM14("PASSPORT_NOT_FOUND")
+            if (current.status.isTerminal) {
+                return@withLock resultFailM14("PUBLIC_CODE_ROTATION_NOT_ALLOWED")
+            }
+            val pet = resolvePet(current.petId) ?: return@withLock resultFailM14("PET_NOT_FOUND")
+            if (!authority.canCreateOrManage(uid, pet) && !authority.canModerate(uid)) {
+                return@withLock resultFailM14("PUBLIC_CODE_ROTATION_NOT_ALLOWED")
+            }
+            val now = System.currentTimeMillis()
+            var next: String
+            var attempts = 0
+            do {
+                next = store.numberGenerator.nextPublicCode()
+                attempts++
+                if (attempts > 5) return@withLock resultFailM14("CONFLICT")
+            } while (M14Validators.publicCodeLooksLikePii(next))
+            val updated = current.copy(publicCode = next, updatedAt = now)
+            store.upsertPassport(updated)
+            store.appendHistory(
+                M14PassportHistory(
+                    id = store.nextId("m14_hist"),
+                    passportId = passportId,
+                    fromStatus = current.status,
+                    toStatus = current.status,
+                    actorUserId = uid,
+                    reason = "PUBLIC_CODE_ROTATED",
+                    createdAt = now,
+                    metadataEvent = "PUBLIC_CODE_ROTATED"
+                )
+            )
+            store.recordM06(M14M06Hooks.PUBLIC_CODE_ROTATED, passportId)
+            Result.success(updated)
+        }
 }
 
 class MockM14CredentialRepository(
@@ -450,7 +514,104 @@ class MockM14CredentialRepository(
             store.recordM06(M14M06Hooks.VERIFICATION_REQUESTED, req.id)
             Result.success(req)
         }
+
+    override suspend fun issueVerified(input: IssueVerifiedM14CredentialInput): Result<M14Credential> =
+        store.withLock {
+            if (store.forceFailure) return@withLock resultFailM14("M14_REPOSITORY_FAILURE")
+            val uid = actorUserId() ?: return@withLock resultFailM14("NOT_AUTHENTICATED")
+            M14Validators.validateIssueVerified(input)?.let { return@withLock resultFailM14(it) }
+            val passport = store.passports.value.find { it.id == input.passportId }
+                ?: return@withLock resultFailM14("PASSPORT_NOT_FOUND")
+            if (passport.status.isTerminal) return@withLock resultFailM14("INVALID_PASSPORT_STATUS")
+            val pet = resolvePet(passport.petId) ?: return@withLock resultFailM14("PET_NOT_FOUND")
+            if (authority.canCreateOrManage(uid, pet) && !authority.canModerate(uid)) {
+                return@withLock resultFailM14("SELF_VERIFICATION_NOT_ALLOWED")
+            }
+            if (!authority.canVerifyAsIssuer(uid, passport.createdBy) && !authority.canModerate(uid)) {
+                return@withLock resultFailM14("ISSUER_NOT_AUTHORIZED")
+            }
+            val now = System.currentTimeMillis()
+            val cred = M14Credential(
+                id = store.nextId("m14_cred"),
+                passportId = input.passportId,
+                type = input.type,
+                title = input.title.trim(),
+                issuerOrganizationId = input.issuerOrganizationId,
+                issuerProfessionalId = input.issuerProfessionalId,
+                issuedAt = input.issuedAt ?: now,
+                expiresAt = input.expiresAt,
+                status = M14CredentialStatus.VERIFIED,
+                visibility = input.visibility,
+                mediaRefs = input.mediaRefs,
+                externalReferenceMasked = input.externalReferenceMasked,
+                notePrivate = input.notePrivate,
+                createdBy = uid,
+                createdAt = now,
+                updatedAt = now
+            )
+            store.upsertCredential(cred)
+            store.appendHistory(
+                M14PassportHistory(
+                    id = store.nextId("m14_hist"),
+                    passportId = passport.id,
+                    fromStatus = passport.status,
+                    toStatus = passport.status,
+                    actorUserId = uid,
+                    reason = "ISSUED",
+                    createdAt = now,
+                    metadataEvent = "CREDENTIAL_ISSUED"
+                )
+            )
+            store.recordM06(M14M06Hooks.CREDENTIAL_ISSUED, cred.id)
+            Result.success(cred)
+        }
+
+    override suspend fun revokeVerified(
+        credentialId: String,
+        reasonCode: String,
+        notePrivate: String?
+    ): Result<M14Credential> =
+        store.withLock {
+            if (store.forceFailure) return@withLock resultFailM14("M14_REPOSITORY_FAILURE")
+            val uid = actorUserId() ?: return@withLock resultFailM14("NOT_AUTHENTICATED")
+            val cred = store.credentials.value.find { it.id == credentialId }
+                ?: return@withLock resultFailM14("CREDENTIAL_NOT_FOUND")
+            if (cred.status == M14CredentialStatus.REVOKED) return@withLock Result.success(cred)
+            if (cred.status != M14CredentialStatus.VERIFIED) {
+                return@withLock resultFailM14("CREDENTIAL_REVOCATION_NOT_ALLOWED")
+            }
+            val passport = store.passports.value.find { it.id == cred.passportId }
+                ?: return@withLock resultFailM14("PASSPORT_NOT_FOUND")
+            val canIssuer = uid == cred.createdBy ||
+                authority.canVerifyAsIssuer(uid, cred.createdBy) ||
+                authority.canModerate(uid)
+            if (!canIssuer) {
+                return@withLock resultFailM14("CREDENTIAL_REVOCATION_NOT_ALLOWED")
+            }
+            val now = System.currentTimeMillis()
+            val updated = cred.copy(
+                status = M14CredentialStatus.REVOKED,
+                notePrivate = notePrivate ?: cred.notePrivate,
+                updatedAt = now
+            )
+            store.upsertCredential(updated)
+            store.appendHistory(
+                M14PassportHistory(
+                    id = store.nextId("m14_hist"),
+                    passportId = passport.id,
+                    fromStatus = passport.status,
+                    toStatus = passport.status,
+                    actorUserId = uid,
+                    reason = reasonCode.ifBlank { "REVOKED" },
+                    createdAt = now,
+                    metadataEvent = "CREDENTIAL_REVOKED"
+                )
+            )
+            store.recordM06(M14M06Hooks.CREDENTIAL_REVOKED, updated.id)
+            Result.success(updated)
+        }
 }
+
 class MockM14VerificationRepository(
     private val store: M14MemoryStore,
     private val actorUserId: () -> String?,
@@ -466,7 +627,174 @@ class MockM14VerificationRepository(
             reqs.filter { it.credentialId in credIds }.sortedByDescending { it.requestedAt }
         }
 
+    override suspend fun listManaged(): Result<List<M14VerificationRequest>> {
+        if (store.forceFailure) return resultFailM14("M14_REPOSITORY_FAILURE")
+        val uid = actorUserId() ?: return resultFailM14("NOT_AUTHENTICATED")
+        val items = store.verificationRequests.value.filter { req ->
+            req.status == M14VerificationRequestStatus.PENDING ||
+                req.status == M14VerificationRequestStatus.UNDER_REVIEW
+        }.filter { req ->
+            val cred = store.credentials.value.find { it.id == req.credentialId } ?: return@filter false
+            canDecide(uid, req, cred)
+        }.sortedByDescending { it.requestedAt }
+        return Result.success(items)
+    }
+
+    override suspend fun getRequest(requestId: String): Result<M14VerificationRequest> {
+        if (store.forceFailure) return resultFailM14("M14_REPOSITORY_FAILURE")
+        val req = store.verificationRequests.value.find { it.id == requestId }
+            ?: return resultFailM14("VERIFICATION_NOT_FOUND")
+        return Result.success(req)
+    }
+
+    override suspend fun openReview(requestId: String): Result<M14VerificationRequest> =
+        store.withLock {
+            if (store.forceFailure) return@withLock resultFailM14("M14_REPOSITORY_FAILURE")
+            val uid = actorUserId() ?: return@withLock resultFailM14("NOT_AUTHENTICATED")
+            val req = store.verificationRequests.value.find { it.id == requestId }
+                ?: return@withLock resultFailM14("VERIFICATION_NOT_FOUND")
+            val cred = store.credentials.value.find { it.id == req.credentialId }
+                ?: return@withLock resultFailM14("CREDENTIAL_NOT_FOUND")
+            if (!canDecide(uid, req, cred)) {
+                return@withLock resultFailM14("VERIFICATION_REVIEW_NOT_ALLOWED")
+            }
+            if (req.status == M14VerificationRequestStatus.UNDER_REVIEW) {
+                return@withLock Result.success(req)
+            }
+            if (req.status != M14VerificationRequestStatus.PENDING) {
+                return@withLock resultFailM14("VERIFICATION_ALREADY_FINAL")
+            }
+            val now = System.currentTimeMillis()
+            val updated = req.copy(status = M14VerificationRequestStatus.UNDER_REVIEW)
+            store.upsertRequest(updated)
+            appendCredentialEvent(cred.passportId, uid, "REVIEW_OPENED", "VERIFICATION_REVIEW_OPENED", now)
+            store.recordM06(M14M06Hooks.VERIFICATION_REVIEW_OPENED, requestId)
+            Result.success(updated)
+        }
+
+    override suspend fun approve(
+        requestId: String,
+        reasonCode: String,
+        notePrivate: String?
+    ): Result<M14VerificationRequest> =
+        decideFinal(requestId, approve = true, reasonCode = reasonCode, notePrivate = notePrivate)
+
+    override suspend fun reject(
+        requestId: String,
+        reasonCode: String,
+        notePrivate: String?
+    ): Result<M14VerificationRequest> =
+        decideFinal(requestId, approve = false, reasonCode = reasonCode, notePrivate = notePrivate)
+
+    override suspend fun expire(requestId: String): Result<M14VerificationRequest> =
+        store.withLock {
+            if (store.forceFailure) return@withLock resultFailM14("M14_REPOSITORY_FAILURE")
+            val uid = actorUserId() ?: return@withLock resultFailM14("NOT_AUTHENTICATED")
+            val req = store.verificationRequests.value.find { it.id == requestId }
+                ?: return@withLock resultFailM14("VERIFICATION_NOT_FOUND")
+            val cred = store.credentials.value.find { it.id == req.credentialId }
+                ?: return@withLock resultFailM14("CREDENTIAL_NOT_FOUND")
+            val allowed = canDecide(uid, req, cred) ||
+                uid == req.requestedBy ||
+                authority.canModerate(uid)
+            if (!allowed) return@withLock resultFailM14("VERIFICATION_REVIEW_NOT_ALLOWED")
+            if (req.status == M14VerificationRequestStatus.EXPIRED) {
+                return@withLock Result.success(req)
+            }
+            if (req.status == M14VerificationRequestStatus.APPROVED ||
+                req.status == M14VerificationRequestStatus.REJECTED ||
+                req.status == M14VerificationRequestStatus.CANCELLED
+            ) {
+                return@withLock resultFailM14("VERIFICATION_ALREADY_FINAL")
+            }
+            if (req.status != M14VerificationRequestStatus.PENDING &&
+                req.status != M14VerificationRequestStatus.UNDER_REVIEW
+            ) {
+                return@withLock resultFailM14("INVALID_TRANSITION")
+            }
+            val now = System.currentTimeMillis()
+            val updated = req.copy(
+                status = M14VerificationRequestStatus.EXPIRED,
+                resolvedAt = now,
+                resolutionReason = "EXPIRED"
+            )
+            store.upsertRequest(updated)
+            if (cred.status == M14CredentialStatus.PENDING_VERIFICATION) {
+                val nextStatus = if (cred.expiresAt != null && cred.expiresAt <= now) {
+                    M14CredentialStatus.EXPIRED
+                } else {
+                    M14CredentialStatus.DRAFT
+                }
+                store.upsertCredential(cred.copy(status = nextStatus, updatedAt = now))
+            }
+            appendCredentialEvent(cred.passportId, uid, "EXPIRED", "VERIFICATION_EXPIRED", now)
+            store.recordM06(M14M06Hooks.VERIFICATION_EXPIRED, requestId)
+            Result.success(updated)
+        }
+
+    override suspend fun getDecision(requestId: String): Result<M14VerificationDecision> {
+        if (store.forceFailure) return resultFailM14("M14_REPOSITORY_FAILURE")
+        val decision = store.decisions.value.firstOrNull { it.requestId == requestId }
+            ?: return resultFailM14("DECISION_NOT_FOUND")
+        return Result.success(decision)
+    }
+
+    override suspend fun listDecisions(requestId: String): Result<List<M14VerificationDecision>> {
+        if (store.forceFailure) return resultFailM14("M14_REPOSITORY_FAILURE")
+        return Result.success(
+            store.decisions.value.filter { it.requestId == requestId }.sortedByDescending { it.createdAt }
+        )
+    }
+
     override suspend fun resolveLocal(
+        requestId: String,
+        approve: Boolean,
+        reasonCode: String,
+        notePrivate: String?
+    ): Result<M14VerificationRequest> {
+        val current = getRequest(requestId).getOrElse { return Result.failure(it) }
+        if (current.status == M14VerificationRequestStatus.PENDING) {
+            openReview(requestId).getOrElse { return Result.failure(it) }
+        }
+        return if (approve) {
+            approve(requestId, reasonCode, notePrivate)
+        } else {
+            reject(requestId, reasonCode, notePrivate)
+        }
+    }
+
+    private fun canDecide(
+        uid: String,
+        req: M14VerificationRequest,
+        cred: M14Credential
+    ): Boolean {
+        if (uid == req.requestedBy || uid == cred.createdBy) return false
+        return authority.canVerifyAsIssuer(uid, cred.createdBy) || authority.canModerate(uid)
+    }
+
+    private fun appendCredentialEvent(
+        passportId: String,
+        actorUserId: String,
+        reason: String,
+        event: String,
+        now: Long
+    ) {
+        val passport = store.passports.value.find { it.id == passportId } ?: return
+        store.appendHistory(
+            M14PassportHistory(
+                id = store.nextId("m14_hist"),
+                passportId = passportId,
+                fromStatus = passport.status,
+                toStatus = passport.status,
+                actorUserId = actorUserId,
+                reason = reason,
+                createdAt = now,
+                metadataEvent = event
+            )
+        )
+    }
+
+    private suspend fun decideFinal(
         requestId: String,
         approve: Boolean,
         reasonCode: String,
@@ -476,29 +804,47 @@ class MockM14VerificationRepository(
             if (store.forceFailure) return@withLock resultFailM14("M14_REPOSITORY_FAILURE")
             val uid = actorUserId() ?: return@withLock resultFailM14("NOT_AUTHENTICATED")
             val req = store.verificationRequests.value.find { it.id == requestId }
-                ?: return@withLock resultFailM14("CREDENTIAL_NOT_FOUND")
-            if (req.status != M14VerificationRequestStatus.PENDING) {
-                return@withLock resultFailM14("VERIFICATION_ALREADY_FINAL")
-            }
+                ?: return@withLock resultFailM14("VERIFICATION_NOT_FOUND")
             val cred = store.credentials.value.find { it.id == req.credentialId }
                 ?: return@withLock resultFailM14("CREDENTIAL_NOT_FOUND")
-            // Autoverificación prohibida.
             if (uid == req.requestedBy || uid == cred.createdBy) {
                 return@withLock resultFailM14("VERIFICATION_NOT_ALLOWED")
             }
             if (!authority.canVerifyAsIssuer(uid, cred.createdBy) && !authority.canModerate(uid)) {
-                return@withLock resultFailM14("UNAUTHORIZED")
+                return@withLock resultFailM14("VERIFICATION_REVIEW_NOT_ALLOWED")
             }
-            val now = System.currentTimeMillis()
+            if (req.status == M14VerificationRequestStatus.PENDING) {
+                return@withLock resultFailM14("INVALID_TRANSITION")
+            }
             val decisionStatus = if (approve) {
                 M14VerificationRequestStatus.APPROVED
             } else {
                 M14VerificationRequestStatus.REJECTED
             }
+            val existing = store.decisions.value.firstOrNull { it.requestId == requestId }
+            if (req.status == decisionStatus && existing != null && existing.decision == decisionStatus) {
+                return@withLock Result.success(req)
+            }
+            if (req.status == M14VerificationRequestStatus.APPROVED ||
+                req.status == M14VerificationRequestStatus.REJECTED ||
+                req.status == M14VerificationRequestStatus.CANCELLED ||
+                req.status == M14VerificationRequestStatus.EXPIRED
+            ) {
+                return@withLock resultFailM14("VERIFICATION_ALREADY_FINAL")
+            }
+            if (req.status != M14VerificationRequestStatus.UNDER_REVIEW) {
+                return@withLock resultFailM14("INVALID_TRANSITION")
+            }
+            if (existing != null) {
+                return@withLock resultFailM14(
+                    if (existing.decision == decisionStatus) "CONFLICT" else "DECISION_ALREADY_EXISTS"
+                )
+            }
+            val now = System.currentTimeMillis()
             val updatedReq = req.copy(
                 status = decisionStatus,
                 resolvedAt = now,
-                resolutionReason = reasonCode
+                resolutionReason = reasonCode.ifBlank { decisionStatus.name }
             )
             store.upsertRequest(updatedReq)
             store.appendDecision(
@@ -508,15 +854,33 @@ class MockM14VerificationRepository(
                     decision = decisionStatus,
                     actorUserId = uid,
                     actorAuthority = "ISSUER_OR_MODERATOR",
-                    reasonCode = reasonCode,
+                    reasonCode = reasonCode.ifBlank { decisionStatus.name },
                     notePrivate = notePrivate,
                     createdAt = now
                 )
             )
             val newCredStatus =
                 if (approve) M14CredentialStatus.VERIFIED else M14CredentialStatus.REJECTED
-            store.upsertCredential(cred.copy(status = newCredStatus, updatedAt = now))
+            when {
+                cred.status == M14CredentialStatus.PENDING_VERIFICATION -> {
+                    store.upsertCredential(cred.copy(status = newCredStatus, updatedAt = now))
+                }
+                approve && cred.status == M14CredentialStatus.VERIFIED -> Unit
+                approve -> return@withLock resultFailM14("CREDENTIAL_ALREADY_FINAL")
+                else -> Unit
+            }
+            appendCredentialEvent(
+                cred.passportId,
+                uid,
+                reasonCode.ifBlank { decisionStatus.name },
+                if (approve) "VERIFICATION_APPROVED" else "VERIFICATION_REJECTED",
+                now
+            )
             store.audit(M14AuditEvents.VERIFICATION_RESOLVED, requestId)
+            store.recordM06(
+                if (approve) M14M06Hooks.VERIFICATION_APPROVED else M14M06Hooks.VERIFICATION_REJECTED,
+                requestId
+            )
             Result.success(updatedReq)
         }
 }

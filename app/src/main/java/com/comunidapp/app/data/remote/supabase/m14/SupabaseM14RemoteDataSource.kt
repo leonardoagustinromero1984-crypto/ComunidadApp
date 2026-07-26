@@ -3,10 +3,12 @@ package com.comunidapp.app.data.remote.supabase.m14
 import com.comunidapp.app.data.model.M14Credential
 import com.comunidapp.app.data.model.M14CredentialStatus
 import com.comunidapp.app.data.model.M14CredentialType
+import com.comunidapp.app.data.model.M14PassportHistory
 import com.comunidapp.app.data.model.M14PassportStatus
 import com.comunidapp.app.data.model.M14PetPassport
 import com.comunidapp.app.data.model.M14PublicCredentialSummary
 import com.comunidapp.app.data.model.M14PublicPassportProjection
+import com.comunidapp.app.data.model.M14VerificationDecision
 import com.comunidapp.app.data.model.M14VerificationRequest
 import com.comunidapp.app.data.model.M14VerificationRequestStatus
 import com.comunidapp.app.data.model.M14Visibility
@@ -24,9 +26,11 @@ import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
-/** LeoVer M14 Bloque 2 — RPC-only transport and JSONB row mappings. */
+/** LeoVer M14 Bloque 2–3 — RPC-only transport and JSONB row mappings. */
 @Serializable
 data class M14PetPassportRow(
     val id: String,
@@ -106,6 +110,46 @@ data class M14PublicPassportProjectionRow(
     @SerialName("updated_at") val updatedAt: String? = null
 )
 
+@Serializable
+data class M14VerificationDecisionRow(
+    val id: String,
+    @SerialName("request_id") val requestId: String,
+    val decision: String,
+    @SerialName("actor_user_id") val actorUserId: String? = null,
+    @SerialName("actor_authority") val actorAuthority: String? = null,
+    @SerialName("reason_code") val reasonCode: String? = null,
+    @SerialName("note_private") val notePrivate: String? = null,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+data class M14VerificationResolutionRow(
+    val request: M14VerificationRequestRow,
+    val decision: M14VerificationDecisionRow? = null,
+    val credential: M14CredentialRow? = null
+)
+
+@Serializable
+data class M14PassportHistoryRow(
+    val id: String,
+    @SerialName("passport_id") val passportId: String,
+    @SerialName("from_status") val fromStatus: String? = null,
+    @SerialName("to_status") val toStatus: String,
+    @SerialName("actor_user_id") val actorUserId: String? = null,
+    val reason: String? = null,
+    @SerialName("created_at") val createdAt: String? = null,
+    val metadata: JsonObject? = null
+)
+
+@Serializable
+data class M14PublicCodeRotationRow(
+    val id: String,
+    @SerialName("passport_number") val passportNumber: String? = null,
+    @SerialName("public_code") val publicCode: String? = null,
+    val status: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null
+)
+
 fun M14PetPassportRow.toDomain(): M14PetPassport = M14PetPassport(
     id = id,
     petId = petId,
@@ -157,6 +201,28 @@ fun M14VerificationRequestRow.toDomain(): M14VerificationRequest = M14Verificati
     resolutionReason = resolutionReason
 )
 
+fun M14VerificationDecisionRow.toDomain(): M14VerificationDecision = M14VerificationDecision(
+    id = id,
+    requestId = requestId,
+    decision = enumValue(decision, M14VerificationRequestStatus.APPROVED),
+    actorUserId = actorUserId.orEmpty(),
+    actorAuthority = actorAuthority.orEmpty(),
+    reasonCode = reasonCode.orEmpty(),
+    notePrivate = notePrivate,
+    createdAt = parseM14Timestamp(createdAt)
+)
+
+fun M14PassportHistoryRow.toDomain(): M14PassportHistory = M14PassportHistory(
+    id = id,
+    passportId = passportId,
+    fromStatus = fromStatus?.let { enumValue(it, M14PassportStatus.DRAFT) },
+    toStatus = enumValue(toStatus, M14PassportStatus.DRAFT),
+    actorUserId = actorUserId,
+    reason = reason,
+    createdAt = parseM14Timestamp(createdAt),
+    metadataEvent = metadata?.get("event")?.jsonPrimitive?.contentOrNull
+)
+
 fun M14PublicPassportProjectionRow.toDomain(publicCode: String = this.publicCode.orEmpty()): M14PublicPassportProjection =
     M14PublicPassportProjection(
         publicCode = publicCode,
@@ -201,6 +267,10 @@ class SupabaseM14RemoteDataSource {
     )
     suspend fun getPublicPetPassport(code: String): M14PublicPassportProjectionRow =
         rpc("m14_get_public_pet_passport", idParam("p_public_code", code))
+    suspend fun rotatePublicCode(passportId: String): M14PublicCodeRotationRow =
+        rpc("m14_rotate_public_code", idParam("p_passport_id", passportId))
+    suspend fun listPassportStatusHistory(passportId: String): List<M14PassportHistoryRow> =
+        rpcList("m14_list_passport_status_history", idParam("p_passport_id", passportId))
 
     suspend fun createPassportCredential(params: JsonObject): M14CredentialRow =
         rpc("m14_create_passport_credential", params)
@@ -212,6 +282,20 @@ class SupabaseM14RemoteDataSource {
         rpc("m14_get_passport_credential", idParam("p_credential_id", id))
     suspend fun listPassportCredentials(passportId: String): List<M14CredentialRow> =
         rpcList("m14_list_passport_credentials", idParam("p_passport_id", passportId))
+    suspend fun issueVerifiedCredential(params: JsonObject): M14CredentialRow =
+        rpc("m14_issue_verified_credential", params)
+    suspend fun revokeVerifiedCredential(
+        credentialId: String,
+        reasonCode: String?,
+        notePrivate: String?
+    ): M14CredentialRow = rpc(
+        "m14_revoke_verified_credential",
+        buildJsonObject {
+            put("p_credential_id", credentialId)
+            putNullable("p_reason_code", reasonCode)
+            putNullable("p_note_private", notePrivate)
+        }
+    )
 
     suspend fun createVerificationRequest(credentialId: String, targetOrganizationId: String?): M14VerificationRequestRow =
         rpc("m14_create_verification_request", buildJsonObject {
@@ -226,6 +310,39 @@ class SupabaseM14RemoteDataSource {
         rpcList("m14_list_my_verification_requests")
     suspend fun listManagedVerificationRequests(): List<M14VerificationRequestRow> =
         rpcList("m14_list_managed_verification_requests")
+
+    suspend fun openVerificationReview(requestId: String): M14VerificationRequestRow =
+        rpc("m14_open_verification_review", idParam("p_request_id", requestId))
+    suspend fun approveVerificationRequest(
+        requestId: String,
+        reasonCode: String?,
+        notePrivate: String?
+    ): M14VerificationResolutionRow = rpc(
+        "m14_approve_verification_request",
+        buildJsonObject {
+            put("p_request_id", requestId)
+            putNullable("p_reason_code", reasonCode)
+            putNullable("p_note_private", notePrivate)
+        }
+    )
+    suspend fun rejectVerificationRequest(
+        requestId: String,
+        reasonCode: String?,
+        notePrivate: String?
+    ): M14VerificationResolutionRow = rpc(
+        "m14_reject_verification_request",
+        buildJsonObject {
+            put("p_request_id", requestId)
+            putNullable("p_reason_code", reasonCode)
+            putNullable("p_note_private", notePrivate)
+        }
+    )
+    suspend fun expireVerificationRequest(requestId: String): M14VerificationRequestRow =
+        rpc("m14_expire_verification_request", idParam("p_request_id", requestId))
+    suspend fun getVerificationDecision(requestId: String): M14VerificationDecisionRow =
+        rpc("m14_get_verification_decision", idParam("p_request_id", requestId))
+    suspend fun listVerificationDecisions(requestId: String): List<M14VerificationDecisionRow> =
+        rpcList("m14_list_verification_decisions", idParam("p_request_id", requestId))
 }
 
 fun createM14PassportParams(input: com.comunidapp.app.data.model.CreateM14PassportInput): JsonObject =
@@ -260,6 +377,21 @@ fun createM14CredentialParams(input: com.comunidapp.app.data.model.CreateM14Cred
         put("p_passport_id", input.passportId)
         put("p_type", input.type.name)
         put("p_title", input.title.trim())
+        putNullable("p_issued_at", input.issuedAt?.let(::m14IsoTimestamp))
+        putNullable("p_expires_at", input.expiresAt?.let(::m14IsoTimestamp))
+        put("p_visibility", input.visibility.name)
+        put("p_media_refs", JsonArray(input.mediaRefs.map(::JsonPrimitive)))
+        putNullable("p_external_reference_masked", input.externalReferenceMasked)
+        putNullable("p_note_private", input.notePrivate)
+    }
+
+fun issueVerifiedM14CredentialParams(input: com.comunidapp.app.data.model.IssueVerifiedM14CredentialInput): JsonObject =
+    buildJsonObject {
+        put("p_passport_id", input.passportId)
+        put("p_type", input.type.name)
+        put("p_title", input.title.trim())
+        putNullable("p_issuer_organization_id", input.issuerOrganizationId)
+        putNullable("p_issuer_professional_id", input.issuerProfessionalId)
         putNullable("p_issued_at", input.issuedAt?.let(::m14IsoTimestamp))
         putNullable("p_expires_at", input.expiresAt?.let(::m14IsoTimestamp))
         put("p_visibility", input.visibility.name)

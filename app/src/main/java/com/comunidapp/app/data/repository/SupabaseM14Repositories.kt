@@ -2,23 +2,27 @@ package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.CreateM14CredentialInput
 import com.comunidapp.app.data.model.CreateM14PassportInput
+import com.comunidapp.app.data.model.IssueVerifiedM14CredentialInput
 import com.comunidapp.app.data.model.M14Credential
 import com.comunidapp.app.data.model.M14PassportHistory
 import com.comunidapp.app.data.model.M14PassportStatus
 import com.comunidapp.app.data.model.M14PetPassport
 import com.comunidapp.app.data.model.M14PublicPassportProjection
+import com.comunidapp.app.data.model.M14VerificationDecision
 import com.comunidapp.app.data.model.M14VerificationRequest
+import com.comunidapp.app.data.model.M14VerificationRequestStatus
 import com.comunidapp.app.data.model.UpdateM14PassportInput
 import com.comunidapp.app.data.remote.supabase.m14.M14ErrorMapper
 import com.comunidapp.app.data.remote.supabase.m14.SupabaseM14RemoteDataSource
 import com.comunidapp.app.data.remote.supabase.m14.createM14CredentialParams
 import com.comunidapp.app.data.remote.supabase.m14.createM14PassportParams
+import com.comunidapp.app.data.remote.supabase.m14.issueVerifiedM14CredentialParams
 import com.comunidapp.app.data.remote.supabase.m14.toDomain
 import com.comunidapp.app.data.remote.supabase.m14.updateM14PassportParams
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
-/** LeoVer M14 repositories backed exclusively by migration 050 RPCs. */
+/** LeoVer M14 repositories backed by migration 050 + 052 RPCs. */
 class SupabaseM14PassportRepository(
     private val remote: SupabaseM14RemoteDataSource = SupabaseM14RemoteDataSource()
 ) : M14PassportRepository {
@@ -87,11 +91,23 @@ class SupabaseM14PassportRepository(
         M14ErrorMapper.failure(t)
     }
 
-    // Migration 050 intentionally has no history-read RPC.
-    override fun observeHistory(passportId: String): Flow<List<M14PassportHistory>> = flow { emit(emptyList()) }
+    override fun observeHistory(passportId: String): Flow<List<M14PassportHistory>> = flow {
+        try {
+            emit(remote.listPassportStatusHistory(passportId).map { it.toDomain() })
+        } catch (t: Throwable) {
+            throw M14ErrorMapper.failure(t).exceptionOrNull()!!
+        }
+    }
 
     override suspend fun getPublicProjection(publicCode: String): Result<M14PublicPassportProjection> = try {
         Result.success(remote.getPublicPetPassport(publicCode).toDomain(publicCode))
+    } catch (t: Throwable) {
+        M14ErrorMapper.failure(t)
+    }
+
+    override suspend fun rotatePublicCode(passportId: String): Result<M14PetPassport> = try {
+        remote.rotatePublicCode(passportId)
+        Result.success(remote.getPetPassport(passportId).toDomain())
     } catch (t: Throwable) {
         M14ErrorMapper.failure(t)
     }
@@ -147,13 +163,31 @@ class SupabaseM14CredentialRepository(
     } catch (t: Throwable) {
         M14ErrorMapper.failure(t)
     }
+
+    override suspend fun issueVerified(input: IssueVerifiedM14CredentialInput): Result<M14Credential> {
+        M14Validators.validateIssueVerified(input)?.let { return resultFailM14(it) }
+        return try {
+            Result.success(remote.issueVerifiedCredential(issueVerifiedM14CredentialParams(input)).toDomain())
+        } catch (t: Throwable) {
+            M14ErrorMapper.failure(t)
+        }
+    }
+
+    override suspend fun revokeVerified(
+        credentialId: String,
+        reasonCode: String,
+        notePrivate: String?
+    ): Result<M14Credential> = try {
+        Result.success(remote.revokeVerifiedCredential(credentialId, reasonCode, notePrivate).toDomain())
+    } catch (t: Throwable) {
+        M14ErrorMapper.failure(t)
+    }
 }
 
 class SupabaseM14VerificationRepository(
     private val remote: SupabaseM14RemoteDataSource = SupabaseM14RemoteDataSource()
 ) : M14VerificationRepository {
     override fun observeRequests(passportId: String): Flow<List<M14VerificationRequest>> = flow {
-        // The queue RPC is scoped to the authenticated requester; credential/passport joins stay server-side.
         try {
             emit(remote.listMyVerificationRequests().map { it.toDomain() })
         } catch (t: Throwable) {
@@ -161,7 +195,13 @@ class SupabaseM14VerificationRepository(
         }
     }
 
-    suspend fun getRequest(requestId: String): Result<M14VerificationRequest> = try {
+    override suspend fun listManaged(): Result<List<M14VerificationRequest>> = try {
+        Result.success(remote.listManagedVerificationRequests().map { it.toDomain() })
+    } catch (t: Throwable) {
+        M14ErrorMapper.failure(t)
+    }
+
+    override suspend fun getRequest(requestId: String): Result<M14VerificationRequest> = try {
         Result.success(remote.getVerificationRequest(requestId).toDomain())
     } catch (t: Throwable) {
         M14ErrorMapper.failure(t)
@@ -173,17 +213,64 @@ class SupabaseM14VerificationRepository(
         M14ErrorMapper.failure(t)
     }
 
-    suspend fun listManagedRequests(): Result<List<M14VerificationRequest>> = try {
-        Result.success(remote.listManagedVerificationRequests().map { it.toDomain() })
+    override suspend fun openReview(requestId: String): Result<M14VerificationRequest> = try {
+        Result.success(remote.openVerificationReview(requestId).toDomain())
     } catch (t: Throwable) {
         M14ErrorMapper.failure(t)
     }
 
-    // Resolution is deliberately a future trusted-server workflow (no client RPC in 050).
+    override suspend fun approve(
+        requestId: String,
+        reasonCode: String,
+        notePrivate: String?
+    ): Result<M14VerificationRequest> = try {
+        Result.success(remote.approveVerificationRequest(requestId, reasonCode, notePrivate).request.toDomain())
+    } catch (t: Throwable) {
+        M14ErrorMapper.failure(t)
+    }
+
+    override suspend fun reject(
+        requestId: String,
+        reasonCode: String,
+        notePrivate: String?
+    ): Result<M14VerificationRequest> = try {
+        Result.success(remote.rejectVerificationRequest(requestId, reasonCode, notePrivate).request.toDomain())
+    } catch (t: Throwable) {
+        M14ErrorMapper.failure(t)
+    }
+
+    override suspend fun expire(requestId: String): Result<M14VerificationRequest> = try {
+        Result.success(remote.expireVerificationRequest(requestId).toDomain())
+    } catch (t: Throwable) {
+        M14ErrorMapper.failure(t)
+    }
+
+    override suspend fun getDecision(requestId: String): Result<M14VerificationDecision> = try {
+        Result.success(remote.getVerificationDecision(requestId).toDomain())
+    } catch (t: Throwable) {
+        M14ErrorMapper.failure(t)
+    }
+
+    override suspend fun listDecisions(requestId: String): Result<List<M14VerificationDecision>> = try {
+        Result.success(remote.listVerificationDecisions(requestId).map { it.toDomain() })
+    } catch (t: Throwable) {
+        M14ErrorMapper.failure(t)
+    }
+
     override suspend fun resolveLocal(
         requestId: String,
         approve: Boolean,
         reasonCode: String,
         notePrivate: String?
-    ): Result<M14VerificationRequest> = resultFailM14("ISSUER_NOT_AUTHORIZED")
+    ): Result<M14VerificationRequest> {
+        val current = getRequest(requestId).getOrElse { return Result.failure(it) }
+        if (current.status == M14VerificationRequestStatus.PENDING) {
+            openReview(requestId).getOrElse { return Result.failure(it) }
+        }
+        return if (approve) {
+            approve(requestId, reasonCode, notePrivate)
+        } else {
+            reject(requestId, reasonCode, notePrivate)
+        }
+    }
 }

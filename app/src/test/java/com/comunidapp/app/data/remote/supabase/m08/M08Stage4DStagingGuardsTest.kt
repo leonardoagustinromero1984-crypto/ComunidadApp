@@ -60,12 +60,13 @@ class M08Stage4DStagingGuardsTest {
     }
 
     @Test
-    fun migration051IsM14PrivilegeHotfix_and052Absent() {
+    fun migration052IsM14Verification_and053Absent() {
         val migrations = File(repoRoot(), "supabase/migrations")
         val names = migrations.listFiles().orEmpty().map { it.name }
         assertTrue(names.any { it == "049_m13_match_review_workflow.sql" })
         assertTrue(names.any { it == "050_m14_pet_passports_and_credentials.sql" })
         assertTrue(names.any { it == "051_m14_revoke_residual_table_privileges.sql" })
-        assertFalse(names.any { it.matches(Regex("^052_.*\\.sql$")) })
+        assertTrue(names.any { it == "052_m14_credential_verification_and_public_access.sql" })
+        assertFalse(names.any { it.matches(Regex("^053_.*\\.sql$")) })
     }
 }
