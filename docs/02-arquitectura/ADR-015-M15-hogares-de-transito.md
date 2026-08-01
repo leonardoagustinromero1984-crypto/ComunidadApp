@@ -39,6 +39,8 @@ Bloque 2 (cerrado): adaptadores `SupabaseM15Foster*` sobre repos/RPC M10; **sin 
 
 Bloque 3 (cerrado): evolución, egreso, custodia temporal M08, gastos y ayuda vía `SupabaseM15Placement*` / mocks; **sin 053**; M08 conserva responsabilidad principal.
 
+Bloque 4 (cerrado): métricas agregadas sin PII, privacidad final, hooks M06 con fallback, dashboard operativo, cierre técnico local M15.
+
 ## Consecuencias
 
 - Se alinea numeración con D01.

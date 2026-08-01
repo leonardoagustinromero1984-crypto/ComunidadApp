@@ -18,6 +18,7 @@ import com.comunidapp.app.ui.screens.m15.M15FosterRequestsScreen
 import com.comunidapp.app.ui.screens.m15.M15HelpFormScreen
 import com.comunidapp.app.ui.screens.m15.M15HelpListScreen
 import com.comunidapp.app.ui.screens.m15.M15MyFosterHomeScreen
+import com.comunidapp.app.ui.screens.m15.M15OperationsScreen
 import com.comunidapp.app.ui.screens.m15.M15PlacementDetailScreen
 import com.comunidapp.app.ui.screens.m15.M15PlacementsListScreen
 import java.nio.charset.StandardCharsets
@@ -30,8 +31,12 @@ fun NavGraphBuilder.m15FosterRoutes(navController: NavHostController) {
             onBrowseHomes = { navController.navigate(NavRoutes.M15_HOMES) },
             onMyHome = { navController.navigate(NavRoutes.M15_MY_HOME) },
             onReceivedRequests = { navController.navigate(NavRoutes.M15_REQUESTS_RECEIVED) },
-            onMyPlacements = { navController.navigate(NavRoutes.M15_PLACEMENTS) }
+            onMyPlacements = { navController.navigate(NavRoutes.M15_PLACEMENTS) },
+            onOperations = { navController.navigate(NavRoutes.M15_OPERATIONS) }
         )
+    }
+    composable(NavRoutes.M15_OPERATIONS) {
+        M15OperationsScreen(onNavigateBack = { navController.popBackStack() })
     }
     composable(NavRoutes.M15_HOMES) {
         M15FosterHomesListScreen(

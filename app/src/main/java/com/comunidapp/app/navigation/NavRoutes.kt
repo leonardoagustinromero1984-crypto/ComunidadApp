@@ -75,6 +75,10 @@ object NavRoutes {
     const val M15_PLACEMENT_EXPENSES_NEW = "m15/placements/{placementId}/expenses/new"
     const val M15_PLACEMENT_HELP = "m15/placements/{placementId}/help"
     const val M15_PLACEMENT_HELP_NEW = "m15/placements/{placementId}/help/new"
+    const val M15_OPERATIONS = "m15/operations"
+    const val M15_OPERATIONS_METRICS = "m15/operations/metrics"
+    const val M15_OPERATIONS_PRIVACY = "m15/operations/privacy"
+    const val M15_OPERATIONS_SMOKE = "m15/operations/smoke"
     const val ARG_M15_HOME_ID = "m15HomeId"
     const val ARG_M15_PLACEMENT_ID = "placementId"
 

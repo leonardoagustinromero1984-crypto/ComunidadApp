@@ -31,11 +31,18 @@ Guard CI m07: sin cambios
 
 RLS y RPC M10 ya restringen escrituras a `auth.uid()`. Proyección pública vía listados M10 excluye `private_address_text`.
 
+## Bloque 4 — operaciones
+
+| Modo | Repo |
+|------|------|
+| `useSupabase = true` | `SupabaseM15OperationsRepository` → `M15_REMOTE_VALIDATION_PENDING` |
+| `useSupabase = false` | `MockM15OperationsRepository` → agregación sobre `M15MemoryStore` |
+
 ## Pendientes
 
 - Apply remoto 040/041 ya validado en track M10 (independiente de M15 B2 local).
-- Smoke funcional M15 Bloque 3 con Supabase real: **PENDIENTE MANUAL**.
-- Enlace hub M15 desde Sumate: **PENDIENTE** (legacy `foster_*` activo).
+- Smoke funcional M15 con Supabase real: **PENDIENTE EXTERNO**.
+- Métricas remotas: **PENDIENTE** (sin SQL nuevo en Bloque 4).
 
 ## Errores de infraestructura
 

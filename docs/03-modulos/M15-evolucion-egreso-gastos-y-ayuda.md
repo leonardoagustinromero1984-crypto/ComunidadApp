@@ -75,6 +75,11 @@ PRUEBAS AUTOMÁTICAS NO EJECUTADAS
 VALIDACIÓN FUNCIONAL MANUAL PENDIENTE
 ```
 
-## Propuesta Bloque 4
+## Bloque 4 (cerrado localmente)
 
-Métricas agregadas (`M15OperationalMetrics`), hooks M06 push reales, privacidad final en proyecciones públicas, smoke remoto integrado M15/M10, cierre técnico local.
+Métricas agregadas (`M15OperationalMetrics`), privacidad final, hooks M06 con fallback honesto, dashboard `m15/operations`, smoke remoto preparado, cierre técnico local completado.
+
+```text
+M15 BLOQUE 4 CERRADO LOCALMENTE
+M15 CIERRE TÉCNICO LOCAL COMPLETADO
+```

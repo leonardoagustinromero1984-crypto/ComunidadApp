@@ -31,17 +31,22 @@ Gastos, evolución, ayuda, egreso completo, SQL, Supabase, pagos, chat, M16.
 - `SupabaseM15Placement*` / `MockM15Placement*`; UI `m15/placements/*`.
 - Caso A: **sin 053**.
 
-## Propuesta Bloque 4
+## Alcance Bloque 4 (cerrado localmente)
 
-Métricas agregadas, privacidad final, hooks M06 reales, smoke remoto M15/M10, cierre técnico local.
+- Métricas operativas agregadas sin PII (`M15OperationalMetrics`).
+- Privacidad final (`M15PrivacySanitizer`) en proyecciones públicas.
+- Hooks M06 preparados; fallback honesto (`M15_NOTIFICATION_INFRASTRUCTURE_UNAVAILABLE`).
+- Dashboard `m15/operations`; smoke remoto preparado, no ejecutado.
+- Cierre técnico local M15 completado.
 
 ## Pendientes
 
 ```text
-VALIDACIÓN FUNCIONAL MANUAL M15 B1/B2/B3 PENDIENTE
+VALIDACIÓN FUNCIONAL MANUAL M15 PENDIENTE
 PRUEBAS AUTOMÁTICAS NO EJECUTADAS
+M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO
+M15 CIERRE OFICIAL PENDIENTE
 MIGRACIÓN 053 NO REQUERIDA
 M14 052 APPLY REMOTO PENDIENTE
 GITHUB ANDROID CI PENDIENTE
-SMOKE REMOTO M15/M10 PENDIENTE
 ```

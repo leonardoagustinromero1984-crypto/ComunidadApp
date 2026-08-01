@@ -47,6 +47,7 @@ fun M15FosterHubScreen(
     onMyHome: () -> Unit,
     onReceivedRequests: () -> Unit,
     onMyPlacements: () -> Unit,
+    onOperations: () -> Unit = {},
     viewModel: M15FosterHubViewModel = viewModel(factory = M15FosterHubViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -86,6 +87,9 @@ fun M15FosterHubScreen(
                     }
                     Button(onClick = onMyPlacements, modifier = Modifier.fillMaxWidth()) {
                         Text("Mis alojamientos")
+                    }
+                    Button(onClick = onOperations, modifier = Modifier.fillMaxWidth()) {
+                        Text("Operaciones y métricas")
                     }
                 }
             }

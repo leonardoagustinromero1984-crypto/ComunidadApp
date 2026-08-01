@@ -89,6 +89,7 @@ object M15M06Hooks {
     const val HOME_ACTIVATED = "M15_FOSTER_HOME_ACTIVATED"
     const val REQUEST_SUBMITTED = "M15_FOSTER_REQUEST_SUBMITTED"
     const val REQUEST_ACCEPTED = "M15_FOSTER_REQUEST_ACCEPTED"
+    const val PLACEMENT_RESERVED = "M15_PLACEMENT_RESERVED"
     const val PLACEMENT_STARTED = "M15_FOSTER_PLACEMENT_STARTED"
     const val EVOLUTION_ADDED = "M15_EVOLUTION_ADDED"
     const val PLACEMENT_COMPLETED = "M15_PLACEMENT_COMPLETED"
@@ -103,6 +104,7 @@ object M15M06Hooks {
         HOME_ACTIVATED,
         REQUEST_SUBMITTED,
         REQUEST_ACCEPTED,
+        PLACEMENT_RESERVED,
         PLACEMENT_STARTED,
         EVOLUTION_ADDED,
         PLACEMENT_COMPLETED,
@@ -138,20 +140,8 @@ data class M15FosterHome(
     val freeSlots: Int
         get() = (totalCapacity - currentOccupancy - reservedCount).coerceAtLeast(0)
 
-    fun toPublicListing(): M15FosterHomePublicListing = M15FosterHomePublicListing(
-        id = id,
-        displayName = displayName,
-        description = description,
-        availabilityStatus = availabilityStatus,
-        totalCapacity = totalCapacity,
-        freeSlots = freeSlots,
-        acceptedSpecies = acceptedSpecies,
-        acceptedSizes = acceptedSizes,
-        acceptsSpecialNeeds = acceptsSpecialNeeds,
-        acceptsEmergencies = acceptsEmergencies,
-        zoneText = zoneText,
-        publicLocationText = publicLocationText
-    )
+    fun toPublicListing(): M15FosterHomePublicListing =
+        M15PrivacySanitizer.sanitizePublicListing(this)
 }
 
 data class M15FosterHomePublicListing(

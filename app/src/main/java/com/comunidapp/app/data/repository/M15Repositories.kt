@@ -336,7 +336,10 @@ class MockM15FosterRequestRepository(
                 ) {
                     failM15("M15_FOSTER_HOME_UNAVAILABLE")
                 }
-                if (home.freeSlots <= 0) failM15("M15_FOSTER_HOME_FULL")
+                if (home.freeSlots <= 0) {
+                    store.recordConflict()
+                    failM15("M15_CAPACITY_CONFLICT")
+                }
                 val pet = resolvePet(input.petId) ?: failM15("PET_NOT_FOUND")
                 if (pet.status.equals("DECEASED", true) || pet.status.equals("ARCHIVED", true)) {
                     failM15("PET_NOT_ELIGIBLE_FOR_FOSTER")
@@ -413,11 +416,21 @@ class MockM15FosterRequestRepository(
                 if (!authority.canReviewRequest(actor, home.ownerUserId)) {
                     failM15("M15_FOSTER_REQUEST_FORBIDDEN")
                 }
-                if (req.status == M15FosterRequestStatus.ACCEPTED) return@runCatching req
+                if (req.status == M15FosterRequestStatus.ACCEPTED) {
+                    store.recordIdempotentRetry()
+                    return@runCatching req
+                }
+                if (M15Validators.isTerminalRequest(req.status)) {
+                    store.recordConflict()
+                    failM15("M15_STATE_ALREADY_FINAL")
+                }
                 if (!M15Validators.canTransitionRequest(req.status, M15FosterRequestStatus.ACCEPTED)) {
                     failM15("M15_FOSTER_REQUEST_INVALID_TRANSITION")
                 }
-                if (home.freeSlots <= 0) failM15("M15_FOSTER_HOME_FULL")
+                if (home.freeSlots <= 0) {
+                    store.recordConflict()
+                    failM15("M15_CAPACITY_CONFLICT")
+                }
                 val accepted = applyRequestTransition(req, M15FosterRequestStatus.ACCEPTED, actor, null)
                 val reservedHome = home.copy(
                     reservedCount = home.reservedCount + 1,
@@ -445,6 +458,7 @@ class MockM15FosterRequestRepository(
                 )
                 store.upsertPlacement(placement)
                 store.audit(M15AuditEvents.PLACEMENT_RESERVED, placement.id)
+                store.recordM06(M15M06Hooks.PLACEMENT_RESERVED, placement.id)
                 store.recordM06(M15M06Hooks.REQUEST_ACCEPTED, accepted.id)
                 accepted
             }.fold({ Result.success(it) }, { M15ErrorMapper.failure(it) })
@@ -477,7 +491,14 @@ class MockM15FosterRequestRepository(
                 requireOwner && !authority.canReviewRequest(actor, home.ownerUserId) ->
                     failM15("M15_FOSTER_REQUEST_FORBIDDEN")
             }
-            if (req.status == target) return@runCatching req
+            if (req.status == target) {
+                store.recordIdempotentRetry()
+                return@runCatching req
+            }
+            if (M15Validators.isTerminalRequest(req.status)) {
+                store.recordConflict()
+                failM15("M15_STATE_ALREADY_FINAL")
+            }
             if (!M15Validators.canTransitionRequest(req.status, target)) {
                 failM15("M15_FOSTER_REQUEST_NOT_ACTIVE")
             }
@@ -547,6 +568,10 @@ class MockM15FosterPlacementRepository(
                 it.fosterRequestId == requestId &&
                     it.status == M15FosterPlacementStatus.RESERVED
             } ?: failM15("M15_FOSTER_PLACEMENT_NOT_FOUND")
+            if (M15Validators.isTerminalPlacement(placement.status)) {
+                store.recordConflict()
+                failM15("M15_STATE_ALREADY_FINAL")
+            }
             if (!M15Validators.canTransitionPlacement(
                     placement.status,
                     M15FosterPlacementStatus.ACTIVE

@@ -98,7 +98,10 @@ class MockM15PlacementDischargeRepository(
                 val placement = store.placements.value.find { it.id == input.placementId }
                     ?: failM15Life("M15_FOSTER_PLACEMENT_NOT_FOUND")
                 if (!store.canAccessPlacement(actor, input.placementId)) failM15Life("M15_UNAUTHORIZED")
-                if (placement.dischargeOutcome != null) failM15Life("M15_DISCHARGE_ALREADY_APPLIED")
+                if (placement.dischargeOutcome != null) {
+                    store.recordIdempotentRetry()
+                    return@runCatching placement
+                }
                 val home = store.homes.value.find { it.id == placement.fosterHomeId }
                     ?: failM15Life("M15_FOSTER_HOME_NOT_FOUND")
                 if (store.forceRevokeFailure) failM15Life("M15_TEMPORARY_CUSTODY_NOT_ALLOWED")
@@ -275,7 +278,8 @@ class MockM15PlacementHelpRepository(
                 if (existing.status == M15HelpRequestStatus.RESOLVED ||
                     existing.status == M15HelpRequestStatus.CANCELLED
                 ) {
-                    failM15Life("M15_HELP_REQUEST_ALREADY_FINAL")
+                    store.recordIdempotentRetry()
+                    return@runCatching existing
                 }
                 val now = System.currentTimeMillis()
                 val updated = existing.copy(status = M15HelpRequestStatus.RESOLVED, resolvedAt = now)

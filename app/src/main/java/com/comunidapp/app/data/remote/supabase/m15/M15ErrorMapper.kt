@@ -59,6 +59,13 @@ object M15ErrorMapper {
         "M15_HELP_REQUEST_ALREADY_FINAL",
         "M15_MEDIA_REFERENCE_INVALID",
         "M15_CONFLICT",
+        "M15_METRICS_INVALID_RANGE",
+        "M15_NOTIFICATION_INFRASTRUCTURE_UNAVAILABLE",
+        "M15_PUBLIC_PROJECTION_UNAVAILABLE",
+        "M15_PRIVACY_VIOLATION",
+        "M15_STATE_ALREADY_FINAL",
+        "M15_IDEMPOTENT_REPLAY",
+        "M15_CAPACITY_CONFLICT",
         "PET_NOT_ELIGIBLE_FOR_FOSTER",
         "PET_ALREADY_IN_FOSTER",
         "PET_NOT_FOUND",
@@ -186,6 +193,15 @@ object M15ErrorMapper {
         "M15_HELP_REQUEST_ALREADY_FINAL" -> "Ese pedido de ayuda ya está cerrado."
         "M15_MEDIA_REFERENCE_INVALID" -> "La referencia de media no es segura."
         "M15_CONFLICT" -> "Conflicto al actualizar el alojamiento."
+        "M15_METRICS_INVALID_RANGE" -> "El rango de fechas para métricas no es válido."
+        "M15_NOTIFICATION_INFRASTRUCTURE_UNAVAILABLE" ->
+            "Las notificaciones M06 no están disponibles para hogares de tránsito."
+        "M15_PUBLIC_PROJECTION_UNAVAILABLE" ->
+            "La vista pública no está disponible en este momento."
+        "M15_PRIVACY_VIOLATION" -> "No se puede exponer información privada."
+        "M15_STATE_ALREADY_FINAL" -> "Este registro ya está cerrado."
+        "M15_IDEMPOTENT_REPLAY" -> "La operación ya fue aplicada."
+        "M15_CAPACITY_CONFLICT" -> "Conflicto de capacidad del hogar."
         "PET_NOT_ELIGIBLE_FOR_FOSTER" -> "Esa mascota no puede ir a tránsito."
         "PET_ALREADY_IN_FOSTER" -> "Esa mascota ya está en un hogar de tránsito."
         "PET_NOT_FOUND" -> "No encontramos la mascota."

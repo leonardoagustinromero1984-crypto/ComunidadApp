@@ -67,7 +67,7 @@ Evolución append-only, egreso tipificado, gastos y ayuda = Bloque 3 (cerrado lo
 | 1 | Dominio, fakes, UI `m15/*`, hub y flujo base solicitud → reserva |
 | 2 | Reconciliación M10 (Caso A): adaptadores Supabase M15 → RPC 040/041; **sin 053** |
 | 3 | Evolución, egreso, custodia temporal M08, gastos, ayuda — **cerrado localmente** |
-| 4 | Métricas, M06 push preparado, cierre técnico |
+| 4 | Métricas, M06 push preparado, cierre técnico | **Cerrado localmente** |
 
 ## 7. Definition of Done
 
@@ -100,4 +100,18 @@ SIN MIGRACIÓN 053
 COMPILACIÓN KOTLIN PASS
 PRUEBAS AUTOMÁTICAS NO EJECUTADAS
 VALIDACIÓN FUNCIONAL MANUAL PENDIENTE
+```
+
+### Bloque 4
+
+```text
+M15 BLOQUE 4 CERRADO LOCALMENTE
+M15 CIERRE TÉCNICO LOCAL COMPLETADO
+M10/M08 SON LA BASE AUTORITATIVA
+SIN MIGRACIÓN 053
+COMPILACIÓN KOTLIN PASS
+PRUEBAS AUTOMÁTICAS NO EJECUTADAS
+VALIDACIÓN FUNCIONAL MANUAL PENDIENTE
+M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO
+M15 CIERRE OFICIAL PENDIENTE
 ```

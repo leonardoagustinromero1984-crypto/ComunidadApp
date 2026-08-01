@@ -50,6 +50,7 @@ import com.comunidapp.app.data.repository.M15FosterHomeRepository
 import com.comunidapp.app.data.repository.M15FosterPlacementRepository
 import com.comunidapp.app.data.repository.M15FosterRequestRepository
 import com.comunidapp.app.data.repository.M15MemoryStore
+import com.comunidapp.app.data.repository.M15OperationsRepository
 import com.comunidapp.app.data.repository.M15PlacementDischargeRepository
 import com.comunidapp.app.data.repository.M15PlacementEvolutionRepository
 import com.comunidapp.app.data.repository.M15PlacementExpenseRepository
@@ -58,6 +59,7 @@ import com.comunidapp.app.data.repository.MockM15AuthorityPolicy
 import com.comunidapp.app.data.repository.MockM15FosterHomeRepository
 import com.comunidapp.app.data.repository.MockM15FosterPlacementRepository
 import com.comunidapp.app.data.repository.MockM15FosterRequestRepository
+import com.comunidapp.app.data.repository.MockM15OperationsRepository
 import com.comunidapp.app.data.repository.MockM15PlacementDischargeRepository
 import com.comunidapp.app.data.repository.MockM15PlacementEvolutionRepository
 import com.comunidapp.app.data.repository.MockM15PlacementExpenseRepository
@@ -65,6 +67,7 @@ import com.comunidapp.app.data.repository.MockM15PlacementHelpRepository
 import com.comunidapp.app.data.repository.SupabaseM15FosterHomeRepository
 import com.comunidapp.app.data.repository.SupabaseM15FosterPlacementRepository
 import com.comunidapp.app.data.repository.SupabaseM15FosterRequestRepository
+import com.comunidapp.app.data.repository.SupabaseM15OperationsRepository
 import com.comunidapp.app.data.repository.SupabaseM15PlacementDischargeRepository
 import com.comunidapp.app.data.repository.SupabaseM15PlacementEvolutionRepository
 import com.comunidapp.app.data.repository.SupabaseM15PlacementExpenseRepository
@@ -886,6 +889,18 @@ object DataProvider {
             MockM15PlacementHelpRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m15Store
+            )
+        }
+    }
+
+    /** M15 Bloque 4 — métricas agregadas, M06 hooks y dashboard operativo. */
+    val m15OperationsRepository: M15OperationsRepository by lazy {
+        if (useSupabase) {
+            SupabaseM15OperationsRepository()
+        } else {
+            MockM15OperationsRepository(
+                store = m15Store,
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
         }
     }

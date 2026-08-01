@@ -95,4 +95,18 @@ object M15Validators {
             M15FosterPlacementStatus.COMPLETED,
             M15FosterPlacementStatus.CANCELLED -> false
         }
+
+    fun isTerminalRequest(status: M15FosterRequestStatus): Boolean =
+        status == M15FosterRequestStatus.REJECTED ||
+            status == M15FosterRequestStatus.CANCELLED ||
+            status == M15FosterRequestStatus.EXPIRED
+
+    fun isTerminalPlacement(status: M15FosterPlacementStatus): Boolean =
+        status == M15FosterPlacementStatus.COMPLETED ||
+            status == M15FosterPlacementStatus.CANCELLED
+
+    fun wouldExceedCapacity(capacity: Int, occupancy: Int, reserved: Int, delta: Int): Boolean {
+        val used = occupancy.coerceAtLeast(0) + reserved.coerceAtLeast(0) + delta
+        return used > capacity.coerceAtLeast(0)
+    }
 }
