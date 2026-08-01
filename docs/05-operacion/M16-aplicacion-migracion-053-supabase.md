@@ -35,8 +35,9 @@ order by 1;
 ## Estado
 
 ```text
-PENDIENTE DE APPLY REMOTO AUTORIZADO
-No aplicar desde Cursor ni CI automático.
+APLICADA EN STAGING NO PRODUCTIVO (2026-08-01)
+Comando: supabase db query --linked -f supabase/migrations/053_m16_shelter_profiles_and_public_access.sql
+Validación: scripts/ops/m16_remote_validation_053.sql — 50/50 PASS
 ```
 
 ## Límites

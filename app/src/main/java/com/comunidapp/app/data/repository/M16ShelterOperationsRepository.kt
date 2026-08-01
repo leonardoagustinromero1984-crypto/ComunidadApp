@@ -29,6 +29,7 @@ class M16ShelterOperationsRepositoryImpl(
     private val shelterPetRepository: ShelterPetRepository = DataProvider.shelterPetRepository,
     private val m11Store: M11ShelterMemoryStore = DataProvider.m11ShelterStore,
     private val service: M16ShelterOperationsService = M16ShelterOperationsService(),
+    private val markFosterOrgQueryLimited: Boolean = false,
     private val canView: suspend (String) -> Boolean = { orgId ->
         DataProvider.m16ShelterRepository.canManageOrganization(orgId) ||
             m11Store.orgViewers.value[orgId]?.isNotEmpty() == true ||
@@ -90,6 +91,9 @@ class M16ShelterOperationsRepositoryImpl(
             partial = partial.copy(fosterSourceUnavailable = true)
             emptyList()
         }
+        if (markFosterOrgQueryLimited) {
+            partial = partial.copy(fosterOrgQueryLimited = true)
+        }
         val petIds = linkedSetOf<String>()
         shelterPlacements.mapTo(petIds) { it.petId }
         adoptions.mapNotNullTo(petIds) { it.petId }
@@ -120,6 +124,7 @@ class M16ShelterOperationsRepositoryImpl(
 
 class SupabaseM16ShelterOperationsRepository(
     private val inner: M16ShelterOperationsRepositoryImpl = M16ShelterOperationsRepositoryImpl(
-        shelterRepository = DataProvider.m16ShelterRepository
+        shelterRepository = DataProvider.m16ShelterRepository,
+        markFosterOrgQueryLimited = true
     )
 ) : M16ShelterOperationsRepository by inner

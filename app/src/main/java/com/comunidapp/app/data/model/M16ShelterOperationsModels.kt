@@ -51,6 +51,8 @@ data class M16ShelterOccupancyBreakdown(
     val isOverCapacity: Boolean,
     val configuredOccupancySnapshot: Int?,
     val snapshotDiffersFromCalculated: Boolean = false,
+    /** true cuando la métrica usa updatedAt de M09 como proxy (sin completedAt autoritativo en AdoptionPost). */
+    val recentAdoptionsApproximate: Boolean = false,
     val warnings: List<String> = emptyList()
 ) {
     /** @deprecated usar [isOverCapacity] */

@@ -163,6 +163,9 @@ class M16ShelterOperationsService(
         val recentlyAdoptedCount = snapshot.adoptions.count {
             it.status == AdoptionStatus.ADOPTED && isRecentAdoption(it, now)
         }
+        val recentAdoptionsApproximate = snapshot.adoptions.any {
+            it.status == AdoptionStatus.ADOPTED
+        }
 
         return M16ShelterOperationsSummary(
             shelterId = profile.id,
@@ -180,6 +183,7 @@ class M16ShelterOperationsService(
                 isOverCapacity = isOverCapacity,
                 configuredOccupancySnapshot = snapshotOcc,
                 snapshotDiffersFromCalculated = snapshotDiffers,
+                recentAdoptionsApproximate = recentAdoptionsApproximate,
                 warnings = warnings.distinct()
             ),
             pets = items.sortedBy { it.displayName.lowercase() },

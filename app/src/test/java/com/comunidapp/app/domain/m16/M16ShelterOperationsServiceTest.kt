@@ -276,4 +276,30 @@ class M16ShelterOperationsServiceTest {
         )
         assertTrue(summary.partialFlags.fosterSourceUnavailable)
     }
+
+    @Test
+    fun fosterOrgQueryLimitedProducesPartialFlag() {
+        val summary = service.buildSummary(
+            M16ShelterOperationsService.SourceSnapshot(
+                profile = profile(),
+                partialFlags = M16ShelterOperationsPartialFlags(fosterOrgQueryLimited = true)
+            )
+        )
+        assertTrue(summary.partialFlags.fosterOrgQueryLimited)
+        assertTrue(summary.partialFlags.hasPartialData)
+    }
+
+    @Test
+    fun recentAdoptionsMarkedApproximateWhenUsingUpdatedAtProxy() {
+        val summary = service.buildSummary(
+            M16ShelterOperationsService.SourceSnapshot(
+                profile = profile(),
+                adoptions = listOf(
+                    adoption("p1", AdoptionStatus.ADOPTED, updatedAt = fixedNow - 5 * 86_400_000L)
+                ),
+                petsById = mapOf("p1" to pet("p1", "ARCHIVED"))
+            )
+        )
+        assertTrue(summary.breakdown.recentAdoptionsApproximate)
+    }
 }

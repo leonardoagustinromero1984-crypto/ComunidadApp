@@ -8,7 +8,13 @@
 .\gradlew.bat testLocalDebugUnitTest --tests "*M16ShelterOperationsServiceTest" --no-configuration-cache --max-workers=1 --console=plain
 ```
 
-Resultado: **BUILD SUCCESSFUL** (12 tests, `M16ShelterOperationsServiceTest`).
+Resultado: **BUILD SUCCESSFUL** (14 tests, `M16ShelterOperationsServiceTest`).
+
+## Preparación cierre global (2026-08-01)
+
+- Adopciones recientes: proxy `updatedAt` + `recentAdoptionsApproximate` + UI estimación.
+- M15 remoto: `fosterOrgQueryLimited` activo en `SupabaseM16ShelterOperationsRepository`.
+- Detalle: `docs/03-modulos/M16-cierre-global-validacion.md`.
 
 ## Compilación Kotlin
 
@@ -41,7 +47,8 @@ Pendiente de operador — **no aplicada** en esta tarea.
 
 ```text
 M16 BLOQUE 4 CORRECCIÓN DE OCUPACIÓN COMPLETADA
-M16 IMPLEMENTACIÓN TÉCNICA COMPLETA (BLOQUES 1–4)
-VALIDACIÓN REMOTA PENDIENTE
-M16 CIERRE OPERATIVO GLOBAL PENDIENTE
+M16 CIERRE OFICIAL COMPLETADO (2026-08-01)
+MIGRACIÓN 053 APLICADA EN STAGING
+VALIDACIÓN SQL/RLS 50/50 PASS
+SMOKE REMOTO REPOSITORIO PASS
 ```

@@ -827,7 +827,12 @@ private fun buildPartialSourcesMessage(
     if (flags.shelterOpsSourceUnavailable) parts += "M11"
     if (flags.adoptionCompletionDatesUnavailable) parts += "fechas adopción"
     if (flags.fosterOrgQueryLimited) parts += "M15 org (RLS limitada)"
-    return "Datos parciales — fuentes pendientes: ${parts.joinToString(", ")}."
+    return when {
+        flags.fosterOrgQueryLimited && parts.size == 1 ->
+            "Los datos de tránsito pueden estar incompletos por permisos del entorno remoto."
+        parts.isEmpty() -> "Datos parciales — alguna fuente no respondió."
+        else -> "Datos parciales — fuentes pendientes: ${parts.joinToString(", ")}."
+    }
 }
 
 @Composable
@@ -852,7 +857,28 @@ private fun M16OperationsSummaryBody(
     }
     Text("En tránsito activo: ${b.inActiveFosterCount}")
     Text("Adopción activa: ${b.activeAdoptionCount}")
-    Text("Adoptadas últimos ${com.comunidapp.app.domain.m16.M16_RECENT_ADOPTION_WINDOW_DAYS} días: ${b.recentlyAdoptedCount}")
+    Text(
+        if (b.recentAdoptionsApproximate) {
+            "Adoptadas recientemente — estimación (${com.comunidapp.app.domain.m16.M16_RECENT_ADOPTION_WINDOW_DAYS} días): ${b.recentlyAdoptedCount}"
+        } else {
+            "Adoptadas últimos ${com.comunidapp.app.domain.m16.M16_RECENT_ADOPTION_WINDOW_DAYS} días: ${b.recentlyAdoptedCount}"
+        },
+        style = if (b.recentAdoptionsApproximate) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium
+    )
+    if (b.recentAdoptionsApproximate) {
+        Text(
+            "Fecha basada en updatedAt M09; puede no coincidir con la adopción exacta.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.tertiary
+        )
+    }
+    if (summary.partialFlags.fosterOrgQueryLimited) {
+        Text(
+            "Los datos de tránsito pueden estar incompletos por permisos del entorno remoto.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.tertiary
+        )
+    }
     Text("Inconsistencias: ${summary.pets.count { it.status == com.comunidapp.app.data.model.M16ShelterPetOperationalStatus.INCONSISTENT }}")
     b.configuredOccupancySnapshot?.let {
         Text("Snapshot manual M16: $it", style = MaterialTheme.typography.bodySmall)

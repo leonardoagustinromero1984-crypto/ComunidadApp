@@ -98,3 +98,7 @@ Repetición mismo estado → replay; `PERMANENTLY_CLOSED` terminal.
 Tablas: `m16_shelter_profiles` (organization_id UNIQUE), períodos, contactos, necesidades, solicitudes verificación.
 RLS deny-by-default; lectura pública vía `_m16_public_shelter_json` / RPCs anon.
 Permisos: reutiliza `shelter.view` / `shelter.manage` (M11).
+
+## Estado remoto (2026-08-01)
+
+Migración **053 aplicada** en staging `wyst****mizz`. Validación SQL/RLS **50/50 PASS**. Smoke repositorio PostgREST **PASS**. Cierre oficial: [`M16-cierre-oficial.md`](../03-modulos/M16-cierre-oficial.md).
