@@ -12,8 +12,8 @@
 | M16-008 | Administración local mock | M16 | Implementado | Pantalla manage | 1 |
 | M16-009 | Permisos org (manager) | M03/M02 | Mock parcial | Policy mock | 1 |
 | M16-010 | Idempotencia / terminales | M16 | Implementado | Repo mock | 1 |
-| M16-011 | Persistencia remota | M03/M10 | Pendiente | REMOTE_VALIDATION_PENDING | 2 |
-| M16-012 | Migración 053 | Supabase | Propuesta | No creada | 2 |
+| M16-011 | Persistencia remota | M03/M10 | Implementado | SupabaseM16ShelterRepository | 2 |
+| M16-012 | Migración 053 | Supabase | Implementado | SQL listo; apply pendiente | 2 |
 | M16-013 | Integración mascotas M08 | M08 | Pendiente | — | 3 |
 | M16-014 | Integración adopciones M09 | M09 | Pendiente | — | 3 |
 | M16-015 | Integración tránsito M15 | M15 | Pendiente | — | 3 |
@@ -23,7 +23,7 @@
 
 ## Bloques
 
-- **Bloque 1:** fundación funcional local — **CERRADO LOCALMENTE**
-- **Bloque 2:** persistencia y seguridad remota — pendiente
+- **Bloque 1:** fundación funcional local — **CIERRE OFICIAL COMPLETADO** (aceptación responsable)
+- **Bloque 2:** persistencia y seguridad remota — **IMPLEMENTADO** (053 creada; SQL apply pendiente)
 - **Bloque 3:** integración mascotas/adopciones/tránsito — pendiente
 - **Bloque 4:** métricas, privacidad, smoke, cierre — pendiente

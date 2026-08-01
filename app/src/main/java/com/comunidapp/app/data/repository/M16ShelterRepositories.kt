@@ -19,7 +19,18 @@ import com.comunidapp.app.data.model.M16PrivacySanitizer
 import com.comunidapp.app.data.model.M16_ELIGIBLE_ORGANIZATION_TYPES
 import com.comunidapp.app.data.model.UpdateM16ShelterPublicInput
 import com.comunidapp.app.data.remote.supabase.m16.M16Exception
-import com.comunidapp.app.data.remote.supabase.m16.M16ShelterErrorMapper
+import com.comunidapp.app.data.remote.supabase.m16.SupabaseM16RemoteDataSource
+import com.comunidapp.app.data.remote.supabase.m16.toJsonContacts
+import com.comunidapp.app.data.remote.supabase.m16.toJsonNeeds
+import com.comunidapp.app.data.remote.supabase.m16.toJsonPeriods
+import com.comunidapp.app.data.remote.supabase.m16.toM16PublicShelter
+import com.comunidapp.app.data.remote.supabase.m16.toM16ShelterProfile
+import com.comunidapp.app.data.remote.supabase.supabase
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
+import kotlinx.serialization.json.putJsonArray
 import com.comunidapp.app.domain.organization.OrganizationType
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -29,6 +40,8 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
+import com.comunidapp.app.data.remote.supabase.m16.M16ShelterErrorMapper
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
@@ -493,70 +506,219 @@ class MockM16ShelterRepository(
     }
 }
 
-class SupabaseM16ShelterRepository : M16ShelterRepository {
-    override fun observePublicShelters(): Flow<List<M16PublicShelter>> =
-        MutableStateFlow(emptyList())
+class SupabaseM16ShelterRepository(
+    private val remote: SupabaseM16RemoteDataSource = SupabaseM16RemoteDataSource(),
+    private val actorUserId: () -> String? = { null }
+) : M16ShelterRepository {
 
-    override fun observeProfile(shelterId: String): Flow<M16ShelterProfile?> =
-        MutableStateFlow(null)
+    override fun observePublicShelters(): Flow<List<M16PublicShelter>> = flow {
+        emit(
+            runCatching {
+                remote.listPublic().map { it.toM16PublicShelter() }
+            }.getOrElse { emptyList() }
+        )
+    }
 
-    override fun observeProfileByOrganization(organizationId: String): Flow<M16ShelterProfile?> =
-        MutableStateFlow(null)
+    override fun observeProfile(shelterId: String): Flow<M16ShelterProfile?> = flow {
+        emit(getProfileById(shelterId).getOrNull())
+    }
 
-    override suspend fun getProfileById(id: String): Result<M16ShelterProfile> =
-        M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    override fun observeProfileByOrganization(organizationId: String): Flow<M16ShelterProfile?> = flow {
+        emit(
+            runCatching {
+                remote.getByOrganization(organizationId)?.toM16ShelterProfile()
+            }.getOrNull()
+        )
+    }
 
-    override suspend fun getPublicById(id: String): Result<M16PublicShelter> =
-        M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    override suspend fun getProfileById(id: String): Result<M16ShelterProfile> = try {
+        if (id.isBlank()) M16ShelterErrorMapper.fail("M16_SHELTER_NOT_FOUND")
+        else Result.success(remote.getProfile(id).toM16ShelterProfile())
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
-    override suspend fun createProfile(input: CreateM16ShelterProfileInput): Result<M16ShelterProfile> =
-        M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    override suspend fun getPublicById(id: String): Result<M16PublicShelter> = try {
+        if (id.isBlank()) M16ShelterErrorMapper.fail("M16_SHELTER_NOT_FOUND")
+        else Result.success(remote.getPublic(id).toM16PublicShelter())
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
-    override suspend fun updatePublicData(input: UpdateM16ShelterPublicInput): Result<M16ShelterProfile> =
-        M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    override suspend fun createProfile(input: CreateM16ShelterProfileInput): Result<M16ShelterProfile> = try {
+        M16ShelterValidators.validateCreate(input)?.let { return M16ShelterErrorMapper.fail(it) }
+        Result.success(
+            remote.createProfile(
+                buildJsonObject {
+                    put("p_organization_id", input.organizationId)
+                    put("p_display_name", input.displayName)
+                    put("p_public_zone_text", input.publicZoneText)
+                    put("p_total_capacity", input.totalCapacity)
+                    put("p_description", input.description)
+                    putJsonArray("p_accepted_species") {
+                        input.acceptedSpecies.forEach { add(JsonPrimitive(it.uppercase())) }
+                    }
+                    putJsonArray("p_services") {
+                        input.services.forEach { add(JsonPrimitive(it.name)) }
+                    }
+                    put("p_publish", input.publish)
+                }
+            ).toM16ShelterProfile()
+        )
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun updatePublicData(input: UpdateM16ShelterPublicInput): Result<M16ShelterProfile> = try {
+        M16ShelterValidators.validateUpdatePublic(input)?.let { return M16ShelterErrorMapper.fail(it) }
+        Result.success(
+            remote.updatePublicData(
+                buildJsonObject {
+                    put("p_shelter_id", input.shelterId)
+                    put("p_display_name", input.displayName)
+                    put("p_public_zone_text", input.publicZoneText)
+                    put("p_description", input.description)
+                    putJsonArray("p_coverage_areas") {
+                        input.coverageAreas.forEach { add(JsonPrimitive(it)) }
+                    }
+                    putJsonArray("p_accepted_species") {
+                        input.acceptedSpecies.forEach { add(JsonPrimitive(it.uppercase())) }
+                    }
+                    put("p_public_image_ref", input.publicImageRef)
+                }
+            ).toM16ShelterProfile()
+        )
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
     override suspend fun updateOperationalStatus(
         shelterId: String,
         status: M16ShelterOperationalStatus
-    ): Result<M16ShelterProfile> = M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    ): Result<M16ShelterProfile> = try {
+        Result.success(remote.updateOperationalStatus(shelterId, status.name).toM16ShelterProfile())
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
     override suspend fun updatePublicationStatus(
         shelterId: String,
         status: M16ShelterPublicationStatus
-    ): Result<M16ShelterProfile> = M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    ): Result<M16ShelterProfile> = try {
+        Result.success(remote.updatePublicationStatus(shelterId, status.name).toM16ShelterProfile())
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
-    override suspend fun requestVerification(shelterId: String): Result<M16ShelterProfile> =
-        M16ShelterErrorMapper.fail("M16_VERIFICATION_MANAGED_EXTERNALLY")
+    override suspend fun requestVerification(shelterId: String): Result<M16ShelterProfile> = try {
+        Result.success(remote.requestVerification(shelterId).toM16ShelterProfile())
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
     override suspend fun updateOpeningHours(
         shelterId: String,
         hours: M16OpeningHours
-    ): Result<M16ShelterProfile> = M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    ): Result<M16ShelterProfile> = try {
+        M16ShelterValidators.validateOpeningHours(hours)?.let { return M16ShelterErrorMapper.fail(it) }
+        Result.success(
+            remote.updateOpeningHours(shelterId, hours.zoneIdName, hours.toJsonPeriods())
+                .toM16ShelterProfile()
+        )
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
     override suspend fun updateServices(
         shelterId: String,
         services: Set<M16ShelterService>
-    ): Result<M16ShelterProfile> = M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    ): Result<M16ShelterProfile> = try {
+        Result.success(
+            remote.updateServices(shelterId, services.map { it.name }).toM16ShelterProfile()
+        )
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
     override suspend fun updateNeeds(
         shelterId: String,
         needs: List<M16ShelterNeed>
-    ): Result<M16ShelterProfile> = M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    ): Result<M16ShelterProfile> = try {
+        Result.success(remote.updateNeeds(shelterId, needs.toJsonNeeds()).toM16ShelterProfile())
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
     override suspend fun updateCapacity(
         shelterId: String,
         capacity: M16ShelterCapacity
-    ): Result<M16ShelterProfile> = M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    ): Result<M16ShelterProfile> = try {
+        M16ShelterValidators.validateCapacityModel(capacity)?.let { return M16ShelterErrorMapper.fail(it) }
+        Result.success(
+            remote.updateCapacity(
+                shelterId,
+                capacity.totalCapacity,
+                capacity.currentOccupancy,
+                capacity.reservedCount
+            ).toM16ShelterProfile()
+        )
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
     override suspend fun updatePublicContacts(
         shelterId: String,
         contacts: List<M16PublicContactChannel>
-    ): Result<M16ShelterProfile> = M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    ): Result<M16ShelterProfile> = try {
+        M16ShelterValidators.validatePublicContacts(contacts)?.let { return M16ShelterErrorMapper.fail(it) }
+        Result.success(
+            remote.updatePublicContacts(shelterId, contacts.toJsonContacts()).toM16ShelterProfile()
+        )
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
-    override suspend fun searchPublic(filter: M16ShelterSearchFilter): Result<List<M16PublicShelter>> =
-        M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+    override suspend fun searchPublic(filter: M16ShelterSearchFilter): Result<List<M16PublicShelter>> = try {
+        val verifiedOnly = filter.verificationFilter == M16ShelterVerificationFilter.VERIFIED_ONLY ||
+            filter.verifiedOnly
+        val unverifiedOrPending =
+            filter.verificationFilter == M16ShelterVerificationFilter.UNVERIFIED_OR_PENDING
+        Result.success(
+            remote.listPublic(
+                query = filter.query.takeIf { it.isNotBlank() },
+                species = filter.species?.uppercase(),
+                service = filter.service?.name,
+                operationalStatus = filter.operationalStatus?.name,
+                verifiedOnly = verifiedOnly,
+                unverifiedOrPending = unverifiedOrPending
+            ).map { it.toM16PublicShelter() }
+        )
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
 
-    override suspend fun canManageOrganization(organizationId: String): Boolean = false
+    override suspend fun canManageOrganization(organizationId: String): Boolean {
+        val userId = actorUserId() ?: return false
+        if (userId.isBlank() || organizationId.isBlank()) return false
+        return try {
+            supabase.postgrest.rpc(
+                function = "has_org_permission",
+                parameters = buildJsonObject {
+                    put("p_organization_id", organizationId)
+                    put("p_permission_code", "shelter.manage")
+                }
+            ).decodeSingle<Boolean>()
+        } catch (_: Exception) {
+            false
+        }
+    }
 
-    override suspend fun isOrganizationEligible(organizationId: String): Boolean = false
+    override suspend fun isOrganizationEligible(organizationId: String): Boolean {
+        if (organizationId.isBlank()) return false
+        return try {
+            remote.isOrganizationEligible(organizationId)
+        } catch (_: Exception) {
+            false
+        }
+    }
 }

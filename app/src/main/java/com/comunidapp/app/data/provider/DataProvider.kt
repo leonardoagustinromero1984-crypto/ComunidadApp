@@ -917,7 +917,9 @@ object DataProvider {
 
     val m16ShelterRepository: M16ShelterRepository by lazy {
         if (useSupabase) {
-            SupabaseM16ShelterRepository()
+            SupabaseM16ShelterRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
         } else {
             MockM16ShelterRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },

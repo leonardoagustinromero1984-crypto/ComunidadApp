@@ -49,7 +49,7 @@ M03 (org), M02 (auth), M04 (verificación admin futura), M05 (media ref), M06 (n
 
 ## Estrategia Supabase (B2)
 
-`SupabaseM16ShelterRepository` → `M16_REMOTE_VALIDATION_PENDING` hasta migración 053.
+`SupabaseM16ShelterRepository` → `SupabaseM16RemoteDataSource` → RPCs `m16_*` (migración 053).
 
 ## Errores
 
@@ -59,6 +59,8 @@ M03 (org), M02 (auth), M04 (verificación admin futura), M05 (media ref), M06 (n
 
 Repetición mismo estado → replay; `PERMANENTLY_CLOSED` terminal.
 
-## Migración 053 (propuesta, no creada)
+## Migración 053
 
-Tabla `m16_shelter_profiles(organization_id UNIQUE, ...)` referenciando `organizations.id`; RLS por membership M03.
+Tablas: `m16_shelter_profiles` (organization_id UNIQUE), períodos, contactos, necesidades, solicitudes verificación.
+RLS deny-by-default; lectura pública vía `_m16_public_shelter_json` / RPCs anon.
+Permisos: reutiliza `shelter.view` / `shelter.manage` (M11).
