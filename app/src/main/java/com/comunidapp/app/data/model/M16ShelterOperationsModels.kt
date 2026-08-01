@@ -6,6 +6,7 @@ package com.comunidapp.app.data.model
 
 enum class M16ShelterPetOperationalStatus {
     PHYSICALLY_HOUSED,
+    RESERVED_SLOT,
     IN_ACTIVE_FOSTER,
     ACTIVE_ADOPTION_PROCESS,
     RECENTLY_ADOPTED,
@@ -16,6 +17,7 @@ enum class M16ShelterPetOperationalStatus {
 enum class M16ShelterOperationsFilter {
     ALL,
     HOUSED,
+    RESERVED,
     IN_FOSTER,
     IN_ADOPTION,
     ADOPTED,
@@ -26,25 +28,34 @@ data class M16ShelterOperationsPartialFlags(
     val petsSourceUnavailable: Boolean = false,
     val adoptionsSourceUnavailable: Boolean = false,
     val fosterSourceUnavailable: Boolean = false,
-    val shelterOpsSourceUnavailable: Boolean = false
+    val shelterOpsSourceUnavailable: Boolean = false,
+    val adoptionCompletionDatesUnavailable: Boolean = false,
+    val fosterOrgQueryLimited: Boolean = false
 ) {
     val hasPartialData: Boolean
         get() = petsSourceUnavailable || adoptionsSourceUnavailable ||
-            fosterSourceUnavailable || shelterOpsSourceUnavailable
+            fosterSourceUnavailable || shelterOpsSourceUnavailable ||
+            adoptionCompletionDatesUnavailable || fosterOrgQueryLimited
 }
 
 data class M16ShelterOccupancyBreakdown(
     val totalCapacity: Int,
     val physicalOccupancy: Int,
     val reservedCapacity: Int,
+    val committedCapacity: Int,
     val inActiveFosterCount: Int,
     val activeAdoptionCount: Int,
     val recentlyAdoptedCount: Int,
     val availableCapacity: Int,
+    val overCapacityBy: Int,
+    val isOverCapacity: Boolean,
     val configuredOccupancySnapshot: Int?,
-    val occupancyExceedsCapacity: Boolean,
+    val snapshotDiffersFromCalculated: Boolean = false,
     val warnings: List<String> = emptyList()
-)
+) {
+    /** @deprecated usar [isOverCapacity] */
+    val occupancyExceedsCapacity: Boolean get() = isOverCapacity
+}
 
 data class M16ShelterPetOperationalItem(
     val petId: String,
@@ -53,6 +64,7 @@ data class M16ShelterPetOperationalItem(
     val photoUrl: String?,
     val status: M16ShelterPetOperationalStatus,
     val physicallyHoused: Boolean,
+    val reservedSlot: Boolean,
     val adoptionStatusLabel: String?,
     val fosterStatusLabel: String?,
     val adoptionPostId: String?,
@@ -75,6 +87,7 @@ fun filterOperationalPets(
 ): List<M16ShelterPetOperationalItem> = when (filter) {
     M16ShelterOperationsFilter.ALL -> pets
     M16ShelterOperationsFilter.HOUSED -> pets.filter { it.physicallyHoused }
+    M16ShelterOperationsFilter.RESERVED -> pets.filter { it.reservedSlot }
     M16ShelterOperationsFilter.IN_FOSTER ->
         pets.filter { it.status == M16ShelterPetOperationalStatus.IN_ACTIVE_FOSTER }
     M16ShelterOperationsFilter.IN_ADOPTION ->

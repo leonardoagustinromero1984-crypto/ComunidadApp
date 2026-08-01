@@ -126,6 +126,7 @@ data class SubmitFosterRequestInput(
 interface FosterPlacementRepository {
     fun observeActivePlacementsForHome(homeId: String): Flow<List<FosterPlacement>>
     fun observeActivePlacementsForUser(userId: String): Flow<List<FosterPlacement>>
+    fun observePlacementsForOrganization(organizationId: String): Flow<List<FosterPlacement>>
     fun observePlacementHistory(userId: String): Flow<List<FosterPlacement>>
     suspend fun getPlacementById(id: String): Result<FosterPlacement>
     suspend fun startPlacement(
@@ -498,6 +499,14 @@ class MockFosterPlacementRepository(
         store.placements.map { list ->
             list.filter {
                 (it.fosterUserId == userId || it.requesterUserId == userId) &&
+                    (it.status == FosterPlacementStatus.ACTIVE || it.status == FosterPlacementStatus.RESERVED)
+            }
+        }
+
+    override fun observePlacementsForOrganization(organizationId: String): Flow<List<FosterPlacement>> =
+        store.placements.map { list ->
+            list.filter {
+                it.requesterOrganizationId == organizationId &&
                     (it.status == FosterPlacementStatus.ACTIVE || it.status == FosterPlacementStatus.RESERVED)
             }
         }

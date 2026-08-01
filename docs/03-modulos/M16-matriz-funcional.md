@@ -20,13 +20,14 @@
 | M16-019 | Resumen operativo refugio | M16 | Implementado | UI manage + servicio | 3 |
 | M16-020 | Ocupación derivada | M08/M11/M15 | Implementado | Sin duplicar mascotas | 3 |
 | M16-021 | Compatibilidad M11 legacy | M11/M16 | Implementado | Adaptador navegación | 3 |
-| M16-016 | Métricas operativas | M16 | Pendiente | — | 4 |
-| M16-017 | Smoke remoto | Ops | Pendiente | — | 4 |
-| M16-018 | Notificaciones M06 | M06 | Hooks prep. | INFRA unavailable | 4 |
+| M16-016 | Métricas operativas | M16 | Implementado | Bloque 4 — committed/overCapacity | 4 |
+| M16-017 | Cola verificación M04 | M04/M16 | Implementado | Integrada en cola org | 4 |
+| M16-018 | Smoke remoto | Ops | Pendiente | 053 apply pendiente | 4 |
+| M16-019 | Notificaciones M06 | M06 | Hooks prep. | INFRA unavailable | 4 |
 
 ## Bloques
 
 - **Bloque 1:** fundación funcional local — **CIERRE OFICIAL COMPLETADO** (aceptación responsable)
 - **Bloque 2:** persistencia y seguridad remota — **IMPLEMENTADO** (053 creada; SQL apply pendiente)
 - **Bloque 3:** integración operativa M08/M09/M15, ocupación derivada, compat M11 — **CERRADO LOCALMENTE**
-- **Bloque 4:** métricas, privacidad, smoke, cierre — pendiente
+- **Bloque 4:** corrección ocupación, métricas, M04, preparación cierre — **CERRADO LOCALMENTE**

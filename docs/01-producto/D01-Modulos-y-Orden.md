@@ -57,7 +57,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 ### R4 — Adopción y rescate
 - **M14 Adopciones y postulaciones:** publicación, evaluación, entrevista, entrega y seguimiento.
 - **M15 Hogares de tránsito:** disponibilidad, solicitudes, alojamiento, evolución y egreso — **CIERRE OFICIAL COMPLETADO** (2026-08-01).
-- **M16 Refugios y gestión de casos:** animales, equipos, necesidades, tareas y reportes — **M16 en desarrollo**; **M16 Bloque 1 cerrado oficialmente**; **M16 Bloque 2 implementado** (053, Supabase, RLS); **M16 Bloque 3 cerrado localmente** (integración operativa, ocupación derivada); **M16 completo: no** (activación remota 053, smoke, Bloque 4 pendientes).
+- **M16 Refugios y gestión de casos:** animales, equipos, necesidades, tareas y reportes — **M16 implementación técnica completa (Bloques 1–4)**; **activación remota pendiente** (migración 053); **cierre operativo global pendiente** (smoke remoto); **M16 completo: no**.
 
 ### R5 — Comunidad
 - **M17 Donaciones y voluntariado:** campañas, bienes, dinero, tiempo y trazabilidad.

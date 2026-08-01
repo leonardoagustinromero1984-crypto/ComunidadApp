@@ -207,6 +207,13 @@ class SupabaseFosterPlacementRepository(
         )
     }
 
+    override fun observePlacementsForOrganization(organizationId: String): Flow<List<FosterPlacement>> = flow {
+        emit(
+            runCatching { remote.listPlacementsForOrganization(organizationId).map { it.toDomain() } }
+                .getOrElse { emptyList() }
+        )
+    }
+
     override suspend fun getPlacementById(id: String): Result<FosterPlacement> = try {
         if (id.isBlank()) M10FosterErrorMapper.fail("FOSTER_PLACEMENT_NOT_FOUND")
         else Result.success(remote.getPlacement(id).toDomain())

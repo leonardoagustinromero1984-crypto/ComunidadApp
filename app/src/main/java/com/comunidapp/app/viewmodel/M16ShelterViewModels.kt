@@ -298,12 +298,33 @@ class M16ShelterManageViewModel(
             pets = filterOperationalPets(summary.pets, _operationsFilter.value)
         )
         val state = when {
-            summary.pets.isEmpty() -> M16ShelterOperationsUiState.Empty
+            summary.pets.isEmpty() && summary.breakdown.physicalOccupancy == 0 &&
+                summary.breakdown.reservedCapacity == 0 -> M16ShelterOperationsUiState.Empty
             summary.partialFlags.hasPartialData ->
                 M16ShelterOperationsUiState.Partial(filtered)
             else -> M16ShelterOperationsUiState.Content(filtered)
         }
         _operationsState.value = state
+    }
+
+    fun syncOccupancySnapshot() {
+        val profile = (_uiState.value as? M16ShelterManageUiState.ProfileContent)?.profile ?: return
+        val summary = when (val ops = _operationsState.value) {
+            is M16ShelterOperationsUiState.Content -> ops.summary
+            is M16ShelterOperationsUiState.Partial -> ops.summary
+            else -> return
+        }
+        viewModelScope.launch {
+            repository.syncOccupancySnapshot(
+                profile.id,
+                summary.breakdown.physicalOccupancy
+            ).onSuccess {
+                _feedback.value = "Snapshot de ocupación actualizado (${summary.breakdown.physicalOccupancy})."
+                refreshOrganization()
+            }.onFailure {
+                _feedback.value = M16ShelterErrorMapper.userMessage(M16ShelterErrorMapper.codeOf(it))
+            }
+        }
     }
 
     fun createProfile() {

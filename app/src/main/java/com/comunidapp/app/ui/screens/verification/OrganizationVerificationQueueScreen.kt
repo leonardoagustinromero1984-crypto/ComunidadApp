@@ -28,6 +28,7 @@ import com.comunidapp.app.viewmodel.verification.OrganizationVerificationQueueVi
 fun OrganizationVerificationQueueScreen(
     onNavigateBack: () -> Unit,
     onReviewClick: (String) -> Unit = {},
+    onShelterVerificationClick: (String) -> Unit = {},
     viewModel: OrganizationVerificationQueueViewModel = viewModel(
         factory = OrganizationVerificationQueueViewModel.factory()
     )
@@ -50,19 +51,38 @@ fun OrganizationVerificationQueueScreen(
             contentPadding = PaddingValues(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            items(uiState.reviews, key = { it.id }) { r ->
+            items(uiState.reviews, key = { "org_${it.id}" }) { r ->
                 Card(
                     modifier = Modifier
                         .fillMaxWidth()
                         .clickable { onReviewClick(r.id) }
                 ) {
                     Text(
-                        text = r.organizationId,
+                        text = "Organización · ${r.organizationId}",
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp)
                     )
                     Text(
                         text = r.status.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(horizontal = 16.dp)
+                    )
+                    Spacer(modifier = Modifier.padding(bottom = 16.dp))
+                }
+            }
+            items(uiState.shelterRequests, key = { "m16_${it.id}" }) { req ->
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable { onShelterVerificationClick(req.id) }
+                ) {
+                    Text(
+                        text = "Refugio M16 · ${req.shelterDisplayName}",
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp)
+                    )
+                    Text(
+                        text = "${req.status.name} · org ${req.organizationId}",
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(horizontal = 16.dp)
                     )

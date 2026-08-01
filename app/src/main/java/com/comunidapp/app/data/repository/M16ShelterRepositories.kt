@@ -84,6 +84,25 @@ class M16MemoryStore {
 
     fun idempotentRetryCount(): Int = idempotentRetries.get()
 
+    private val _verificationRequests =
+        MutableStateFlow<List<com.comunidapp.app.data.model.M16ShelterVerificationRequest>>(emptyList())
+    val verificationRequests: StateFlow<List<com.comunidapp.app.data.model.M16ShelterVerificationRequest>> =
+        _verificationRequests.asStateFlow()
+
+    fun listPendingVerificationRequests(): List<com.comunidapp.app.data.model.M16ShelterVerificationRequest> =
+        _verificationRequests.value.filter {
+            it.status == com.comunidapp.app.data.model.M16ShelterVerificationRequestStatus.PENDING ||
+                it.status == com.comunidapp.app.data.model.M16ShelterVerificationRequestStatus.UNDER_REVIEW
+        }
+
+    fun upsertVerificationRequest(
+        request: com.comunidapp.app.data.model.M16ShelterVerificationRequest
+    ) {
+        _verificationRequests.update { list ->
+            (list.filterNot { it.id == request.id } + request).sortedByDescending { it.requestedAt }
+        }
+    }
+
     fun seedDefaults(actorUserId: String = "mock_user_admin") {
         if (seeded) return
         seeded = true
@@ -174,6 +193,20 @@ class M16MemoryStore {
             )
         )
         _profiles.value = samples
+        val surProfile = samples.find { it.organizationId == M16MockOrganizations.ORG_SUR }
+        if (surProfile != null) {
+            upsertVerificationRequest(
+                com.comunidapp.app.data.model.M16ShelterVerificationRequest(
+                    id = nextId("m16_verification"),
+                    shelterProfileId = surProfile.id,
+                    shelterDisplayName = surProfile.displayName,
+                    organizationId = surProfile.organizationId,
+                    requestedBy = actorUserId,
+                    status = com.comunidapp.app.data.model.M16ShelterVerificationRequestStatus.PENDING,
+                    requestedAt = now
+                )
+            )
+        }
     }
 }
 
@@ -201,6 +234,10 @@ interface M16ShelterRepository {
     ): Result<M16ShelterProfile>
     suspend fun updateNeeds(shelterId: String, needs: List<M16ShelterNeed>): Result<M16ShelterProfile>
     suspend fun updateCapacity(shelterId: String, capacity: M16ShelterCapacity): Result<M16ShelterProfile>
+    suspend fun syncOccupancySnapshot(
+        shelterId: String,
+        calculatedPhysicalOccupancy: Int
+    ): Result<M16ShelterProfile>
     suspend fun updatePublicContacts(
         shelterId: String,
         contacts: List<M16PublicContactChannel>
@@ -420,9 +457,22 @@ class MockM16ShelterRepository(
                     profile
                 }
                 M16ShelterVerificationStatus.UNVERIFIED,
-                M16ShelterVerificationStatus.REJECTED -> profile.copy(
-                    verificationStatus = M16ShelterVerificationStatus.PENDING
-                )
+                M16ShelterVerificationStatus.REJECTED -> {
+                    val now = System.currentTimeMillis()
+                    val actor = actorUserId() ?: "mock_user_admin"
+                    store.upsertVerificationRequest(
+                        com.comunidapp.app.data.model.M16ShelterVerificationRequest(
+                            id = store.nextId("m16_verification"),
+                            shelterProfileId = profile.id,
+                            shelterDisplayName = profile.displayName,
+                            organizationId = profile.organizationId,
+                            requestedBy = actor,
+                            status = com.comunidapp.app.data.model.M16ShelterVerificationRequestStatus.PENDING,
+                            requestedAt = now
+                        )
+                    )
+                    profile.copy(verificationStatus = M16ShelterVerificationStatus.PENDING)
+                }
                 M16ShelterVerificationStatus.SUSPENDED -> failM16("M16_INVALID_STATE_TRANSITION")
             }
         }
@@ -455,6 +505,15 @@ class MockM16ShelterRepository(
     ): Result<M16ShelterProfile> = mutateProfile(shelterId) { profile ->
         M16ShelterValidators.validateCapacityModel(capacity)?.let { failM16(it) }
         profile.copy(capacity = capacity)
+    }
+
+    override suspend fun syncOccupancySnapshot(
+        shelterId: String,
+        calculatedPhysicalOccupancy: Int
+    ): Result<M16ShelterProfile> = mutateProfile(shelterId) { profile ->
+        profile.copy(
+            capacity = profile.capacity.copy(currentOccupancy = calculatedPhysicalOccupancy.coerceAtLeast(0))
+        )
     }
 
     override suspend fun updatePublicContacts(
@@ -660,6 +719,23 @@ class SupabaseM16ShelterRepository(
                 capacity.totalCapacity,
                 capacity.currentOccupancy,
                 capacity.reservedCount
+            ).toM16ShelterProfile()
+        )
+    } catch (t: Throwable) {
+        M16ShelterErrorMapper.failure(t)
+    }
+
+    override suspend fun syncOccupancySnapshot(
+        shelterId: String,
+        calculatedPhysicalOccupancy: Int
+    ): Result<M16ShelterProfile> = try {
+        val profile = getProfileById(shelterId).getOrThrow()
+        Result.success(
+            remote.updateCapacity(
+                shelterId,
+                profile.capacity.totalCapacity,
+                calculatedPhysicalOccupancy.coerceAtLeast(0),
+                profile.capacity.reservedCount
             ).toM16ShelterProfile()
         )
     } catch (t: Throwable) {

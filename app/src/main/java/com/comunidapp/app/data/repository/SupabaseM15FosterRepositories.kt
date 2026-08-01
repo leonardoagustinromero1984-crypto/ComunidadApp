@@ -84,9 +84,7 @@ class SupabaseM15FosterPlacementRepository(
         delegate.observeActivePlacementsForUser(userId).map { list -> list.map { it.toM15() } }
 
     override fun observePlacementsForOrganization(organizationId: String): Flow<List<M15FosterPlacement>> =
-        kotlinx.coroutines.flow.flow {
-            emit(emptyList())
-        }
+        delegate.observePlacementsForOrganization(organizationId).map { list -> list.map { it.toM15() } }
 
     override suspend fun getPlacementById(id: String): Result<M15FosterPlacement> =
         delegate.getPlacementById(id).mapM15Failure { it.toM15() }

@@ -26,6 +26,7 @@ object M16IntegrationPetIds {
     const val PET_HOUSED_ADOPTION = "pet_shelter_norte_3"
     const val PET_ADOPTED = "pet_shelter_norte_4"
     const val PET_INCONSISTENT = "pet_shelter_norte_5"
+    const val PET_RESERVED = "pet_shelter_norte_6"
 }
 
 /**
@@ -56,7 +57,8 @@ object M16OperationsIntegrationSeeds {
             pet(M16IntegrationPetIds.PET_FOSTER, "Lola", PetSpecies.DOG),
             pet(M16IntegrationPetIds.PET_HOUSED_ADOPTION, "Milo", PetSpecies.CAT),
             pet(M16IntegrationPetIds.PET_ADOPTED, "Nina", PetSpecies.CAT, status = "ARCHIVED"),
-            pet(M16IntegrationPetIds.PET_INCONSISTENT, "Tito", PetSpecies.DOG)
+            pet(M16IntegrationPetIds.PET_INCONSISTENT, "Tito", PetSpecies.DOG),
+            pet(M16IntegrationPetIds.PET_RESERVED, "Rocco", PetSpecies.DOG)
         )
         pets.forEach { p ->
             if (InMemoryDataStore.getPetById(p.id) == null) {
@@ -110,6 +112,12 @@ object M16OperationsIntegrationSeeds {
                 profileId,
                 actor,
                 ShelterPetPlacementStatus.ACTIVE
+            ),
+            placement(
+                M16IntegrationPetIds.PET_RESERVED,
+                profileId,
+                actor,
+                ShelterPetPlacementStatus.RESERVED
             )
         )
         store.placements.value = store.placements.value.filterNot { p ->
@@ -194,6 +202,7 @@ object M16OperationsIntegrationSeeds {
 
     private fun seedAdoptions() {
         val org = M16MockOrganizations.ORG_NORTE
+        val now = System.currentTimeMillis()
         val posts = listOf(
             AdoptionPost(
                 id = "adopt_m16_1",
@@ -224,8 +233,26 @@ object M16OperationsIntegrationSeeds {
                 ageYears = 3,
                 size = PetSize.SMALL,
                 location = "CABA",
-                description = "Adoptada",
-                status = AdoptionStatus.ADOPTED
+                description = "Adoptada recientemente",
+                status = AdoptionStatus.ADOPTED,
+                updatedAt = now - 5 * 86_400_000L
+            ),
+            AdoptionPost(
+                id = "adopt_m16_3",
+                petId = "pet_shelter_norte_old",
+                publisherOrganizationId = org,
+                publisherId = "mock_user_admin",
+                shelterId = org,
+                shelterName = "Refugio Comunitario Norte",
+                name = "Viejo",
+                species = PetSpecies.DOG,
+                sex = PetSex.MALE,
+                ageYears = 8,
+                size = PetSize.MEDIUM,
+                location = "CABA",
+                description = "Adoptada hace meses",
+                status = AdoptionStatus.ADOPTED,
+                updatedAt = now - 60 * 86_400_000L
             )
         )
         posts.forEach { post ->

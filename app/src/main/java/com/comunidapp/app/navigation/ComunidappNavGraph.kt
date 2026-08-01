@@ -49,6 +49,7 @@ import com.comunidapp.app.ui.screens.support.MySupportTicketsScreen
 import com.comunidapp.app.ui.screens.support.SupportQueueScreen
 import com.comunidapp.app.ui.screens.support.SupportTicketAdminDetailScreen
 import com.comunidapp.app.ui.screens.support.SupportTicketDetailScreen
+import com.comunidapp.app.ui.screens.verification.M16ShelterVerificationReviewScreen
 import com.comunidapp.app.ui.screens.verification.OrganizationVerificationQueueScreen
 import com.comunidapp.app.ui.screens.verification.OrganizationVerificationReviewScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionAgreementScreen
@@ -2420,7 +2421,23 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.ORG_VERIFICATION_QUEUE) {
         OrganizationVerificationQueueScreen(
             onNavigateBack = { navController.popBackStack() },
-            onReviewClick = { id -> navController.navigate(NavRoutes.orgVerificationReview(id)) }
+            onReviewClick = { id -> navController.navigate(NavRoutes.orgVerificationReview(id)) },
+            onShelterVerificationClick = { id ->
+                navController.navigate(NavRoutes.m16ShelterVerificationReview(id))
+            }
+        )
+    }
+    composable(
+        route = NavRoutes.M16_SHELTER_VERIFICATION_REVIEW,
+        arguments = listOf(navArgument(NavRoutes.ARG_M16_VERIFICATION_REQUEST_ID) { type = NavType.StringType })
+    ) { entry ->
+        val requestId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_M16_VERIFICATION_REQUEST_ID).orEmpty(),
+            Charsets.UTF_8.name()
+        )
+        M16ShelterVerificationReviewScreen(
+            requestId = requestId,
+            onNavigateBack = { navController.popBackStack() }
         )
     }
     composable(

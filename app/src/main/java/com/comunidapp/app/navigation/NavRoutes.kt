@@ -243,6 +243,7 @@ object NavRoutes {
     const val MY_MODERATION_APPEALS = "my_moderation_appeals"
     const val ORG_VERIFICATION_QUEUE = "org_verification_queue"
     const val ORG_VERIFICATION_REVIEW = "org_verification_review/{reviewId}"
+    const val M16_SHELTER_VERIFICATION_REVIEW = "m16_shelter_verification/{requestId}"
     const val MY_SUPPORT_TICKETS = "my_support_tickets"
     const val CREATE_SUPPORT_TICKET = "create_support_ticket"
     const val SUPPORT_TICKET_DETAIL = "support_ticket/{ticketId}"
@@ -264,6 +265,7 @@ object NavRoutes {
     const val ARG_CASE_ID = "caseId"
     const val ARG_APPEAL_ID = "appealId"
     const val ARG_REVIEW_ID = "reviewId"
+    const val ARG_M16_VERIFICATION_REQUEST_ID = "requestId"
     const val ARG_TICKET_ID = "ticketId"
 
     const val ARG_CONVERSATION_ID = "conversationId"
@@ -472,6 +474,8 @@ object NavRoutes {
         "moderation_appeal/${java.net.URLEncoder.encode(appealId, Charsets.UTF_8.name())}"
     fun orgVerificationReview(reviewId: String) =
         "org_verification_review/${java.net.URLEncoder.encode(reviewId, Charsets.UTF_8.name())}"
+    fun m16ShelterVerificationReview(requestId: String) =
+        "m16_shelter_verification/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
     fun supportTicketDetail(ticketId: String) =
         "support_ticket/${java.net.URLEncoder.encode(ticketId, Charsets.UTF_8.name())}"
     fun supportAdminTicket(ticketId: String) =

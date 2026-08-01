@@ -31,6 +31,31 @@ enum class M16ShelterVerificationStatus {
     SUSPENDED
 }
 
+enum class M16ShelterVerificationRequestStatus {
+    PENDING,
+    UNDER_REVIEW,
+    APPROVED,
+    REJECTED,
+    CANCELLED
+}
+
+data class M16ShelterVerificationRequest(
+    val id: String,
+    val shelterProfileId: String,
+    val shelterDisplayName: String,
+    val organizationId: String,
+    val requestedBy: String,
+    val status: M16ShelterVerificationRequestStatus,
+    val requestedAt: Long,
+    val decisionNotes: String? = null,
+    val decidedAt: Long? = null
+)
+
+enum class M16ShelterVerificationDecision {
+    VERIFIED,
+    REJECTED
+}
+
 enum class M16ShelterAvailabilityStatus {
     AVAILABLE,
     LIMITED,

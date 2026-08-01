@@ -38,8 +38,9 @@ Mock usa `organizationManagers` map. Producción: `OrganizationPermissionCode` v
 - **Tránsito activo:** colocaciones M15 abiertas — dimensión separada; no suma a ocupación física.
 - **Adopción activa:** procesos M09/M14 abiertos — dimensión separada; la mascota puede seguir alojada.
 - **Adoptadas recientes:** métrica histórica (adopción completada), no ocupan cupo.
-- **Fórmula:** `availableCapacity = max(0, totalCapacity - physicalOccupancy - reservedCapacity)`; advertencia si `physicalOccupancy > totalCapacity`.
-- **`currentOccupancy` legacy:** snapshot informativo; la UI operativa usa el valor calculado por `M16ShelterOperationsService`.
+- **Fórmula:** `committedCapacity = physicalOccupancy + reservedCapacity`; `availableCapacity = max(0, total - committed)`; `overCapacityBy = max(0, committed - total)`.
+- **`currentOccupancy` legacy:** snapshot informativo; acción `syncOccupancySnapshot` explícita.
+- **Adopciones recientes:** ventana `M16_RECENT_ADOPTION_WINDOW_DAYS` (30); proxy `updatedAt` en ADOPTED.
 
 ## Proyección operativa (Bloque 3)
 
@@ -56,9 +57,17 @@ Modelos de lectura: `M16ShelterOperationsSummary`, `M16ShelterPetOperationalItem
 
 Resumen operativo **no público** — requiere `shelter.view` / `shelter.manage` (M03). No se expone en `M16PublicShelter` ni RPCs públicas.
 
-## Compatibilidad M11 (Bloque 3)
+## Compatibilidad M11 (Bloque 3–4)
 
-`M11M16ShelterCompatibilityAdapter`: si el perfil legacy tiene `organizationId` inequívoco con M16, navega al detalle público M16; si no, mantiene pantalla legacy con aviso.
+`M11M16ShelterCompatibilityAdapter`: navegación M16 cuando hay org asociada.
+
+**Autoridad física transitoria:** `ShelterPetPlacement` M11 (ACTIVE/QUARANTINE/MEDICAL_CARE = físico; RESERVED = cupo sin ingreso).
+
+Futuro: migración asistida de placements hacia autoridad definitiva (sin automatizar en Bloque 4).
+
+## Verificación M04 (Bloque 4)
+
+Cola administrativa compartida (`OrganizationVerificationQueueScreen`) + `M16ShelterVerificationReviewScreen` + RPC `m16_decide_shelter_verification`.
 
 ## Privacidad
 

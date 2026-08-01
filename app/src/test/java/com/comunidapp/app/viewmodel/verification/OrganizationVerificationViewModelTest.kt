@@ -1,6 +1,10 @@
 package com.comunidapp.app.viewmodel.verification
 
+import com.comunidapp.app.core.result.AppResult
 import com.comunidapp.app.data.mock.MockAuthDatabase
+import com.comunidapp.app.data.model.M16ShelterVerificationDecision
+import com.comunidapp.app.data.model.M16ShelterVerificationRequest
+import com.comunidapp.app.data.repository.M16ShelterVerificationRepository
 import com.comunidapp.app.data.mock.MockData
 import com.comunidapp.app.data.repository.MockAuthRepository
 import com.comunidapp.app.data.repository.MockOrganizationVerificationRepository
@@ -63,7 +67,34 @@ class OrganizationVerificationViewModelTest {
     fun queue_denied_for_moderator() = runTest(dispatcher) {
         auth.login(MockData.currentUser.email, MockAuthDatabase.DEMO_PASSWORD)
         permissions.setRolesForTests(MockData.currentUser.id, setOf(PlatformRoleCode.MODERATOR))
-        val vm = OrganizationVerificationQueueViewModel(repo, auth, permissions)
+        val vm = OrganizationVerificationQueueViewModel(
+            repository = repo,
+            shelterVerificationRepository = object : M16ShelterVerificationRepository {
+                override suspend fun listPendingRequests(): AppResult<List<M16ShelterVerificationRequest>> =
+                    AppResult.Success(emptyList())
+                override suspend fun getRequest(requestId: String) =
+                    AppResult.Failure(
+                        com.comunidapp.app.core.result.AppError(
+                            com.comunidapp.app.core.result.AppErrorKind.NOT_FOUND,
+                            "n/a",
+                            "n/a"
+                        )
+                    )
+                override suspend fun decide(
+                    requestId: String,
+                    decision: M16ShelterVerificationDecision,
+                    notes: String?
+                ) = AppResult.Failure(
+                    com.comunidapp.app.core.result.AppError(
+                        com.comunidapp.app.core.result.AppErrorKind.UNKNOWN,
+                        "n/a",
+                        "n/a"
+                    )
+                )
+            },
+            authRepository = auth,
+            permissionRepository = permissions
+        )
         advanceUntilIdle()
         assertEquals(AdministrativeScreenPhase.AccessDenied, vm.uiState.value.phase)
     }

@@ -56,7 +56,9 @@ MIGRACIÓN 054 NO REQUERIDA
 054 NO CREADA
 ```
 
-## Estado
+## Nota Bloque 4
+
+La fórmula inicial contaba `RESERVED` dos veces. Bloque 4 adopta **Modelo A** alineado con `_m11_sync_shelter_capacity`. Ver `M16-Bloque-4-auditoria.md`.
 
 ```text
 M16 BLOQUE 3 INTEGRACIÓN OPERATIVA IMPLEMENTADA

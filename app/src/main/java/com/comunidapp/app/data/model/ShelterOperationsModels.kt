@@ -47,6 +47,13 @@ enum class ShelterPetPlacementStatus {
         get() = this == RESERVED || this == ACTIVE || this == QUARANTINE || this == MEDICAL_CARE
 
     val isOpen: Boolean get() = countsTowardCapacity
+
+    /** M16 Bloque 4 — aloja físicamente (M11 `_m11_sync_shelter_capacity` occupancy). */
+    val isPhysicallyOccupying: Boolean
+        get() = this == ACTIVE || this == QUARANTINE || this == MEDICAL_CARE
+
+    /** M16 Bloque 4 — cupo reservado sin ingreso físico aún. */
+    val isReservedSlot: Boolean get() = this == RESERVED
 }
 
 enum class ShelterPetEndReason {

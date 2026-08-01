@@ -14,6 +14,7 @@ import com.comunidapp.app.data.model.M16ShelterPublicationStatus
 import com.comunidapp.app.data.model.M16ShelterService
 import com.comunidapp.app.data.model.M16ShelterVerificationStatus
 import com.comunidapp.app.data.remote.supabase.supabase
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
@@ -318,6 +319,31 @@ class SupabaseM16RemoteDataSource {
         buildJsonObject {
             put("p_shelter_id", shelterId)
             put("p_contacts", contacts)
+        }
+    )
+
+    suspend fun listPendingVerificationRequests(): List<com.comunidapp.app.data.repository.M16VerificationRequestRow> =
+        supabase.from("m16_shelter_verification_requests").select {
+            filter {
+                isIn("status", listOf("PENDING", "UNDER_REVIEW"))
+            }
+        }.decodeList()
+
+    suspend fun getVerificationRequest(requestId: String): com.comunidapp.app.data.repository.M16VerificationRequestRow =
+        supabase.from("m16_shelter_verification_requests").select {
+            filter { eq("id", requestId) }
+        }.decodeSingle()
+
+    suspend fun decideShelterVerification(
+        requestId: String,
+        decision: String,
+        notes: String?
+    ): JsonObject = decodeOne(
+        "m16_decide_shelter_verification",
+        buildJsonObject {
+            put("p_request_id", requestId)
+            put("p_decision", decision)
+            put("p_notes", notes)
         }
     )
 }

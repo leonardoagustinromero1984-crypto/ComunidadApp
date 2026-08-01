@@ -950,6 +950,20 @@ object DataProvider {
         }
     }
 
+    /** M16 Bloque 4 — cola administrativa verificación refugio (M04). */
+    val m16ShelterVerificationRepository: com.comunidapp.app.data.repository.M16ShelterVerificationRepository by lazy {
+        if (useSupabase) {
+            com.comunidapp.app.data.repository.SupabaseM16ShelterVerificationRepository(
+                profileRepo = m16ShelterRepository
+            )
+        } else {
+            com.comunidapp.app.data.repository.MockM16ShelterVerificationRepository(
+                store = m16Store,
+                profileRepo = m16ShelterRepository
+            )
+        }
+    }
+
     val serviceRepository: ServiceRepository by lazy {
         if (useSupabase) SupabaseServiceRepository() else MockServiceRepository()
     }

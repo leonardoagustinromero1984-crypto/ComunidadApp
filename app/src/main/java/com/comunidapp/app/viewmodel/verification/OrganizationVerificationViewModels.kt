@@ -5,8 +5,10 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.core.result.AppResult
 import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.data.model.M16ShelterVerificationRequest
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
+import com.comunidapp.app.data.repository.M16ShelterVerificationRepository
 import com.comunidapp.app.data.repository.OrganizationVerificationRepository
 import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.domain.authorization.PermissionCode
@@ -24,6 +26,7 @@ import kotlinx.coroutines.launch
 data class OrganizationVerificationQueueUiState(
     val phase: AdministrativeScreenPhase = AdministrativeScreenPhase.Loading,
     val reviews: List<OrganizationVerificationReview> = emptyList(),
+    val shelterRequests: List<M16ShelterVerificationRequest> = emptyList(),
     val canReview: Boolean = false,
     val canRevoke: Boolean = false,
     val message: String? = null,
@@ -33,6 +36,8 @@ data class OrganizationVerificationQueueUiState(
 class OrganizationVerificationQueueViewModel(
     private val repository: OrganizationVerificationRepository =
         DataProvider.organizationVerificationRepository,
+    private val shelterVerificationRepository: M16ShelterVerificationRepository =
+        DataProvider.m16ShelterVerificationRepository,
     private val authRepository: AuthRepository = AuthProvider.repository,
     private val permissionRepository: PermissionRepository = DataProvider.permissionRepository
 ) : ViewModel() {
@@ -63,14 +68,18 @@ class OrganizationVerificationQueueViewModel(
             }
             when (val result = repository.listPendingVerificationRequests()) {
                 is AppResult.Success -> {
+                    val shelterResult = shelterVerificationRepository.listPendingRequests()
+                    val shelterRequests = (shelterResult as? AppResult.Success)?.data.orEmpty()
+                    val combinedEmpty = result.data.isEmpty() && shelterRequests.isEmpty()
                     _uiState.update {
                         it.copy(
-                            phase = if (result.data.isEmpty()) {
+                            phase = if (combinedEmpty) {
                                 AdministrativeScreenPhase.Empty
                             } else {
                                 AdministrativeScreenPhase.Content
                             },
                             reviews = result.data,
+                            shelterRequests = shelterRequests,
                             canReview = true,
                             canRevoke = AdministrativeAccessGate.hasExtra(
                                 gate,

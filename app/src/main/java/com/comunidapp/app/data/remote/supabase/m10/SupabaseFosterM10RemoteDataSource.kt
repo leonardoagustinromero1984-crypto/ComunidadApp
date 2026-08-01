@@ -19,6 +19,7 @@ import com.comunidapp.app.data.model.FosterPlacement
 import com.comunidapp.app.data.model.FosterPlacementStatus
 import com.comunidapp.app.data.model.FosterUrgency
 import com.comunidapp.app.data.remote.supabase.supabase
+import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -368,6 +369,14 @@ class SupabaseFosterM10RemoteDataSource {
                 else put("p_home_id", JsonNull)
             }
         )
+
+    suspend fun listPlacementsForOrganization(organizationId: String): List<FosterPlacementRow> =
+        supabase.from("foster_placements").select {
+            filter {
+                eq("requester_organization_id", organizationId)
+                isIn("status", listOf("RESERVED", "ACTIVE"))
+            }
+        }.decodeList()
 
     suspend fun getPlacement(id: String): FosterPlacementRow =
         decodeOne("m10_get_foster_placement", buildJsonObject { put("p_placement_id", id) })

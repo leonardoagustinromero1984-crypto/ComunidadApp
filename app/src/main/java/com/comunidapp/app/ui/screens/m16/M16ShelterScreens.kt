@@ -450,6 +450,7 @@ fun M16ShelterManageScreen(
                     operationsFilter = operationsFilter,
                     onOperationsFilterChange = viewModel::setOperationsFilter,
                     onRefreshOperations = { viewModel.refreshOperations(state.profile.id) },
+                    onSyncOccupancySnapshot = { viewModel.syncOccupancySnapshot() },
                     onNavigateToPet = onNavigateToPet,
                     onNavigateToAdoption = onNavigateToAdoption,
                     onNavigateToFoster = onNavigateToFoster,
@@ -511,6 +512,7 @@ private fun M16ProfileManageContent(
     operationsFilter: com.comunidapp.app.data.model.M16ShelterOperationsFilter,
     onOperationsFilterChange: (com.comunidapp.app.data.model.M16ShelterOperationsFilter) -> Unit,
     onRefreshOperations: () -> Unit,
+    onSyncOccupancySnapshot: () -> Unit,
     onNavigateToPet: (String) -> Unit,
     onNavigateToAdoption: (String) -> Unit,
     onNavigateToFoster: (String) -> Unit,
@@ -729,6 +731,7 @@ private fun M16ProfileManageContent(
         operationsFilter = operationsFilter,
         onFilterChange = onOperationsFilterChange,
         onRefresh = onRefreshOperations,
+        onSyncOccupancySnapshot = onSyncOccupancySnapshot,
         onNavigateToPet = onNavigateToPet,
         onNavigateToAdoption = onNavigateToAdoption,
         onNavigateToFoster = onNavigateToFoster
@@ -763,6 +766,7 @@ private fun M16OperationsSection(
     operationsFilter: M16ShelterOperationsFilter,
     onFilterChange: (M16ShelterOperationsFilter) -> Unit,
     onRefresh: () -> Unit,
+    onSyncOccupancySnapshot: () -> Unit,
     onNavigateToPet: (String) -> Unit,
     onNavigateToAdoption: (String) -> Unit,
     onNavigateToFoster: (String) -> Unit
@@ -789,16 +793,41 @@ private fun M16OperationsSection(
         M16ShelterOperationsUiState.Empty -> Text("Sin mascotas operativas vinculadas.")
         is M16ShelterOperationsUiState.Partial -> {
             Text(
-                "Datos parciales — alguna fuente no respondió.",
+                buildPartialSourcesMessage(operationsState.summary.partialFlags),
                 color = MaterialTheme.colorScheme.tertiary,
                 style = MaterialTheme.typography.bodySmall
             )
-            M16OperationsSummaryBody(operationsState.summary, onNavigateToPet, onNavigateToAdoption, onNavigateToFoster)
+            M16OperationsSummaryBody(
+                operationsState.summary,
+                onNavigateToPet,
+                onNavigateToAdoption,
+                onNavigateToFoster,
+                onSyncOccupancySnapshot
+            )
         }
         is M16ShelterOperationsUiState.Content -> {
-            M16OperationsSummaryBody(operationsState.summary, onNavigateToPet, onNavigateToAdoption, onNavigateToFoster)
+            M16OperationsSummaryBody(
+                operationsState.summary,
+                onNavigateToPet,
+                onNavigateToAdoption,
+                onNavigateToFoster,
+                onSyncOccupancySnapshot
+            )
         }
     }
+}
+
+private fun buildPartialSourcesMessage(
+    flags: com.comunidapp.app.data.model.M16ShelterOperationsPartialFlags
+): String {
+    val parts = mutableListOf<String>()
+    if (flags.petsSourceUnavailable) parts += "M08"
+    if (flags.adoptionsSourceUnavailable) parts += "M09"
+    if (flags.fosterSourceUnavailable) parts += "M15"
+    if (flags.shelterOpsSourceUnavailable) parts += "M11"
+    if (flags.adoptionCompletionDatesUnavailable) parts += "fechas adopción"
+    if (flags.fosterOrgQueryLimited) parts += "M15 org (RLS limitada)"
+    return "Datos parciales — fuentes pendientes: ${parts.joinToString(", ")}."
 }
 
 @Composable
@@ -806,21 +835,37 @@ private fun M16OperationsSummaryBody(
     summary: com.comunidapp.app.data.model.M16ShelterOperationsSummary,
     onNavigateToPet: (String) -> Unit,
     onNavigateToAdoption: (String) -> Unit,
-    onNavigateToFoster: (String) -> Unit
+    onNavigateToFoster: (String) -> Unit,
+    onSyncOccupancySnapshot: () -> Unit
 ) {
     val b = summary.breakdown
     Text("Capacidad total: ${b.totalCapacity}")
-    Text("Ocupación física calculada: ${b.physicalOccupancy}")
-    Text("Reservados (M11): ${b.reservedCapacity}")
+    Text("Ocupación física: ${b.physicalOccupancy}")
+    Text("Cupos reservados (sin ingreso): ${b.reservedCapacity}")
+    Text("Capacidad comprometida: ${b.committedCapacity}")
+    Text("Cupos disponibles: ${b.availableCapacity}")
+    if (b.isOverCapacity) {
+        Text(
+            "Exceso de capacidad: ${b.overCapacityBy}",
+            color = MaterialTheme.colorScheme.error
+        )
+    }
     Text("En tránsito activo: ${b.inActiveFosterCount}")
     Text("Adopción activa: ${b.activeAdoptionCount}")
-    Text("Adoptadas recientes: ${b.recentlyAdoptedCount}")
-    Text("Cupos disponibles: ${b.availableCapacity}")
+    Text("Adoptadas últimos ${com.comunidapp.app.domain.m16.M16_RECENT_ADOPTION_WINDOW_DAYS} días: ${b.recentlyAdoptedCount}")
+    Text("Inconsistencias: ${summary.pets.count { it.status == com.comunidapp.app.data.model.M16ShelterPetOperationalStatus.INCONSISTENT }}")
     b.configuredOccupancySnapshot?.let {
         Text("Snapshot manual M16: $it", style = MaterialTheme.typography.bodySmall)
     }
-    if (b.occupancyExceedsCapacity) {
-        Text("Advertencia: ocupación supera capacidad.", color = MaterialTheme.colorScheme.error)
+    if (b.snapshotDiffersFromCalculated) {
+        Text(
+            "El snapshot manual difiere de la ocupación física calculada.",
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall
+        )
+        OutlinedButton(onClick = onSyncOccupancySnapshot, modifier = Modifier.fillMaxWidth()) {
+            Text("Actualizar snapshot de ocupación")
+        }
     }
     b.warnings.forEach { w ->
         Text("• $w", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
@@ -846,6 +891,9 @@ private fun M16OperationalPetRow(
         Column(Modifier.padding(12.dp)) {
             Text(item.displayName, fontWeight = FontWeight.SemiBold)
             Text("${item.species} · ${item.status.name}")
+            if (item.reservedSlot) {
+                Text("Cupo reservado (sin ingreso físico)", style = MaterialTheme.typography.bodySmall)
+            }
             item.adoptionStatusLabel?.let { Text("Adopción: $it", style = MaterialTheme.typography.bodySmall) }
             item.fosterStatusLabel?.let { Text("Tránsito: $it", style = MaterialTheme.typography.bodySmall) }
             item.warning?.let {
