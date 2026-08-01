@@ -59,6 +59,15 @@ object NavRoutes {
     const val ARG_PUBLIC_CODE = "publicCode"
     const val ARG_M14_REQUEST_ID = "requestId"
 
+    // M15 — Hogares de tránsito (Bloque 1 local)
+    const val M15_HUB = "m15/hub"
+    const val M15_HOMES = "m15/homes"
+    const val M15_HOME_DETAIL = "m15/homes/{m15HomeId}"
+    const val M15_MY_HOME = "m15/my_home"
+    const val M15_REQUEST_FORM = "m15/requests/new/{m15HomeId}"
+    const val M15_REQUESTS_RECEIVED = "m15/requests/received"
+    const val ARG_M15_HOME_ID = "m15HomeId"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -483,4 +492,9 @@ object NavRoutes {
         "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/history"
     fun m14Public(publicCode: String) =
         "m14/public/${java.net.URLEncoder.encode(publicCode, Charsets.UTF_8.name())}"
+
+    fun m15HomeDetail(homeId: String) =
+        "m15/homes/${java.net.URLEncoder.encode(homeId, Charsets.UTF_8.name())}"
+    fun m15RequestForm(homeId: String) =
+        "m15/requests/new/${java.net.URLEncoder.encode(homeId, Charsets.UTF_8.name())}"
 }

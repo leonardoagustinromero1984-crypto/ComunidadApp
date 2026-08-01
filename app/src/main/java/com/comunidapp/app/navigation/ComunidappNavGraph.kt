@@ -912,6 +912,7 @@ private fun NavGraphBuilder.mainAppRoutes(
         )
     }
     m14PassportRoutes(navController)
+    m15FosterRoutes(navController)
     composable(
         route = NavRoutes.ADOPTION_DETAIL,
         arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })

@@ -46,6 +46,14 @@ import com.comunidapp.app.data.repository.M14MemoryStore
 import com.comunidapp.app.data.repository.M14OperationsRepository
 import com.comunidapp.app.data.repository.M14PassportRepository
 import com.comunidapp.app.data.repository.M14VerificationRepository
+import com.comunidapp.app.data.repository.M15FosterHomeRepository
+import com.comunidapp.app.data.repository.M15FosterPlacementRepository
+import com.comunidapp.app.data.repository.M15FosterRequestRepository
+import com.comunidapp.app.data.repository.M15MemoryStore
+import com.comunidapp.app.data.repository.MockM15AuthorityPolicy
+import com.comunidapp.app.data.repository.MockM15FosterHomeRepository
+import com.comunidapp.app.data.repository.MockM15FosterPlacementRepository
+import com.comunidapp.app.data.repository.MockM15FosterRequestRepository
 import com.comunidapp.app.data.repository.MockM13MatchRepository
 import com.comunidapp.app.data.repository.MockM13OperationsRepository
 import com.comunidapp.app.data.repository.MockM13SightingRepository
@@ -776,6 +784,38 @@ object DataProvider {
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
         }
+    }
+
+    /** M15 Bloque 1 — hogares de tránsito local; sin SQL / sin Supabase real. */
+    private val m15Store by lazy { M15MemoryStore() }
+
+    private val m15Authority by lazy { MockM15AuthorityPolicy() }
+
+    private val m15ResolvePet: (String) -> Pet? = { id -> InMemoryDataStore.getPetById(id) }
+
+    val m15FosterHomeRepository: M15FosterHomeRepository by lazy {
+        MockM15FosterHomeRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+            store = m15Store,
+            authority = m15Authority
+        )
+    }
+
+    val m15FosterRequestRepository: M15FosterRequestRepository by lazy {
+        MockM15FosterRequestRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+            store = m15Store,
+            resolvePet = m15ResolvePet,
+            authority = m15Authority
+        )
+    }
+
+    val m15FosterPlacementRepository: M15FosterPlacementRepository by lazy {
+        MockM15FosterPlacementRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+            store = m15Store,
+            authority = m15Authority
+        )
     }
 
     val serviceRepository: ServiceRepository by lazy {
