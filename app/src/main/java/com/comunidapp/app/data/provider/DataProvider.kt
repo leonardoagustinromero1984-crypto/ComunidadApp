@@ -43,6 +43,7 @@ import com.comunidapp.app.data.repository.M13OperationsRepository
 import com.comunidapp.app.data.repository.M13SightingRepository
 import com.comunidapp.app.data.repository.M14CredentialRepository
 import com.comunidapp.app.data.repository.M14MemoryStore
+import com.comunidapp.app.data.repository.M14OperationsRepository
 import com.comunidapp.app.data.repository.M14PassportRepository
 import com.comunidapp.app.data.repository.M14VerificationRepository
 import com.comunidapp.app.data.repository.MockM13MatchRepository
@@ -50,12 +51,14 @@ import com.comunidapp.app.data.repository.MockM13OperationsRepository
 import com.comunidapp.app.data.repository.MockM13SightingRepository
 import com.comunidapp.app.data.repository.MockM14AuthorityPolicy
 import com.comunidapp.app.data.repository.MockM14CredentialRepository
+import com.comunidapp.app.data.repository.MockM14OperationsRepository
 import com.comunidapp.app.data.repository.MockM14PassportRepository
 import com.comunidapp.app.data.repository.MockM14VerificationRepository
 import com.comunidapp.app.data.repository.SupabaseM13MatchRepository
 import com.comunidapp.app.data.repository.SupabaseM13OperationsRepository
 import com.comunidapp.app.data.repository.SupabaseM13SightingRepository
 import com.comunidapp.app.data.repository.SupabaseM14CredentialRepository
+import com.comunidapp.app.data.repository.SupabaseM14OperationsRepository
 import com.comunidapp.app.data.repository.SupabaseM14PassportRepository
 import com.comunidapp.app.data.repository.SupabaseM14VerificationRepository
 import com.comunidapp.app.data.repository.MockFosterEvolutionRepository
@@ -759,6 +762,18 @@ object DataProvider {
                 store = m14Store,
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 authority = m14Authority
+            )
+        }
+    }
+
+    /** M14 Bloque 4 — expiraciones y métricas locales; remoto 052 = PENDIENTE_EXTERNO. */
+    val m14OperationsRepository: M14OperationsRepository by lazy {
+        if (useSupabase) {
+            SupabaseM14OperationsRepository()
+        } else {
+            MockM14OperationsRepository(
+                store = m14Store,
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
         }
     }

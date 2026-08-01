@@ -37,7 +37,16 @@ enum class M14VerificationRequestStatus {
     APPROVED,
     REJECTED,
     CANCELLED,
-    EXPIRED
+    EXPIRED;
+
+    val isTerminal: Boolean
+        get() = this == APPROVED ||
+            this == REJECTED ||
+            this == CANCELLED ||
+            this == EXPIRED
+
+    val isExpirable: Boolean
+        get() = this == PENDING || this == UNDER_REVIEW
 }
 
 enum class M14Visibility {
@@ -87,8 +96,11 @@ object M14AuditEvents {
     const val PASSPORT_ACTIVATED = "m14.passport.activated"
     const val PASSPORT_STATUS_CHANGED = "m14.passport.status_changed"
     const val CREDENTIAL_ADDED = "m14.credential.added"
+    const val CREDENTIAL_EXPIRED = "m14.credential.expired"
     const val VERIFICATION_REQUESTED = "m14.verification.requested"
     const val VERIFICATION_RESOLVED = "m14.verification.resolved"
+    const val VERIFICATION_EXPIRED = "m14.verification.expired"
+    const val PUBLIC_CODE_ROTATED = "m14.public_code.rotated"
 }
 
 /** Hooks M06 preparados (sin push real). */
@@ -102,6 +114,7 @@ object M14M06Hooks {
     const val VERIFICATION_REJECTED = "M14_VERIFICATION_REJECTED"
     const val VERIFICATION_EXPIRED = "M14_VERIFICATION_EXPIRED"
     const val CREDENTIAL_ISSUED = "M14_CREDENTIAL_ISSUED"
+    const val CREDENTIAL_EXPIRED = "M14_CREDENTIAL_EXPIRED"
     const val CREDENTIAL_REVOKED = "M14_CREDENTIAL_REVOKED"
     const val PUBLIC_CODE_ROTATED = "M14_PUBLIC_CODE_ROTATED"
     const val INFRASTRUCTURE = "M14_NOTIFICATION_INFRASTRUCTURE"
@@ -116,6 +129,7 @@ object M14M06Hooks {
         VERIFICATION_REJECTED,
         VERIFICATION_EXPIRED,
         CREDENTIAL_ISSUED,
+        CREDENTIAL_EXPIRED,
         CREDENTIAL_REVOKED,
         PUBLIC_CODE_ROTATED,
         INFRASTRUCTURE
@@ -266,3 +280,89 @@ data class IssueVerifiedM14CredentialInput(
     val externalReferenceMasked: String? = null,
     val notePrivate: String? = null
 )
+
+/**
+ * Política local de expiración (America/Argentina/Buenos_Aires).
+ * Cron real = REQUIERE_INFRA_EXTERNA / PENDIENTE_EXTERNO.
+ */
+data class M14ExpirationPolicy(
+    val pendingRequestTtlDays: Int = 14,
+    val underReviewRequestTtlDays: Int = 7,
+    val zoneIdName: String = "America/Argentina/Buenos_Aires"
+) {
+    init {
+        require(pendingRequestTtlDays > 0 && underReviewRequestTtlDays > 0)
+    }
+}
+
+data class M14ExpirationResult(
+    val expiredRequests: Int,
+    val expiredCredentials: Int,
+    val alreadyApplied: Int = 0,
+    val preservedTerminal: Int = 0,
+    val infrastructureNote: String = "REQUIERE_INFRA_EXTERNA"
+)
+
+/** Métricas agregadas sin PII (sin userId, petId, publicCode completo, notas, contacto). */
+data class M14OperationalMetrics(
+    val fromEpochMs: Long,
+    val toEpochMs: Long,
+    val zoneIdName: String,
+    val passportsByStatus: Map<String, Int>,
+    val credentialsByStatus: Map<String, Int>,
+    val credentialsByType: Map<String, Int>,
+    val requestsByStatus: Map<String, Int>,
+    val approvals: Int,
+    val rejections: Int,
+    val expirations: Int,
+    val revocations: Int,
+    val publicCodeRotations: Int,
+    val conflicts: Int,
+    val idempotentRetries: Int,
+    val avgMinutesToResolution: Double?
+)
+
+enum class M14VerificationNextStep {
+    OPEN_REVIEW,
+    DECIDE,
+    TERMINAL,
+    EXPIRE_ELIGIBLE,
+    NONE
+}
+
+fun M14VerificationRequestStatus.nextStep(): M14VerificationNextStep = when (this) {
+    M14VerificationRequestStatus.PENDING -> M14VerificationNextStep.OPEN_REVIEW
+    M14VerificationRequestStatus.UNDER_REVIEW -> M14VerificationNextStep.DECIDE
+    M14VerificationRequestStatus.APPROVED,
+    M14VerificationRequestStatus.REJECTED,
+    M14VerificationRequestStatus.CANCELLED,
+    M14VerificationRequestStatus.EXPIRED -> M14VerificationNextStep.TERMINAL
+}
+
+enum class M14CredentialNextStep {
+    REQUEST_VERIFICATION,
+    AWAIT_REVIEW,
+    TERMINAL,
+    EXPIRE_ELIGIBLE,
+    REVOKE_ELIGIBLE,
+    NONE
+}
+
+fun M14CredentialStatus.nextStep(expiresAt: Long? = null, nowEpochMs: Long = System.currentTimeMillis()): M14CredentialNextStep =
+    when (this) {
+        M14CredentialStatus.DRAFT -> M14CredentialNextStep.REQUEST_VERIFICATION
+        M14CredentialStatus.PENDING_VERIFICATION -> M14CredentialNextStep.AWAIT_REVIEW
+        M14CredentialStatus.VERIFIED ->
+            if (expiresAt != null && expiresAt <= nowEpochMs) M14CredentialNextStep.EXPIRE_ELIGIBLE
+            else M14CredentialNextStep.REVOKE_ELIGIBLE
+        M14CredentialStatus.REJECTED,
+        M14CredentialStatus.EXPIRED,
+        M14CredentialStatus.REVOKED -> M14CredentialNextStep.TERMINAL
+    }
+
+/** Mensaje UI cuando 052/remoto aún no está disponible. */
+object M14RemoteFallback {
+    const val MESSAGE =
+        "Validación remota pendiente: la migración 052 aún no está aplicada o el servicio no responde. Se usa lógica local cuando está disponible."
+    const val CODE = "REMOTE_VALIDATION_PENDING"
+}

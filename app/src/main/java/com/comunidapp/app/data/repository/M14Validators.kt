@@ -137,6 +137,24 @@ object M14Validators {
     }
 
     fun isPublicVisibility(v: M14Visibility): Boolean = v == M14Visibility.PUBLIC_REDACTED
+
+    /** Guarda estática: proyección pública no debe incluir estos campos sensibles. */
+    fun publicProjectionHasNoSensitiveLeak(blob: String): Boolean {
+        val lower = blob.lowercase(Locale.ROOT)
+        if (lower.contains("userid") || lower.contains("user_id")) return false
+        if (lower.contains("petid") || lower.contains("pet_id")) return false
+        if (lower.contains("passportnumber") || lower.contains("passport_number")) return false
+        if (lower.contains("noteprivate") || lower.contains("note_private")) return false
+        if (lower.contains("@") || lower.contains("whatsapp")) return false
+        if (lower.contains("organizationid") || lower.contains("organization_id")) return false
+        return true
+    }
+
+    fun maskPublicCodeForLogs(code: String?): String? {
+        if (code.isNullOrBlank()) return null
+        if (code.length <= 6) return "***"
+        return code.take(4) + "…" + code.takeLast(2)
+    }
 }
 
 internal fun resultFailM14(code: String): Result<Nothing> =

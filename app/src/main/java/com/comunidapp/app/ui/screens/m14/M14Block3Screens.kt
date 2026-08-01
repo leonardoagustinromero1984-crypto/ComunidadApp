@@ -30,7 +30,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M14CredentialType
+import com.comunidapp.app.data.model.M14RemoteFallback
+import com.comunidapp.app.data.model.M14VerificationNextStep
 import com.comunidapp.app.data.model.M14VerificationRequestStatus
+import com.comunidapp.app.data.model.nextStep
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
@@ -132,6 +135,24 @@ fun M14VerificationDetailScreen(
             } else {
                 Text("Estado: ${req.status.name}", fontWeight = FontWeight.Bold)
                 Text("Credencial: ${req.credentialId}", style = MaterialTheme.typography.bodySmall)
+                val nextLabel = when (req.status.nextStep()) {
+                    M14VerificationNextStep.OPEN_REVIEW -> "Próxima acción: abrir revisión."
+                    M14VerificationNextStep.DECIDE -> "Próxima acción: aprobar, rechazar o expirar."
+                    M14VerificationNextStep.TERMINAL ->
+                        "Estado terminal: no se reabre. Nueva verificación requiere otra solicitud."
+                    M14VerificationNextStep.EXPIRE_ELIGIBLE ->
+                        "Elegible a expiración por política local."
+                    M14VerificationNextStep.NONE -> ""
+                }
+                if (nextLabel.isNotBlank()) {
+                    Text(nextLabel, style = MaterialTheme.typography.bodyMedium)
+                }
+                if (req.status == M14VerificationRequestStatus.EXPIRED) {
+                    Text(
+                        "Solicitud expirada por política o acción manual.",
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
                 decision?.let {
                     Spacer(Modifier.height(8.dp))
                     Text("Decisión: ${it.decision.name} (${it.actorAuthority})")
@@ -326,6 +347,7 @@ fun M14PassportShareScreen(
     val passport by viewModel.passport.collectAsState()
     val payload by viewModel.payload.collectAsState()
     val message by viewModel.message.collectAsState()
+    val remotePending by viewModel.remotePending.collectAsState()
     Scaffold(
         topBar = {
             ComunidappTopBar(
@@ -336,14 +358,24 @@ fun M14PassportShareScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
+            if (remotePending) {
+                Text(
+                    M14RemoteFallback.MESSAGE,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(Modifier.height(8.dp))
+            }
             Text(
-                "El enlace solo incluye el código público. Sin nombre, microchip ni datos personales.",
+                "El enlace solo incluye el código público. Sin nombre de responsable, microchip completo ni datos personales.",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(12.dp))
-            Text("Número: ${passport?.passportNumber ?: "—"}", fontWeight = FontWeight.Bold)
-            Text("Código público: ${passport?.publicCode ?: "—"}")
-            Text("Deep link:")
+            Text(
+                "Código público: ${passport?.publicCode ?: "no disponible"}",
+                fontWeight = FontWeight.Bold
+            )
+            Text("Deep link / QR (solo publicCode):")
             Text(payload ?: "—", style = MaterialTheme.typography.bodyMedium)
             Spacer(Modifier.height(12.dp))
             Button(
@@ -374,6 +406,7 @@ fun M14PassportHistoryScreen(
 ) {
     val items by viewModel.items.collectAsState()
     val message by viewModel.message.collectAsState()
+    val remotePending by viewModel.remotePending.collectAsState()
     Scaffold(
         topBar = {
             ComunidappTopBar(
@@ -384,8 +417,16 @@ fun M14PassportHistoryScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
+            if (remotePending) {
+                Text(
+                    M14RemoteFallback.MESSAGE,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Spacer(Modifier.height(8.dp))
+            }
             Text(
-                "Eventos de estado y metadatos no sensibles (sin PII).",
+                "Eventos de estado y metadatos no sensibles (sin PII, sin actorUserId visible).",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(12.dp))

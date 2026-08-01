@@ -5,14 +5,19 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.model.IssueVerifiedM14CredentialInput
 import com.comunidapp.app.data.model.M14CredentialType
+import com.comunidapp.app.data.model.M14ExpirationPolicy
+import com.comunidapp.app.data.model.M14ExpirationResult
+import com.comunidapp.app.data.model.M14OperationalMetrics
 import com.comunidapp.app.data.model.M14PassportHistory
 import com.comunidapp.app.data.model.M14PetPassport
+import com.comunidapp.app.data.model.M14RemoteFallback
 import com.comunidapp.app.data.model.M14VerificationDecision
 import com.comunidapp.app.data.model.M14VerificationRequest
 import com.comunidapp.app.data.model.M14Visibility
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m14.M14ErrorMapper
 import com.comunidapp.app.data.repository.M14CredentialRepository
+import com.comunidapp.app.data.repository.M14OperationsRepository
 import com.comunidapp.app.data.repository.M14PassportRepository
 import com.comunidapp.app.data.repository.M14PublicQrPayloadService
 import com.comunidapp.app.data.repository.M14VerificationRepository
@@ -97,10 +102,23 @@ class M14VerificationDetailViewModel(
             block()
                 .onSuccess {
                     _request.value = it
-                    _message.value = "Actualizado."
+                    _message.value = when {
+                        it.status.isTerminal -> "Estado final: ${it.status.name}. No se reabre."
+                        else -> "Actualizado."
+                    }
                     repository.getDecision(requestId).onSuccess { d -> _decision.value = d }
                 }
-                .onFailure { e -> _message.value = M14ErrorMapper.userMessage(M14ErrorMapper.codeOf(e)) }
+                .onFailure { e ->
+                    val code = M14ErrorMapper.codeOf(e)
+                    _message.value = when (code) {
+                        "CONFLICT" -> M14ErrorMapper.userMessage("CONFLICT")
+                        "EXPIRATION_NOT_ALLOWED",
+                        "EXPIRATION_ALREADY_APPLIED",
+                        "REMOTE_VALIDATION_PENDING",
+                        "INFRASTRUCTURE_UNAVAILABLE" -> M14ErrorMapper.userMessage(code)
+                        else -> M14ErrorMapper.userMessage(code)
+                    }
+                }
             _busy.value = false
         }
     }
@@ -201,14 +219,25 @@ class M14SharePassportViewModel(
     val payload: StateFlow<String?> = _payload.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
+    private val _remotePending = MutableStateFlow(false)
+    val remotePending: StateFlow<Boolean> = _remotePending.asStateFlow()
 
     init {
         viewModelScope.launch {
             repository.observePassport(passportId).collect { p ->
                 _passport.value = p
                 val code = p?.publicCode
-                _payload.value = if (code.isNullOrBlank()) null
-                else M14PublicQrPayloadService.buildPayload(code).getOrNull()
+                if (code.isNullOrBlank()) {
+                    _payload.value = null
+                    _message.value = M14ErrorMapper.userMessage("PUBLIC_CODE_UNAVAILABLE")
+                } else {
+                    M14PublicQrPayloadService.buildPayload(code)
+                        .onSuccess { _payload.value = it }
+                        .onFailure { e ->
+                            _payload.value = null
+                            _message.value = M14ErrorMapper.userMessage(M14ErrorMapper.codeOf(e))
+                        }
+                }
             }
         }
     }
@@ -218,13 +247,20 @@ class M14SharePassportViewModel(
             repository.rotatePublicCode(passportId)
                 .onSuccess { p ->
                     _passport.value = p
+                    _remotePending.value = false
                     _payload.value = p.publicCode?.let {
                         M14PublicQrPayloadService.buildPayload(it).getOrNull()
                     }
                     _message.value = "Código público rotado. El anterior ya no es válido."
                 }
                 .onFailure { e ->
-                    _message.value = M14ErrorMapper.userMessage(M14ErrorMapper.codeOf(e))
+                    val code = M14ErrorMapper.codeOf(e)
+                    if (code == "REMOTE_VALIDATION_PENDING" || code == "INFRASTRUCTURE_UNAVAILABLE") {
+                        _remotePending.value = true
+                        _message.value = M14RemoteFallback.MESSAGE
+                    } else {
+                        _message.value = M14ErrorMapper.userMessage(code)
+                    }
                 }
         }
     }
@@ -246,13 +282,24 @@ class M14PassportHistoryViewModel(
     val items: StateFlow<List<M14PassportHistory>> = _items.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
+    private val _remotePending = MutableStateFlow(false)
+    val remotePending: StateFlow<Boolean> = _remotePending.asStateFlow()
 
     init {
         viewModelScope.launch {
             runCatching { repository.observeHistory(passportId).first() }
-                .onSuccess { _items.value = it }
+                .onSuccess {
+                    _items.value = it
+                    _remotePending.value = false
+                }
                 .onFailure { e ->
-                    _message.value = M14ErrorMapper.userMessage(M14ErrorMapper.codeOf(e))
+                    val code = M14ErrorMapper.codeOf(e)
+                    if (code == "REMOTE_VALIDATION_PENDING" || code == "INFRASTRUCTURE_UNAVAILABLE") {
+                        _remotePending.value = true
+                        _message.value = M14RemoteFallback.MESSAGE
+                    } else {
+                        _message.value = M14ErrorMapper.userMessage("HISTORY_UNAVAILABLE")
+                    }
                 }
         }
     }
@@ -262,6 +309,68 @@ class M14PassportHistoryViewModel(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 M14PassportHistoryViewModel(passportId) as T
+        }
+    }
+}
+
+/** M14 Bloque 4 — métricas y expiraciones locales (sin PII). */
+class M14OperationsViewModel(
+    private val repository: M14OperationsRepository = DataProvider.m14OperationsRepository
+) : ViewModel() {
+    private val _metrics = MutableStateFlow<M14OperationalMetrics?>(null)
+    val metrics: StateFlow<M14OperationalMetrics?> = _metrics.asStateFlow()
+    private val _lastExpiration = MutableStateFlow<M14ExpirationResult?>(null)
+    val lastExpiration: StateFlow<M14ExpirationResult?> = _lastExpiration.asStateFlow()
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
+    private val _remotePending = MutableStateFlow(false)
+    val remotePending: StateFlow<Boolean> = _remotePending.asStateFlow()
+
+    fun applyExpirations(nowEpochMs: Long = System.currentTimeMillis()) {
+        viewModelScope.launch {
+            repository.applyExpirations(nowEpochMs, M14ExpirationPolicy())
+                .onSuccess {
+                    _lastExpiration.value = it
+                    _remotePending.value = false
+                    _message.value =
+                        "Expiraciones locales: solicitudes=${it.expiredRequests}, credenciales=${it.expiredCredentials}."
+                }
+                .onFailure { e ->
+                    val code = M14ErrorMapper.codeOf(e)
+                    if (code == "REMOTE_VALIDATION_PENDING" || code == "INFRASTRUCTURE_UNAVAILABLE") {
+                        _remotePending.value = true
+                        _message.value = M14RemoteFallback.MESSAGE
+                    } else {
+                        _message.value = M14ErrorMapper.userMessage(code)
+                    }
+                }
+        }
+    }
+
+    fun loadMetrics(fromEpochMs: Long, toEpochMs: Long) {
+        viewModelScope.launch {
+            repository.getOperationalMetrics(fromEpochMs, toEpochMs)
+                .onSuccess {
+                    _metrics.value = it
+                    _remotePending.value = false
+                }
+                .onFailure { e ->
+                    val code = M14ErrorMapper.codeOf(e)
+                    if (code == "REMOTE_VALIDATION_PENDING" || code == "INFRASTRUCTURE_UNAVAILABLE") {
+                        _remotePending.value = true
+                        _message.value = M14RemoteFallback.MESSAGE
+                    } else {
+                        _message.value = M14ErrorMapper.userMessage(code)
+                    }
+                }
+        }
+    }
+
+    companion object {
+        fun factory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                M14OperationsViewModel() as T
         }
     }
 }

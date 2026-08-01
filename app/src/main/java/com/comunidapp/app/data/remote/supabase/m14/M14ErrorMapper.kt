@@ -43,6 +43,13 @@ object M14ErrorMapper {
         "INVALID_QR_PAYLOAD" -> "El enlace o código QR no es válido (sin datos personales)."
         "PUBLIC_PASSPORT_NOT_AVAILABLE" -> "Este pasaporte no está disponible públicamente."
         "PUBLIC_PROJECTION_REDACTED" -> "Solo está disponible la vista pública resumida."
+        "PUBLIC_CODE_UNAVAILABLE" -> "No hay código público disponible para compartir."
+        "HISTORY_UNAVAILABLE" -> "El historial de pasaporte no está disponible."
+        "EXPIRATION_NOT_ALLOWED" -> "No se puede expirar este estado (final o incompatible)."
+        "EXPIRATION_ALREADY_APPLIED" -> "La expiración ya fue aplicada."
+        "METRICS_INVALID_RANGE" -> "El rango temporal de métricas no es válido."
+        "REMOTE_VALIDATION_PENDING" ->
+            "Validación remota pendiente (migración 052 o servicio no disponible)."
         "INFRASTRUCTURE_UNAVAILABLE" ->
             "La operación remota de pasaportes no está disponible en este momento."
         "CONFLICT" -> "Conflicto al guardar el pasaporte o la credencial."
@@ -84,6 +91,12 @@ object M14ErrorMapper {
         "INVALID_QR_PAYLOAD",
         "PUBLIC_PASSPORT_NOT_AVAILABLE",
         "PUBLIC_PROJECTION_REDACTED",
+        "PUBLIC_CODE_UNAVAILABLE",
+        "HISTORY_UNAVAILABLE",
+        "EXPIRATION_NOT_ALLOWED",
+        "EXPIRATION_ALREADY_APPLIED",
+        "METRICS_INVALID_RANGE",
+        "REMOTE_VALIDATION_PENDING",
         "INFRASTRUCTURE_UNAVAILABLE",
         "CONFLICT",
         "M14_REPOSITORY_FAILURE",

@@ -457,6 +457,8 @@ Fuera de M14:
 - documentación;
 - cierre técnico y oficial.
 
+**Estado:** Bloque 4 **CERRADO LOCALMENTE**; cierre técnico local **COMPLETADO**. Pruebas automáticas **no ejecutadas** por decisión del usuario; validación **manual** diferida. Migración 052 **PENDIENTE DE APLICACIÓN REMOTA**. Cierre oficial M14 **PENDIENTE**.
+
 ## 13. Definición de terminado del Bloque 1
 
 1. M14 técnico queda definido sin duplicar M09.

@@ -394,7 +394,10 @@ class MockM14PassportRepository(
             do {
                 next = store.numberGenerator.nextPublicCode()
                 attempts++
-                if (attempts > 5) return@withLock resultFailM14("CONFLICT")
+                if (attempts > 5) {
+                    store.recordConflict()
+                    return@withLock resultFailM14("CONFLICT")
+                }
             } while (M14Validators.publicCodeLooksLikePii(next))
             val updated = current.copy(publicCode = next, updatedAt = now)
             store.upsertPassport(updated)
@@ -410,6 +413,7 @@ class MockM14PassportRepository(
                     metadataEvent = "PUBLIC_CODE_ROTATED"
                 )
             )
+            store.audit(M14AuditEvents.PUBLIC_CODE_ROTATED, passportId)
             store.recordM06(M14M06Hooks.PUBLIC_CODE_ROTATED, passportId)
             Result.success(updated)
         }
@@ -699,18 +703,19 @@ class MockM14VerificationRepository(
                 authority.canModerate(uid)
             if (!allowed) return@withLock resultFailM14("VERIFICATION_REVIEW_NOT_ALLOWED")
             if (req.status == M14VerificationRequestStatus.EXPIRED) {
-                return@withLock Result.success(req)
+                store.recordIdempotentRetry()
+                return@withLock resultFailM14("EXPIRATION_ALREADY_APPLIED")
             }
             if (req.status == M14VerificationRequestStatus.APPROVED ||
                 req.status == M14VerificationRequestStatus.REJECTED ||
                 req.status == M14VerificationRequestStatus.CANCELLED
             ) {
-                return@withLock resultFailM14("VERIFICATION_ALREADY_FINAL")
+                return@withLock resultFailM14("EXPIRATION_NOT_ALLOWED")
             }
             if (req.status != M14VerificationRequestStatus.PENDING &&
                 req.status != M14VerificationRequestStatus.UNDER_REVIEW
             ) {
-                return@withLock resultFailM14("INVALID_TRANSITION")
+                return@withLock resultFailM14("EXPIRATION_NOT_ALLOWED")
             }
             val now = System.currentTimeMillis()
             val updated = req.copy(
@@ -728,6 +733,7 @@ class MockM14VerificationRepository(
                 store.upsertCredential(cred.copy(status = nextStatus, updatedAt = now))
             }
             appendCredentialEvent(cred.passportId, uid, "EXPIRED", "VERIFICATION_EXPIRED", now)
+            store.audit(M14AuditEvents.VERIFICATION_EXPIRED, requestId)
             store.recordM06(M14M06Hooks.VERIFICATION_EXPIRED, requestId)
             Result.success(updated)
         }
