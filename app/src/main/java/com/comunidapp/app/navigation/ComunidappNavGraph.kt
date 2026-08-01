@@ -499,7 +499,7 @@ private fun NavGraphBuilder.mainAppRoutes(
             onShelterOps = { navController.navigate(NavRoutes.SHELTERS) },
             onVeterinaryDirectory = { navController.navigate(NavRoutes.VETERINARY_DIRECTORY) },
             onM16Shelters = { navController.navigate(NavRoutes.M16_SHELTERS) },
-            onM17Campaigns = { navController.navigate(NavRoutes.M17_CAMPAIGNS) }
+            onM17Campaigns = { navController.navigate(NavRoutes.M17_HUB) }
         )
     }
     composable(NavRoutes.PUBLISH) {

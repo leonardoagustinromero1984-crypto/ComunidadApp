@@ -100,6 +100,11 @@ Producción (B2): `donation.view` / `donation.manage` vía M03 membership; verif
 
 M03 (org), M02/M01 (auth), M04 (moderación), M05 (media ref), M06 (notif hooks), M08 (pet ref), M10 (ubicación), M16 (shelter ref), M24 (pagos futuro).
 
-## Bloque 3 (pendiente)
+## Bloque 3 — bienes, voluntariado, transparencia
 
-Bienes, voluntariado, transparencia — local/mock.
+- Modelos `M17ExtendedModels` — in-kind, volunteer, transparency
+- Repos mock: `MockM17InKindRepository`, `MockM17VolunteerRepository`, `MockM17TransparencyRepository`
+- `M17ContributionIntentService` — mock / unavailable (sin pasarela)
+- Hub UI `m17/hub` con pestañas
+- Enlace contextual M16 → M17
+- **Sin migración 055**

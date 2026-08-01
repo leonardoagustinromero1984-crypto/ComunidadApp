@@ -89,6 +89,7 @@ object NavRoutes {
     const val ARG_M16_SHELTER_ID = "shelterId"
 
     // M17 — Donaciones y campañas solidarias (Bloque 1 local)
+    const val M17_HUB = "m17/hub"
     const val M17_CAMPAIGNS = "m17/campaigns"
     const val M17_CAMPAIGN_DETAIL = "m17/campaigns/{campaignId}"
     const val M17_CAMPAIGNS_MANAGE = "m17/campaigns/manage"

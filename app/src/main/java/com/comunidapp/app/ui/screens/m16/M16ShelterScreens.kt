@@ -253,6 +253,7 @@ private fun M16PublicShelterCard(item: M16PublicShelter, onClick: () -> Unit) {
 fun M16ShelterDetailScreen(
     shelterId: String,
     onNavigateBack: () -> Unit,
+    onM17Hub: (() -> Unit)? = null,
     viewModel: M16ShelterDetailViewModel = viewModel(
         factory = M16ShelterDetailViewModel.factory(shelterId)
     )
@@ -278,14 +279,14 @@ fun M16ShelterDetailScreen(
             when {
                 message != null -> ErrorState(message = message!!)
                 shelter == null -> LoadingState()
-                else -> M16PublicShelterDetailContent(shelter!!)
+                else -> M16PublicShelterDetailContent(shelter!!, onM17Hub = onM17Hub)
             }
         }
     }
 }
 
 @Composable
-private fun M16PublicShelterDetailContent(s: M16PublicShelter) {
+private fun M16PublicShelterDetailContent(s: M16PublicShelter, onM17Hub: (() -> Unit)? = null) {
     if (s.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED) {
         Card(
             modifier = Modifier.fillMaxWidth(),
@@ -331,6 +332,12 @@ private fun M16PublicShelterDetailContent(s: M16PublicShelter) {
         Text("Contacto público", fontWeight = FontWeight.Bold)
         s.publicContacts.forEach { contact ->
             Text("${m16ContactTypeLabel(contact.type)}: ${contact.value}")
+        }
+    }
+    onM17Hub?.let { hub ->
+        Spacer(Modifier.height(16.dp))
+        OutlinedButton(onClick = hub, modifier = Modifier.fillMaxWidth()) {
+            Text("Campañas, bienes y voluntariado (M17)")
         }
     }
 }

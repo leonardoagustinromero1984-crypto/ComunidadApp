@@ -29,7 +29,8 @@ fun NavGraphBuilder.m16ShelterRoutes(navController: NavHostController) {
         )
         M16ShelterDetailScreen(
             shelterId = shelterId,
-            onNavigateBack = { navController.popBackStack() }
+            onNavigateBack = { navController.popBackStack() },
+            onM17Hub = { navController.navigate(NavRoutes.M17_HUB) }
         )
     }
     composable(NavRoutes.M16_SHELTERS_MANAGE) {

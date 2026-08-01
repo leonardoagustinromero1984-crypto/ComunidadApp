@@ -9,10 +9,17 @@ import com.comunidapp.app.ui.screens.m17.M17CampaignDetailScreen
 import com.comunidapp.app.ui.screens.m17.M17CampaignEditScreen
 import com.comunidapp.app.ui.screens.m17.M17CampaignManageScreen
 import com.comunidapp.app.ui.screens.m17.M17CampaignsListScreen
+import com.comunidapp.app.ui.screens.m17.M17HubScreen
 import java.nio.charset.StandardCharsets
 
 /** M17 donaciones — rutas Bloque 1 (fundación local/mock). */
 fun NavGraphBuilder.m17DonationRoutes(navController: NavHostController) {
+    composable(NavRoutes.M17_HUB) {
+        M17HubScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onCampaigns = { navController.navigate(NavRoutes.M17_CAMPAIGNS) }
+        )
+    }
     composable(NavRoutes.M17_CAMPAIGNS) {
         M17CampaignsListScreen(
             onNavigateBack = { navController.popBackStack() },

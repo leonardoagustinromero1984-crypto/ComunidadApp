@@ -26,6 +26,17 @@ object M17DonationErrorMapper {
         "M17_PAYMENT_INFRASTRUCTURE_UNAVAILABLE",
         "M17_NOTIFICATION_INFRASTRUCTURE_UNAVAILABLE",
         "M17_REMOTE_VALIDATION_PENDING",
+        "M17_NEED_NOT_FOUND",
+        "M17_NEED_NOT_PUBLIC",
+        "M17_NEED_TERMINAL",
+        "M17_OPPORTUNITY_NOT_FOUND",
+        "M17_OPPORTUNITY_NOT_PUBLIC",
+        "M17_OPPORTUNITY_TERMINAL",
+        "M17_DUPLICATE_APPLICATION",
+        "M17_PLEDGE_NOT_FOUND",
+        "M17_APPLICATION_NOT_FOUND",
+        "M17_INVALID_QUANTITY",
+        "M17_INVALID_AMOUNT",
         "NOT_AUTHENTICATED"
     )
 
@@ -49,6 +60,17 @@ object M17DonationErrorMapper {
         "M17_NOTIFICATION_INFRASTRUCTURE_UNAVAILABLE" ->
             "Las notificaciones no están disponibles para campañas."
         "M17_REMOTE_VALIDATION_PENDING" -> "La validación remota está pendiente."
+        "M17_NEED_NOT_FOUND" -> "No encontramos esa necesidad."
+        "M17_NEED_NOT_PUBLIC" -> "Esta necesidad no está publicada."
+        "M17_NEED_TERMINAL" -> "Esta necesidad ya está cerrada."
+        "M17_OPPORTUNITY_NOT_FOUND" -> "No encontramos esa oportunidad."
+        "M17_OPPORTUNITY_NOT_PUBLIC" -> "Esta oportunidad no está publicada."
+        "M17_OPPORTUNITY_TERMINAL" -> "Esta oportunidad ya está cerrada."
+        "M17_DUPLICATE_APPLICATION" -> "Ya te postulaste a esta oportunidad."
+        "M17_PLEDGE_NOT_FOUND" -> "No encontramos ese compromiso."
+        "M17_APPLICATION_NOT_FOUND" -> "No encontramos esa postulación."
+        "M17_INVALID_QUANTITY" -> "La cantidad no es válida."
+        "M17_INVALID_AMOUNT" -> "El monto no es válido."
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión."
         else -> "No se pudo completar la operación."
     }

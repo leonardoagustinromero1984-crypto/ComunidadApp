@@ -63,6 +63,15 @@ import com.comunidapp.app.data.repository.SupabaseM16ShelterRepository
 import com.comunidapp.app.data.repository.M17DonationRepository
 import com.comunidapp.app.data.repository.M17MemoryStore
 import com.comunidapp.app.data.repository.MockM17DonationAuthorityPolicy
+import com.comunidapp.app.data.repository.M17ExtendedMemoryStore
+import com.comunidapp.app.data.repository.M17InKindRepository
+import com.comunidapp.app.data.repository.M17TransparencyRepository
+import com.comunidapp.app.data.repository.M17VolunteerRepository
+import com.comunidapp.app.data.repository.M17ContributionIntentService
+import com.comunidapp.app.data.repository.MockM17ContributionIntentService
+import com.comunidapp.app.data.repository.MockM17InKindRepository
+import com.comunidapp.app.data.repository.MockM17TransparencyRepository
+import com.comunidapp.app.data.repository.MockM17VolunteerRepository
 import com.comunidapp.app.data.repository.MockM17DonationRepository
 import com.comunidapp.app.data.repository.SupabaseM17DonationRepository
 import com.comunidapp.app.data.repository.M15PlacementDischargeRepository
@@ -936,6 +945,31 @@ object DataProvider {
                 authority = m16Authority
             )
         }
+    }
+
+    /** M17 Bloque 3 — bienes, voluntariado, transparencia (mock). */
+    private val m17ExtendedStore by lazy { M17ExtendedMemoryStore() }
+
+    val m17InKindRepository: M17InKindRepository by lazy {
+        MockM17InKindRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+            store = m17ExtendedStore
+        )
+    }
+
+    val m17VolunteerRepository: M17VolunteerRepository by lazy {
+        MockM17VolunteerRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+            store = m17ExtendedStore
+        )
+    }
+
+    val m17TransparencyRepository: M17TransparencyRepository by lazy {
+        MockM17TransparencyRepository(store = m17ExtendedStore)
+    }
+
+    val m17ContributionIntentService: M17ContributionIntentService by lazy {
+        MockM17ContributionIntentService()
     }
 
     /** M17 Bloque 1 — campañas solidarias vinculadas a organización M03; sin pagos reales. */
