@@ -16,17 +16,19 @@ Hogares de tránsito alineados con producto D01, consolidando track M15 sobre le
 
 Gastos, evolución, ayuda, egreso completo, SQL, Supabase, pagos, chat, M16.
 
-## Propuesta Bloque 2 (exacta)
+## Alcance Bloque 2 (cerrado localmente)
 
-1. Especificar migración **053** (perfiles M15, solicitudes, placements) tras aprobación.
-2. Repos Supabase M15 + reconciliación con 040/041 M10.
-3. Bridge opcional M10→M15 o deprecación gradual de prefijos Foster en repos.
-4. Validación estructural remota post-apply.
-5. Pruebas automáticas focalizadas (si el usuario las solicita).
+- Caso A: M10 tablas/RPC 040/041 autoritativas; **sin 053**.
+- `SupabaseM15Foster*Repository` delegando en `Foster*Repository`.
+- `M15FosterMappers.kt`; errores M10 → M15.
+- DataProvider: Supabase → M10; local → mock.
 
-## Propuesta Bloque 3
+## Propuesta Bloque 3 (exacta)
 
-Evolución, egreso, custodia temporal M08, gastos/ayuda.
+1. Evolución operativa (RPC M10 041).
+2. Egreso completo + custodia temporal M08.
+3. Gastos y ayuda sobre placements M10.
+4. Smoke funcional remoto integrado M15/M10.
 
 ## Propuesta Bloque 4
 
@@ -35,10 +37,9 @@ Métricas agregadas, privacidad final, hooks M06 reales, cierre técnico local.
 ## Pendientes
 
 ```text
-VALIDACIÓN FUNCIONAL MANUAL M15 B1 PENDIENTE
+VALIDACIÓN FUNCIONAL MANUAL M15 B1/B2 PENDIENTE
 PRUEBAS AUTOMÁTICAS NO EJECUTADAS
-MIGRACIÓN 053 NO CREADA
-M10 040/041 APPLY REMOTO PENDIENTE
+MIGRACIÓN 053 NO REQUERIDA
 M14 052 APPLY REMOTO PENDIENTE
 GITHUB ANDROID CI PENDIENTE
 ```

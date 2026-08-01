@@ -65,14 +65,27 @@ Egreso, gastos, evolución y ayuda = Bloque 2+.
 | Bloque | Alcance |
 |--------|---------|
 | 1 | Dominio, fakes, UI `m15/*`, hub y flujo base solicitud → reserva |
-| 2 | Persistencia 053+, repos Supabase, reconciliación M10 040/041 |
+| 2 | Reconciliación M10 (Caso A): adaptadores Supabase M15 → RPC 040/041; **sin 053** |
 | 3 | Evolución, egreso, custodia temporal M08 |
 | 4 | Métricas, M06 push preparado, cierre técnico |
 
-## 7. Definition of Done Bloque 1
+## 7. Definition of Done
+
+### Bloque 1
 
 ```text
 M15 BLOQUE 1 CERRADO LOCALMENTE
+COMPILACIÓN KOTLIN PASS
+PRUEBAS AUTOMÁTICAS NO EJECUTADAS
+VALIDACIÓN FUNCIONAL MANUAL PENDIENTE
+```
+
+### Bloque 2
+
+```text
+M15 BLOQUE 2 CERRADO LOCALMENTE
+M10 ES LA PERSISTENCIA AUTORITATIVA DE M15
+SIN MIGRACIÓN 053
 COMPILACIÓN KOTLIN PASS
 PRUEBAS AUTOMÁTICAS NO EJECUTADAS
 VALIDACIÓN FUNCIONAL MANUAL PENDIENTE

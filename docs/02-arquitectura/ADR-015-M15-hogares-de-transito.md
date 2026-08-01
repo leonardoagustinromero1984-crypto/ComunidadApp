@@ -35,6 +35,8 @@ Legacy M10 = preservado; migración progresiva hacia prefijo M15 en bloques post
 
 Bloque 1 establece dominio, fakes, UI `m15/*` y contratos locales **sin SQL** ni Supabase real.
 
+Bloque 2 (cerrado): adaptadores `SupabaseM15Foster*` sobre repos/RPC M10; **sin migración 053**; M10 tablas 040/041 autoritativas.
+
 ## Consecuencias
 
 - Se alinea numeración con D01.

@@ -54,6 +54,9 @@ import com.comunidapp.app.data.repository.MockM15AuthorityPolicy
 import com.comunidapp.app.data.repository.MockM15FosterHomeRepository
 import com.comunidapp.app.data.repository.MockM15FosterPlacementRepository
 import com.comunidapp.app.data.repository.MockM15FosterRequestRepository
+import com.comunidapp.app.data.repository.SupabaseM15FosterHomeRepository
+import com.comunidapp.app.data.repository.SupabaseM15FosterPlacementRepository
+import com.comunidapp.app.data.repository.SupabaseM15FosterRequestRepository
 import com.comunidapp.app.data.repository.MockM13MatchRepository
 import com.comunidapp.app.data.repository.MockM13OperationsRepository
 import com.comunidapp.app.data.repository.MockM13SightingRepository
@@ -786,7 +789,7 @@ object DataProvider {
         }
     }
 
-    /** M15 Bloque 1 — hogares de tránsito local; sin SQL / sin Supabase real. */
+    /** M15 Bloque 2 — M10 persistencia autoritativa cuando Supabase habilitado. */
     private val m15Store by lazy { M15MemoryStore() }
 
     private val m15Authority by lazy { MockM15AuthorityPolicy() }
@@ -794,28 +797,40 @@ object DataProvider {
     private val m15ResolvePet: (String) -> Pet? = { id -> InMemoryDataStore.getPetById(id) }
 
     val m15FosterHomeRepository: M15FosterHomeRepository by lazy {
-        MockM15FosterHomeRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
-            store = m15Store,
-            authority = m15Authority
-        )
+        if (useSupabase) {
+            SupabaseM15FosterHomeRepository(delegate = fosterHomeRepository)
+        } else {
+            MockM15FosterHomeRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m15Store,
+                authority = m15Authority
+            )
+        }
     }
 
     val m15FosterRequestRepository: M15FosterRequestRepository by lazy {
-        MockM15FosterRequestRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
-            store = m15Store,
-            resolvePet = m15ResolvePet,
-            authority = m15Authority
-        )
+        if (useSupabase) {
+            SupabaseM15FosterRequestRepository(delegate = fosterRequestRepository)
+        } else {
+            MockM15FosterRequestRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m15Store,
+                resolvePet = m15ResolvePet,
+                authority = m15Authority
+            )
+        }
     }
 
     val m15FosterPlacementRepository: M15FosterPlacementRepository by lazy {
-        MockM15FosterPlacementRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
-            store = m15Store,
-            authority = m15Authority
-        )
+        if (useSupabase) {
+            SupabaseM15FosterPlacementRepository(delegate = fosterPlacementRepository)
+        } else {
+            MockM15FosterPlacementRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m15Store,
+                authority = m15Authority
+            )
+        }
     }
 
     val serviceRepository: ServiceRepository by lazy {

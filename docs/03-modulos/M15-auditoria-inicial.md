@@ -4,9 +4,19 @@
 
 ```text
 M15 BLOQUE 1 CERRADO LOCALMENTE
+M15 BLOQUE 2 CERRADO LOCALMENTE — M10 PERSISTENCIA AUTORITATIVA, SIN 053
 M14 CIERRE TÉCNICO LOCAL COMPLETADO (052 pendiente remoto)
-M13/M12 CIERRES OFICIALES PENDIENTES EXTERNOS
 ```
+
+## Reconciliación B2
+
+| Área | Clasificación | Notas |
+|------|---------------|-------|
+| Tablas 040/041 | REUTILIZAR | Fuente única M15 remoto |
+| `SupabaseFosterM10RemoteDataSource` | REUTILIZAR | RPC m10_* |
+| `SupabaseM15FosterRepositories` | ADAPTAR | Delegación + mappers |
+| `M15MemoryStore` | LOCAL ONLY | Cuando `useSupabase=false` |
+| Legacy Foster UI/rutas | LEGACY_PRESERVADO | Misma persistencia vía M10 |
 
 ## Remapeo
 
