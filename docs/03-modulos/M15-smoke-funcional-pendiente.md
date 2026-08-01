@@ -5,9 +5,23 @@
 ```text
 M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO
 M15 CIERRE OFICIAL PENDIENTE
+M15 VALIDACIÓN FUNCIONAL PENDIENTE
 ```
 
 Decisión operativa: **no ejecutar** operaciones remotas desde Cursor. **No** declarar smoke PASS.
+
+## Registro sesión 2026-08-01
+
+| Campo | Valor |
+|-------|-------|
+| Entorno utilizado | No informado |
+| Fecha y hora | No informado |
+| Resultado general | **NO DISPONIBLE** |
+| Operaciones ejecutadas | No informadas |
+| Errores observados | No informados |
+| Evidencia / logs sanitizados | No entregados (plantilla con placeholders) |
+
+**Motivo del bloqueo:** sin evidencia remota real no procede cierre oficial M15.
 
 ## Checklist integrado M15/M10 (manual externo)
 

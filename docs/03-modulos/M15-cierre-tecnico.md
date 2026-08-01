@@ -53,6 +53,24 @@ Cierre **local** de M15 tras Bloques 1–4:
 
 Hasta entonces: **M15 CIERRE OFICIAL PENDIENTE**.
 
+## Intento de cierre oficial — 2026-08-01
+
+- HEAD base: `0cbf73d6cffeb6b3051bfbc6fb2028927c3a026d`.
+- Validación funcional manual: **PENDIENTE** (evidencia no completada).
+- Smoke remoto M15/M10: **PENDIENTE EXTERNO** (sin ejecución documentada).
+- Defectos críticos abiertos por evidencia: ninguno comprobado.
+- Cambios de código en sesión: **ninguno**.
+- Compilación: reutilizada PASS del cierre técnico Bloque 4.
+
+```text
+M15 CIERRE TÉCNICO LOCAL COMPLETADO
+M15 VALIDACIÓN FUNCIONAL PENDIENTE
+M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO
+M15 CIERRE OFICIAL PENDIENTE
+SIN MIGRACIÓN 053
+M16 NO INICIADO
+```
+
 ## Limitaciones M06
 
 M06 Etapa 2 allowlist actual: M01–M05. M15 registra hooks preparados localmente; publicación outbox real requiere ampliación de infraestructura no incluida en este cierre.

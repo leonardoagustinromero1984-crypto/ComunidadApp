@@ -3,8 +3,8 @@
 ## Estado inicial confirmado
 
 - Rama `main` alineada con `origin/main`.
-- HEAD mínimo: `9a507d3` (`feat(m15): add foster placement lifecycle`).
-- M15 Bloques 1–3 cerrados localmente.
+- HEAD mínimo cierre técnico: `0cbf73d` (`feat(m15): finalize foster care operations`).
+- M15 Bloques 1–4 cerrados localmente; cierre técnico local completado.
 - Migraciones 001–052 intactas; 053 inexistente.
 
 ## Checklist revisión manual
@@ -43,9 +43,34 @@ NO EJECUTADAS (modo ahorro)
 ## Validación funcional manual
 
 ```text
-PENDIENTE
+PENDIENTE — evidencia no recibida en sesión de cierre oficial 2026-08-01
 M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO
 ```
+
+## Sesión cierre oficial — 2026-08-01
+
+Intento de cierre oficial sobre HEAD `0cbf73d`. La evidencia entregada conservó placeholders (`[PASS/FAIL]`, `[DETALLAR]`) sin resultados reales; **no se inventaron PASS**.
+
+| Punto | Resultado registrado |
+|-------|----------------------|
+| Navegación hub → Operaciones | **PENDIENTE** (sin evidencia) |
+| Tabs métricas / privacidad / smoke | **PENDIENTE** (sin evidencia) |
+| Rango válido de métricas | **PENDIENTE** (sin evidencia) |
+| Rango > 366 días | **PENDIENTE** (sin evidencia) |
+| Dashboard sin PII ni IDs | **PENDIENTE** (sin evidencia) |
+| Estados terminales | **PENDIENTE** (sin evidencia) |
+| Idempotencia | **PENDIENTE** (sin evidencia) |
+| Conflicto de capacidad | **PENDIENTE** (sin evidencia) |
+| Capacidad no negativa post-egreso | **PENDIENTE** (sin evidencia) |
+| Fallback M06 | **PENDIENTE** (sin evidencia) |
+
+**Smoke remoto:** NO DISPONIBLE — entorno, fecha, operaciones, errores y logs no informados.
+
+**Correcciones de código:** ninguna (sin FAIL comprobado).
+
+**Compilación Kotlin:** reutilizada PASS del cierre técnico (`0cbf73d`); no repetida en esta sesión.
+
+**Decisión:** cierre oficial **NO declarado** — falta evidencia funcional manual y smoke remoto PASS.
 
 ## Estado final
 
