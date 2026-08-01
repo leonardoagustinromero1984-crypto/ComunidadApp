@@ -45,6 +45,20 @@ object M15ErrorMapper {
         "M15_UNAUTHORIZED",
         "M15_INFRASTRUCTURE_UNAVAILABLE",
         "M15_REMOTE_VALIDATION_PENDING",
+        "M15_EVOLUTION_NOT_ALLOWED",
+        "M15_EVOLUTION_NOT_FOUND",
+        "M15_DISCHARGE_NOT_ALLOWED",
+        "M15_DISCHARGE_ALREADY_APPLIED",
+        "M15_INVALID_DISCHARGE_REASON",
+        "M15_TEMPORARY_CUSTODY_NOT_ALLOWED",
+        "M15_EXPENSE_INVALID_AMOUNT",
+        "M15_EXPENSE_INVALID_CURRENCY",
+        "M15_EXPENSE_NOT_FOUND",
+        "M15_HELP_REQUEST_NOT_ALLOWED",
+        "M15_HELP_REQUEST_NOT_FOUND",
+        "M15_HELP_REQUEST_ALREADY_FINAL",
+        "M15_MEDIA_REFERENCE_INVALID",
+        "M15_CONFLICT",
         "PET_NOT_ELIGIBLE_FOR_FOSTER",
         "PET_ALREADY_IN_FOSTER",
         "PET_NOT_FOUND",
@@ -75,6 +89,15 @@ object M15ErrorMapper {
         "FOSTER_PLACEMENT_NOT_ACTIVE" -> "M15_FOSTER_PLACEMENT_NOT_ACTIVE"
         "FOSTER_PLACEMENT_INVALID_TRANSITION" -> "M15_FOSTER_PLACEMENT_INVALID_TRANSITION"
         "FORBIDDEN" -> "M15_UNAUTHORIZED"
+        "FOSTER_EVOLUTION_FORBIDDEN" -> "M15_EVOLUTION_NOT_ALLOWED"
+        "FOSTER_EVOLUTION_NOT_FOUND" -> "M15_EVOLUTION_NOT_FOUND"
+        "FOSTER_EVOLUTION_INVALID_MEDIA_REF" -> "M15_MEDIA_REFERENCE_INVALID"
+        "FOSTER_EXPENSE_INVALID_AMOUNT" -> "M15_EXPENSE_INVALID_AMOUNT"
+        "FOSTER_EXPENSE_NOT_FOUND" -> "M15_EXPENSE_NOT_FOUND"
+        "FOSTER_HELP_REQUEST_NOT_FOUND" -> "M15_HELP_REQUEST_NOT_FOUND"
+        "FOSTER_HELP_REQUEST_NOT_EDITABLE" -> "M15_HELP_REQUEST_ALREADY_FINAL"
+        "FOSTER_PLACEMENT_COMPLETION_FORBIDDEN" -> "M15_DISCHARGE_NOT_ALLOWED"
+        "FOSTER_TEMPORARY_PERMISSION_REVOKE_FAILED" -> "M15_TEMPORARY_CUSTODY_NOT_ALLOWED"
         "NOT_AUTHENTICATED" -> "NOT_AUTHENTICATED"
         "NETWORK", "TIMEOUT" -> "M15_INFRASTRUCTURE_UNAVAILABLE"
         "SERIALIZATION" -> "M15_INFRASTRUCTURE_UNAVAILABLE"
@@ -149,6 +172,20 @@ object M15ErrorMapper {
             "El servicio no está disponible. Intentá más tarde."
         "M15_REMOTE_VALIDATION_PENDING" ->
             "La validación remota está pendiente."
+        "M15_EVOLUTION_NOT_ALLOWED" -> "No se puede registrar evolución en este alojamiento."
+        "M15_EVOLUTION_NOT_FOUND" -> "No encontramos ese registro de evolución."
+        "M15_DISCHARGE_NOT_ALLOWED" -> "No se puede egresar este alojamiento ahora."
+        "M15_DISCHARGE_ALREADY_APPLIED" -> "Este alojamiento ya fue finalizado."
+        "M15_INVALID_DISCHARGE_REASON" -> "El motivo de egreso no es válido."
+        "M15_TEMPORARY_CUSTODY_NOT_ALLOWED" -> "No se pudo revocar la custodia temporal."
+        "M15_EXPENSE_INVALID_AMOUNT" -> "El importe del gasto debe ser mayor que cero."
+        "M15_EXPENSE_INVALID_CURRENCY" -> "La moneda no es válida."
+        "M15_EXPENSE_NOT_FOUND" -> "No encontramos ese gasto."
+        "M15_HELP_REQUEST_NOT_ALLOWED" -> "No se puede crear ese pedido de ayuda."
+        "M15_HELP_REQUEST_NOT_FOUND" -> "No encontramos ese pedido de ayuda."
+        "M15_HELP_REQUEST_ALREADY_FINAL" -> "Ese pedido de ayuda ya está cerrado."
+        "M15_MEDIA_REFERENCE_INVALID" -> "La referencia de media no es segura."
+        "M15_CONFLICT" -> "Conflicto al actualizar el alojamiento."
         "PET_NOT_ELIGIBLE_FOR_FOSTER" -> "Esa mascota no puede ir a tránsito."
         "PET_ALREADY_IN_FOSTER" -> "Esa mascota ya está en un hogar de tránsito."
         "PET_NOT_FOUND" -> "No encontramos la mascota."

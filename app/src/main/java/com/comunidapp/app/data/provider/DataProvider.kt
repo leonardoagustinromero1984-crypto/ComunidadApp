@@ -50,13 +50,25 @@ import com.comunidapp.app.data.repository.M15FosterHomeRepository
 import com.comunidapp.app.data.repository.M15FosterPlacementRepository
 import com.comunidapp.app.data.repository.M15FosterRequestRepository
 import com.comunidapp.app.data.repository.M15MemoryStore
+import com.comunidapp.app.data.repository.M15PlacementDischargeRepository
+import com.comunidapp.app.data.repository.M15PlacementEvolutionRepository
+import com.comunidapp.app.data.repository.M15PlacementExpenseRepository
+import com.comunidapp.app.data.repository.M15PlacementHelpRepository
 import com.comunidapp.app.data.repository.MockM15AuthorityPolicy
 import com.comunidapp.app.data.repository.MockM15FosterHomeRepository
 import com.comunidapp.app.data.repository.MockM15FosterPlacementRepository
 import com.comunidapp.app.data.repository.MockM15FosterRequestRepository
+import com.comunidapp.app.data.repository.MockM15PlacementDischargeRepository
+import com.comunidapp.app.data.repository.MockM15PlacementEvolutionRepository
+import com.comunidapp.app.data.repository.MockM15PlacementExpenseRepository
+import com.comunidapp.app.data.repository.MockM15PlacementHelpRepository
 import com.comunidapp.app.data.repository.SupabaseM15FosterHomeRepository
 import com.comunidapp.app.data.repository.SupabaseM15FosterPlacementRepository
 import com.comunidapp.app.data.repository.SupabaseM15FosterRequestRepository
+import com.comunidapp.app.data.repository.SupabaseM15PlacementDischargeRepository
+import com.comunidapp.app.data.repository.SupabaseM15PlacementEvolutionRepository
+import com.comunidapp.app.data.repository.SupabaseM15PlacementExpenseRepository
+import com.comunidapp.app.data.repository.SupabaseM15PlacementHelpRepository
 import com.comunidapp.app.data.repository.MockM13MatchRepository
 import com.comunidapp.app.data.repository.MockM13OperationsRepository
 import com.comunidapp.app.data.repository.MockM13SightingRepository
@@ -829,6 +841,51 @@ object DataProvider {
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m15Store,
                 authority = m15Authority
+            )
+        }
+    }
+
+    /** M15 Bloque 3 — evolución, egreso, gastos y ayuda sobre placements M10. */
+    val m15EvolutionRepository: M15PlacementEvolutionRepository by lazy {
+        if (useSupabase) {
+            SupabaseM15PlacementEvolutionRepository(delegate = fosterEvolutionRepository)
+        } else {
+            MockM15PlacementEvolutionRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m15Store
+            )
+        }
+    }
+
+    val m15DischargeRepository: M15PlacementDischargeRepository by lazy {
+        if (useSupabase) {
+            SupabaseM15PlacementDischargeRepository(delegate = fosterPlacementRepository)
+        } else {
+            MockM15PlacementDischargeRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m15Store
+            )
+        }
+    }
+
+    val m15ExpenseRepository: M15PlacementExpenseRepository by lazy {
+        if (useSupabase) {
+            SupabaseM15PlacementExpenseRepository(delegate = fosterExpenseRepository)
+        } else {
+            MockM15PlacementExpenseRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m15Store
+            )
+        }
+    }
+
+    val m15HelpRepository: M15PlacementHelpRepository by lazy {
+        if (useSupabase) {
+            SupabaseM15PlacementHelpRepository(delegate = fosterHelpRepository)
+        } else {
+            MockM15PlacementHelpRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                store = m15Store
             )
         }
     }

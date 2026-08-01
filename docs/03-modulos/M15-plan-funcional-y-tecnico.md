@@ -23,23 +23,25 @@ Gastos, evolución, ayuda, egreso completo, SQL, Supabase, pagos, chat, M16.
 - `M15FosterMappers.kt`; errores M10 → M15.
 - DataProvider: Supabase → M10; local → mock.
 
-## Propuesta Bloque 3 (exacta)
+## Alcance Bloque 3 (cerrado localmente)
 
-1. Evolución operativa (RPC M10 041).
-2. Egreso completo + custodia temporal M08.
-3. Gastos y ayuda sobre placements M10.
-4. Smoke funcional remoto integrado M15/M10.
+- Evolución append-only sobre placements M10 041.
+- Egreso completo + motivos tipificados; custodia temporal M08 sin transferir responsabilidad principal.
+- Gastos registro (sin pagos); ayuda coordinada (sin chat).
+- `SupabaseM15Placement*` / `MockM15Placement*`; UI `m15/placements/*`.
+- Caso A: **sin 053**.
 
 ## Propuesta Bloque 4
 
-Métricas agregadas, privacidad final, hooks M06 reales, cierre técnico local.
+Métricas agregadas, privacidad final, hooks M06 reales, smoke remoto M15/M10, cierre técnico local.
 
 ## Pendientes
 
 ```text
-VALIDACIÓN FUNCIONAL MANUAL M15 B1/B2 PENDIENTE
+VALIDACIÓN FUNCIONAL MANUAL M15 B1/B2/B3 PENDIENTE
 PRUEBAS AUTOMÁTICAS NO EJECUTADAS
 MIGRACIÓN 053 NO REQUERIDA
 M14 052 APPLY REMOTO PENDIENTE
 GITHUB ANDROID CI PENDIENTE
+SMOKE REMOTO M15/M10 PENDIENTE
 ```

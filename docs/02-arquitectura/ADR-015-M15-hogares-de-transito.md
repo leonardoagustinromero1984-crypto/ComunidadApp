@@ -37,6 +37,8 @@ Bloque 1 establece dominio, fakes, UI `m15/*` y contratos locales **sin SQL** ni
 
 Bloque 2 (cerrado): adaptadores `SupabaseM15Foster*` sobre repos/RPC M10; **sin migración 053**; M10 tablas 040/041 autoritativas.
 
+Bloque 3 (cerrado): evolución, egreso, custodia temporal M08, gastos y ayuda vía `SupabaseM15Placement*` / mocks; **sin 053**; M08 conserva responsabilidad principal.
+
 ## Consecuencias
 
 - Se alinea numeración con D01.

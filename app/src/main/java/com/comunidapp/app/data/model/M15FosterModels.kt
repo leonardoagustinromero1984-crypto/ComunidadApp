@@ -74,6 +74,13 @@ object M15AuditEvents {
     const val REQUEST_REVIEWED = "m15.foster.request.reviewed"
     const val PLACEMENT_RESERVED = "m15.foster.placement.reserved"
     const val PLACEMENT_STARTED = "m15.foster.placement.started"
+    const val EVOLUTION_ADDED = "m15.foster.evolution.added"
+    const val PLACEMENT_COMPLETED = "m15.foster.placement.completed"
+    const val PLACEMENT_INTERRUPTED = "m15.foster.placement.interrupted"
+    const val EXPENSE_RECORDED = "m15.foster.expense.recorded"
+    const val HELP_OPENED = "m15.foster.help.opened"
+    const val HELP_RESOLVED = "m15.foster.help.resolved"
+    const val CUSTODY_REVOKED = "m15.foster.custody.revoked"
 }
 
 /** Hooks M06 preparados (sin push real). */
@@ -83,6 +90,12 @@ object M15M06Hooks {
     const val REQUEST_SUBMITTED = "M15_FOSTER_REQUEST_SUBMITTED"
     const val REQUEST_ACCEPTED = "M15_FOSTER_REQUEST_ACCEPTED"
     const val PLACEMENT_STARTED = "M15_FOSTER_PLACEMENT_STARTED"
+    const val EVOLUTION_ADDED = "M15_EVOLUTION_ADDED"
+    const val PLACEMENT_COMPLETED = "M15_PLACEMENT_COMPLETED"
+    const val PLACEMENT_INTERRUPTED = "M15_PLACEMENT_INTERRUPTED"
+    const val EXPENSE_RECORDED = "M15_EXPENSE_RECORDED"
+    const val HELP_REQUEST_OPENED = "M15_HELP_REQUEST_OPENED"
+    const val HELP_REQUEST_RESOLVED = "M15_HELP_REQUEST_RESOLVED"
     const val INFRASTRUCTURE = "M15_NOTIFICATION_INFRASTRUCTURE"
 
     val all: Set<String> = setOf(
@@ -91,6 +104,12 @@ object M15M06Hooks {
         REQUEST_SUBMITTED,
         REQUEST_ACCEPTED,
         PLACEMENT_STARTED,
+        EVOLUTION_ADDED,
+        PLACEMENT_COMPLETED,
+        PLACEMENT_INTERRUPTED,
+        EXPENSE_RECORDED,
+        HELP_REQUEST_OPENED,
+        HELP_REQUEST_RESOLVED,
         INFRASTRUCTURE
     )
 }
@@ -181,7 +200,12 @@ data class M15FosterPlacement(
     val status: M15FosterPlacementStatus,
     val startedAt: Long,
     val estimatedEndAt: Long? = null,
-    val initialNotes: String? = null
+    val initialNotes: String? = null,
+    val endedAt: Long? = null,
+    val dischargeReason: M15DischargeReason? = null,
+    val dischargeOutcome: M15DischargeOutcome? = null,
+    val endNotes: String? = null,
+    val endedBy: String? = null
 )
 
 data class CreateM15FosterHomeInput(

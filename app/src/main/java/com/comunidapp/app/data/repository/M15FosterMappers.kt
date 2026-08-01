@@ -79,20 +79,28 @@ fun FosterHomeRequest.toM15(): M15FosterRequest = M15FosterRequest(
     rejectionReason = rejectionReason
 )
 
-fun FosterPlacement.toM15(): M15FosterPlacement = M15FosterPlacement(
-    id = id,
-    fosterRequestId = fosterRequestId,
-    fosterHomeId = fosterHomeId,
-    petId = petId,
-    petName = petName,
-    requesterUserId = requesterUserId,
-    requesterOrganizationId = requesterOrganizationId,
-    fosterUserId = fosterUserId,
-    status = status.toM15(),
-    startedAt = startedAt,
-    estimatedEndAt = estimatedEndAt,
-    initialNotes = initialNotes
-)
+fun FosterPlacement.toM15(): M15FosterPlacement {
+    val (reason, outcome, notes) = toM15DischargeFields()
+    return M15FosterPlacement(
+        id = id,
+        fosterRequestId = fosterRequestId,
+        fosterHomeId = fosterHomeId,
+        petId = petId,
+        petName = petName,
+        requesterUserId = requesterUserId,
+        requesterOrganizationId = requesterOrganizationId,
+        fosterUserId = fosterUserId,
+        status = status.toM15(),
+        startedAt = startedAt,
+        estimatedEndAt = estimatedEndAt,
+        initialNotes = initialNotes,
+        endedAt = endedAt,
+        dischargeReason = reason,
+        dischargeOutcome = outcome,
+        endNotes = notes,
+        endedBy = endedBy
+    )
+}
 
 fun CreateM15FosterHomeInput.toFoster(): CreateFosterHomeInput = CreateFosterHomeInput(
     displayName = displayName,

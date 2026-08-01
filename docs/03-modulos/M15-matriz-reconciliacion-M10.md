@@ -35,6 +35,10 @@ M10 ES LA PERSISTENCIA AUTORITATIVA DE M15
 | Revisar / aceptar / rechazar | `m10_mark_*`, `m10_accept_*`, `m10_reject_*` |
 | Iniciar ingreso | `m10_start_foster_placement` |
 | Listar placements activos | `m10_list_active_foster_placements` |
+| Evolución | `m10_add_foster_evolution` + entries 041 |
+| Egreso | `m10_complete_foster_placement` |
+| Gastos | foster_expenses RPC 041 |
+| Ayuda | foster_help_requests RPC 041 |
 
 ## Estados
 
@@ -52,7 +56,7 @@ M10 ES LA PERSISTENCIA AUTORITATIVA DE M15
 | Prefijo código error | M15 mapea `FOSTER_*` → `M15_FOSTER_*` vía `M15ErrorMapper.fromM10Code` |
 | Store local B1 | `M15MemoryStore` solo cuando `useSupabase = false` |
 | Legacy `foster_homes` (006) | INCOMPATIBLE — no usado por M10 ni M15 |
-| Gastos / evolución / ayuda | M10 041 — fuera de alcance M15 B2 |
+| Gastos / evolución / ayuda | M10 041 — **M15 B3 adaptadores SupabaseM15Placement*** |
 
 ## Datos que NO se duplican
 
@@ -63,13 +67,14 @@ M10 ES LA PERSISTENCIA AUTORITATIVA DE M15
 
 ## Brechas detectadas
 
-Ninguna brecha que requiera 053. Columnas y RPC M10 cubren el alcance M15 Bloque 1–2 base.
+Ninguna brecha que requiera 053. Columnas y RPC M10 cubren el alcance M15 Bloque 1–3.
 
 ## Implementación cliente
 
 | Capa | Archivo |
 |------|---------|
 | Mappers | `M15FosterMappers.kt` |
-| Adaptadores Supabase | `SupabaseM15FosterRepositories.kt` |
+| Adaptadores Supabase | `SupabaseM15FosterRepositories.kt`, `SupabaseM15LifecycleRepositories.kt` |
+| Mappers lifecycle | `M15LifecycleMappers.kt` |
 | Delegación M10 | `SupabaseFosterRepositories.kt` + `SupabaseFosterM10RemoteDataSource.kt` |
 | Switching | `DataProvider` (`useSupabase`) |

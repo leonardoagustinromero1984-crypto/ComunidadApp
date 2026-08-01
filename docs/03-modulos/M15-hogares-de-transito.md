@@ -44,13 +44,13 @@ Regla: perfil no ACTIVE → UNAVAILABLE; ocupación + reservas determinan AVAILA
 SUBMITTED → UNDER_REVIEW → ACCEPTED | REJECTED | CANCELLED | EXPIRED
 ```
 
-### Alojamiento (Bloque 1)
+### Alojamiento (Bloque 1–3)
 
 ```text
-RESERVED → ACTIVE
+RESERVED → ACTIVE → COMPLETED | CANCELLED
 ```
 
-Egreso, gastos, evolución y ayuda = Bloque 2+.
+Evolución append-only, egreso tipificado, gastos y ayuda = Bloque 3 (cerrado localmente).
 
 ## 5. Exclusiones Bloque 1
 
@@ -66,7 +66,7 @@ Egreso, gastos, evolución y ayuda = Bloque 2+.
 |--------|---------|
 | 1 | Dominio, fakes, UI `m15/*`, hub y flujo base solicitud → reserva |
 | 2 | Reconciliación M10 (Caso A): adaptadores Supabase M15 → RPC 040/041; **sin 053** |
-| 3 | Evolución, egreso, custodia temporal M08 |
+| 3 | Evolución, egreso, custodia temporal M08, gastos, ayuda — **cerrado localmente** |
 | 4 | Métricas, M06 push preparado, cierre técnico |
 
 ## 7. Definition of Done
@@ -85,6 +85,17 @@ VALIDACIÓN FUNCIONAL MANUAL PENDIENTE
 ```text
 M15 BLOQUE 2 CERRADO LOCALMENTE
 M10 ES LA PERSISTENCIA AUTORITATIVA DE M15
+SIN MIGRACIÓN 053
+COMPILACIÓN KOTLIN PASS
+PRUEBAS AUTOMÁTICAS NO EJECUTADAS
+VALIDACIÓN FUNCIONAL MANUAL PENDIENTE
+```
+
+### Bloque 3
+
+```text
+M15 BLOQUE 3 CERRADO LOCALMENTE
+M10/M08 SON LA BASE AUTORITATIVA
 SIN MIGRACIÓN 053
 COMPILACIÓN KOTLIN PASS
 PRUEBAS AUTOMÁTICAS NO EJECUTADAS

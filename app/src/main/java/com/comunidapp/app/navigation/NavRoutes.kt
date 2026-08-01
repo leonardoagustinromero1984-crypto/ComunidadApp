@@ -66,7 +66,17 @@ object NavRoutes {
     const val M15_MY_HOME = "m15/my_home"
     const val M15_REQUEST_FORM = "m15/requests/new/{m15HomeId}"
     const val M15_REQUESTS_RECEIVED = "m15/requests/received"
+    const val M15_PLACEMENTS = "m15/placements"
+    const val M15_PLACEMENT_DETAIL = "m15/placements/{placementId}"
+    const val M15_PLACEMENT_EVOLUTION = "m15/placements/{placementId}/evolution"
+    const val M15_PLACEMENT_EVOLUTION_NEW = "m15/placements/{placementId}/evolution/new"
+    const val M15_PLACEMENT_DISCHARGE = "m15/placements/{placementId}/discharge"
+    const val M15_PLACEMENT_EXPENSES = "m15/placements/{placementId}/expenses"
+    const val M15_PLACEMENT_EXPENSES_NEW = "m15/placements/{placementId}/expenses/new"
+    const val M15_PLACEMENT_HELP = "m15/placements/{placementId}/help"
+    const val M15_PLACEMENT_HELP_NEW = "m15/placements/{placementId}/help/new"
     const val ARG_M15_HOME_ID = "m15HomeId"
+    const val ARG_M15_PLACEMENT_ID = "placementId"
 
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
@@ -497,4 +507,21 @@ object NavRoutes {
         "m15/homes/${java.net.URLEncoder.encode(homeId, Charsets.UTF_8.name())}"
     fun m15RequestForm(homeId: String) =
         "m15/requests/new/${java.net.URLEncoder.encode(homeId, Charsets.UTF_8.name())}"
+
+    fun m15PlacementDetail(placementId: String) =
+        "m15/placements/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+    fun m15PlacementEvolution(placementId: String) =
+        "${m15PlacementDetail(placementId)}/evolution"
+    fun m15PlacementEvolutionNew(placementId: String) =
+        "${m15PlacementDetail(placementId)}/evolution/new"
+    fun m15PlacementDischarge(placementId: String) =
+        "${m15PlacementDetail(placementId)}/discharge"
+    fun m15PlacementExpenses(placementId: String) =
+        "${m15PlacementDetail(placementId)}/expenses"
+    fun m15PlacementExpensesNew(placementId: String) =
+        "${m15PlacementDetail(placementId)}/expenses/new"
+    fun m15PlacementHelp(placementId: String) =
+        "${m15PlacementDetail(placementId)}/help"
+    fun m15PlacementHelpNew(placementId: String) =
+        "${m15PlacementDetail(placementId)}/help/new"
 }

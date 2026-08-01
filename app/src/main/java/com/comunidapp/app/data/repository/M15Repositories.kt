@@ -27,6 +27,14 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
+data class M15TemporaryCustodyGrant(
+    val id: String,
+    val petId: String,
+    val fosterUserId: String,
+    val placementId: String,
+    val active: Boolean = true
+)
+
 /**
  * LeoVer M15 — store + contratos + fakes (Bloque 1, sin red).
  */
@@ -47,6 +55,11 @@ class M15MemoryStore {
     val placements: StateFlow<List<M15FosterPlacement>> = _placements.asStateFlow()
     val auditLog: StateFlow<List<Pair<String, String>>> = _audit.asStateFlow()
     val m06PreparedHooks: StateFlow<List<Pair<String, String>>> = _m06.asStateFlow()
+    val evolution = MutableStateFlow<List<com.comunidapp.app.data.model.M15PlacementEvolution>>(emptyList())
+    val expenses = MutableStateFlow<List<com.comunidapp.app.data.model.M15PlacementExpense>>(emptyList())
+    val helpRequests = MutableStateFlow<List<com.comunidapp.app.data.model.M15PlacementHelpRequest>>(emptyList())
+    val temporaryCustody = MutableStateFlow<List<M15TemporaryCustodyGrant>>(emptyList())
+    var forceRevokeFailure: Boolean = false
 
     fun nextId(prefix: String): String = "${prefix}_${idSeq.incrementAndGet()}"
 
@@ -559,12 +572,23 @@ class MockM15FosterPlacementRepository(
                 updatedAt = System.currentTimeMillis()
             )
             store.upsertHome(updatedHome)
+            val custodyId = store.nextId("m15_custody")
             val updated = placement.copy(
                 status = M15FosterPlacementStatus.ACTIVE,
                 initialNotes = initialNotes?.trim()?.takeIf { it.isNotEmpty() },
                 startedAt = System.currentTimeMillis()
             )
             store.upsertPlacement(updated)
+            store.temporaryCustody.update { list ->
+                listOf(
+                    M15TemporaryCustodyGrant(
+                        id = custodyId,
+                        petId = updated.petId,
+                        fosterUserId = updated.fosterUserId,
+                        placementId = updated.id
+                    )
+                ) + list
+            }
             store.audit(M15AuditEvents.PLACEMENT_STARTED, updated.id)
             store.recordM06(M15M06Hooks.PLACEMENT_STARTED, updated.id)
             updated
