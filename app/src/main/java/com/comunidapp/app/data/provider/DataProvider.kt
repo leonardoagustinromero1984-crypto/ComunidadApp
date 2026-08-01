@@ -51,6 +51,11 @@ import com.comunidapp.app.data.repository.M15FosterPlacementRepository
 import com.comunidapp.app.data.repository.M15FosterRequestRepository
 import com.comunidapp.app.data.repository.M15MemoryStore
 import com.comunidapp.app.data.repository.M15OperationsRepository
+import com.comunidapp.app.data.repository.M16MemoryStore
+import com.comunidapp.app.data.repository.M16ShelterRepository
+import com.comunidapp.app.data.repository.MockM16ShelterAuthorityPolicy
+import com.comunidapp.app.data.repository.MockM16ShelterRepository
+import com.comunidapp.app.data.repository.SupabaseM16ShelterRepository
 import com.comunidapp.app.data.repository.M15PlacementDischargeRepository
 import com.comunidapp.app.data.repository.M15PlacementEvolutionRepository
 import com.comunidapp.app.data.repository.M15PlacementExpenseRepository
@@ -901,6 +906,23 @@ object DataProvider {
             MockM15OperationsRepository(
                 store = m15Store,
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        }
+    }
+
+    /** M16 Bloque 1 — refugios vinculados a organización M03; legacy M11 preservado. */
+    private val m16Store by lazy { M16MemoryStore() }
+
+    private val m16Authority by lazy { MockM16ShelterAuthorityPolicy() }
+
+    val m16ShelterRepository: M16ShelterRepository by lazy {
+        if (useSupabase) {
+            SupabaseM16ShelterRepository()
+        } else {
+            MockM16ShelterRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+                store = m16Store,
+                authority = m16Authority
             )
         }
     }

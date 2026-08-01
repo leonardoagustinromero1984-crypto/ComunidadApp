@@ -82,6 +82,12 @@ object NavRoutes {
     const val ARG_M15_HOME_ID = "m15HomeId"
     const val ARG_M15_PLACEMENT_ID = "placementId"
 
+    // M16 — Refugios (Bloque 1 local)
+    const val M16_SHELTERS = "m16/shelters"
+    const val M16_SHELTER_DETAIL = "m16/shelters/{shelterId}"
+    const val M16_SHELTERS_MANAGE = "m16/shelters/manage"
+    const val ARG_M16_SHELTER_ID = "shelterId"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -514,6 +520,9 @@ object NavRoutes {
 
     fun m15PlacementDetail(placementId: String) =
         "m15/placements/${java.net.URLEncoder.encode(placementId, Charsets.UTF_8.name())}"
+
+    fun m16ShelterDetail(shelterId: String) =
+        "m16/shelters/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"
     fun m15PlacementEvolutionNew(placementId: String) =

@@ -259,6 +259,7 @@ fun SheltersContent(
     onShelterClick: (String) -> Unit,
     onShelterOps: () -> Unit = {},
     onVeterinaryDirectory: () -> Unit = {},
+    onM16Shelters: () -> Unit = {},
     bottomPadding: Dp = 0.dp,
     viewModel: SheltersViewModel = viewModel()
 ) {
@@ -273,6 +274,14 @@ fun SheltersContent(
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item {
+            androidx.compose.material3.OutlinedButton(
+                onClick = onM16Shelters,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Refugios (M16)")
+            }
+        }
         item {
             androidx.compose.material3.OutlinedButton(
                 onClick = onShelterOps,

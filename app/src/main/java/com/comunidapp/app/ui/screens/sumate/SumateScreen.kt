@@ -42,7 +42,8 @@ fun SumateScreen(
     onReceivedApplications: () -> Unit = {},
     onFosterHomes: () -> Unit = {},
     onShelterOps: () -> Unit = {},
-    onVeterinaryDirectory: () -> Unit = {}
+    onVeterinaryDirectory: () -> Unit = {},
+    onM16Shelters: () -> Unit = {}
 ) {
     val pagerState = rememberPagerState(pageCount = { sumateTabs.size })
     val scope = rememberCoroutineScope()
@@ -93,7 +94,8 @@ fun SumateScreen(
                 4 -> SheltersContent(
                     onShelterClick = onShelterClick,
                     onShelterOps = onShelterOps,
-                    onVeterinaryDirectory = onVeterinaryDirectory
+                    onVeterinaryDirectory = onVeterinaryDirectory,
+                    onM16Shelters = onM16Shelters
                 )
                 5 -> DonationsContent()
             }
