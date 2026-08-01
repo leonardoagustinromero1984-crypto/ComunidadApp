@@ -61,14 +61,21 @@ object M16ShelterValidators {
         } catch (_: Exception) {
             return "M16_INVALID_OPENING_HOURS"
         }
-        val seenDays = mutableSetOf<Int>()
-        for (period in hours.periods) {
-            if (period.dayOfWeek !in 1..7) return "M16_INVALID_OPENING_HOURS"
-            if (!seenDays.add(period.dayOfWeek)) return "M16_INVALID_OPENING_HOURS"
-            if (period.closed) continue
-            val open = parseTime(period.openTime) ?: return "M16_INVALID_OPENING_HOURS"
-            val close = parseTime(period.closeTime) ?: return "M16_INVALID_OPENING_HOURS"
-            if (!open.isBefore(close)) return "M16_INVALID_OPENING_HOURS"
+        val byDay = hours.periods.groupBy { it.dayOfWeek }
+        for ((day, periods) in byDay) {
+            if (day !in 1..7) return "M16_INVALID_OPENING_HOURS"
+            val openRanges = mutableListOf<Pair<LocalTime, LocalTime>>()
+            for (period in periods) {
+                if (period.closed) continue
+                val open = parseTime(period.openTime) ?: return "M16_INVALID_OPENING_HOURS"
+                val close = parseTime(period.closeTime) ?: return "M16_INVALID_OPENING_HOURS"
+                if (!open.isBefore(close)) return "M16_INVALID_OPENING_HOURS"
+                openRanges += open to close
+            }
+            val sorted = openRanges.sortedBy { it.first }
+            for (i in 0 until sorted.lastIndex) {
+                if (sorted[i].second > sorted[i + 1].first) return "M16_INVALID_OPENING_HOURS"
+            }
         }
         return null
     }

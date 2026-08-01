@@ -13,7 +13,8 @@ import com.comunidapp.app.data.model.M16ShelterSearchFilter
 import com.comunidapp.app.data.model.M16ShelterService
 import com.comunidapp.app.data.model.M16ShelterVerificationStatus
 import com.comunidapp.app.data.model.M16ShelterCapacity
-import com.comunidapp.app.data.model.M16M06Hooks
+import com.comunidapp.app.data.model.M16MockOrganizations
+import com.comunidapp.app.data.model.M16ShelterVerificationFilter
 import com.comunidapp.app.data.model.M16PrivacySanitizer
 import com.comunidapp.app.data.model.M16_ELIGIBLE_ORGANIZATION_TYPES
 import com.comunidapp.app.data.model.UpdateM16ShelterPublicInput
@@ -75,13 +76,15 @@ class M16MemoryStore {
         seeded = true
         val now = System.currentTimeMillis()
         organizationTypes.value = mapOf(
-            "org_refugio_norte" to OrganizationType.SHELTER,
-            "org_rescate_sur" to OrganizationType.RESCUE_GROUP,
+            M16MockOrganizations.ORG_NORTE to OrganizationType.SHELTER,
+            M16MockOrganizations.ORG_SUR to OrganizationType.RESCUE_GROUP,
+            M16MockOrganizations.ORG_OESTE to OrganizationType.NGO,
             "org_clinica_demo" to OrganizationType.VETERINARY_CLINIC
         )
         organizationManagers.value = mapOf(
-            "org_refugio_norte" to setOf(actorUserId),
-            "org_rescate_sur" to setOf(actorUserId)
+            M16MockOrganizations.ORG_NORTE to setOf(actorUserId),
+            M16MockOrganizations.ORG_SUR to setOf(actorUserId),
+            M16MockOrganizations.ORG_OESTE to setOf(actorUserId)
         )
         val defaultHours = M16OpeningHours(
             periods = (1..5).map { day ->
@@ -94,7 +97,7 @@ class M16MemoryStore {
         val samples = listOf(
             M16ShelterProfile(
                 id = nextId("m16_shelter"),
-                organizationId = "org_refugio_norte",
+                organizationId = M16MockOrganizations.ORG_NORTE,
                 displayName = "Refugio Comunitario Norte",
                 description = "Adopciones responsables y tránsito coordinado.",
                 operationalStatus = M16ShelterOperationalStatus.ACTIVE,
@@ -129,7 +132,7 @@ class M16MemoryStore {
             ),
             M16ShelterProfile(
                 id = nextId("m16_shelter"),
-                organizationId = "org_rescate_sur",
+                organizationId = M16MockOrganizations.ORG_SUR,
                 displayName = "Rescate Sur",
                 description = "Rescate y rehabilitación.",
                 operationalStatus = M16ShelterOperationalStatus.PAUSED,
@@ -145,11 +148,11 @@ class M16MemoryStore {
             ),
             M16ShelterProfile(
                 id = nextId("m16_shelter"),
-                organizationId = "org_refugio_legacy",
+                organizationId = M16MockOrganizations.ORG_LEGACY,
                 displayName = "Refugio Histórico",
                 description = "Perfil cerrado permanentemente.",
                 operationalStatus = M16ShelterOperationalStatus.PERMANENTLY_CLOSED,
-                publicationStatus = M16ShelterPublicationStatus.UNPUBLISHED,
+                publicationStatus = M16ShelterPublicationStatus.PUBLISHED,
                 verificationStatus = M16ShelterVerificationStatus.SUSPENDED,
                 publicZoneText = "Zona oeste",
                 capacity = M16ShelterCapacity(totalCapacity = 10, currentOccupancy = 0),
@@ -185,7 +188,13 @@ interface M16ShelterRepository {
     ): Result<M16ShelterProfile>
     suspend fun updateNeeds(shelterId: String, needs: List<M16ShelterNeed>): Result<M16ShelterProfile>
     suspend fun updateCapacity(shelterId: String, capacity: M16ShelterCapacity): Result<M16ShelterProfile>
+    suspend fun updatePublicContacts(
+        shelterId: String,
+        contacts: List<M16PublicContactChannel>
+    ): Result<M16ShelterProfile>
     suspend fun searchPublic(filter: M16ShelterSearchFilter): Result<List<M16PublicShelter>>
+    suspend fun canManageOrganization(organizationId: String): Boolean
+    suspend fun isOrganizationEligible(organizationId: String): Boolean
 }
 
 interface M16ShelterAuthorityPolicy {
@@ -209,6 +218,64 @@ class MockM16ShelterAuthorityPolicy : M16ShelterAuthorityPolicy {
 private fun failM16(code: String): Nothing =
     throw M16Exception(code, M16ShelterErrorMapper.userMessage(code))
 
+private fun matchesPublicVisibility(
+    profile: M16ShelterProfile,
+    filter: M16ShelterSearchFilter
+): Boolean {
+    if (profile.publicationStatus != M16ShelterPublicationStatus.PUBLISHED) return false
+    val statusFilter = filter.operationalStatus
+    return when {
+        statusFilter != null -> profile.operationalStatus == statusFilter
+        else -> profile.operationalStatus != M16ShelterOperationalStatus.PERMANENTLY_CLOSED
+    }
+}
+
+private fun matchesVerificationFilter(
+    profile: M16ShelterProfile,
+    filter: M16ShelterSearchFilter
+): Boolean {
+    val effective = when {
+        filter.verificationFilter != M16ShelterVerificationFilter.ALL ->
+            filter.verificationFilter
+        filter.verifiedOnly -> M16ShelterVerificationFilter.VERIFIED_ONLY
+        else -> M16ShelterVerificationFilter.ALL
+    }
+    return when (effective) {
+        M16ShelterVerificationFilter.ALL -> true
+        M16ShelterVerificationFilter.VERIFIED_ONLY ->
+            profile.verificationStatus == M16ShelterVerificationStatus.VERIFIED
+        M16ShelterVerificationFilter.UNVERIFIED_OR_PENDING ->
+            profile.verificationStatus == M16ShelterVerificationStatus.UNVERIFIED ||
+                profile.verificationStatus == M16ShelterVerificationStatus.PENDING
+    }
+}
+
+private fun applyPublicSearchFilters(
+    profiles: List<M16ShelterProfile>,
+    filter: M16ShelterSearchFilter
+): List<M16ShelterProfile> {
+    val q = filter.query.trim().lowercase()
+    return profiles
+        .filter { matchesPublicVisibility(it, filter) }
+        .filter { matchesVerificationFilter(it, filter) }
+        .filter { profile ->
+            filter.species?.let { sp ->
+                profile.acceptedSpecies.isEmpty() || sp.uppercase() in profile.acceptedSpecies
+            } ?: true
+        }
+        .filter { profile ->
+            filter.service?.let { profile.services.contains(it) } ?: true
+        }
+        .filter { profile ->
+            if (q.isEmpty()) true
+            else {
+                profile.displayName.lowercase().contains(q) ||
+                    profile.publicZoneText.lowercase().contains(q) ||
+                    profile.description.orEmpty().lowercase().contains(q)
+            }
+        }
+}
+
 class MockM16ShelterRepository(
     private val actorUserId: () -> String?,
     private val store: M16MemoryStore,
@@ -221,10 +288,8 @@ class MockM16ShelterRepository(
 
     override fun observePublicShelters(): Flow<List<M16PublicShelter>> =
         store.profiles.map { list ->
-            list.filter {
-                it.publicationStatus == M16ShelterPublicationStatus.PUBLISHED &&
-                    it.operationalStatus != M16ShelterOperationalStatus.PERMANENTLY_CLOSED
-            }.map { it.toPublicShelter() }
+            applyPublicSearchFilters(list, M16ShelterSearchFilter())
+                .map { it.toPublicShelter() }
         }
 
     override fun observeProfile(shelterId: String): Flow<M16ShelterProfile?> =
@@ -379,41 +444,26 @@ class MockM16ShelterRepository(
         profile.copy(capacity = capacity)
     }
 
+    override suspend fun updatePublicContacts(
+        shelterId: String,
+        contacts: List<M16PublicContactChannel>
+    ): Result<M16ShelterProfile> = mutateProfile(shelterId) { profile ->
+        M16ShelterValidators.validatePublicContacts(contacts)?.let { failM16(it) }
+        profile.copy(publicContacts = contacts)
+    }
+
     override suspend fun searchPublic(filter: M16ShelterSearchFilter): Result<List<M16PublicShelter>> =
         runCatching {
-            val q = filter.query.trim().lowercase()
-            store.profiles.value
-                .filter {
-                    it.publicationStatus == M16ShelterPublicationStatus.PUBLISHED &&
-                        it.operationalStatus != M16ShelterOperationalStatus.PERMANENTLY_CLOSED
-                }
-                .filter { profile ->
-                    filter.operationalStatus?.let { profile.operationalStatus == it } ?: true
-                }
-                .filter { profile ->
-                    if (filter.verifiedOnly) {
-                        profile.verificationStatus == M16ShelterVerificationStatus.VERIFIED
-                    } else true
-                }
-                .filter { profile ->
-                    filter.species?.let { sp ->
-                        profile.acceptedSpecies.isEmpty() ||
-                            sp.uppercase() in profile.acceptedSpecies
-                    } ?: true
-                }
-                .filter { profile ->
-                    filter.service?.let { profile.services.contains(it) } ?: true
-                }
-                .filter { profile ->
-                    if (q.isEmpty()) true
-                    else {
-                        profile.displayName.lowercase().contains(q) ||
-                            profile.publicZoneText.lowercase().contains(q) ||
-                            profile.description.orEmpty().lowercase().contains(q)
-                    }
-                }
-                .map { it.toPublicShelter() }
+            applyPublicSearchFilters(store.profiles.value, filter).map { it.toPublicShelter() }
         }.fold({ Result.success(it) }, { M16ShelterErrorMapper.failure(it) })
+
+    override suspend fun canManageOrganization(organizationId: String): Boolean {
+        val actor = actorUserId() ?: return false
+        return authority.canManageShelter(actor, organizationId, store)
+    }
+
+    override suspend fun isOrganizationEligible(organizationId: String): Boolean =
+        authority.isOrganizationEligible(organizationId, store)
 
     private suspend fun mutateProfile(
         shelterId: String,
@@ -498,6 +548,15 @@ class SupabaseM16ShelterRepository : M16ShelterRepository {
         capacity: M16ShelterCapacity
     ): Result<M16ShelterProfile> = M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
 
+    override suspend fun updatePublicContacts(
+        shelterId: String,
+        contacts: List<M16PublicContactChannel>
+    ): Result<M16ShelterProfile> = M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+
     override suspend fun searchPublic(filter: M16ShelterSearchFilter): Result<List<M16PublicShelter>> =
         M16ShelterErrorMapper.fail("M16_REMOTE_VALIDATION_PENDING")
+
+    override suspend fun canManageOrganization(organizationId: String): Boolean = false
+
+    override suspend fun isOrganizationEligible(organizationId: String): Boolean = false
 }

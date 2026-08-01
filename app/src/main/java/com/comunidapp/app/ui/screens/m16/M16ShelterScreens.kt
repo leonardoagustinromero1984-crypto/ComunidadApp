@@ -1,8 +1,10 @@
 package com.comunidapp.app.ui.screens.m16
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -10,13 +12,20 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -26,14 +35,27 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.model.M16MockOrganizations
+import com.comunidapp.app.data.model.M16OpeningHours
+import com.comunidapp.app.data.model.M16OpeningPeriod
+import com.comunidapp.app.data.model.M16PublicContactChannel
+import com.comunidapp.app.data.model.M16PublicContactChannelType
+import com.comunidapp.app.data.model.M16PublicShelter
+import com.comunidapp.app.data.model.M16ShelterOperationalStatus
+import com.comunidapp.app.data.model.M16ShelterService
+import com.comunidapp.app.data.model.M16ShelterVerificationFilter
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.viewmodel.M16ShelterDetailViewModel
+import com.comunidapp.app.viewmodel.M16ShelterManageDraft
+import com.comunidapp.app.viewmodel.M16ShelterManageUiState
 import com.comunidapp.app.viewmodel.M16ShelterManageViewModel
 import com.comunidapp.app.viewmodel.M16SheltersListUiState
 import com.comunidapp.app.viewmodel.M16SheltersListViewModel
+import com.comunidapp.app.viewmodel.m16ContactTypeLabel
+import com.comunidapp.app.viewmodel.m16DayLabel
 
 @Composable
 fun M16SheltersListScreen(
@@ -43,7 +65,9 @@ fun M16SheltersListScreen(
     viewModel: M16SheltersListViewModel = viewModel(factory = M16SheltersListViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
-    var query by remember { mutableStateOf("") }
+    val filter by viewModel.filter.collectAsState()
+    var query by remember(filter.query) { mutableStateOf(filter.query) }
+
     Scaffold(
         topBar = {
             ComunidappTopBar(
@@ -72,6 +96,14 @@ fun M16SheltersListScreen(
                 label = { Text("Buscar refugio") },
                 singleLine = true
             )
+            M16ListFilterRow(
+                filter = filter,
+                onOperational = viewModel::setOperationalStatus,
+                onVerification = viewModel::setVerificationFilter,
+                onService = viewModel::setService,
+                onSpecies = viewModel::setSpecies,
+                onClear = viewModel::clearFilters
+            )
             Button(onClick = onManage, modifier = Modifier.fillMaxWidth()) {
                 Text("Administrar refugio (mock)")
             }
@@ -86,22 +118,130 @@ fun M16SheltersListScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(s.items, key = { it.id }) { item ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onShelterClick(item.id) }
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(item.displayName, fontWeight = FontWeight.Bold)
-                                Text("${item.publicZoneText} · ${item.operationalStatus}")
-                                Text("Servicios: ${item.services.joinToString { it.name }}")
-                                Text("Disponibilidad: ${item.availability}")
-                                Text("Verificación: ${item.verificationStatus}")
-                            }
-                        }
+                        M16PublicShelterCard(item = item, onClick = { onShelterClick(item.id) })
                     }
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun M16ListFilterRow(
+    filter: com.comunidapp.app.data.model.M16ShelterSearchFilter,
+    onOperational: (M16ShelterOperationalStatus?) -> Unit,
+    onVerification: (M16ShelterVerificationFilter) -> Unit,
+    onService: (M16ShelterService?) -> Unit,
+    onSpecies: (String?) -> Unit,
+    onClear: () -> Unit
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Estado operativo", style = MaterialTheme.typography.labelMedium)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = filter.operationalStatus == null,
+                onClick = { onOperational(null) },
+                label = { Text("Activos y pausados") }
+            )
+            FilterChip(
+                selected = filter.operationalStatus == M16ShelterOperationalStatus.ACTIVE,
+                onClick = {
+                    onOperational(
+                        if (filter.operationalStatus == M16ShelterOperationalStatus.ACTIVE) null
+                        else M16ShelterOperationalStatus.ACTIVE
+                    )
+                },
+                label = { Text("Activos") }
+            )
+            FilterChip(
+                selected = filter.operationalStatus == M16ShelterOperationalStatus.PAUSED,
+                onClick = {
+                    onOperational(
+                        if (filter.operationalStatus == M16ShelterOperationalStatus.PAUSED) null
+                        else M16ShelterOperationalStatus.PAUSED
+                    )
+                },
+                label = { Text("Pausados") }
+            )
+            FilterChip(
+                selected = filter.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED,
+                onClick = {
+                    onOperational(
+                        if (filter.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED) {
+                            null
+                        } else {
+                            M16ShelterOperationalStatus.PERMANENTLY_CLOSED
+                        }
+                    )
+                },
+                label = { Text("Cerrados") }
+            )
+        }
+        Text("Verificación", style = MaterialTheme.typography.labelMedium)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            FilterChip(
+                selected = filter.verificationFilter == M16ShelterVerificationFilter.ALL,
+                onClick = { onVerification(M16ShelterVerificationFilter.ALL) },
+                label = { Text("Todos") }
+            )
+            FilterChip(
+                selected = filter.verificationFilter == M16ShelterVerificationFilter.VERIFIED_ONLY,
+                onClick = { onVerification(M16ShelterVerificationFilter.VERIFIED_ONLY) },
+                label = { Text("Verificados") }
+            )
+            FilterChip(
+                selected = filter.verificationFilter == M16ShelterVerificationFilter.UNVERIFIED_OR_PENDING,
+                onClick = { onVerification(M16ShelterVerificationFilter.UNVERIFIED_OR_PENDING) },
+                label = { Text("No verificados") }
+            )
+        }
+        Text("Servicio", style = MaterialTheme.typography.labelMedium)
+        Row(
+            modifier = Modifier.horizontalScroll(rememberScrollState()),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            FilterChip(
+                selected = filter.service == null,
+                onClick = { onService(null) },
+                label = { Text("Todos") }
+            )
+            M16ShelterService.entries.forEach { service ->
+                FilterChip(
+                    selected = filter.service == service,
+                    onClick = { onService(if (filter.service == service) null else service) },
+                    label = { Text(service.name) }
+                )
+            }
+        }
+        OutlinedTextField(
+            value = filter.species.orEmpty(),
+            onValueChange = { onSpecies(it) },
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Especie (DOG, CAT…)") },
+            singleLine = true
+        )
+        OutlinedButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
+            Text("Limpiar filtros")
+        }
+    }
+}
+
+@Composable
+private fun M16PublicShelterCard(item: M16PublicShelter, onClick: () -> Unit) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(item.displayName, fontWeight = FontWeight.Bold)
+            Text("${item.publicZoneText} · ${item.operationalStatus}")
+            Text("Servicios: ${item.services.joinToString { it.name }}")
+            Text("Disponibilidad: ${item.availability}")
+            Text("Verificación: ${item.verificationStatus}")
         }
     }
 }
@@ -125,34 +265,91 @@ fun M16ShelterDetailScreen(
             )
         }
     ) { padding ->
-        Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
+        Column(
+            Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+        ) {
             when {
                 message != null -> ErrorState(message = message!!)
                 shelter == null -> LoadingState()
-                else -> {
-                    val s = shelter!!
-                    Text(s.displayName, style = MaterialTheme.typography.headlineSmall)
-                    Text("Zona: ${s.publicZoneText}")
-                    s.description?.let { Text(it) }
-                    Spacer(Modifier.height(8.dp))
-                    Text("Estado: ${s.operationalStatus} · ${s.verificationStatus}")
-                    Text("Capacidad agregada: ${s.freeSlotsApproximate}/${s.totalCapacity} libres")
-                    Text("Especies: ${s.acceptedSpecies.joinToString()}")
-                    Text("Servicios: ${s.services.joinToString { it.name }}")
-                    if (s.needs.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text("Necesidades", fontWeight = FontWeight.Bold)
-                        s.needs.forEach { Text("· ${it.category}: ${it.description}") }
-                    }
-                    if (s.publicContacts.isNotEmpty()) {
-                        Spacer(Modifier.height(8.dp))
-                        Text("Contacto público", fontWeight = FontWeight.Bold)
-                        s.publicContacts.forEach { Text("${it.type.name}: ${it.value}") }
-                    }
-                }
+                else -> M16PublicShelterDetailContent(shelter!!)
             }
         }
     }
+}
+
+@Composable
+private fun M16PublicShelterDetailContent(s: M16PublicShelter) {
+    if (s.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            colors = androidx.compose.material3.CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.errorContainer
+            )
+        ) {
+            Text(
+                "Este refugio cerró permanentemente.",
+                modifier = Modifier.padding(12.dp),
+                color = MaterialTheme.colorScheme.onErrorContainer,
+                fontWeight = FontWeight.Bold
+            )
+        }
+        Spacer(Modifier.height(12.dp))
+    }
+    if (s.operationalStatus == M16ShelterOperationalStatus.PAUSED) {
+        Text(
+            "Refugio pausado temporalmente.",
+            color = MaterialTheme.colorScheme.tertiary,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(Modifier.height(8.dp))
+    }
+    Text(s.displayName, style = MaterialTheme.typography.headlineSmall)
+    Text("Zona: ${s.publicZoneText}")
+    s.description?.let { Text(it) }
+    Spacer(Modifier.height(8.dp))
+    Text("Estado: ${s.operationalStatus} · Verificación: ${s.verificationStatus}")
+    Text("Capacidad agregada: ${s.freeSlotsApproximate} libres de ${s.totalCapacity}")
+    Text("Especies: ${s.acceptedSpecies.joinToString().ifBlank { "—" }}")
+    Text("Servicios: ${s.services.joinToString { it.name }.ifBlank { "—" }}")
+    if (s.needs.isNotEmpty()) {
+        Spacer(Modifier.height(8.dp))
+        Text("Necesidades", fontWeight = FontWeight.Bold)
+        s.needs.forEach { Text("· ${it.category}: ${it.description}") }
+    }
+    Spacer(Modifier.height(12.dp))
+    Text("Horarios de atención", fontWeight = FontWeight.Bold)
+    M16OpeningHoursReadOnly(s.openingHours)
+    if (s.publicContacts.isNotEmpty()) {
+        Spacer(Modifier.height(12.dp))
+        Text("Contacto público", fontWeight = FontWeight.Bold)
+        s.publicContacts.forEach { contact ->
+            Text("${m16ContactTypeLabel(contact.type)}: ${contact.value}")
+        }
+    }
+}
+
+@Composable
+private fun M16OpeningHoursReadOnly(hours: M16OpeningHours) {
+    if (hours.periods.isEmpty()) {
+        Text("Sin horarios publicados.")
+        return
+    }
+    val grouped = hours.periods.groupBy { it.dayOfWeek }.toSortedMap()
+    grouped.forEach { (day, periods) ->
+        val label = periods.joinToString("; ") { period ->
+            if (period.closed) "Cerrado"
+            else "${period.openTime.orEmpty()} – ${period.closeTime.orEmpty()}"
+        }
+        Text("${m16DayLabel(day)}: $label")
+    }
+    Text(
+        "Zona horaria: ${hours.zoneIdName}",
+        style = MaterialTheme.typography.bodySmall
+    )
 }
 
 @Composable
@@ -160,8 +357,41 @@ fun M16ShelterManageScreen(
     onNavigateBack: () -> Unit,
     viewModel: M16ShelterManageViewModel = viewModel(factory = M16ShelterManageViewModel.factory())
 ) {
-    val profile by viewModel.profile.collectAsState()
-    val message by viewModel.message.collectAsState()
+    val uiState by viewModel.uiState.collectAsState()
+    val draft by viewModel.draft.collectAsState()
+    val feedback by viewModel.feedback.collectAsState()
+    val orgId by viewModel.organizationId.collectAsState()
+    var showCloseConfirm by remember { mutableStateOf(false) }
+
+    LaunchedEffect(feedback) {
+        if (feedback != null) {
+            kotlinx.coroutines.delay(4000)
+            viewModel.clearFeedback()
+        }
+    }
+
+    if (showCloseConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCloseConfirm = false },
+            title = { Text("Cerrar permanentemente este refugio") },
+            text = {
+                Text(
+                    "Esta operación es terminal. El refugio no podrá reactivarse " +
+                        "mediante acciones normales de M16."
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    showCloseConfirm = false
+                    viewModel.closePermanently()
+                }) { Text("Confirmar cierre") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showCloseConfirm = false }) { Text("Cancelar") }
+            }
+        )
+    }
+
     Scaffold(
         topBar = {
             ComunidappTopBar(
@@ -172,35 +402,324 @@ fun M16ShelterManageScreen(
         }
     ) { padding ->
         Column(
-            Modifier.padding(padding).padding(16.dp).fillMaxSize(),
+            Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            message?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-            if (profile == null) {
-                LoadingState()
-            } else {
-                val p = profile!!
-                Text(p.displayName, fontWeight = FontWeight.Bold)
-                Text("Operativo: ${p.operationalStatus}")
-                Text("Publicación: ${p.publicationStatus}")
-                Text("Verificación: ${p.verificationStatus}")
-                Text("Capacidad: ${p.capacity.currentOccupancy}/${p.capacity.totalCapacity}")
-                Button(onClick = { viewModel.pause() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Pausar")
+            feedback?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+            }
+            Text("Organización mock", style = MaterialTheme.typography.labelMedium)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                M16MockOrganizations.MANAGE_ORGANIZATION_IDS.forEach { id ->
+                    FilterChip(
+                        selected = orgId == id,
+                        onClick = { viewModel.selectOrganization(id) },
+                        label = { Text(id.removePrefix("org_")) }
+                    )
                 }
-                Button(onClick = { viewModel.activate() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Reactivar")
-                }
-                Button(onClick = { viewModel.publish() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Publicar")
-                }
-                Button(onClick = { viewModel.unpublish() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Despublicar")
-                }
-                Button(onClick = { viewModel.requestVerification() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Solicitar verificación")
-                }
+            }
+            when (val state = uiState) {
+                M16ShelterManageUiState.Loading -> LoadingState()
+                is M16ShelterManageUiState.Error -> ErrorState(message = state.message)
+                M16ShelterManageUiState.PermissionDenied -> ErrorState(
+                    message = "No tenés permiso para administrar esta organización."
+                )
+                is M16ShelterManageUiState.NoProfile -> M16NoProfileContent(
+                    draft = draft,
+                    saving = state.saving,
+                    onDraftChange = viewModel::updateDraft,
+                    onCreate = viewModel::createProfile
+                )
+                is M16ShelterManageUiState.ProfileContent -> M16ProfileManageContent(
+                    profile = state.profile,
+                    draft = draft,
+                    saving = state.saving,
+                    onDraftChange = viewModel::updateDraft,
+                    onSavePublic = viewModel::savePublicData,
+                    onSaveCapacity = viewModel::saveCapacity,
+                    onSaveHours = viewModel::saveOpeningHours,
+                    onSaveContacts = viewModel::saveContacts,
+                    onSaveServices = viewModel::saveServices,
+                    onSaveNeeds = viewModel::saveNeeds,
+                    onPublish = viewModel::publish,
+                    onPause = viewModel::pause,
+                    onActivate = viewModel::activate,
+                    onRequestVerification = viewModel::requestVerification,
+                    onClosePermanently = { showCloseConfirm = true }
+                )
             }
         }
     }
+}
+
+@Composable
+private fun M16NoProfileContent(
+    draft: M16ShelterManageDraft,
+    saving: Boolean,
+    onDraftChange: ((M16ShelterManageDraft) -> M16ShelterManageDraft) -> Unit,
+    onCreate: () -> Unit
+) {
+    Text("Sin perfil M16 para esta organización elegible.", fontWeight = FontWeight.Bold)
+    OutlinedTextField(
+        value = draft.displayName,
+        onValueChange = { v -> onDraftChange { it.copy(displayName = v) } },
+        label = { Text("Nombre público") },
+        modifier = Modifier.fillMaxWidth()
+    )
+    OutlinedTextField(
+        value = draft.publicZoneText,
+        onValueChange = { v -> onDraftChange { it.copy(publicZoneText = v) } },
+        label = { Text("Zona pública") },
+        modifier = Modifier.fillMaxWidth()
+    )
+    OutlinedTextField(
+        value = draft.totalCapacity,
+        onValueChange = { v -> onDraftChange { it.copy(totalCapacity = v) } },
+        label = { Text("Capacidad total") },
+        modifier = Modifier.fillMaxWidth()
+    )
+    Button(onClick = onCreate, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
+        Text(if (saving) "Creando…" else "Crear perfil M16")
+    }
+}
+
+@Composable
+private fun M16ProfileManageContent(
+    profile: com.comunidapp.app.data.model.M16ShelterProfile,
+    draft: M16ShelterManageDraft,
+    saving: Boolean,
+    onDraftChange: ((M16ShelterManageDraft) -> M16ShelterManageDraft) -> Unit,
+    onSavePublic: () -> Unit,
+    onSaveCapacity: () -> Unit,
+    onSaveHours: () -> Unit,
+    onSaveContacts: () -> Unit,
+    onSaveServices: () -> Unit,
+    onSaveNeeds: () -> Unit,
+    onPublish: () -> Unit,
+    onPause: () -> Unit,
+    onActivate: () -> Unit,
+    onRequestVerification: () -> Unit,
+    onClosePermanently: () -> Unit
+) {
+    val isTerminal = profile.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED
+    Text(profile.displayName, fontWeight = FontWeight.Bold)
+    Text("Operativo: ${profile.operationalStatus}")
+    Text("Publicación: ${profile.publicationStatus}")
+    Text("Verificación: ${profile.verificationStatus}")
+    if (profile.verificationStatus == com.comunidapp.app.data.model.M16ShelterVerificationStatus.PENDING) {
+        Text(
+            "Verificación pendiente — aprobación final vía administración M04.",
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+
+    Text("Datos públicos", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+    OutlinedTextField(
+        value = draft.displayName,
+        onValueChange = { v -> onDraftChange { it.copy(displayName = v) } },
+        label = { Text("Nombre público") },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isTerminal
+    )
+    OutlinedTextField(
+        value = draft.description,
+        onValueChange = { v -> onDraftChange { it.copy(description = v) } },
+        label = { Text("Descripción") },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isTerminal
+    )
+    OutlinedTextField(
+        value = draft.publicZoneText,
+        onValueChange = { v -> onDraftChange { it.copy(publicZoneText = v) } },
+        label = { Text("Zona pública") },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isTerminal
+    )
+    Button(onClick = onSavePublic, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
+        Text("Guardar datos públicos")
+    }
+
+    Text("Capacidad", fontWeight = FontWeight.Bold)
+    OutlinedTextField(
+        value = draft.totalCapacity,
+        onValueChange = { v -> onDraftChange { it.copy(totalCapacity = v) } },
+        label = { Text("Capacidad total") },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isTerminal
+    )
+    OutlinedTextField(
+        value = draft.currentOccupancy,
+        onValueChange = { v -> onDraftChange { it.copy(currentOccupancy = v) } },
+        label = { Text("Ocupación actual") },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isTerminal
+    )
+    Button(onClick = onSaveCapacity, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
+        Text("Guardar capacidad")
+    }
+
+    Text("Horarios (HH:mm)", fontWeight = FontWeight.Bold)
+    (1..7).forEach { day ->
+        val period = draft.openingHours.periods.find { it.dayOfWeek == day }
+            ?: M16OpeningPeriod(dayOfWeek = day, closed = true)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(m16DayLabel(day), modifier = Modifier.weight(0.35f))
+            OutlinedTextField(
+                value = if (period.closed) "" else period.openTime.orEmpty(),
+                onValueChange = { v ->
+                    onDraftChange { d ->
+                        d.copy(openingHours = d.openingHours.updateDay(day, open = v, close = period.closeTime))
+                    }
+                },
+                label = { Text("Abre") },
+                modifier = Modifier.weight(0.3f),
+                enabled = !isTerminal && !period.closed
+            )
+            OutlinedTextField(
+                value = if (period.closed) "" else period.closeTime.orEmpty(),
+                onValueChange = { v ->
+                    onDraftChange { d ->
+                        d.copy(openingHours = d.openingHours.updateDay(day, open = period.openTime, close = v))
+                    }
+                },
+                label = { Text("Cierra") },
+                modifier = Modifier.weight(0.3f),
+                enabled = !isTerminal && !period.closed
+            )
+        }
+        FilterChip(
+            selected = period.closed,
+            onClick = {
+                if (!isTerminal) {
+                    onDraftChange { d ->
+                        d.copy(openingHours = d.openingHours.toggleClosed(day))
+                    }
+                }
+            },
+            label = { Text(if (period.closed) "Cerrado" else "Abierto") },
+            enabled = !isTerminal
+        )
+    }
+    Button(onClick = onSaveHours, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
+        Text("Guardar horarios")
+    }
+
+    Text("Contactos públicos declarados", fontWeight = FontWeight.Bold)
+    draft.contacts.forEachIndexed { index, contact ->
+        Text("${m16ContactTypeLabel(contact.type)}: ${contact.value}")
+        if (!isTerminal) {
+            TextButton(onClick = {
+                onDraftChange { d -> d.copy(contacts = d.contacts.filterIndexed { i, _ -> i != index }) }
+            }) { Text("Eliminar contacto") }
+        }
+    }
+    if (!isTerminal) {
+        var newContactValue by remember { mutableStateOf("") }
+        OutlinedTextField(
+            value = newContactValue,
+            onValueChange = { newContactValue = it },
+            label = { Text("Nuevo email institucional (@)") },
+            modifier = Modifier.fillMaxWidth()
+        )
+        Button(
+            onClick = {
+                if (newContactValue.isNotBlank()) {
+                    onDraftChange { d ->
+                        d.copy(
+                            contacts = d.contacts + M16PublicContactChannel(
+                                type = M16PublicContactChannelType.INSTITUTIONAL_EMAIL,
+                                value = newContactValue.trim()
+                            )
+                        )
+                    }
+                    newContactValue = ""
+                }
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) { Text("Agregar contacto público") }
+    }
+    Button(onClick = onSaveContacts, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
+        Text("Guardar contactos")
+    }
+
+    Text("Servicios", fontWeight = FontWeight.Bold)
+    Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        M16ShelterService.entries.forEach { service ->
+            FilterChip(
+                selected = draft.services.contains(service),
+                onClick = {
+                    if (!isTerminal) {
+                        onDraftChange { d ->
+                            d.copy(
+                                services = if (service in d.services) d.services - service else d.services + service
+                            )
+                        }
+                    }
+                },
+                label = { Text(service.name) },
+                enabled = !isTerminal
+            )
+        }
+    }
+    Button(onClick = onSaveServices, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
+        Text("Guardar servicios")
+    }
+
+    Text("Necesidades (categoría|descripción por línea)", fontWeight = FontWeight.Bold)
+    OutlinedTextField(
+        value = draft.needsText,
+        onValueChange = { v -> onDraftChange { it.copy(needsText = v) } },
+        modifier = Modifier.fillMaxWidth(),
+        enabled = !isTerminal
+    )
+    Button(onClick = onSaveNeeds, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
+        Text("Guardar necesidades")
+    }
+
+    if (!isTerminal) {
+        Text("Acciones operativas", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
+        Button(onClick = onPublish, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("Publicar") }
+        Button(onClick = onPause, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("Pausar") }
+        Button(onClick = onActivate, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("Reactivar") }
+        Button(onClick = onRequestVerification, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
+            Text("Solicitar verificación")
+        }
+        OutlinedButton(onClick = onClosePermanently, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
+            Text("Cerrar permanentemente")
+        }
+    } else {
+        Text(
+            "Este refugio está cerrado permanentemente. No hay acciones operativas disponibles.",
+            color = MaterialTheme.colorScheme.error
+        )
+        Button(onClick = onActivate, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
+            Text("Intentar reactivar (debe fallar)")
+        }
+    }
+}
+
+private fun M16OpeningHours.updateDay(day: Int, open: String?, close: String?): M16OpeningHours {
+    val others = periods.filterNot { it.dayOfWeek == day }
+    val updated = M16OpeningPeriod(
+        dayOfWeek = day,
+        closed = false,
+        openTime = open?.ifBlank { null },
+        closeTime = close?.ifBlank { null }
+    )
+    return copy(periods = others + updated)
+}
+
+private fun M16OpeningHours.toggleClosed(day: Int): M16OpeningHours {
+    val existing = periods.find { it.dayOfWeek == day }
+    val others = periods.filterNot { it.dayOfWeek == day }
+    val toggled = if (existing?.closed == true) {
+        M16OpeningPeriod(dayOfWeek = day, openTime = "09:00", closeTime = "18:00")
+    } else {
+        M16OpeningPeriod(dayOfWeek = day, closed = true)
+    }
+    return copy(periods = others + toggled)
 }

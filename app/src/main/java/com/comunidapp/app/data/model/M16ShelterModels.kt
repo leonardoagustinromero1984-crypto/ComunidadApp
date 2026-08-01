@@ -159,13 +159,31 @@ data class M16ShelterSummary(
     val publicImageRef: String?
 )
 
+enum class M16ShelterVerificationFilter {
+    ALL,
+    VERIFIED_ONLY,
+    UNVERIFIED_OR_PENDING
+}
+
 data class M16ShelterSearchFilter(
     val query: String = "",
     val species: String? = null,
     val service: M16ShelterService? = null,
+    @Deprecated("Use verificationFilter", ReplaceWith("verificationFilter"))
     val verifiedOnly: Boolean = false,
+    val verificationFilter: M16ShelterVerificationFilter = M16ShelterVerificationFilter.ALL,
     val operationalStatus: M16ShelterOperationalStatus? = null
 )
+
+/** Organizaciones mock M03 elegibles para administración M16 Bloque 1. */
+object M16MockOrganizations {
+    const val ORG_NORTE = "org_refugio_norte"
+    const val ORG_SUR = "org_rescate_sur"
+    const val ORG_OESTE = "org_refugio_oeste"
+    const val ORG_LEGACY = "org_refugio_legacy"
+
+    val MANAGE_ORGANIZATION_IDS = listOf(ORG_NORTE, ORG_OESTE)
+}
 
 data class CreateM16ShelterProfileInput(
     val organizationId: String,
