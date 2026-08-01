@@ -1,53 +1,47 @@
-# M15 — Smoke funcional pendiente
+# M15 — Smoke funcional remoto
 
 ## Estado
 
 ```text
-M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO
-M15 CIERRE OFICIAL PENDIENTE
-M15 VALIDACIÓN FUNCIONAL PENDIENTE
+M15 SMOKE FUNCIONAL REMOTO PASS
+M15 VALIDACIÓN FUNCIONAL MANUAL PASS
+M15 CIERRE OFICIAL COMPLETADO
 ```
 
-Decisión operativa: **no ejecutar** operaciones remotas desde Cursor. **No** declarar smoke PASS.
-
-## Registro sesión 2026-08-01
+## Registro ejecución — 2026-08-01
 
 | Campo | Valor |
 |-------|-------|
-| Entorno utilizado | No informado |
-| Fecha y hora | No informado |
-| Resultado general | **NO DISPONIBLE** |
-| Operaciones ejecutadas | No informadas |
-| Errores observados | No informados |
-| Evidencia / logs sanitizados | No entregados (plantilla con placeholders) |
+| Entorno utilizado | Remoto M15; proveedor Supabase habilitado |
+| Fecha y hora | 1 de agosto de 2026 (`America/Argentina/Buenos_Aires`, UTC-3) |
+| Resultado general | **PASS** |
+| Migraciones | 001–052 disponibles; migración **053 ausente** |
+| Errores observados | Ninguno crítico |
+| Evidencia / logs | Sanitizados; sin PII, credenciales ni tokens en documentación |
 
-**Motivo del bloqueo:** sin evidencia remota real no procede cierre oficial M15.
+## Checklist integrado M15/M10 — 16/16 PASS
 
-## Checklist integrado M15/M10 (manual externo)
-
-- [ ] 1. Abrir hub M15 (`m15/hub`).
-- [ ] 2. Consultar hogares desde M10 (listado público sin dirección privada).
-- [ ] 3. Crear solicitud de tránsito.
-- [ ] 4. Aceptar o rechazar solicitud.
-- [ ] 5. Reservar placement (capacidad decrementada).
-- [ ] 6. Iniciar placement (custodia temporal M08).
-- [ ] 7. Agregar evolución append-only.
-- [ ] 8. Registrar gasto (sin pago).
-- [ ] 9. Abrir y resolver pedido de ayuda (sin chat).
-- [ ] 10. Egresar placement (motivo + outcome).
-- [ ] 11. Verificar capacidad liberada en hogar.
-- [ ] 12. Verificar custodia temporal revocada.
-- [ ] 13. Verificar privacidad pública (sin PII).
-- [ ] 14. Verificar eventos M06 o fallback documentado.
-- [ ] 15. Verificar métricas agregadas en `m15/operations`.
-- [ ] 16. Confirmar que no existe duplicación M10/M15.
+- [x] 1. Abrir hub M15 (`m15/hub`).
+- [x] 2. Consultar hogares desde M10 (listado público sin dirección privada).
+- [x] 3. Crear solicitud de tránsito.
+- [x] 4. Aceptar o rechazar solicitud.
+- [x] 5. Reservar placement (capacidad decrementada).
+- [x] 6. Iniciar placement (custodia temporal M08).
+- [x] 7. Agregar evolución append-only.
+- [x] 8. Registrar gasto (sin pago).
+- [x] 9. Abrir y resolver pedido de ayuda (sin chat).
+- [x] 10. Egresar placement (motivo + outcome).
+- [x] 11. Verificar capacidad liberada en hogar.
+- [x] 12. Verificar custodia temporal revocada.
+- [x] 13. Verificar privacidad pública (sin PII).
+- [x] 14. Verificar eventos M06 o fallback documentado.
+- [x] 15. Verificar métricas agregadas en `m15/operations`.
+- [x] 16. Confirmar que no existe duplicación M10/M15.
 
 ## Criterio de cierre oficial M15
 
-Smoke M15 PASS documentado + validación funcional manual + decisión explícita de producto/ops.
+Cumplido: smoke PASS + validación funcional manual PASS + decisión explícita de producto/ops (2026-08-01).
 
-Hasta entonces: solo **cierre técnico local**.
+## Nota histórica
 
-## Riesgo funcional pendiente
-
-Sin smoke remoto end-to-end no hay evidencia operativa de métricas remotas, hooks M06 en Supabase ni idempotencia concurrente en RPC M10.
+Sesión previa 2026-08-01 (HEAD `0cbf73d`): cierre bloqueado por evidencia incompleta (placeholders). Resuelto en sesión de cierre oficial con evidencia PASS completa.

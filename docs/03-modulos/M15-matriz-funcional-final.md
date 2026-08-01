@@ -11,16 +11,30 @@ NO DUPLICAR TABLAS · NO DUPLICAR DATOS
 
 ## Dominios y persistencia
 
-| Dominio M15 | Modelo | Persistencia | Repo M15 |
-|-------------|--------|--------------|----------|
-| Hogar | `M15FosterHome` | `foster_home_profiles` | `m15FosterHomeRepository` |
-| Solicitud | `M15FosterRequest` | `foster_care_requests` | `m15FosterRequestRepository` |
-| Placement | `M15FosterPlacement` | `foster_placements` | `m15FosterPlacementRepository` |
-| Evolución | `M15PlacementEvolution` | `foster_evolution_entries` | `m15EvolutionRepository` |
-| Egreso | `M15DischargeInput` | RPC `m10_complete_foster_placement` | `m15DischargeRepository` |
-| Gastos | `M15PlacementExpense` | `foster_expenses` | `m15ExpenseRepository` |
-| Ayuda | `M15PlacementHelpRequest` | `foster_help_requests` | `m15HelpRepository` |
-| Métricas | `M15OperationalMetrics` | Composición local (sin SQL) | `m15OperationsRepository` |
+| Dominio M15 | Modelo | Persistencia | Repo M15 | Validación |
+|-------------|--------|--------------|----------|------------|
+| Hogar | `M15FosterHome` | `foster_home_profiles` | `m15FosterHomeRepository` | PASS |
+| Solicitud | `M15FosterRequest` | `foster_care_requests` | `m15FosterRequestRepository` | PASS |
+| Placement | `M15FosterPlacement` | `foster_placements` | `m15FosterPlacementRepository` | PASS |
+| Evolución | `M15PlacementEvolution` | `foster_evolution_entries` | `m15EvolutionRepository` | PASS |
+| Egreso | `M15DischargeInput` | RPC `m10_complete_foster_placement` | `m15DischargeRepository` | PASS |
+| Gastos | `M15PlacementExpense` | `foster_expenses` | `m15ExpenseRepository` | PASS |
+| Ayuda | `M15PlacementHelpRequest` | `foster_help_requests` | `m15HelpRepository` | PASS |
+| Métricas | `M15OperationalMetrics` | Composición local (sin SQL) | `m15OperationsRepository` | PASS |
+
+## Criterios funcionales — todos PASS
+
+| Criterio | Estado |
+|----------|--------|
+| Hub y navegación `m15/*` | PASS |
+| Operaciones y métricas agregadas | PASS |
+| Privacidad sin PII en dashboard y proyecciones | PASS |
+| Estados terminales e idempotencia | PASS |
+| Capacidad y conflictos | PASS |
+| Fallback M06 honesto | PASS |
+| Smoke remoto M15/M10 integrado | PASS |
+| Sin duplicación M10/M15 | PASS |
+| Migraciones 001–052; sin 053 | PASS |
 
 ## Estados terminales
 
@@ -65,13 +79,24 @@ M15_EXPENSE_RECORDED, M15_HELP_REQUEST_OPENED, M15_HELP_REQUEST_RESOLVED
 M15_NOTIFICATION_INFRASTRUCTURE (fallback)
 ```
 
-## Estado cierre
+## Pendientes
+
+| Tipo | Estado |
+|------|--------|
+| Pendientes funcionales M15 | **Ninguno** |
+| Pendientes externos bloqueantes M15 | **Ninguno** |
+| Pruebas automáticas | No ejecutadas (no bloqueante cierre oficial) |
+
+## Estado del módulo
 
 ```text
-M15 CIERRE TÉCNICO LOCAL COMPLETADO
-M15 VALIDACIÓN FUNCIONAL PENDIENTE
-M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO
-M15 CIERRE OFICIAL PENDIENTE
+M15 CIERRE OFICIAL COMPLETADO
+M15 VALIDACIÓN FUNCIONAL MANUAL PASS
+M15 SMOKE FUNCIONAL REMOTO PASS
+M15 SIN DEFECTOS CRÍTICOS ABIERTOS
+M10/M08 SON LA BASE AUTORITATIVA
+SIN MIGRACIÓN 053
+M16 NO INICIADO
 ```
 
-Última sesión cierre oficial: **2026-08-01** — bloqueada por evidencia incompleta (placeholders sin PASS/FAIL reales).
+**Fecha cierre oficial:** 1 de agosto de 2026 · `America/Argentina/Buenos_Aires` (UTC-3).

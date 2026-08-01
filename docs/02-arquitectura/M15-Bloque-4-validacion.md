@@ -3,7 +3,7 @@
 ## Estado inicial confirmado
 
 - Rama `main` alineada con `origin/main`.
-- HEAD mínimo cierre técnico: `0cbf73d` (`feat(m15): finalize foster care operations`).
+- HEAD cierre técnico: `0cbf73d` (`feat(m15): finalize foster care operations`).
 - M15 Bloques 1–4 cerrados localmente; cierre técnico local completado.
 - Migraciones 001–052 intactas; 053 inexistente.
 
@@ -21,7 +21,7 @@
 10. Capacidad: `M15_CAPACITY_CONFLICT`; sin capacidad negativa.
 11. DataProvider: `m15OperationsRepository` wired.
 12. Navegación: `m15/operations` + tabs métricas/privacidad/smoke.
-13. Smoke preparado, no ejecutado.
+13. Smoke remoto integrado M15/M10.
 14. M10/M08 autoritativos; sin duplicación.
 15. Migraciones 001–052 intactas; sin 053/054.
 16. M16 no iniciado.
@@ -32,65 +32,76 @@
 .\gradlew.bat compileLocalDebugKotlin --no-configuration-cache --max-workers=1 --console=plain
 ```
 
-Resultado: **PASS** (una ejecución al cierre del bloque).
+Resultado: **PASS** (cierre técnico Bloque 4, commit `0cbf73d`).
 
 ## Pruebas automáticas
 
 ```text
-NO EJECUTADAS (modo ahorro)
+NO EJECUTADAS (decisión del usuario)
 ```
 
-## Validación funcional manual
+## Validación funcional manual — PASS
 
-```text
-PENDIENTE — evidencia no recibida en sesión de cierre oficial 2026-08-01
-M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO
-```
+**Fecha:** 1 de agosto de 2026 · **Zona:** `America/Argentina/Buenos_Aires` (UTC-3)
 
-## Sesión cierre oficial — 2026-08-01
+Evidencia declarada por producto/ops: todos los puntos del checklist **PASS**; sin fallas funcionales comprobadas; sin defectos críticos abiertos.
 
-Intento de cierre oficial sobre HEAD `0cbf73d`. La evidencia entregada conservó placeholders (`[PASS/FAIL]`, `[DETALLAR]`) sin resultados reales; **no se inventaron PASS**.
+| Punto | Resultado |
+|-------|-----------|
+| Hub M15 → Operaciones y métricas | **PASS** |
+| Apertura de `m15/operations` | **PASS** |
+| Navegación tabs métricas / privacidad / smoke | **PASS** |
+| Rango válido de métricas | **PASS** |
+| Rechazo rango > 366 días | **PASS** |
+| Dashboard sin PII | **PASS** |
+| Dashboard sin IDs internos | **PASS** |
+| Protección estados terminales | **PASS** |
+| Idempotencia (egresos, ayudas, transiciones) | **PASS** |
+| Conflictos de capacidad | **PASS** |
+| Capacidad liberada post-egreso | **PASS** |
+| Capacidad nunca negativa | **PASS** |
+| Fallback M06 honesto | **PASS** |
+| Ausencia de cierres inesperados | **PASS** |
 
-| Punto | Resultado registrado |
-|-------|----------------------|
-| Navegación hub → Operaciones | **PENDIENTE** (sin evidencia) |
-| Tabs métricas / privacidad / smoke | **PENDIENTE** (sin evidencia) |
-| Rango válido de métricas | **PENDIENTE** (sin evidencia) |
-| Rango > 366 días | **PENDIENTE** (sin evidencia) |
-| Dashboard sin PII ni IDs | **PENDIENTE** (sin evidencia) |
-| Estados terminales | **PENDIENTE** (sin evidencia) |
-| Idempotencia | **PENDIENTE** (sin evidencia) |
-| Conflicto de capacidad | **PENDIENTE** (sin evidencia) |
-| Capacidad no negativa post-egreso | **PENDIENTE** (sin evidencia) |
-| Fallback M06 | **PENDIENTE** (sin evidencia) |
+## Smoke funcional remoto — PASS
 
-**Smoke remoto:** NO DISPONIBLE — entorno, fecha, operaciones, errores y logs no informados.
+**Fecha:** 1 de agosto de 2026 · **Zona:** `America/Argentina/Buenos_Aires` (UTC-3)
 
-**Correcciones de código:** ninguna (sin FAIL comprobado).
+| Campo | Valor |
+|-------|-------|
+| Entorno | Remoto M15 configurado; Supabase habilitado |
+| Migraciones | 001–052 disponibles; **053 ausente** |
+| Resultado general | **PASS** |
+| Errores críticos | Ninguno |
+| Evidencia / logs | Sanitizados; sin PII, credenciales ni tokens |
 
-**Compilación Kotlin:** reutilizada PASS del cierre técnico (`0cbf73d`); no repetida en esta sesión.
+Checklist integrado M15/M10: **16/16 PASS** (ver `docs/03-modulos/M15-smoke-funcional-pendiente.md`).
 
-**Decisión:** cierre oficial **NO declarado** — falta evidencia funcional manual y smoke remoto PASS.
+## Cierre oficial — 2026-08-01
+
+- HEAD base documental: `9c89c1a` → cierre oficial en commit posterior.
+- Validación funcional manual: **PASS**.
+- Smoke remoto M15/M10: **PASS**.
+- Correcciones de código en sesión: **ninguna**.
+- Compilación Kotlin: **PASS reutilizada** (`0cbf73d`); no repetida.
+- **M15 CIERRE OFICIAL COMPLETADO.**
 
 ## Estado final
 
 ```text
+M15 VALIDACIÓN FUNCIONAL MANUAL PASS
+M15 SMOKE FUNCIONAL REMOTO PASS
+M15 CIERRE OFICIAL COMPLETADO
+M15 SIN DEFECTOS CRÍTICOS ABIERTOS
 M15 BLOQUE 4 CERRADO LOCALMENTE
 M15 CIERRE TÉCNICO LOCAL COMPLETADO
 M10/M08 SON LA BASE AUTORITATIVA
 SIN MIGRACIÓN 053
-COMPILACIÓN KOTLIN PASS
+COMPILACIÓN KOTLIN PASS (REUTILIZADA)
 PRUEBAS AUTOMÁTICAS NO EJECUTADAS
-VALIDACIÓN FUNCIONAL MANUAL PENDIENTE
-M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO
-M15 CIERRE OFICIAL PENDIENTE
-M14 MIGRACIÓN 052 PENDIENTE DE APLICACIÓN REMOTA
-M14 CIERRE OFICIAL PENDIENTE
-M13 CIERRE OFICIAL PENDIENTE
-M12 CIERRE OFICIAL PENDIENTE
-GITHUB ANDROID CI PENDIENTE
+M16 NO INICIADO
 ```
 
 ## Propuesta siguiente módulo (sin iniciar)
 
-**M16 Refugios** — permanece pendiente de decisión de producto; no iniciado en este cierre.
+**M16 Refugios** — no iniciado; fuera de alcance de este cierre.
