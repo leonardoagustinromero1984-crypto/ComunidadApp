@@ -60,6 +60,10 @@ import com.comunidapp.app.data.repository.SupabaseM16ShelterOperationsRepository
 import com.comunidapp.app.data.repository.MockM16ShelterAuthorityPolicy
 import com.comunidapp.app.data.repository.MockM16ShelterRepository
 import com.comunidapp.app.data.repository.SupabaseM16ShelterRepository
+import com.comunidapp.app.data.repository.M17DonationRepository
+import com.comunidapp.app.data.repository.M17MemoryStore
+import com.comunidapp.app.data.repository.MockM17DonationAuthorityPolicy
+import com.comunidapp.app.data.repository.MockM17DonationRepository
 import com.comunidapp.app.data.repository.M15PlacementDischargeRepository
 import com.comunidapp.app.data.repository.M15PlacementEvolutionRepository
 import com.comunidapp.app.data.repository.M15PlacementExpenseRepository
@@ -931,6 +935,19 @@ object DataProvider {
                 authority = m16Authority
             )
         }
+    }
+
+    /** M17 Bloque 1 — campañas solidarias vinculadas a organización M03; sin pagos reales. */
+    private val m17Store by lazy { M17MemoryStore() }
+
+    private val m17Authority by lazy { MockM17DonationAuthorityPolicy() }
+
+    val m17DonationRepository: M17DonationRepository by lazy {
+        MockM17DonationRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+            store = m17Store,
+            authority = m17Authority
+        )
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */

@@ -306,6 +306,7 @@ fun SheltersContent(
 
 @Composable
 fun DonationsContent(
+    onM17Campaigns: () -> Unit = {},
     bottomPadding: Dp = 0.dp,
     viewModel: CommunityViewModel = viewModel()
 ) {
@@ -320,6 +321,14 @@ fun DonationsContent(
         ),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        item {
+            androidx.compose.material3.OutlinedButton(
+                onClick = onM17Campaigns,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text("Campañas solidarias (M17)")
+            }
+        }
         items(campaigns, key = { it.id }) { campaign ->
             DonationCampaignCard(campaign = campaign)
         }

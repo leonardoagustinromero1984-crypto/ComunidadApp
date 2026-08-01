@@ -88,6 +88,14 @@ object NavRoutes {
     const val M16_SHELTERS_MANAGE = "m16/shelters/manage"
     const val ARG_M16_SHELTER_ID = "shelterId"
 
+    // M17 — Donaciones y campañas solidarias (Bloque 1 local)
+    const val M17_CAMPAIGNS = "m17/campaigns"
+    const val M17_CAMPAIGN_DETAIL = "m17/campaigns/{campaignId}"
+    const val M17_CAMPAIGNS_MANAGE = "m17/campaigns/manage"
+    const val M17_CAMPAIGNS_CREATE = "m17/campaigns/create"
+    const val M17_CAMPAIGN_EDIT = "m17/campaigns/{campaignId}/edit"
+    const val ARG_M17_CAMPAIGN_ID = "campaignId"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -527,6 +535,13 @@ object NavRoutes {
 
     fun m16ShelterDetail(shelterId: String) =
         "m16/shelters/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+
+    fun m17CampaignDetail(campaignId: String) =
+        "m17/campaigns/${java.net.URLEncoder.encode(campaignId, Charsets.UTF_8.name())}"
+
+    fun m17CampaignEdit(campaignId: String) =
+        "m17/campaigns/${java.net.URLEncoder.encode(campaignId, Charsets.UTF_8.name())}/edit"
+
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"
     fun m15PlacementEvolutionNew(placementId: String) =
