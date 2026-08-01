@@ -87,13 +87,19 @@ Producción (B2): `donation.view` / `donation.manage` vía M03 membership; verif
 ## Estrategia local Bloque 1
 
 - `M17MemoryStore` con 9 campañas seed + contribuciones variadas
-- `DataProvider.m17DonationRepository` → mock únicamente
-- Sin Supabase, sin migración 054
+- Mock cuando `useSupabase=false`
+
+## Bloque 2 — persistencia remota
+
+- Migración **054** creada, **no aplicada**
+- `SupabaseM17DonationRepository` + RPCs sanitizados
+- Permisos `donation.view`, `donation.manage`
+- Trigger anti-CONFIRMED cliente; pagos reales M24
 
 ## Dependencias
 
-M03 (org), M02/M01 (auth), M04 (moderación futura), M05 (media ref), M06 (notif hooks), M08 (pet ref), M10 (ubicación), M16 (shelter ref), M24 (pagos futuro).
+M03 (org), M02/M01 (auth), M04 (moderación), M05 (media ref), M06 (notif hooks), M08 (pet ref), M10 (ubicación), M16 (shelter ref), M24 (pagos futuro).
 
-## Bloque 2 (pendiente)
+## Bloque 3 (pendiente)
 
-Migración 054, RLS, repositorio remoto, validación remota, integración M03 permisos reales.
+Bienes, voluntariado, transparencia — local/mock.

@@ -60,7 +60,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 - **M16 Refugios y gestión de casos:** animales, equipos, necesidades, tareas y reportes — **M16 Refugios cerrado oficialmente** (2026-08-01); **migración 053 aplicada en entorno no productivo**; **producción no afectada**; **M17 Donaciones y voluntariado — Bloque 1 en desarrollo** (campañas solidarias local/mock; pagos reales diferidos a M24).
 
 ### R5 — Comunidad
-- **M17 Donaciones y voluntariado:** campañas, bienes, dinero, tiempo y trazabilidad — **Bloque 1 campañas solidarias implementado localmente** (2026-08-01); mock determinista; sin migración 054; sin SQL; pagos reales **M24**; Bloque 2 pendiente.
+- **M17 Donaciones y voluntariado:** campañas, bienes, dinero, tiempo y trazabilidad — **Bloque 1 campañas solidarias implementado localmente** (2026-08-01); **Bloque 2 persistencia remota implementada** (migración 054 creada, SQL no aplicado); mock + Supabase; pagos reales **M24**; Bloque 3 pendiente al cierre B2.
 - **M18 Eventos:** creación, cupos, inscripción, recordatorios y check-in.
 - **M19 Red social y contenido:** publicaciones, comentarios, reacciones, feed y reportes.
 - **M20 Mensajería:** conversaciones, adjuntos, bloqueos, contexto y retención.
