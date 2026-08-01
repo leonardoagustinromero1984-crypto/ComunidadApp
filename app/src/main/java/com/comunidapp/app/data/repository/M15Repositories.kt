@@ -148,6 +148,7 @@ interface M15FosterRequestRepository {
 interface M15FosterPlacementRepository {
     fun observeActivePlacementsForHome(homeId: String): Flow<List<M15FosterPlacement>>
     fun observeActivePlacementsForUser(userId: String): Flow<List<M15FosterPlacement>>
+    fun observePlacementsForOrganization(organizationId: String): Flow<List<M15FosterPlacement>>
     suspend fun getPlacementById(id: String): Result<M15FosterPlacement>
     suspend fun startPlacement(requestId: String, initialNotes: String? = null): Result<M15FosterPlacement>
 }
@@ -546,6 +547,11 @@ class MockM15FosterPlacementRepository(
                     (it.status == M15FosterPlacementStatus.ACTIVE ||
                         it.status == M15FosterPlacementStatus.RESERVED)
             }
+        }
+
+    override fun observePlacementsForOrganization(organizationId: String): Flow<List<M15FosterPlacement>> =
+        store.placements.map { list ->
+            list.filter { it.requesterOrganizationId == organizationId }
         }
 
     override suspend fun getPlacementById(id: String): Result<M15FosterPlacement> = runCatching {

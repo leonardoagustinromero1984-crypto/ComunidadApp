@@ -49,9 +49,12 @@ import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.viewmodel.M16ShelterDetailViewModel
+import com.comunidapp.app.viewmodel.M16ShelterManageViewModel
 import com.comunidapp.app.viewmodel.M16ShelterManageDraft
 import com.comunidapp.app.viewmodel.M16ShelterManageUiState
-import com.comunidapp.app.viewmodel.M16ShelterManageViewModel
+import com.comunidapp.app.data.model.M16ShelterOperationsFilter
+import com.comunidapp.app.data.model.M16ShelterPetOperationalItem
+import com.comunidapp.app.viewmodel.M16ShelterOperationsUiState
 import com.comunidapp.app.viewmodel.M16SheltersListUiState
 import com.comunidapp.app.viewmodel.M16SheltersListViewModel
 import com.comunidapp.app.viewmodel.m16ContactTypeLabel
@@ -355,12 +358,17 @@ private fun M16OpeningHoursReadOnly(hours: M16OpeningHours) {
 @Composable
 fun M16ShelterManageScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToPet: (String) -> Unit = {},
+    onNavigateToAdoption: (String) -> Unit = {},
+    onNavigateToFoster: (String) -> Unit = {},
     viewModel: M16ShelterManageViewModel = viewModel(factory = M16ShelterManageViewModel.factory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val draft by viewModel.draft.collectAsState()
     val feedback by viewModel.feedback.collectAsState()
     val orgId by viewModel.organizationId.collectAsState()
+    val operationsState by viewModel.operationsState.collectAsState()
+    val operationsFilter by viewModel.operationsFilter.collectAsState()
     var showCloseConfirm by remember { mutableStateOf(false) }
 
     LaunchedEffect(feedback) {
@@ -438,6 +446,13 @@ fun M16ShelterManageScreen(
                     profile = state.profile,
                     draft = draft,
                     saving = state.saving,
+                    operationsState = operationsState,
+                    operationsFilter = operationsFilter,
+                    onOperationsFilterChange = viewModel::setOperationsFilter,
+                    onRefreshOperations = { viewModel.refreshOperations(state.profile.id) },
+                    onNavigateToPet = onNavigateToPet,
+                    onNavigateToAdoption = onNavigateToAdoption,
+                    onNavigateToFoster = onNavigateToFoster,
                     onDraftChange = viewModel::updateDraft,
                     onSavePublic = viewModel::savePublicData,
                     onSaveCapacity = viewModel::saveCapacity,
@@ -492,6 +507,13 @@ private fun M16ProfileManageContent(
     profile: com.comunidapp.app.data.model.M16ShelterProfile,
     draft: M16ShelterManageDraft,
     saving: Boolean,
+    operationsState: M16ShelterOperationsUiState,
+    operationsFilter: com.comunidapp.app.data.model.M16ShelterOperationsFilter,
+    onOperationsFilterChange: (com.comunidapp.app.data.model.M16ShelterOperationsFilter) -> Unit,
+    onRefreshOperations: () -> Unit,
+    onNavigateToPet: (String) -> Unit,
+    onNavigateToAdoption: (String) -> Unit,
+    onNavigateToFoster: (String) -> Unit,
     onDraftChange: ((M16ShelterManageDraft) -> M16ShelterManageDraft) -> Unit,
     onSavePublic: () -> Unit,
     onSaveCapacity: () -> Unit,
@@ -554,7 +576,8 @@ private fun M16ProfileManageContent(
     OutlinedTextField(
         value = draft.currentOccupancy,
         onValueChange = { v -> onDraftChange { it.copy(currentOccupancy = v) } },
-        label = { Text("Ocupación actual") },
+        label = { Text("Ocupación manual (snapshot)") },
+        supportingText = { Text("La UI operativa usa ocupación calculada desde M08/M11.") },
         modifier = Modifier.fillMaxWidth(),
         enabled = !isTerminal
     )
@@ -700,6 +723,16 @@ private fun M16ProfileManageContent(
             Text("Intentar reactivar (debe fallar)")
         }
     }
+
+    M16OperationsSection(
+        operationsState = operationsState,
+        operationsFilter = operationsFilter,
+        onFilterChange = onOperationsFilterChange,
+        onRefresh = onRefreshOperations,
+        onNavigateToPet = onNavigateToPet,
+        onNavigateToAdoption = onNavigateToAdoption,
+        onNavigateToFoster = onNavigateToFoster
+    )
 }
 
 private fun M16OpeningHours.updateDay(day: Int, open: String?, close: String?): M16OpeningHours {
@@ -722,4 +755,111 @@ private fun M16OpeningHours.toggleClosed(day: Int): M16OpeningHours {
         M16OpeningPeriod(dayOfWeek = day, closed = true)
     }
     return copy(periods = others + toggled)
+}
+
+@Composable
+private fun M16OperationsSection(
+    operationsState: M16ShelterOperationsUiState,
+    operationsFilter: M16ShelterOperationsFilter,
+    onFilterChange: (M16ShelterOperationsFilter) -> Unit,
+    onRefresh: () -> Unit,
+    onNavigateToPet: (String) -> Unit,
+    onNavigateToAdoption: (String) -> Unit,
+    onNavigateToFoster: (String) -> Unit
+) {
+    Text("Operación del refugio", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
+    Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        M16ShelterOperationsFilter.entries.forEach { filter ->
+            FilterChip(
+                selected = operationsFilter == filter,
+                onClick = { onFilterChange(filter) },
+                label = { Text(filter.name.lowercase().replace('_', ' ')) }
+            )
+        }
+    }
+    OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
+        Text("Actualizar operación")
+    }
+    when (operationsState) {
+        M16ShelterOperationsUiState.Loading -> LoadingState()
+        M16ShelterOperationsUiState.PermissionDenied -> ErrorState(
+            message = "Sin permiso para ver operación interna."
+        )
+        is M16ShelterOperationsUiState.Error -> ErrorState(message = operationsState.message)
+        M16ShelterOperationsUiState.Empty -> Text("Sin mascotas operativas vinculadas.")
+        is M16ShelterOperationsUiState.Partial -> {
+            Text(
+                "Datos parciales — alguna fuente no respondió.",
+                color = MaterialTheme.colorScheme.tertiary,
+                style = MaterialTheme.typography.bodySmall
+            )
+            M16OperationsSummaryBody(operationsState.summary, onNavigateToPet, onNavigateToAdoption, onNavigateToFoster)
+        }
+        is M16ShelterOperationsUiState.Content -> {
+            M16OperationsSummaryBody(operationsState.summary, onNavigateToPet, onNavigateToAdoption, onNavigateToFoster)
+        }
+    }
+}
+
+@Composable
+private fun M16OperationsSummaryBody(
+    summary: com.comunidapp.app.data.model.M16ShelterOperationsSummary,
+    onNavigateToPet: (String) -> Unit,
+    onNavigateToAdoption: (String) -> Unit,
+    onNavigateToFoster: (String) -> Unit
+) {
+    val b = summary.breakdown
+    Text("Capacidad total: ${b.totalCapacity}")
+    Text("Ocupación física calculada: ${b.physicalOccupancy}")
+    Text("Reservados (M11): ${b.reservedCapacity}")
+    Text("En tránsito activo: ${b.inActiveFosterCount}")
+    Text("Adopción activa: ${b.activeAdoptionCount}")
+    Text("Adoptadas recientes: ${b.recentlyAdoptedCount}")
+    Text("Cupos disponibles: ${b.availableCapacity}")
+    b.configuredOccupancySnapshot?.let {
+        Text("Snapshot manual M16: $it", style = MaterialTheme.typography.bodySmall)
+    }
+    if (b.occupancyExceedsCapacity) {
+        Text("Advertencia: ocupación supera capacidad.", color = MaterialTheme.colorScheme.error)
+    }
+    b.warnings.forEach { w ->
+        Text("• $w", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+    }
+    summary.pets.forEach { item ->
+        M16OperationalPetRow(item, onNavigateToPet, onNavigateToAdoption, onNavigateToFoster)
+    }
+}
+
+@Composable
+private fun M16OperationalPetRow(
+    item: M16ShelterPetOperationalItem,
+    onNavigateToPet: (String) -> Unit,
+    onNavigateToAdoption: (String) -> Unit,
+    onNavigateToFoster: (String) -> Unit
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clickable { onNavigateToPet(item.petId) }
+    ) {
+        Column(Modifier.padding(12.dp)) {
+            Text(item.displayName, fontWeight = FontWeight.SemiBold)
+            Text("${item.species} · ${item.status.name}")
+            item.adoptionStatusLabel?.let { Text("Adopción: $it", style = MaterialTheme.typography.bodySmall) }
+            item.fosterStatusLabel?.let { Text("Tránsito: $it", style = MaterialTheme.typography.bodySmall) }
+            item.warning?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                TextButton(onClick = { onNavigateToPet(item.petId) }) { Text("M08") }
+                item.adoptionPostId?.let { id ->
+                    TextButton(onClick = { onNavigateToAdoption(id) }) { Text("M09") }
+                }
+                item.fosterPlacementId?.let { id ->
+                    TextButton(onClick = { onNavigateToFoster(id) }) { Text("M15") }
+                }
+            }
+        }
+    }
 }

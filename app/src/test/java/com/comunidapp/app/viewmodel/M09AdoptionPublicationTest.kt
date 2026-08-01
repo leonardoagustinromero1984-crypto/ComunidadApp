@@ -410,6 +410,8 @@ private class FakeAdoptionRepository(
     ): List<AdoptionPost> = _posts.value
 
     override fun getAdoptionsByShelter(shelterId: String): List<AdoptionPost> = emptyList()
+
+    override fun getAdoptionsByOrganization(organizationId: String): List<AdoptionPost> = emptyList()
     override suspend fun addAdoptionPost(post: AdoptionPost): Result<String> = Result.success(post.id)
     override suspend fun updateAdoptionPost(post: AdoptionPost): Result<Unit> = Result.success(Unit)
     override suspend fun updateAdoptionStatus(id: String, status: AdoptionStatus): Result<Unit> =

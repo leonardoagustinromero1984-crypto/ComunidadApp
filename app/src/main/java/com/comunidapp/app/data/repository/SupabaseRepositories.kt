@@ -236,6 +236,11 @@ class SupabaseAdoptionRepository(
     override fun getAdoptionsByShelter(shelterId: String): List<AdoptionPost> =
         _posts.value.filter { it.shelterId == shelterId || it.publisherId == shelterId }
 
+    override fun getAdoptionsByOrganization(organizationId: String): List<AdoptionPost> =
+        _posts.value.filter {
+            it.publisherOrganizationId == organizationId || it.shelterId == organizationId
+        }
+
     override suspend fun addAdoptionPost(post: AdoptionPost): Result<String> {
         if (post.petId.isNullOrBlank()) {
             return legacy.addAdoption(post)

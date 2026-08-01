@@ -28,6 +28,7 @@ interface AdoptionRepository {
         status: AdoptionStatus? = AdoptionStatus.PUBLISHED
     ): List<AdoptionPost>
     fun getAdoptionsByShelter(shelterId: String): List<AdoptionPost>
+    fun getAdoptionsByOrganization(organizationId: String): List<AdoptionPost>
     suspend fun addAdoptionPost(post: AdoptionPost): Result<String>
     suspend fun updateAdoptionPost(post: AdoptionPost): Result<Unit>
     suspend fun updateAdoptionStatus(id: String, status: AdoptionStatus): Result<Unit>
@@ -99,6 +100,11 @@ class MockAdoptionRepository(
 
     override fun getAdoptionsByShelter(shelterId: String): List<AdoptionPost> =
         InMemoryDataStore.getAdoptionsByShelter(shelterId)
+
+    override fun getAdoptionsByOrganization(organizationId: String): List<AdoptionPost> =
+        InMemoryDataStore.adoptionPosts.value.filter {
+            it.publisherOrganizationId == organizationId || it.shelterId == organizationId
+        }
 
     override suspend fun addAdoptionPost(post: AdoptionPost): Result<String> {
         if (!post.petId.isNullOrBlank()) {

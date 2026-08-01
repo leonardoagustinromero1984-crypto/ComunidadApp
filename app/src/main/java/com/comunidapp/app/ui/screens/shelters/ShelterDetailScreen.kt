@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,10 +31,13 @@ import com.comunidapp.app.viewmodel.ShelterDetailViewModel
 fun ShelterDetailScreen(
     onNavigateBack: () -> Unit,
     onAdoptionClick: (String) -> Unit,
+    onM16ShelterClick: (String) -> Unit = {},
     viewModel: ShelterDetailViewModel = viewModel()
 ) {
     val shelter by viewModel.shelter.collectAsState()
     val adoptions by viewModel.adoptions.collectAsState()
+    val m16ShelterId by viewModel.m16ShelterId.collectAsState()
+    val legacyLabel by viewModel.legacyCompatLabel.collectAsState()
 
     Scaffold(
         topBar = {
@@ -87,6 +91,17 @@ fun ShelterDetailScreen(
                     }
                     data.contactEmail?.let {
                         Text("Email: $it", style = MaterialTheme.typography.bodyMedium)
+                    }
+                    legacyLabel?.let {
+                        Text(it, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 8.dp))
+                    }
+                    m16ShelterId?.let { m16Id ->
+                        Button(
+                            onClick = { onM16ShelterClick(m16Id) },
+                            modifier = Modifier.padding(top = 8.dp)
+                        ) {
+                            Text("Ver perfil M16 vinculado")
+                        }
                     }
                 }
                 if (data.needs.isNotEmpty()) {

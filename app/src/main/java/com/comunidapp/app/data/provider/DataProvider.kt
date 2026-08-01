@@ -51,8 +51,12 @@ import com.comunidapp.app.data.repository.M15FosterPlacementRepository
 import com.comunidapp.app.data.repository.M15FosterRequestRepository
 import com.comunidapp.app.data.repository.M15MemoryStore
 import com.comunidapp.app.data.repository.M15OperationsRepository
+import com.comunidapp.app.data.mock.M16OperationsIntegrationSeeds
 import com.comunidapp.app.data.repository.M16MemoryStore
 import com.comunidapp.app.data.repository.M16ShelterRepository
+import com.comunidapp.app.data.repository.M16ShelterOperationsRepository
+import com.comunidapp.app.data.repository.M16ShelterOperationsRepositoryImpl
+import com.comunidapp.app.data.repository.SupabaseM16ShelterOperationsRepository
 import com.comunidapp.app.data.repository.MockM16ShelterAuthorityPolicy
 import com.comunidapp.app.data.repository.MockM16ShelterRepository
 import com.comunidapp.app.data.repository.SupabaseM16ShelterRepository
@@ -520,7 +524,7 @@ object DataProvider {
         if (useSupabase) SupabaseShelterRepository() else MockShelterRepository()
     }
 
-    private val m11ShelterStore by lazy {
+    val m11ShelterStore by lazy {
         M11ShelterMemoryStore().also { it.fosterStore = m10FosterStore }
     }
 
@@ -926,6 +930,23 @@ object DataProvider {
                 store = m16Store,
                 authority = m16Authority
             )
+        }
+    }
+
+    /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */
+    val m16OperationsRepository: M16ShelterOperationsRepository by lazy {
+        if (!useSupabase) {
+            M16OperationsIntegrationSeeds.seedIfNeeded(
+                m16Store = m16Store,
+                m11Store = m11ShelterStore,
+                m15Store = m15Store,
+                actorUserId = AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin"
+            )
+        }
+        if (useSupabase) {
+            SupabaseM16ShelterOperationsRepository()
+        } else {
+            M16ShelterOperationsRepositoryImpl(shelterRepository = m16ShelterRepository)
         }
     }
 

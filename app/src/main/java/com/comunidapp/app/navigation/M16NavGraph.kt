@@ -33,6 +33,11 @@ fun NavGraphBuilder.m16ShelterRoutes(navController: NavHostController) {
         )
     }
     composable(NavRoutes.M16_SHELTERS_MANAGE) {
-        M16ShelterManageScreen(onNavigateBack = { navController.popBackStack() })
+        M16ShelterManageScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onNavigateToPet = { petId -> navController.navigate(NavRoutes.petDetail(petId)) },
+            onNavigateToAdoption = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
+            onNavigateToFoster = { id -> navController.navigate(NavRoutes.m15PlacementDetail(id)) }
+        )
     }
 }

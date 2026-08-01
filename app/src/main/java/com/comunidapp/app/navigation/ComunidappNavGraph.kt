@@ -2078,7 +2078,8 @@ private fun NavGraphBuilder.mainAppRoutes(
     ) {
         ShelterDetailScreen(
             onNavigateBack = { navController.popBackStack() },
-            onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) }
+            onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
+            onM16ShelterClick = { m16Id -> navController.navigate(NavRoutes.m16ShelterDetail(m16Id)) }
         )
     }
     composable(

@@ -21,6 +21,10 @@ import com.comunidapp.app.data.model.M16ShelterVerificationFilter
 import com.comunidapp.app.data.model.UpdateM16ShelterPublicInput
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m16.M16ShelterErrorMapper
+import com.comunidapp.app.data.model.M16ShelterOperationsFilter
+import com.comunidapp.app.data.model.M16ShelterOperationsSummary
+import com.comunidapp.app.data.model.filterOperationalPets
+import com.comunidapp.app.data.repository.M16ShelterOperationsRepository
 import com.comunidapp.app.data.repository.M16ShelterRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -169,8 +173,18 @@ data class M16ShelterManageDraft(
     val openingHours: M16OpeningHours = M16OpeningHours()
 )
 
+sealed class M16ShelterOperationsUiState {
+    data object Loading : M16ShelterOperationsUiState()
+    data object Empty : M16ShelterOperationsUiState()
+    data class Content(val summary: M16ShelterOperationsSummary) : M16ShelterOperationsUiState()
+    data class Partial(val summary: M16ShelterOperationsSummary) : M16ShelterOperationsUiState()
+    data class Error(val message: String) : M16ShelterOperationsUiState()
+    data object PermissionDenied : M16ShelterOperationsUiState()
+}
+
 class M16ShelterManageViewModel(
-    private val repository: M16ShelterRepository = DataProvider.m16ShelterRepository
+    private val repository: M16ShelterRepository = DataProvider.m16ShelterRepository,
+    private val operationsRepository: M16ShelterOperationsRepository = DataProvider.m16OperationsRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<M16ShelterManageUiState>(M16ShelterManageUiState.Loading)
     val uiState: StateFlow<M16ShelterManageUiState> = _uiState.asStateFlow()
@@ -185,6 +199,14 @@ class M16ShelterManageViewModel(
     val feedback: StateFlow<String?> = _feedback.asStateFlow()
 
     private var observeJob: Job? = null
+    private var operationsJob: Job? = null
+
+    private val _operationsState =
+        MutableStateFlow<M16ShelterOperationsUiState>(M16ShelterOperationsUiState.Loading)
+    val operationsState: StateFlow<M16ShelterOperationsUiState> = _operationsState.asStateFlow()
+
+    private val _operationsFilter = MutableStateFlow(M16ShelterOperationsFilter.ALL)
+    val operationsFilter: StateFlow<M16ShelterOperationsFilter> = _operationsFilter.asStateFlow()
 
     init {
         refreshOrganization()
@@ -233,9 +255,55 @@ class M16ShelterManageViewModel(
                 } else {
                     _uiState.value = M16ShelterManageUiState.ProfileContent(profile)
                     _draft.value = profile.toDraft()
+                    refreshOperations(profile.id)
                 }
             }
         }
+    }
+
+    fun setOperationsFilter(filter: M16ShelterOperationsFilter) {
+        _operationsFilter.value = filter
+        val content = _operationsState.value
+        if (content is M16ShelterOperationsUiState.Content) {
+            applyOperationsFilter(content.summary)
+        } else if (content is M16ShelterOperationsUiState.Partial) {
+            applyOperationsFilter(content.summary)
+        }
+    }
+
+    fun refreshOperations(shelterId: String? = null) {
+        operationsJob?.cancel()
+        operationsJob = viewModelScope.launch {
+            val id = shelterId ?: (_uiState.value as? M16ShelterManageUiState.ProfileContent)?.profile?.id
+            if (id.isNullOrBlank()) {
+                _operationsState.value = M16ShelterOperationsUiState.Empty
+                return@launch
+            }
+            _operationsState.value = M16ShelterOperationsUiState.Loading
+            operationsRepository.refreshOperations(id)
+                .onSuccess { summary -> applyOperationsFilter(summary) }
+                .onFailure {
+                    val code = M16ShelterErrorMapper.codeOf(it)
+                    _operationsState.value = if (code == "M16_PERMISSION_DENIED") {
+                        M16ShelterOperationsUiState.PermissionDenied
+                    } else {
+                        M16ShelterOperationsUiState.Error(M16ShelterErrorMapper.userMessage(code))
+                    }
+                }
+        }
+    }
+
+    private fun applyOperationsFilter(summary: M16ShelterOperationsSummary) {
+        val filtered = summary.copy(
+            pets = filterOperationalPets(summary.pets, _operationsFilter.value)
+        )
+        val state = when {
+            summary.pets.isEmpty() -> M16ShelterOperationsUiState.Empty
+            summary.partialFlags.hasPartialData ->
+                M16ShelterOperationsUiState.Partial(filtered)
+            else -> M16ShelterOperationsUiState.Content(filtered)
+        }
+        _operationsState.value = state
     }
 
     fun createProfile() {
