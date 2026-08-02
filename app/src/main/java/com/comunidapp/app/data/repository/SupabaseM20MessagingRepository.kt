@@ -1,5 +1,8 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.model.CreateM20DirectConversationInput
+import com.comunidapp.app.data.model.EditM20MessageInput
+import com.comunidapp.app.data.model.M20MessagePage
 import com.comunidapp.app.data.model.M20PublicConversation
 import com.comunidapp.app.data.model.M20PublicMessage
 import com.comunidapp.app.data.model.SendM20MessageInput
@@ -47,10 +50,40 @@ class SupabaseM20MessagingRepository(
             M20MessagingErrorMapper.failure(t)
         }
 
+    override suspend fun createDirectConversation(
+        input: CreateM20DirectConversationInput
+    ): Result<M20PublicConversation> =
+        M20MessagingErrorMapper.fail("M20_PERMISSION_DENIED")
+
+    override suspend fun getMessagesPage(
+        conversationId: String,
+        cursor: String?,
+        pageSize: Int
+    ): Result<M20MessagePage> =
+        try {
+            requireActor()
+            val cursorMillis = com.comunidapp.app.data.model.M20MessageCursor.decode(cursor)?.sentAt
+            val cursorIso = cursorMillis?.let { Instant.ofEpochMilli(it).toString() }
+            val page = remote.getConversationMessages(conversationId, cursorIso, pageSize).toM20MessagePage()
+            Result.success(
+                M20MessagePage(
+                    items = page.items,
+                    nextCursor = page.nextCursor?.let { ts ->
+                        val last = page.items.lastOrNull()
+                        if (last != null) com.comunidapp.app.data.model.M20MessageCursor(ts, last.id).encode()
+                        else null
+                    },
+                    hasMore = page.hasMore
+                )
+            )
+        } catch (t: Throwable) {
+            M20MessagingErrorMapper.failure(t)
+        }
+
     override suspend fun sendMessage(input: SendM20MessageInput): Result<M20PublicMessage> =
         try {
             requireActor()
-            M20MessagingValidators.validateMessageContent(input.content)?.let {
+            M20MessagingValidators.validateMessageContent(input.content, input.attachmentRef)?.let {
                 return M20MessagingErrorMapper.fail(it)
             }
             M20MessagingValidators.validateAttachmentRef(input.attachmentRef)?.let {
@@ -66,6 +99,15 @@ class SupabaseM20MessagingRepository(
         } catch (t: Throwable) {
             M20MessagingErrorMapper.failure(t)
         }
+
+    override suspend fun editMessage(input: EditM20MessageInput): Result<M20PublicMessage> =
+        M20MessagingErrorMapper.fail("M20_PERMISSION_DENIED")
+
+    override suspend fun deleteMessage(messageId: String): Result<Unit> =
+        M20MessagingErrorMapper.fail("M20_PERMISSION_DENIED")
+
+    override suspend fun markRead(conversationId: String, lastReadMessageId: String): Result<Unit> =
+        markConversationRead(conversationId)
 
     override suspend fun markConversationRead(conversationId: String): Result<Unit> =
         try {
@@ -94,7 +136,7 @@ class SupabaseM20MessagingRepository(
             M20MessagingErrorMapper.failure(t)
         }
 
-    suspend fun unblockUser(conversationId: String): Result<Unit> =
+    override suspend fun unblockUser(conversationId: String): Result<Unit> =
         try {
             requireActor()
             remote.unblockUser(conversationId)
@@ -103,18 +145,14 @@ class SupabaseM20MessagingRepository(
             M20MessagingErrorMapper.failure(t)
         }
 
-    suspend fun getConversationMessagesPage(
-        conversationId: String,
-        cursorMillis: Long? = null,
-        pageSize: Int = 50
-    ): Result<com.comunidapp.app.data.remote.supabase.m20.M20MessagePage> =
-        try {
-            requireActor()
-            val cursorIso = cursorMillis?.let { Instant.ofEpochMilli(it).toString() }
-            Result.success(
-                remote.getConversationMessages(conversationId, cursorIso, pageSize).toM20MessagePage()
-            )
-        } catch (t: Throwable) {
-            M20MessagingErrorMapper.failure(t)
-        }
+    override suspend fun reportMessage(messageId: String, reason: String): Result<Unit> {
+        val actor = requireActor()
+        return M20MessagingModerationAdapter.reportMessage(messageId, reason, reporterId = actor)
+    }
+
+    override suspend fun reportConversation(conversationId: String, reason: String): Result<Unit> {
+        val actor = requireActor()
+        getConversation(conversationId).getOrThrow()
+        return M20MessagingModerationAdapter.reportConversation(conversationId, reason, reporterId = actor)
+    }
 }

@@ -9,8 +9,14 @@ import com.comunidapp.app.ui.screens.m20.M20ConversationListScreen
 import com.comunidapp.app.ui.screens.m20.M20ThreadScreen
 import java.nio.charset.StandardCharsets
 
-/** M20 mensajería — rutas Bloque 1 (fundación local/mock). */
+/** M20 mensajería — rutas Bloques 1–3 (inbox + hilo). */
 fun NavGraphBuilder.m20MessagingRoutes(navController: NavHostController) {
+    composable(NavRoutes.M20_INBOX) {
+        M20ConversationListScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onConversationClick = { id -> navController.navigate(NavRoutes.m20Thread(id)) }
+        )
+    }
     composable(NavRoutes.M20_CONVERSATIONS) {
         M20ConversationListScreen(
             onNavigateBack = { navController.popBackStack() },

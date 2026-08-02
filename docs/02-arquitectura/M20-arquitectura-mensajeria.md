@@ -2,28 +2,29 @@
 
 ## Límites
 
-M20 modela **conversaciones privadas entre usuarios** con contexto opcional (mascota, organización, evento). No reemplaza M06 (notificaciones), M04 (moderación) ni M19 (feed público).
+M20 modela **conversaciones privadas entre usuarios** con contexto opcional (mascota, organización, evento, campaña, publicación social). No reemplaza M06 (notificaciones), M04 (moderación) ni M19 (feed público).
 
 ## Relación con contexto
 
 ```text
 M20Conversation
-  └── M20ContextSnapshot (PET | ORGANIZATION | EVENT)
+  └── M20ContextSnapshot (PET | ORGANIZATION | EVENT | CAMPAIGN | SOCIAL_POST)
 M20Message
-  └── attachmentRef (referencia M05 — sin upload en B1)
+  └── attachmentRef / M20MessageAttachment (referencia M05 — sin upload en B3)
+  └── replyToMessageId → M20MessageReplyReference (público)
 ```
 
 ## Separación interno / público
 
 ```text
-M20Conversation (participantUserIds, peerUserId, blockedByUserId)
-  └── M20PublicConversation (peerDisplayName, contextHint, sin IDs)
+M20Conversation (participantUserIds, participantState, blockedByUserId)
+  └── M20PublicConversation (peerDisplayName, contextHint, unreadCount, sin IDs)
 
-M20Message (senderUserId)
-  └── M20PublicMessage (senderDisplayName, isOwnMessage, sin userId)
+M20Message (senderUserId, clientMessageId, deletedAt)
+  └── M20PublicMessage (senderDisplayName, isOwnMessage, placeholder eliminado)
 ```
 
-Bloque 1: mock local en `M20MessagingMemoryStore`. **Bloque 2:** persistencia Supabase vía RPC (`062_m20_messaging_conversations_and_messages.sql`, **no aplicada**).
+Bloque 1: mock local. **Bloque 2:** persistencia Supabase RPC (`062`, **no aplicada**). **Bloque 3:** operaciones mock completas + UI hilo/bandeja.
 
 ## Capas
 
@@ -33,48 +34,60 @@ UI (M20MessagingScreens)
   → M20MessagingRepository (interface)
   → MockM20MessagingRepository | SupabaseM20MessagingRepository
   → M20MessagingMemoryStore | SupabaseM20RemoteDataSource (RPC)
-  → M20MessagingValidators / M20ContextHintResolver
+  → M20MessagingValidators / M20ContextHintResolver / M20MessagingModerationAdapter
   → M20PrivacySanitizer → M20PublicConversation / M20PublicMessage
 ```
 
 ## Estados de conversación
 
 ```text
-ACTIVE → ARCHIVED
-ACTIVE → BLOCKED (stub Bloque 1)
-BLOCKED → (sin envío)
-ARCHIVED → (sin envío)
+ACTIVE → ARCHIVED (per-participante via participantState)
+ACTIVE → BLOCKED (global + m20_user_blocks)
+ARCHIVED (actor) — peer puede seguir ACTIVE
+BLOCKED → unblock → ACTIVE
 ```
 
-## Estados de mensaje (mock)
+## Estados de mensaje
 
 ```text
-SENT → DELIVERED → READ
+PENDING_LOCAL → SENT → DELIVERED → READ
+SENT → EDITED
+* → DELETED (lógico, placeholder público)
+FAILED (reservado)
 ```
 
-`markConversationRead` promueve mensajes entrantes a READ.
+`markRead(conversationId, lastReadMessageId)` avanza cursor monótono por participante.
 
 ## Privacidad
 
-Toda lectura pública pasa por `M20PrivacySanitizer`. Emails, teléfonos y markup peligroso se redactan.
+Toda lectura pública pasa por `M20PrivacySanitizer`. Mensajes eliminados → `[mensaje eliminado]`. Emails/teléfonos redactados.
 
 ## Rutas
 
 | Ruta | Pantalla |
 |------|----------|
-| `m20/conversations` | Lista de conversaciones |
-| `m20/conversations/{conversationId}` | Hilo + envío texto |
+| `m20/inbox` | Bandeja (entrada principal) |
+| `m20/conversations` | Alias bandeja |
+| `m20/conversations/{conversationId}` | Hilo + composer |
 
-Entrada principal: **Comunidad → Mensajería (M20)**. M18 eventos permanece en Sumate → Eventos.
+Entrada: **Comunidad → Mensajería (M20)**.
 
-## Bloque 2 (implementado, no cerrado)
+## Bloque 2 (implementado)
 
-- Migración SQL `062` conversaciones/mensajes/bloqueos — **creada, no aplicada**
+- Migración SQL `062` — **creada, no aplicada**
 - `SupabaseM20MessagingRepository` + mapeadores remotos
-- `DataProvider` mock vs Supabase
 
-## Bloque 3 (pendiente)
+## Bloque 3 (implementado localmente)
 
-- Adjuntos M05 upload
-- Recibos READ remotos / `markConversationRead` SQL
+- Modelos ampliados, mock 20 escenarios, paginación, idempotencia
+- Editar/eliminar/responder, archivo per-participante, bloqueo/unblock
+- Reportes M04 stub adapter
+- UI bandeja + hilo con estados completos
+- Tests `M20MessagingOperationsTest` (25)
+
+## Bloque 4 (pendiente)
+
+- Aplicación 062 (+ evaluación 063 si brecha persiste)
+- Upload adjuntos M05
+- Recibos READ remotos SQL
 - Retención y políticas

@@ -1,6 +1,7 @@
 package com.comunidapp.app.domain.m20
 
 import com.comunidapp.app.data.model.M20ConversationStatus
+import com.comunidapp.app.data.model.M20ConversationType
 import com.comunidapp.app.data.model.M20MessageStatus
 import com.comunidapp.app.data.model.M20MockUsers
 import com.comunidapp.app.data.model.SendM20MessageInput
@@ -12,6 +13,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -34,6 +36,7 @@ class M20MessagingFoundationTest {
     fun invalidMessageRejected() {
         assertEquals("M20_INVALID_MESSAGE", M20MessagingValidators.validateMessageContent(""))
         assertEquals("M20_INVALID_MESSAGE", M20MessagingValidators.validateMessageContent("x".repeat(4001)))
+        assertNull(M20MessagingValidators.validateMessageContent("", "mock://m20/attachment/ok"))
     }
 
     @Test
@@ -60,7 +63,10 @@ class M20MessagingFoundationTest {
 
     @Test
     fun sendMessageOnActiveConversation() = runBlocking {
-        val active = store.conversations.value.first { it.status == M20ConversationStatus.ACTIVE }
+        val active = store.conversations.value.first {
+            it.status == M20ConversationStatus.ACTIVE &&
+                !it.participantStateFor(M20MockUsers.ADMIN).archived
+        }
         val result = repository.sendMessage(
             SendM20MessageInput(conversationId = active.id, content = "Mensaje de prueba válido")
         ).getOrThrow()
@@ -92,16 +98,19 @@ class M20MessagingFoundationTest {
         repository.archiveConversation(active.id).getOrThrow()
         val updated = store.conversationById(active.id)
         assertNotNull(updated)
-        assertEquals(M20ConversationStatus.ARCHIVED, updated!!.status)
+        assertTrue(updated!!.participantStateFor(M20MockUsers.ADMIN).archived)
+        assertEquals(M20ConversationStatus.ACTIVE, updated.status)
     }
 
     @Test
     fun markReadUpdatesStatuses() = runBlocking {
-        val active = store.conversations.value.first { it.status == M20ConversationStatus.ACTIVE }
-        repository.markConversationRead(active.id).getOrThrow()
-        val unread = store.messagesFor(active.id).count {
-            it.senderUserId != M20MockUsers.ADMIN && it.status != M20MessageStatus.READ
+        val active = store.conversations.value.first {
+            it.status == M20ConversationStatus.ACTIVE &&
+                !it.participantStateFor(M20MockUsers.ADMIN).archived &&
+                it.conversationType == M20ConversationType.ORGANIZATION
         }
+        repository.markConversationRead(active.id).getOrThrow()
+        val unread = store.unreadCount(active.id, M20MockUsers.ADMIN)
         assertEquals(0, unread)
     }
 

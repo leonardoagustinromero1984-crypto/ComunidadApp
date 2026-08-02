@@ -522,7 +522,7 @@ private fun NavGraphBuilder.mainAppRoutes(
         ComunidadScreen(
             onServiceClick = { id -> navController.navigate(NavRoutes.serviceDetail(id)) },
             onOpenSocialFeed = { navController.navigate(NavRoutes.M19_FEED) },
-            onOpenMessaging = { navController.navigate(NavRoutes.M20_CONVERSATIONS) }
+            onOpenMessaging = { navController.navigate(NavRoutes.M20_INBOX) }
         )
     }
     composable(NavRoutes.MY_BUSINESS) {

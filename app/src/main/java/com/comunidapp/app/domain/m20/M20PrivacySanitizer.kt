@@ -3,7 +3,10 @@ package com.comunidapp.app.domain.m20
 import com.comunidapp.app.data.model.M20ContextReferenceType
 import com.comunidapp.app.data.model.M20ContextSnapshot
 import com.comunidapp.app.data.model.M20Conversation
+import com.comunidapp.app.data.model.M20DeletedContent
 import com.comunidapp.app.data.model.M20Message
+import com.comunidapp.app.data.model.M20MessageReplyReference
+import com.comunidapp.app.data.model.M20MessageStatus
 import com.comunidapp.app.data.model.M20PublicContextHint
 import com.comunidapp.app.data.model.M20PublicConversation
 import com.comunidapp.app.data.model.M20PublicMessage
@@ -39,28 +42,54 @@ object M20PrivacySanitizer {
             M20ContextReferenceType.PET -> "m08/pets/$targetId"
             M20ContextReferenceType.ORGANIZATION -> "m03/orgs/$targetId"
             M20ContextReferenceType.EVENT -> "m18/events/$targetId"
+            M20ContextReferenceType.CAMPAIGN -> "m17/campaigns/$targetId"
+            M20ContextReferenceType.SOCIAL_POST -> "m19/posts/$targetId"
         }
 
-    fun toPublicConversation(conversation: M20Conversation, unreadCount: Int): M20PublicConversation =
+    fun toPublicConversation(
+        conversation: M20Conversation,
+        unreadCount: Int,
+        actorUserId: String
+    ): M20PublicConversation =
         M20PublicConversation(
             id = conversation.id,
             peerDisplayName = scrubPublicText(conversation.peerDisplayName),
-            status = conversation.status,
+            status = conversation.effectiveStatusFor(actorUserId),
+            conversationType = conversation.conversationType,
             contextHint = publicContextHint(conversation.contextSnapshot),
             lastMessagePreview = conversation.lastMessagePreview?.let { scrubPublicText(it) },
             lastMessageAt = conversation.lastMessageAt,
             unreadCount = unreadCount.coerceAtLeast(0)
         )
 
-    fun toPublicMessage(message: M20Message, isOwnMessage: Boolean): M20PublicMessage =
-        M20PublicMessage(
+    fun toPublicMessage(
+        message: M20Message,
+        isOwnMessage: Boolean,
+        replyReference: M20MessageReplyReference? = null
+    ): M20PublicMessage {
+        val deleted = message.isDeleted
+        val content = if (deleted) M20DeletedContent.PLACEHOLDER else scrubPublicText(message.content)
+        val reply = replyReference?.let {
+            it.copy(
+                preview = scrubPublicText(it.preview),
+                senderDisplayName = scrubPublicText(it.senderDisplayName)
+            )
+        }
+        return M20PublicMessage(
             id = message.id,
             conversationId = message.conversationId,
             senderDisplayName = scrubPublicText(message.senderDisplayName),
-            content = scrubPublicText(message.content),
-            status = message.status,
-            attachmentRef = message.attachmentRef?.takeIf { it.isNotBlank() && !it.startsWith("private://") },
+            content = content,
+            status = if (deleted) M20MessageStatus.DELETED else message.status,
+            messageType = message.messageType,
+            attachmentRef = if (deleted) null else message.attachmentRef?.takeIf {
+                it.isNotBlank() && !it.startsWith("private://")
+            },
+            replyReference = reply,
+            editedAt = message.editedAt,
+            isDeleted = deleted,
             sentAt = message.sentAt,
             isOwnMessage = isOwnMessage
         )
+    }
 }

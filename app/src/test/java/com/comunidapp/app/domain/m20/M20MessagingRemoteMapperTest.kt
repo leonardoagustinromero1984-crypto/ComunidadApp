@@ -1,6 +1,7 @@
 package com.comunidapp.app.domain.m20
 
 import com.comunidapp.app.data.model.M20ConversationStatus
+import com.comunidapp.app.data.model.SendM20MessageInput
 import com.comunidapp.app.data.remote.supabase.m20.M20MessagingErrorMapper
 import com.comunidapp.app.data.remote.supabase.m20.toM20Conversation
 import com.comunidapp.app.data.remote.supabase.m20.toM20MessagePage
@@ -127,7 +128,8 @@ class M20MessagingRemoteMapperTest {
                     status = M20ConversationStatus.BLOCKED,
                     createdAt = 0L,
                     updatedAt = 0L
-                )
+                ),
+                actorUserId = "a"
             )
         )
     }
@@ -147,14 +149,14 @@ class M20MessagingRemoteMapperTest {
     }
 
     @Test
-    fun remoteRepositoryRequiresSupabaseForConversations() = runBlocking {
-        val repo = SupabaseM20MessagingRepository(actorUserId = { "u1" })
-        val result = repo.getConversation("non-existent-id")
-        assertTrue(result.isFailure || result.isSuccess)
-        if (result.isFailure) {
-            val code = result.exceptionOrNull()?.let { M20MessagingErrorMapper.codeOf(it) }
-            assertNotNull(code)
-        }
+    fun remoteRepositoryRequiresAuthentication() = runBlocking {
+        val repo = SupabaseM20MessagingRepository(actorUserId = { null })
+        val result = repo.sendMessage(
+            SendM20MessageInput(conversationId = "any", content = "Hola")
+        )
+        assertTrue(result.isFailure)
+        val code = result.exceptionOrNull()?.let { M20MessagingErrorMapper.codeOf(it) }
+        assertEquals("NOT_AUTHENTICATED", code)
     }
 
     @Test

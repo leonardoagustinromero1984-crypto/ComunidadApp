@@ -114,7 +114,8 @@ object NavRoutes {
     const val M19_POST_EDIT = "m19/posts/{postId}/edit"
     const val ARG_M19_POST_ID = "postId"
 
-    // M20 — Mensajería (Bloque 1 local)
+    // M20 — Mensajería (Bloques 1–3)
+    const val M20_INBOX = "m20/inbox"
     const val M20_CONVERSATIONS = "m20/conversations"
     const val M20_THREAD = "m20/conversations/{conversationId}"
     const val ARG_M20_CONVERSATION_ID = "conversationId"

@@ -1,8 +1,15 @@
 package com.comunidapp.app.domain.m20
 
+import com.comunidapp.app.data.model.M20PublicMessage
 import com.comunidapp.app.data.remote.supabase.m20.M20MessagingErrors
 
 object M20MessagingResilience {
+
+    data class PartialThread(
+        val messages: List<M20PublicMessage>,
+        val userMessage: String,
+        val hasMore: Boolean = false
+    )
 
     fun safeUserMessage(codeOrThrowable: Any): String {
         val raw = when (codeOrThrowable) {
@@ -14,4 +21,14 @@ object M20MessagingResilience {
             "[redactado]"
         )
     }
+
+    fun partialFromError(
+        code: String,
+        preserved: List<M20PublicMessage>,
+        hasMore: Boolean = false
+    ): PartialThread = PartialThread(
+        messages = preserved,
+        userMessage = safeUserMessage(code),
+        hasMore = hasMore
+    )
 }
