@@ -5,8 +5,10 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.composable
 import com.comunidapp.app.ui.screens.m26.M26AssistanceScreen
 import com.comunidapp.app.ui.screens.m26.M26DuplicatesScreen
+import com.comunidapp.app.ui.screens.m26.M26HistoryScreen
 import com.comunidapp.app.ui.screens.m26.M26HubScreen
 import com.comunidapp.app.ui.screens.m26.M26RecommendationsScreen
+import com.comunidapp.app.ui.screens.m26.M26ReviewQueueScreen
 import com.comunidapp.app.ui.screens.m26.M26VisualMatchingScreen
 
 fun NavGraphBuilder.m26AiRoutes(navController: NavHostController) {
@@ -16,7 +18,9 @@ fun NavGraphBuilder.m26AiRoutes(navController: NavHostController) {
             onOpenVisualMatching = { navController.navigate(NavRoutes.M26_VISUAL_MATCHING) },
             onOpenDuplicates = { navController.navigate(NavRoutes.M26_DUPLICATES) },
             onOpenAssistance = { navController.navigate(NavRoutes.M26_ASSISTANCE) },
-            onOpenRecommendations = { navController.navigate(NavRoutes.M26_RECOMMENDATIONS) }
+            onOpenRecommendations = { navController.navigate(NavRoutes.M26_RECOMMENDATIONS) },
+            onOpenHistory = { navController.navigate(NavRoutes.M26_HISTORY) },
+            onOpenReviewQueue = { navController.navigate(NavRoutes.M26_REVIEW_QUEUE) }
         )
     }
     composable(NavRoutes.M26_VISUAL_MATCHING) {
@@ -30,5 +34,11 @@ fun NavGraphBuilder.m26AiRoutes(navController: NavHostController) {
     }
     composable(NavRoutes.M26_RECOMMENDATIONS) {
         M26RecommendationsScreen(onNavigateBack = { navController.popBackStack() })
+    }
+    composable(NavRoutes.M26_HISTORY) {
+        M26HistoryScreen(onNavigateBack = { navController.popBackStack() })
+    }
+    composable(NavRoutes.M26_REVIEW_QUEUE) {
+        M26ReviewQueueScreen(onNavigateBack = { navController.popBackStack() })
     }
 }

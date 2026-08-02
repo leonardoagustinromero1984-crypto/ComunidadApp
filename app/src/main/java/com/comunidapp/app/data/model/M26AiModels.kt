@@ -3,6 +3,10 @@ package com.comunidapp.app.data.model
 import com.comunidapp.app.domain.m26.M26PrivacySanitizer
 
 /** LeoVer M26 — Inteligencia asistida (Bloque 1 local; sin pagos ni M24). */
+enum class M26AiJobType { VISUAL_MATCH, DUPLICATE_SCAN, ASSISTANCE, RECOMMENDATION }
+enum class M26AiJobStatus { QUEUED, RUNNING, COMPLETED, FAILED, CANCELLED, EXPIRED }
+enum class M26AiResultStatus { DRAFT, PENDING_REVIEW, APPROVED, REJECTED, ARCHIVED }
+enum class M26ReviewDecision { APPROVED, REJECTED, ARCHIVE }
 enum class M26VisualMatchStatus { PENDING, ACCEPTED, REJECTED, EXPIRED }
 enum class M26ConfidenceBand { LOW, MEDIUM, HIGH }
 enum class M26DuplicateStatus { OPEN, CONFIRMED, DISMISSED }
@@ -10,6 +14,66 @@ enum class M26AssistanceTopic { GENERAL, ADOPTION, LOST_PET, MARKETPLACE, OTHER 
 enum class M26AssistanceSessionStatus { ACTIVE, CLOSED, EXPIRED }
 enum class M26RecommendationKind { CONTENT, PROVIDER, PRODUCT, EVENT, OTHER }
 enum class M26RecommendationStatus { DRAFT, PENDING_REVIEW, APPROVED, REJECTED, EXPIRED }
+
+data class M26ModelDescriptor(val name: String, val version: String)
+data class M26AiProvenance(val sourceModule: String, val jobId: String?, val createdAt: Long)
+data class M26ReasonCode(val code: String, val publicExplanation: String)
+
+data class M26AiJob(
+    val id: String,
+    val ownerUserId: String,
+    val jobType: M26AiJobType,
+    val status: M26AiJobStatus,
+    val clientRequestId: String?,
+    val model: M26ModelDescriptor,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val completedAt: Long? = null,
+    val errorCode: String? = null
+)
+
+data class M26AiResult(
+    val id: String,
+    val jobId: String,
+    val ownerUserId: String,
+    val resultType: M26AiJobType,
+    val status: M26AiResultStatus,
+    val summary: String,
+    val reasonCodes: List<M26ReasonCode>,
+    val model: M26ModelDescriptor,
+    val provenance: M26AiProvenance,
+    val createdAt: Long,
+    val updatedAt: Long
+) {
+    fun toPublicSummary(): M26PublicAiResultSummary = M26PrivacySanitizer.toPublicResult(this)
+}
+
+data class M26HumanReview(
+    val id: String,
+    val resultId: String,
+    val reviewerUserId: String,
+    val decision: M26ReviewDecision,
+    val publicReason: String?,
+    val createdAt: Long
+)
+
+data class M26PublicAiResultSummary(
+    val summary: String,
+    val resultType: M26AiJobType,
+    val status: M26AiResultStatus,
+    val reasonCodes: List<String>,
+    val modelName: String,
+    val modelVersion: String,
+    val isEstimate: Boolean = true
+)
+
+data class M26PublicReviewQueueItem(
+    val resultId: String,
+    val summary: String,
+    val resultType: M26AiJobType,
+    val status: M26AiResultStatus,
+    val modelVersion: String
+)
 
 /** Stub M06 — delivery infrastructure is not coupled to M26 operations. */
 data class M26NotificationHookState(
@@ -123,6 +187,18 @@ data class ReviewM26RecommendationInput(
     val recommendationId: String,
     val approved: Boolean,
     val reviewerNote: String? = null
+)
+
+data class RequestM26AiJobInput(
+    val jobType: M26AiJobType,
+    val payloadSummary: String,
+    val clientRequestId: String? = null
+)
+
+data class ReviewM26AiResultInput(
+    val resultId: String,
+    val decision: M26ReviewDecision,
+    val publicReason: String? = null
 )
 
 object M26MockUsers {

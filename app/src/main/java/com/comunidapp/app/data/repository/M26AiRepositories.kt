@@ -1,5 +1,11 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.model.M26AiJob
+import com.comunidapp.app.data.model.M26AiJobStatus
+import com.comunidapp.app.data.model.M26AiJobType
+import com.comunidapp.app.data.model.M26AiProvenance
+import com.comunidapp.app.data.model.M26AiResult
+import com.comunidapp.app.data.model.M26AiResultStatus
 import com.comunidapp.app.data.model.M26AssistanceSession
 import com.comunidapp.app.data.model.M26AssistanceSessionStatus
 import com.comunidapp.app.data.model.M26AssistanceTopic
@@ -16,12 +22,22 @@ import com.comunidapp.app.data.model.M26PublicRecommendation
 import com.comunidapp.app.data.model.M26PublicVisualMatch
 import com.comunidapp.app.data.model.M26RecommendationKind
 import com.comunidapp.app.data.model.M26RecommendationStatus
+import com.comunidapp.app.data.model.M26ReviewDecision
 import com.comunidapp.app.data.model.M26VisualMatchStatus
 import com.comunidapp.app.data.model.M26VisualMatchSuggestion
 import com.comunidapp.app.data.model.RequestM26VisualMatchInput
 import com.comunidapp.app.data.model.ReviewM26RecommendationInput
 import com.comunidapp.app.data.model.StartM26AssistanceInput
 import com.comunidapp.app.data.model.SubmitM26RecommendationInput
+import com.comunidapp.app.data.model.M26ModelDescriptor
+import com.comunidapp.app.data.model.M26PublicAiResultSummary
+import com.comunidapp.app.data.model.M26PublicReviewQueueItem
+import com.comunidapp.app.data.model.M26ReasonCode
+import com.comunidapp.app.data.model.RequestM26AiJobInput
+import com.comunidapp.app.data.model.ReviewM26AiResultInput
+import com.comunidapp.app.domain.m26.M26AiOperationsService
+import com.comunidapp.app.domain.m26.M26JobLifecycle
+import com.comunidapp.app.domain.m26.M26PrivacySanitizer
 import com.comunidapp.app.domain.m26.M26RecommendationEligibilityService
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -34,6 +50,14 @@ interface M26AiRepository {
     fun observeDuplicateCandidates(): Flow<List<M26PublicDuplicateCandidate>>
     fun observeAssistanceSessions(): Flow<List<M26PublicAssistanceSession>>
     fun observeEligibleRecommendations(): Flow<List<M26PublicRecommendation>>
+    fun observeMyJobs(): Flow<List<M26AiJob>>
+    fun observeMyResults(): Flow<List<M26PublicAiResultSummary>>
+    fun observeReviewQueue(): Flow<List<M26PublicReviewQueueItem>>
+    suspend fun requestAnalysis(input: RequestM26AiJobInput): Result<M26AiJob>
+    suspend fun cancelJob(jobId: String): Result<M26AiJob>
+    suspend fun submitResultForReview(resultId: String): Result<M26AiResult>
+    suspend fun reviewResult(input: ReviewM26AiResultInput): Result<M26AiResult>
+    suspend fun archiveResult(resultId: String): Result<M26AiResult>
     suspend fun requestVisualMatch(input: RequestM26VisualMatchInput): Result<M26VisualMatchSuggestion>
     suspend fun dismissVisualMatch(matchId: String): Result<Unit>
     suspend fun confirmDuplicate(candidateId: String): Result<Unit>
@@ -52,6 +76,10 @@ class M26AiMemoryStore {
     val duplicateCandidates = MutableStateFlow<List<M26DuplicateCandidate>>(emptyList())
     val assistanceSessions = MutableStateFlow<List<M26AssistanceSession>>(emptyList())
     val recommendations = MutableStateFlow<List<M26EvaluatedRecommendation>>(emptyList())
+    val jobs = MutableStateFlow<List<M26AiJob>>(emptyList())
+    val results = MutableStateFlow<List<M26AiResult>>(emptyList())
+    val clientRequests = MutableStateFlow<Set<String>>(emptySet())
+    val duplicateKeys = MutableStateFlow<Set<String>>(emptySet())
 
     suspend fun <T> withLock(block: suspend () -> T): T = mutex.withLock { block() }
     fun nextId(prefix: String): String = "${prefix}_${++sequence}"
@@ -106,6 +134,211 @@ class MockM26AiRepository(
 ) : M26AiRepository {
     init { store.seedDefaults() }
 
+    override fun observeMyJobs(): Flow<List<M26AiJob>> = store.jobs.map { jobs ->
+        val actor = actorUserId() ?: return@map emptyList()
+        jobs.filter { it.ownerUserId == actor }
+    }
+
+    override fun observeMyResults(): Flow<List<M26PublicAiResultSummary>> = store.results.map { results ->
+        val actor = actorUserId() ?: return@map emptyList()
+        results.filter { it.ownerUserId == actor }.map { it.toPublicSummary() }
+    }
+
+    override fun observeReviewQueue(): Flow<List<M26PublicReviewQueueItem>> = store.results.map { results ->
+        if (!isReviewer()) return@map emptyList()
+        results.filter { it.status == M26AiResultStatus.PENDING_REVIEW }.map {
+            M26PublicReviewQueueItem(it.id, M26PrivacySanitizer.scrubPublicText(it.summary), it.resultType, it.status, it.model.version)
+        }
+    }
+
+    private suspend fun requestAnalysisInternal(input: RequestM26AiJobInput): M26AiJob {
+        val actor = requireActor()
+        M26AiValidators.validateJobPayload(input.payloadSummary, input.jobType)?.let(::fail)
+        input.clientRequestId?.let { key ->
+            store.jobs.value.firstOrNull { it.ownerUserId == actor && it.clientRequestId == key }?.let { return it }
+        }
+        val (modelName, modelVersion) = M26AiOperationsService.stubModelVersion()
+        val model = M26ModelDescriptor(modelName, modelVersion)
+        val now = System.currentTimeMillis()
+        val jobId = store.nextId("m26_job")
+        var job = M26AiJob(jobId, actor, input.jobType, M26AiJobStatus.QUEUED, input.clientRequestId, model, now, now)
+        store.jobs.value += job
+        M26JobLifecycle.validateJobTransition(job.status, M26AiJobStatus.RUNNING)?.let(::fail)
+        job = job.copy(status = M26AiJobStatus.RUNNING, updatedAt = System.currentTimeMillis())
+        store.jobs.value = store.jobs.value.map { if (it.id == jobId) job else it }
+        val result = createResultForJob(job, input.payloadSummary.trim())
+        M26JobLifecycle.validateJobTransition(job.status, M26AiJobStatus.COMPLETED)?.let(::fail)
+        job = job.copy(status = M26AiJobStatus.COMPLETED, updatedAt = System.currentTimeMillis(), completedAt = System.currentTimeMillis())
+        store.jobs.value = store.jobs.value.map { if (it.id == jobId) job else it }
+        store.results.value += result
+        input.clientRequestId?.let { store.clientRequests.value = store.clientRequests.value + it }
+        return job
+    }
+
+    override suspend fun requestAnalysis(input: RequestM26AiJobInput): Result<M26AiJob> = mutate {
+        requestAnalysisInternal(input)
+    }
+
+    private fun createResultForJob(job: M26AiJob, payload: String): M26AiResult {
+        val now = System.currentTimeMillis()
+        val reasonCodes = defaultReasonCodes(job.jobType)
+        val summary = buildResultSummary(job, payload)
+        val initialStatus = when (job.jobType) {
+            M26AiJobType.VISUAL_MATCH, M26AiJobType.DUPLICATE_SCAN, M26AiJobType.RECOMMENDATION ->
+                M26AiResultStatus.PENDING_REVIEW
+            M26AiJobType.ASSISTANCE -> M26AiResultStatus.DRAFT
+        }
+        when (job.jobType) {
+            M26AiJobType.VISUAL_MATCH -> createVisualMatchArtifact(job, payload, now)
+            M26AiJobType.DUPLICATE_SCAN -> createDuplicateArtifact(job, payload, now)
+            M26AiJobType.ASSISTANCE -> createAssistanceArtifact(job, payload, now)
+            M26AiJobType.RECOMMENDATION -> createRecommendationArtifact(job, payload, now)
+        }
+        return M26AiResult(
+            id = store.nextId("m26_result"),
+            jobId = job.id,
+            ownerUserId = job.ownerUserId,
+            resultType = job.jobType,
+            status = initialStatus,
+            summary = summary,
+            reasonCodes = reasonCodes,
+            model = job.model,
+            provenance = M26AiProvenance("M26", job.id, now),
+            createdAt = now,
+            updatedAt = now
+        )
+    }
+
+    private fun createVisualMatchArtifact(job: M26AiJob, payload: String, now: Long) {
+        val parts = payload.split("|", limit = 2)
+        if (parts.size != 2) return
+        val score = 0.75
+        M26AiValidators.validateScore(score)?.let { return }
+        store.visualMatches.value += M26VisualMatchSuggestion(
+            store.nextId("m26_match"),
+            job.ownerUserId,
+            parts[0].trim(),
+            parts[1].trim(),
+            score,
+            confidenceBandFor(score),
+            M26VisualMatchStatus.PENDING,
+            now,
+            now
+        )
+    }
+
+    private fun createDuplicateArtifact(job: M26AiJob, payload: String, now: Long) {
+        val parts = payload.split("|", limit = 2)
+        if (parts.size != 2) return
+        val key = M26AiOperationsService.canonicalDuplicateKey(parts[0], parts[1])
+        if (key in store.duplicateKeys.value) return
+        store.duplicateKeys.value = store.duplicateKeys.value + key
+        store.duplicateCandidates.value += M26DuplicateCandidate(
+            store.nextId("m26_dup"),
+            job.ownerUserId,
+            parts[0].trim(),
+            parts[1].trim(),
+            0.82,
+            M26DuplicateStatus.OPEN,
+            now,
+            now
+        )
+    }
+
+    private fun createAssistanceArtifact(job: M26AiJob, payload: String, now: Long) {
+        store.assistanceSessions.value += M26AssistanceSession(
+            store.nextId("m26_assist"),
+            job.ownerUserId,
+            M26AssistanceTopic.GENERAL,
+            M26AssistanceSessionStatus.ACTIVE,
+            "Sesión stub: ${payload.take(200)}",
+            now
+        )
+    }
+
+    private fun createRecommendationArtifact(job: M26AiJob, payload: String, now: Long) {
+        val title = payload.take(80).ifBlank { "Sugerencia generada" }
+        store.recommendations.value += M26EvaluatedRecommendation(
+            store.nextId("m26_rec"),
+            job.ownerUserId,
+            M26RecommendationKind.CONTENT,
+            title,
+            "Sugerencia automática pendiente de revisión humana.",
+            humanReviewed = false,
+            reviewerNote = null,
+            status = M26RecommendationStatus.PENDING_REVIEW,
+            createdAt = now,
+            updatedAt = now
+        )
+    }
+
+    private fun defaultReasonCodes(type: M26AiJobType): List<M26ReasonCode> = when (type) {
+        M26AiJobType.VISUAL_MATCH -> listOf(
+            M26ReasonCode("SIMILAR_COLOR_PATTERN", "Patrón de color similar"),
+            M26ReasonCode("SIMILAR_BODY_SHAPE", "Forma corporal aproximada")
+        )
+        M26AiJobType.DUPLICATE_SCAN -> listOf(
+            M26ReasonCode("SHARED_PUBLIC_ATTRIBUTES", "Atributos públicos compartidos")
+        )
+        M26AiJobType.ASSISTANCE -> listOf(
+            M26ReasonCode("RECENT_RELEVANCE", "Contexto reciente del usuario")
+        )
+        M26AiJobType.RECOMMENDATION -> listOf(
+            M26ReasonCode("USER_SELECTED_PREFERENCE", "Preferencias declaradas")
+        )
+    }
+
+    private fun buildResultSummary(job: M26AiJob, payload: String): String = when (job.jobType) {
+        M26AiJobType.VISUAL_MATCH -> "Posible coincidencia visual (estimación): ${payload.replace("|", " ↔ ")}"
+        M26AiJobType.DUPLICATE_SCAN -> "Candidato de duplicado detectado: ${payload.replace("|", " / ")}"
+        M26AiJobType.ASSISTANCE -> "Asistencia no autoritativa generada."
+        M26AiJobType.RECOMMENDATION -> "Recomendación sugerida: ${payload.take(120)}"
+    }
+
+    override suspend fun cancelJob(jobId: String): Result<M26AiJob> = mutate {
+        val actor = requireActor()
+        val job = store.jobs.value.firstOrNull { it.id == jobId && it.ownerUserId == actor } ?: fail("M26_JOB_NOT_FOUND")
+        if (job.status == M26AiJobStatus.CANCELLED) return@mutate job
+        M26JobLifecycle.validateJobTransition(job.status, M26AiJobStatus.CANCELLED)?.let(::fail)
+        job.copy(status = M26AiJobStatus.CANCELLED, updatedAt = System.currentTimeMillis()).also { updated ->
+            store.jobs.value = store.jobs.value.map { if (it.id == jobId) updated else it }
+        }
+    }
+
+    override suspend fun submitResultForReview(resultId: String): Result<M26AiResult> = mutate {
+        val actor = requireActor()
+        val result = ownedResult(resultId, actor)
+        if (result.status == M26AiResultStatus.PENDING_REVIEW) return@mutate result
+        M26JobLifecycle.validateResultTransition(result.status, M26AiResultStatus.PENDING_REVIEW)?.let(::fail)
+        result.copy(status = M26AiResultStatus.PENDING_REVIEW, updatedAt = System.currentTimeMillis()).also { updated ->
+            store.results.value = store.results.value.map { if (it.id == resultId) updated else it }
+        }
+    }
+
+    override suspend fun reviewResult(input: ReviewM26AiResultInput): Result<M26AiResult> = mutate {
+        val reviewer = requireReviewer()
+        val result = store.results.value.firstOrNull { it.id == input.resultId } ?: fail("M26_RESULT_NOT_FOUND")
+        val target = when (input.decision) {
+            M26ReviewDecision.APPROVED -> M26AiResultStatus.APPROVED
+            M26ReviewDecision.REJECTED -> M26AiResultStatus.REJECTED
+            M26ReviewDecision.ARCHIVE -> M26AiResultStatus.ARCHIVED
+        }
+        M26JobLifecycle.validateReviewDecision(result.status, input.decision)?.let {
+            if (result.status == target) return@mutate result else fail(it)
+        }
+        M26JobLifecycle.validateResultTransition(result.status, target)?.let(::fail)
+        result.copy(status = target, updatedAt = System.currentTimeMillis()).also { updated ->
+            store.results.value = store.results.value.map { if (it.id == input.resultId) updated else it }
+            if (updated.resultType == M26AiJobType.RECOMMENDATION && target == M26AiResultStatus.APPROVED) {
+                syncRecommendationApproval(updated)
+            }
+        }
+    }
+
+    override suspend fun archiveResult(resultId: String): Result<M26AiResult> = reviewResult(
+        ReviewM26AiResultInput(resultId, M26ReviewDecision.ARCHIVE, null)
+    )
+
     override fun observeVisualMatches(): Flow<List<M26PublicVisualMatch>> =
         store.visualMatches.map { matches ->
             val actor = actorUserId()
@@ -133,23 +366,15 @@ class MockM26AiRepository(
             M26RecommendationEligibilityService.filterEligiblePublic(recs)
         }
 
-    override suspend fun requestVisualMatch(input: RequestM26VisualMatchInput): Result<M26VisualMatchSuggestion> = mutate {
-        val actor = requireActor()
-        M26AiValidators.validateVisualMatch(input.sourceLabel, input.targetLabel)?.let(::fail)
-        val score = 0.75
-        M26AiValidators.validateScore(score)?.let(::fail)
-        val now = System.currentTimeMillis()
-        M26VisualMatchSuggestion(
-            store.nextId("m26_match"),
-            actor,
-            input.sourceLabel.trim(),
-            input.targetLabel.trim(),
-            score,
-            confidenceBandFor(score),
-            M26VisualMatchStatus.PENDING,
-            now,
-            now
-        ).also { store.visualMatches.value += it }
+    override suspend fun requestVisualMatch(input: RequestM26VisualMatchInput): Result<M26VisualMatchSuggestion> {
+        M26AiValidators.validateVisualMatch(input.sourceLabel, input.targetLabel)?.let { code ->
+            return M26AiErrors.failure(M26AiException(code, M26AiErrors.userMessage(code)))
+        }
+        return requestAnalysis(
+            RequestM26AiJobInput(M26AiJobType.VISUAL_MATCH, "${input.sourceLabel}|${input.targetLabel}", null)
+        ).mapCatching { job ->
+            store.visualMatches.value.last { it.requesterUserId == job.ownerUserId && it.updatedAt >= job.createdAt }
+        }
     }
 
     override suspend fun dismissVisualMatch(matchId: String): Result<Unit> = mutate {
@@ -244,6 +469,26 @@ class MockM26AiRepository(
         score >= 0.85 -> M26ConfidenceBand.HIGH
         score >= 0.60 -> M26ConfidenceBand.MEDIUM
         else -> M26ConfidenceBand.LOW
+    }
+
+    private fun isReviewer(): Boolean {
+        val actor = actorUserId() ?: return false
+        return actor == M26MockUsers.REVIEWER || actor == M26MockUsers.ADMIN
+    }
+
+    private fun ownedResult(resultId: String, actor: String): M26AiResult {
+        val result = store.results.value.firstOrNull { it.id == resultId } ?: fail("M26_RESULT_NOT_FOUND")
+        if (result.ownerUserId != actor) fail("M26_PERMISSION_DENIED")
+        return result
+    }
+
+    private fun syncRecommendationApproval(result: M26AiResult) {
+        val title = result.summary.removePrefix("Recomendación sugerida: ").trim()
+        store.recommendations.value = store.recommendations.value.map { rec ->
+            if (rec.subjectUserId == result.ownerUserId && rec.title == title.take(80)) {
+                rec.copy(humanReviewed = true, status = M26RecommendationStatus.APPROVED, updatedAt = System.currentTimeMillis())
+            } else rec
+        }
     }
 
     private fun requireActor(): String = actorUserId() ?: fail("NOT_AUTHENTICATED")

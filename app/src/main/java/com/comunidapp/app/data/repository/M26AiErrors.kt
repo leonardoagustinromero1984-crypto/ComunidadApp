@@ -17,6 +17,13 @@ object M26AiErrors {
         "M26_INVALID_SCORE" -> "El puntaje informado no es válido."
         "M26_SESSION_ALREADY_CLOSED" -> "La sesión de asistencia ya está cerrada."
         "M26_RECOMMENDATION_NOT_ELIGIBLE" -> "La recomendación no está apta para mostrarse."
+        "M26_INVALID_JOB" -> "Los datos del análisis no son válidos."
+        "M26_JOB_NOT_FOUND" -> "No encontramos la ejecución solicitada."
+        "M26_RESULT_NOT_FOUND" -> "No encontramos el resultado solicitado."
+        "M26_JOB_TERMINAL" -> "La ejecución ya finalizó y no puede reabrirse."
+        "M26_RESULT_TERMINAL" -> "El resultado ya finalizó y no puede reabrirse."
+        "M26_ASSISTANCE_NOT_AUTHORITATIVE" -> "La asistencia no puede emitir diagnósticos clínicos."
+        "M26_REMOTE_NOT_READY" -> "Operación remota de inteligencia aún no disponible."
         else -> "No pudimos completar la operación."
     }
 

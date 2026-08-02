@@ -7,3 +7,5 @@ Los modelos internos conservan propietario, estado e identificadores para autori
 Bloque 2 incorpora `SupabaseM26RemoteDataSource`, el mapeo JSON local y la migración forward-only 072. Las tablas `m26_*` tienen RLS deny-all y los RPC `SECURITY DEFINER` entregan proyecciones sin PII ni rutas internas.
 
 La migración 072 está creada localmente y no fue aplicada a staging.
+
+Bloque 3 agrega orquestación de jobs (`M26AiJob`, `M26AiResult`), `M26JobLifecycle`, `M26AiOperationsService`, idempotencia por `clientRequestId`, cola de revisión humana M26 (distinta de M04), historial personal, reason codes y `M26RetentionPolicy`. La UI incluye historial y cola de revisión. Operaciones Supabase nuevas permanecen en stub hasta Bloque 4 (`073`).

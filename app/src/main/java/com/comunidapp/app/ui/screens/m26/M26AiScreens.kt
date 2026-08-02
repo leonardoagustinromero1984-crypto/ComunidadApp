@@ -35,6 +35,10 @@ import com.comunidapp.app.viewmodel.M26HubUiState
 import com.comunidapp.app.viewmodel.M26HubViewModel
 import com.comunidapp.app.viewmodel.M26RecommendationsUiState
 import com.comunidapp.app.viewmodel.M26RecommendationsViewModel
+import com.comunidapp.app.viewmodel.M26HistoryUiState
+import com.comunidapp.app.viewmodel.M26HistoryViewModel
+import com.comunidapp.app.viewmodel.M26ReviewQueueUiState
+import com.comunidapp.app.viewmodel.M26ReviewQueueViewModel
 import com.comunidapp.app.viewmodel.M26VisualMatchingUiState
 import com.comunidapp.app.viewmodel.M26VisualMatchingViewModel
 
@@ -45,6 +49,8 @@ fun M26HubScreen(
     onOpenDuplicates: () -> Unit,
     onOpenAssistance: () -> Unit,
     onOpenRecommendations: () -> Unit,
+    onOpenHistory: () -> Unit,
+    onOpenReviewQueue: () -> Unit,
     viewModel: M26HubViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -55,12 +61,14 @@ fun M26HubScreen(
                 M26HubUiState.Empty -> EmptyState(title = "Sin sugerencias", message = "Todavía no hay resultados de inteligencia asistida.")
                 is M26HubUiState.Error -> ErrorState(message = s.message)
                 is M26HubUiState.Content -> {
-                    Text("LeoVer M26 · Matching, duplicados, asistencia y recomendaciones evaluadas.", color = MaterialTheme.colorScheme.primary)
-                    Text("${s.matchCount} matches · ${s.duplicateCount} duplicados · ${s.recommendationCount} recomendaciones aptas")
+                    Text("LeoVer M26 · Sugerencias estimativas; requieren revisión humana cuando corresponda.", color = MaterialTheme.colorScheme.primary)
+                    Text("${s.matchCount} matches · ${s.duplicateCount} duplicados · ${s.recommendationCount} recomendaciones aptas · ${s.jobCount} ejecuciones")
                     Button(onClick = onOpenVisualMatching, modifier = Modifier.fillMaxWidth()) { Text("Matching visual") }
                     OutlinedButton(onClick = onOpenDuplicates, modifier = Modifier.fillMaxWidth()) { Text("Detección de duplicados") }
                     OutlinedButton(onClick = onOpenAssistance, modifier = Modifier.fillMaxWidth()) { Text("Asistencia (stub)") }
                     OutlinedButton(onClick = onOpenRecommendations, modifier = Modifier.fillMaxWidth()) { Text("Recomendaciones evaluadas") }
+                    OutlinedButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) { Text("Historial personal") }
+                    OutlinedButton(onClick = onOpenReviewQueue, modifier = Modifier.fillMaxWidth()) { Text("Cola de revisión") }
                 }
             }
         }
@@ -154,11 +162,65 @@ fun M26RecommendationsScreen(onNavigateBack: () -> Unit, viewModel: M26Recommend
 }
 
 @Composable
+fun M26HistoryScreen(onNavigateBack: () -> Unit, viewModel: M26HistoryViewModel = viewModel()) {
+    val state by viewModel.uiState.collectAsState()
+    Scaffold(topBar = { ComunidappTopBar(title = "Historial M26", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+        Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
+            Text("Resultados personales — no constituyen verdad garantizada.", style = MaterialTheme.typography.bodyMedium)
+            when (val s = state) {
+                M26HistoryUiState.Loading -> LoadingState()
+                M26HistoryUiState.Empty -> EmptyState(title = "Sin historial", message = "Todavía no solicitaste análisis.")
+                is M26HistoryUiState.Error -> ErrorState(message = s.message)
+                is M26HistoryUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(s.items, key = { it.summary }) { item ->
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                Text(item.summary, fontWeight = FontWeight.Bold)
+                                Text("${item.resultType} · ${item.status} · modelo ${item.modelName}@${item.modelVersion}")
+                                if (item.isEstimate) Text("Sugerencia estimativa — requiere revisión si aplica.")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun M26ReviewQueueScreen(onNavigateBack: () -> Unit, viewModel: M26ReviewQueueViewModel = viewModel()) {
+    val state by viewModel.uiState.collectAsState()
+    Scaffold(topBar = { ComunidappTopBar(title = "Revisión humana M26", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+        Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text("Cola de calidad IA — distinta de moderación M04.", style = MaterialTheme.typography.bodyMedium)
+            when (val s = state) {
+                M26ReviewQueueUiState.Loading -> LoadingState()
+                M26ReviewQueueUiState.Empty -> EmptyState(title = "Sin pendientes", message = "No hay resultados en revisión o no tenés permiso.")
+                is M26ReviewQueueUiState.Error -> ErrorState(message = s.message)
+                is M26ReviewQueueUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    items(s.items, key = { it.resultId }) { item ->
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(item.summary, fontWeight = FontWeight.Bold)
+                                Text("${item.resultType} · v${item.modelVersion}")
+                                Button(onClick = { viewModel.approve(item.resultId) }, modifier = Modifier.fillMaxWidth()) { Text("Aprobar") }
+                                OutlinedButton(onClick = { viewModel.reject(item.resultId) }, modifier = Modifier.fillMaxWidth()) { Text("Rechazar") }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 private fun M26VisualMatchCard(item: M26PublicVisualMatch) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("${item.sourceLabel} ↔ ${item.targetLabel}", fontWeight = FontWeight.Bold)
-            Text("Score ${"%.0f".format(item.score * 100)}% · ${item.confidenceBand} · ${item.status}")
+            Text("Posible coincidencia (estimación)", fontWeight = FontWeight.Bold)
+            Text("${item.sourceLabel} ↔ ${item.targetLabel}")
+            Text("Similitud estimada ${"%.0f".format(item.score * 100)} · ${item.confidenceBand} · ${item.status}")
         }
     }
 }

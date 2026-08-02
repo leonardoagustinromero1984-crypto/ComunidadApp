@@ -7,6 +7,10 @@ import com.comunidapp.app.data.model.M26AssistanceTopic
 import com.comunidapp.app.data.model.M26PublicAssistanceSession
 import com.comunidapp.app.data.model.M26PublicDuplicateCandidate
 import com.comunidapp.app.data.model.M26PublicRecommendation
+import com.comunidapp.app.data.model.M26PublicAiResultSummary
+import com.comunidapp.app.data.model.M26PublicReviewQueueItem
+import com.comunidapp.app.data.model.M26ReviewDecision
+import com.comunidapp.app.data.model.ReviewM26AiResultInput
 import com.comunidapp.app.data.model.M26PublicVisualMatch
 import com.comunidapp.app.data.model.M26RecommendationKind
 import com.comunidapp.app.data.model.StartM26AssistanceInput
@@ -22,7 +26,7 @@ import kotlinx.coroutines.launch
 
 sealed class M26HubUiState {
     data object Loading : M26HubUiState()
-    data class Content(val matchCount: Int, val duplicateCount: Int, val recommendationCount: Int) : M26HubUiState()
+    data class Content(val matchCount: Int, val duplicateCount: Int, val recommendationCount: Int, val jobCount: Int) : M26HubUiState()
     data object Empty : M26HubUiState()
     data class Error(val message: String) : M26HubUiState()
 }
@@ -36,15 +40,17 @@ class M26HubViewModel(private val repository: M26AiRepository = DataProvider.m26
             combine(
                 repository.observeVisualMatches(),
                 repository.observeDuplicateCandidates(),
-                repository.observeEligibleRecommendations()
-            ) { matches, duplicates, recommendations ->
-                Triple(matches.size, duplicates.size, recommendations.size)
+                repository.observeEligibleRecommendations(),
+                repository.observeMyJobs()
+            ) { matches, duplicates, recommendations, jobs ->
+                listOf(matches.size, duplicates.size, recommendations.size, jobs.size)
             }.catch { _uiState.value = M26HubUiState.Error(M26AiResilience.safeUserMessage(it)) }
-                .collect { (matches, duplicates, recommendations) ->
-                    _uiState.value = if (matches == 0 && duplicates == 0 && recommendations == 0) {
+                .collect { counts ->
+                    val (matches, duplicates, recommendations, jobs) = counts
+                    _uiState.value = if (matches == 0 && duplicates == 0 && recommendations == 0 && jobs == 0) {
                         M26HubUiState.Empty
                     } else {
-                        M26HubUiState.Content(matches, duplicates, recommendations)
+                        M26HubUiState.Content(matches, duplicates, recommendations, jobs)
                     }
                 }
         }
@@ -167,5 +173,61 @@ object M26ViewModelFactories {
     private fun factory(create: () -> ViewModel): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T = create() as T
+    }
+}
+
+sealed class M26HistoryUiState {
+    data object Loading : M26HistoryUiState()
+    data class Content(val items: List<M26PublicAiResultSummary>) : M26HistoryUiState()
+    data object Empty : M26HistoryUiState()
+    data class Error(val message: String) : M26HistoryUiState()
+}
+
+class M26HistoryViewModel(private val repository: M26AiRepository = DataProvider.m26AiRepository) : ViewModel() {
+    private val _uiState = MutableStateFlow<M26HistoryUiState>(M26HistoryUiState.Loading)
+    val uiState: StateFlow<M26HistoryUiState> = _uiState
+
+    init {
+        viewModelScope.launch {
+            repository.observeMyResults().catch {
+                _uiState.value = M26HistoryUiState.Error(M26AiResilience.safeUserMessage(it))
+            }.collect {
+                _uiState.value = if (it.isEmpty()) M26HistoryUiState.Empty else M26HistoryUiState.Content(it)
+            }
+        }
+    }
+}
+
+sealed class M26ReviewQueueUiState {
+    data object Loading : M26ReviewQueueUiState()
+    data class Content(val items: List<M26PublicReviewQueueItem>) : M26ReviewQueueUiState()
+    data object Empty : M26ReviewQueueUiState()
+    data class Error(val message: String) : M26ReviewQueueUiState()
+}
+
+class M26ReviewQueueViewModel(private val repository: M26AiRepository = DataProvider.m26AiRepository) : ViewModel() {
+    private val _uiState = MutableStateFlow<M26ReviewQueueUiState>(M26ReviewQueueUiState.Loading)
+    val uiState: StateFlow<M26ReviewQueueUiState> = _uiState
+
+    init {
+        viewModelScope.launch {
+            repository.observeReviewQueue().catch {
+                _uiState.value = M26ReviewQueueUiState.Error(M26AiResilience.safeUserMessage(it))
+            }.collect {
+                _uiState.value = if (it.isEmpty()) M26ReviewQueueUiState.Empty else M26ReviewQueueUiState.Content(it)
+            }
+        }
+    }
+
+    fun approve(resultId: String) = review(resultId, M26ReviewDecision.APPROVED)
+
+    fun reject(resultId: String) = review(resultId, M26ReviewDecision.REJECTED)
+
+    private fun review(resultId: String, decision: M26ReviewDecision) {
+        viewModelScope.launch {
+            repository.reviewResult(ReviewM26AiResultInput(resultId, decision, null)).exceptionOrNull()?.let {
+                _uiState.value = M26ReviewQueueUiState.Error(M26AiResilience.safeUserMessage(it))
+            }
+        }
     }
 }

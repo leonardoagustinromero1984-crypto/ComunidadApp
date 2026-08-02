@@ -1,8 +1,11 @@
 package com.comunidapp.app.domain.m26
 
+import com.comunidapp.app.data.model.M26AiResult
+import com.comunidapp.app.data.model.M26AiResultStatus
 import com.comunidapp.app.data.model.M26AssistanceSession
 import com.comunidapp.app.data.model.M26DuplicateCandidate
 import com.comunidapp.app.data.model.M26EvaluatedRecommendation
+import com.comunidapp.app.data.model.M26PublicAiResultSummary
 import com.comunidapp.app.data.model.M26PublicAssistanceSession
 import com.comunidapp.app.data.model.M26PublicDuplicateCandidate
 import com.comunidapp.app.data.model.M26PublicRecommendation
@@ -56,4 +59,14 @@ object M26PrivacySanitizer {
             humanReviewed = recommendation.humanReviewed,
             approvedForDisplay = M26RecommendationEligibilityService.isEligibleForDisplay(recommendation)
         )
+
+    fun toPublicResult(result: M26AiResult): M26PublicAiResultSummary = M26PublicAiResultSummary(
+        summary = scrubPublicText(result.summary),
+        resultType = result.resultType,
+        status = result.status,
+        reasonCodes = result.reasonCodes.map { scrubPublicText(it.publicExplanation) },
+        modelName = result.model.name,
+        modelVersion = result.model.version,
+        isEstimate = result.status != M26AiResultStatus.APPROVED
+    )
 }

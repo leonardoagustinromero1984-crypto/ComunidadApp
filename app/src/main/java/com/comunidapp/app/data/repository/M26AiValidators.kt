@@ -1,11 +1,26 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.model.M26AiJobType
 import com.comunidapp.app.data.model.M26AssistanceSessionStatus
 import com.comunidapp.app.data.model.M26DuplicateStatus
 import com.comunidapp.app.data.model.M26RecommendationStatus
 import com.comunidapp.app.data.model.M26VisualMatchStatus
 
 object M26AiValidators {
+    private val diagnosisPattern = Regex("(?i)(diagnóstico|diagnostico|prescri|dosis|medicament|urgencia clínica|eutanasia automática)")
+
+    fun validateJobPayload(payload: String, type: M26AiJobType): String? = when {
+        payload.trim().length !in 3..500 -> "M26_INVALID_JOB"
+        unsafe(payload) -> "M26_INVALID_JOB"
+        type == M26AiJobType.ASSISTANCE && validateNoDiagnosis(payload) != null -> validateNoDiagnosis(payload)
+        type == M26AiJobType.VISUAL_MATCH && !payload.contains('|') -> "M26_INVALID_MATCH"
+        type == M26AiJobType.DUPLICATE_SCAN && !payload.contains('|') -> "M26_INVALID_DUPLICATE"
+        else -> null
+    }
+
+    fun validateNoDiagnosis(text: String): String? =
+        if (diagnosisPattern.containsMatchIn(text)) "M26_ASSISTANCE_NOT_AUTHORITATIVE" else null
+
     fun validateVisualMatch(sourceLabel: String, targetLabel: String): String? = when {
         !isSafeLabel(sourceLabel) || !isSafeLabel(targetLabel) -> "M26_INVALID_MATCH"
         sourceLabel.trim().equals(targetLabel.trim(), ignoreCase = true) -> "M26_INVALID_MATCH"
@@ -19,6 +34,7 @@ object M26AiValidators {
 
     fun validateAssistancePrompt(prompt: String): String? = when {
         prompt.trim().length !in 5..1_000 || unsafe(prompt) -> "M26_INVALID_ASSISTANCE"
+        validateNoDiagnosis(prompt) != null -> validateNoDiagnosis(prompt)
         else -> null
     }
 

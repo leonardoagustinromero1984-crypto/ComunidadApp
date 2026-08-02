@@ -1,5 +1,11 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.model.M26AiJob
+import com.comunidapp.app.data.model.M26AiResult
+import com.comunidapp.app.data.model.M26PublicAiResultSummary
+import com.comunidapp.app.data.model.M26PublicReviewQueueItem
+import com.comunidapp.app.data.model.RequestM26AiJobInput
+import com.comunidapp.app.data.model.ReviewM26AiResultInput
 import com.comunidapp.app.data.model.M26AssistanceSession
 import com.comunidapp.app.data.model.M26EvaluatedRecommendation
 import com.comunidapp.app.data.model.M26NotificationHookState
@@ -34,6 +40,27 @@ class SupabaseM26AiRepository(
             "NOT_AUTHENTICATED", M26AiErrors.userMessage("NOT_AUTHENTICATED")
         )
     }
+
+    override fun observeMyJobs(): Flow<List<M26AiJob>> = flow { emit(emptyList()) }
+
+    override fun observeMyResults(): Flow<List<M26PublicAiResultSummary>> = flow { emit(emptyList()) }
+
+    override fun observeReviewQueue(): Flow<List<M26PublicReviewQueueItem>> = flow { emit(emptyList()) }
+
+    override suspend fun requestAnalysis(input: RequestM26AiJobInput): Result<M26AiJob> =
+        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
+
+    override suspend fun cancelJob(jobId: String): Result<M26AiJob> =
+        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
+
+    override suspend fun submitResultForReview(resultId: String): Result<M26AiResult> =
+        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
+
+    override suspend fun reviewResult(input: ReviewM26AiResultInput): Result<M26AiResult> =
+        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
+
+    override suspend fun archiveResult(resultId: String): Result<M26AiResult> =
+        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
 
     override fun observeVisualMatches(): Flow<List<M26PublicVisualMatch>> = flow {
         emit(runCatching { remote.listVisualMatches().map { it.toM26PublicVisualMatch() } }.getOrElse { emptyList() })

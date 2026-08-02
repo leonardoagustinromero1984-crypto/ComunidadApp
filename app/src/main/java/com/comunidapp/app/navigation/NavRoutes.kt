@@ -166,6 +166,8 @@ object NavRoutes {
     const val M26_DUPLICATES = "m26/duplicates"
     const val M26_ASSISTANCE = "m26/assistance"
     const val M26_RECOMMENDATIONS = "m26/recommendations"
+    const val M26_HISTORY = "m26/history"
+    const val M26_REVIEW_QUEUE = "m26/review-queue"
 
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
