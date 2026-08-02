@@ -76,7 +76,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 
 ### R8 — Escala inteligente
 - **M26 Inteligencia artificial:** matching, duplicados, asistencia stub, recomendaciones, jobs, revisión humana — **cerrado oficialmente**; migraciones 072–074 aplicadas en staging; validación 125/125 + smoke 25/25; sin pagos ni motor externo.
-- **M27 Integraciones y API pública:** webhooks, OAuth, límites, sandbox y contratos versionados — **siguiente módulo; no iniciado**.
+- **M27 Integraciones y API pública:** webhooks, OAuth, límites, sandbox y contratos versionados — **Bloques 1–2 cerrados localmente; migración 075 creada sin aplicar; Bloque 3 no iniciado**.
 
 ## Camino crítico
 
@@ -112,7 +112,7 @@ M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/
 
 ## Próximo módulo
 
-**M27 — Integraciones y API pública** (webhooks, OAuth, límites, sandbox). **M26 cerrado oficialmente.** M27 Bloques 1–2 pendientes.
+**M27 — Integraciones y API pública** (webhooks, OAuth, límites, sandbox). **M26 cerrado oficialmente.** M27 Bloques 1–2 **cerrados localmente** (075 pendiente de aplicación remota).
 
 ## Módulos posteriores pendientes de definición operativa
 
