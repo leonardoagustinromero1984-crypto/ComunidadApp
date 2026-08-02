@@ -83,6 +83,7 @@ import com.comunidapp.app.data.repository.M19SocialMemoryStore
 import com.comunidapp.app.data.repository.M19SocialRepository
 import com.comunidapp.app.data.repository.MockM19SocialAuthorityPolicy
 import com.comunidapp.app.data.repository.MockM19SocialRepository
+import com.comunidapp.app.data.repository.SupabaseM19SocialRepository
 import com.comunidapp.app.data.repository.SupabaseM17InKindRepository
 import com.comunidapp.app.data.repository.SupabaseM17TransparencyRepository
 import com.comunidapp.app.data.repository.SupabaseM17VolunteerRepository
@@ -1038,17 +1039,23 @@ object DataProvider {
         }
     }
 
-    /** M19 Bloque 1 — red social mock; remoto Supabase en Bloque 2. */
+    /** M19 — red social y contenido vinculado a organización M03; mock o Supabase según flag. */
     private val m19Store by lazy { M19SocialMemoryStore() }
 
     private val m19Authority by lazy { MockM19SocialAuthorityPolicy() }
 
     val m19SocialRepository: M19SocialRepository by lazy {
-        MockM19SocialRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
-            store = m19Store,
-            authority = m19Authority
-        )
+        if (useSupabase) {
+            SupabaseM19SocialRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        } else {
+            MockM19SocialRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+                store = m19Store,
+                authority = m19Authority
+            )
+        }
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */
