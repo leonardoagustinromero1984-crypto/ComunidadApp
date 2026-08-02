@@ -106,6 +106,14 @@ object NavRoutes {
     const val M18_EVENT_OPERATIONS = "m18/events/{eventId}/operations"
     const val ARG_M18_EVENT_ID = "eventId"
 
+    // M19 — Red social y contenido (Bloque 1 local)
+    const val M19_FEED = "m19/feed"
+    const val M19_POST_DETAIL = "m19/posts/{postId}"
+    const val M19_POSTS_MANAGE = "m19/posts/manage"
+    const val M19_POSTS_CREATE = "m19/posts/create"
+    const val M19_POST_EDIT = "m19/posts/{postId}/edit"
+    const val ARG_M19_POST_ID = "postId"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -560,6 +568,12 @@ object NavRoutes {
 
     fun m18EventOperations(eventId: String) =
         "m18/events/${java.net.URLEncoder.encode(eventId, Charsets.UTF_8.name())}/operations"
+
+    fun m19PostDetail(postId: String) =
+        "m19/posts/${java.net.URLEncoder.encode(postId, Charsets.UTF_8.name())}"
+
+    fun m19PostEdit(postId: String) =
+        "m19/posts/${java.net.URLEncoder.encode(postId, Charsets.UTF_8.name())}/edit"
 
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"

@@ -30,7 +30,9 @@ enum class OrganizationPermissionCode(val code: String) {
     DONATION_VIEW("donation.view"),
     DONATION_MANAGE("donation.manage"),
     EVENT_VIEW("event.view"),
-    EVENT_MANAGE("event.manage");
+    EVENT_MANAGE("event.manage"),
+    SOCIAL_VIEW("social.view"),
+    SOCIAL_MANAGE("social.manage");
 
     companion object {
         fun fromCode(raw: String): OrganizationPermissionCode? =
@@ -97,7 +99,8 @@ object OrganizationRolePermissionMatrix {
     private val MEMBER: Set<OrganizationPermissionCode> = VIEWER + setOf(
         OrganizationPermissionCode.ORGANIZATION_VIEW_PRIVATE,
         OrganizationPermissionCode.DONATION_VIEW,
-        OrganizationPermissionCode.EVENT_VIEW
+        OrganizationPermissionCode.EVENT_VIEW,
+        OrganizationPermissionCode.SOCIAL_VIEW
     )
 
     private val MANAGER: Set<OrganizationPermissionCode> = MEMBER + setOf(
@@ -108,7 +111,9 @@ object OrganizationRolePermissionMatrix {
         OrganizationPermissionCode.DONATION_VIEW,
         OrganizationPermissionCode.DONATION_MANAGE,
         OrganizationPermissionCode.EVENT_VIEW,
-        OrganizationPermissionCode.EVENT_MANAGE
+        OrganizationPermissionCode.EVENT_MANAGE,
+        OrganizationPermissionCode.SOCIAL_VIEW,
+        OrganizationPermissionCode.SOCIAL_MANAGE
     )
 
     private val ADMIN: Set<OrganizationPermissionCode> = MANAGER + setOf(

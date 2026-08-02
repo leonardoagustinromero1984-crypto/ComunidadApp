@@ -500,7 +500,8 @@ private fun NavGraphBuilder.mainAppRoutes(
             onVeterinaryDirectory = { navController.navigate(NavRoutes.VETERINARY_DIRECTORY) },
             onM16Shelters = { navController.navigate(NavRoutes.M16_SHELTERS) },
             onM17Campaigns = { navController.navigate(NavRoutes.M17_HUB) },
-            onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) }
+            onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) },
+            onM19Feed = { navController.navigate(NavRoutes.M19_FEED) }
         )
     }
     composable(NavRoutes.PUBLISH) {
@@ -920,6 +921,7 @@ private fun NavGraphBuilder.mainAppRoutes(
     m16ShelterRoutes(navController)
     m17DonationRoutes(navController)
     m18EventRoutes(navController)
+    m19SocialRoutes(navController)
     composable(
         route = NavRoutes.ADOPTION_DETAIL,
         arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })
