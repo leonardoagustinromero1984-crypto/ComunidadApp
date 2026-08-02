@@ -58,7 +58,48 @@ data class M23Booking(
     val customerNote: String? = null,
     val createdAt: Instant,
     val updatedAt: Instant,
-    val idempotencyKey: String? = null
+    val idempotencyKey: String? = null,
+    val branchId: String? = null,
+    val petId: String? = null,
+    val rescheduledFromBookingId: String? = null,
+    val policySnapshot: M23BookingPolicy? = null,
+    val providerPrivateNote: String? = null
+)
+enum class M23BookingListScope { UPCOMING, HISTORY, ALL }
+enum class M23BookingStatusFilter {
+    REQUESTED, CONFIRMED, CANCELLED, COMPLETED, NO_SHOW, EXPIRED
+}
+data class M23BookingFilter(
+    val scope: M23BookingListScope = M23BookingListScope.ALL,
+    val status: M23BookingStatusFilter? = null,
+    val providerId: String? = null,
+    val petId: String? = null,
+    val fromDate: LocalDate? = null,
+    val toDate: LocalDate? = null
+) {
+    companion object { val DEFAULT = M23BookingFilter() }
+}
+data class M23ProviderBookingFilter(
+    val branchId: String? = null,
+    val offeringId: String? = null,
+    val status: M23BookingStatusFilter? = null,
+    val day: LocalDate? = null,
+    val weekStart: LocalDate? = null
+) {
+    companion object { val DEFAULT = M23ProviderBookingFilter() }
+}
+data class M23BookingRejectRequest(
+    val bookingId: String,
+    val publicReason: String? = null,
+    val privateReason: String? = null
+)
+data class M23BookingMetrics(
+    val requested: Int,
+    val confirmed: Int,
+    val cancelled: Int,
+    val completed: Int,
+    val noShow: Int,
+    val expired: Int
 )
 data class M23BookingSummary(val booking: M23Booking, val providerDisplayName: String, val offeringName: String)
 data class M23PublicBookingContext(

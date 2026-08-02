@@ -1,23 +1,22 @@
 # M23 — Matriz funcional
 
-| Capacidad | Bloque 1 | Bloque 2 |
-|---|---|---|
-| Reglas de disponibilidad | Mock | Tabla `m23_availability_rules` + RPC |
-| Excepciones agenda | Mock | Tabla `m23_availability_exceptions` + RPC |
-| Slots calculados | `M23SlotGenerator` | RPC `m23_get_public_available_slots`, sin materialización |
-| Reservas lifecycle | Mock + dominio | Tabla `m23_bookings` + RPC autorizada |
-| Historial | Mock map | Tabla `m23_booking_history` interna |
-| Políticas | Snapshot en reserva | JSONB policy_snapshot |
-| Idempotencia | client_request_id mock | UNIQUE constraint |
-| Anti solapamiento | Dominio | RPC transaccional |
-| Privacidad | Sanitizer | RPC SECURITY DEFINER |
-| Pagos | No | No |
-| M06 | Stub | Stub |
-| M21 | Adapter stub | Adapter stub |
+| Capacidad | Bloque 1 | Bloque 2 | Bloque 3 |
+|---|---|---|---|
+| Reglas de disponibilidad | Mock | Tabla + RPC | Admin mock + conflicto |
+| Excepciones agenda | Mock | Tabla + RPC | Idempotencia mock |
+| Slots calculados | `M23SlotGenerator` | RPC público | — |
+| Reservas lifecycle | Mock + dominio | Tabla + RPC | Operaciones completas |
+| Historial | Mock map | Tabla interna | UI + mock append |
+| Reprogramación | — | — | Atómica mock |
+| Expiración | — | — | Dominio + mock |
+| Filtros agenda | — | — | Cliente/prestador |
+| M20 contextual | — | — | Adaptador |
+| M21 elegibilidad | Stub | Stub | Adaptador COMPLETED |
+| Pagos | No | No | No |
 
 ## Estado
 
-- Bloque 1 y Bloque 2 implementados localmente.
-- `068_m23_scheduling_availability_and_bookings.sql` fue creada y **no aplicada**.
-- Bloque 3 no iniciado.
-- M24 no iniciado; M23 no contiene pagos.
+- Bloques 1–3 implementados localmente.
+- `068_m23_scheduling_availability_and_bookings.sql` creada, **no aplicada**.
+- Bloque 4 pendiente (paridad remota, staging).
+- M24 no iniciado.

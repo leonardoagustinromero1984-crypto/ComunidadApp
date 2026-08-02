@@ -4,6 +4,7 @@ import com.comunidapp.app.data.model.M23AvailabilityException
 import com.comunidapp.app.data.model.M23AvailabilityRule
 import com.comunidapp.app.data.model.M23Booking
 import com.comunidapp.app.data.model.M23BookingModality
+import com.comunidapp.app.data.model.M23BookingRescheduleRequest
 import com.comunidapp.app.data.model.M23BookingStatus
 import com.comunidapp.app.data.model.M23ExceptionType
 import com.comunidapp.app.data.model.M23AvailabilityRuleStatus
@@ -134,7 +135,23 @@ class SupabaseM23RemoteDataSource {
     suspend fun listProviderBookings(providerId: String): List<JsonObject> =
         list("m23_list_provider_bookings", buildJsonObject { put("p_provider_id", providerId) })
     suspend fun confirm(id: String): JsonObject = one("m23_confirm_booking", buildJsonObject { put("p_booking_id", id) })
-    suspend fun reject(id: String): JsonObject = one("m23_reject_booking", buildJsonObject { put("p_booking_id", id) })
+    suspend fun reject(id: String, publicReason: String? = null, privateReason: String? = null): JsonObject =
+        one("m23_reject_booking", buildJsonObject {
+            put("p_booking_id", id)
+            put("p_public_reason", publicReason)
+            put("p_private_reason", privateReason)
+        })
+    suspend fun reschedule(request: M23BookingRescheduleRequest): JsonObject =
+        one("m23_reschedule_booking", buildJsonObject {
+            put("p_booking_id", request.bookingId)
+            put("p_starts_at", request.startsAt.toString())
+            put("p_ends_at", request.endsAt.toString())
+            put("p_zone_id", request.zoneId.id)
+        })
+    suspend fun expire(id: String): JsonObject =
+        one("m23_expire_booking", buildJsonObject { put("p_booking_id", id) })
+    suspend fun listBookingHistory(id: String): List<JsonObject> =
+        list("m23_list_booking_history", buildJsonObject { put("p_booking_id", id) })
     suspend fun cancelByProvider(id: String): JsonObject =
         one("m23_cancel_booking_by_provider", buildJsonObject { put("p_booking_id", id) })
     suspend fun complete(id: String): JsonObject = one("m23_complete_booking", buildJsonObject { put("p_booking_id", id) })

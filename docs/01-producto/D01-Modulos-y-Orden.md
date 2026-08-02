@@ -68,7 +68,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 
 ### R6 — Servicios
 - **M22 Prestadores y catálogo de servicios:** perfil, sedes, categorías, cobertura y precios — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 066–067; validación 75/75 + smoke 25/25).
-- **M23 Agenda y reservas:** disponibilidad, reserva, confirmación, cambios y asistencia — **Bloques 1 y 2 implementados localmente** (mock, dominio, UI `m23/*`, RPC Supabase); migración 068 **creada, no aplicada**; Bloque 3 no iniciado; M24 no iniciado.
+- **M23 Agenda y reservas:** disponibilidad, reserva, confirmación, cambios y asistencia — **Bloque 3 implementado localmente** (operaciones, agenda cliente/prestador, M20/M21/M06 stubs); migración 068 **creada, no aplicada**; Bloque 4 pendiente; M24 no iniciado.
 - **M24 Pagos, comisiones y suscripciones:** pago, split, reembolso, conciliación y planes.
 
 ### R7 — Comercio

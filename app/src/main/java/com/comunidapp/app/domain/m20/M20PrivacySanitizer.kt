@@ -44,6 +44,7 @@ object M20PrivacySanitizer {
             M20ContextReferenceType.EVENT -> "m18/events/$targetId"
             M20ContextReferenceType.CAMPAIGN -> "m17/campaigns/$targetId"
             M20ContextReferenceType.SOCIAL_POST -> "m19/posts/$targetId"
+            M20ContextReferenceType.BOOKING -> "m23/bookings/$targetId"
         }
 
     fun toPublicConversation(

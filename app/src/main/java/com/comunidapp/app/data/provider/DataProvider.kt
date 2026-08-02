@@ -91,6 +91,7 @@ import com.comunidapp.app.data.repository.M21ReputationRepository
 import com.comunidapp.app.data.repository.M22ProviderMemoryStore
 import com.comunidapp.app.data.repository.M22ProviderRepository
 import com.comunidapp.app.data.repository.M23AvailabilityRepository
+import com.comunidapp.app.data.repository.M23BookingMessagingAdapterImpl
 import com.comunidapp.app.data.repository.M23BookingPolicyRepository
 import com.comunidapp.app.data.repository.M23BookingRepository
 import com.comunidapp.app.data.repository.M23SchedulingMemoryStore
@@ -1128,8 +1129,11 @@ object DataProvider {
         }
     }
 
-    /** M23 Bloque 2 — RPC remoto bajo feature flag; mocks B1 se preservan localmente. */
+    /** M23 Bloque 3 — operaciones completas; mock con M20/M06 best-effort. */
     private val m23Store by lazy { M23SchedulingMemoryStore() }
+
+    val m23MessagingAvailable: Boolean
+        get() = !useSupabase || runCatching { m20MessagingRepository }.isSuccess
 
     val m23AvailabilityRepository: M23AvailabilityRepository by lazy {
         if (useSupabase) SupabaseM23AvailabilityRepository() else MockM23AvailabilityRepository(m23Store)
@@ -1141,7 +1145,8 @@ object DataProvider {
         } else {
             MockM23BookingRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_customer" },
-                store = m23Store
+                store = m23Store,
+                messaging = M23BookingMessagingAdapterImpl(m20MessagingRepository) { m23MessagingAvailable }
             )
         }
     }

@@ -56,7 +56,7 @@ class M23BookingOperationsTest {
 
     @Test fun rejectTerminal() = runBlocking {
         val repo = providerRepo()
-        val rejected = repo.reject(M23MockBookingIds.REQUESTED).getOrThrow()
+        val rejected = repo.reject(M23BookingRejectRequest(M23MockBookingIds.REQUESTED)).getOrThrow()
         assertEquals(M23BookingStatus.REJECTED, rejected.status)
         assertTrue(repo.confirm(M23MockBookingIds.REQUESTED).isFailure)
     }
@@ -82,7 +82,13 @@ class M23BookingOperationsTest {
     }
 
     @Test fun completeTerminal() = runBlocking {
-        val completed = providerRepo().complete(M23MockBookingIds.CONFIRMED).getOrThrow()
+        val store = store()
+        store.bookings.value = store.bookings.value.map {
+            if (it.id == M23MockBookingIds.CONFIRMED) {
+                it.copy(startsAt = Instant.parse("2029-01-01T10:00:00Z"), endsAt = Instant.parse("2029-01-01T11:00:00Z"))
+            } else it
+        }
+        val completed = providerRepo(store).complete(M23MockBookingIds.CONFIRMED).getOrThrow()
         assertEquals(M23BookingStatus.COMPLETED, completed.status)
     }
 
@@ -135,7 +141,10 @@ class M23BookingOperationsTest {
     }
 
     @Test fun m06UnavailableDoesNotBlock() = runBlocking {
-        val repo = MockM23BookingRepository({ M23MockUsers.CUSTOMER }, store(), clock, notifier = NoOpM23BookingNotificationAdapter)
+        val repo = MockM23BookingRepository(
+            { M23MockUsers.CUSTOMER }, store(), clock,
+            notifier = FailingM23BookingNotificationAdapter()
+        )
         assertTrue(repo.request(futureBooking("m6-safe")).isSuccess)
     }
 

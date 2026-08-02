@@ -42,7 +42,8 @@ enum class M20ContextReferenceType {
     ORGANIZATION,
     EVENT,
     CAMPAIGN,
-    SOCIAL_POST
+    SOCIAL_POST,
+    BOOKING
 }
 
 data class M20ContextSnapshot(
