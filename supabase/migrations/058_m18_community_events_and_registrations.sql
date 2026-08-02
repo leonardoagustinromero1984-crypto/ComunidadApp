@@ -164,12 +164,10 @@ $$;
 
 create or replace function public._m18_is_moderator(p_user uuid)
 returns boolean language sql stable security definer set search_path = public as $$
-  select exists (
-    select 1 from public.platform_role_assignments pra
-    join public.platform_roles pr on pr.id = pra.role_id
-    where pra.user_id = p_user
-      and pr.code in ('PLATFORM_ADMIN', 'MODERATOR', 'SUPPORT')
-      and pra.status = 'ACTIVE'
+  select p_user is not null and (
+    public.user_has_active_role(p_user, 'MODERATOR')
+    or public.user_has_active_role(p_user, 'ADMIN')
+    or public.user_has_active_role(p_user, 'SUPERADMIN')
   );
 $$;
 
@@ -551,6 +549,8 @@ create or replace function public.m18_create_event(
   p_description text,
   p_event_type text,
   p_max_capacity integer,
+  p_starts_at timestamptz,
+  p_ends_at timestamptz,
   p_waitlist_enabled boolean default true,
   p_venue_name text default null,
   p_pet_id uuid default null,
@@ -559,8 +559,6 @@ create or replace function public.m18_create_event(
   p_shelter_public_name text default null,
   p_public_location_text text default null,
   p_cover_image_ref text default null,
-  p_starts_at timestamptz,
-  p_ends_at timestamptz,
   p_check_in_opens_at timestamptz default null,
   p_check_in_closes_at timestamptz default null
 ) returns jsonb language plpgsql security definer set search_path = public as $$
@@ -595,14 +593,14 @@ create or replace function public.m18_update_event_details(
   p_title text,
   p_description text,
   p_event_type text,
+  p_starts_at timestamptz,
+  p_ends_at timestamptz,
   p_venue_name text default null,
   p_pet_id uuid default null,
   p_pet_public_name text default null,
   p_shelter_profile_id uuid default null,
   p_shelter_public_name text default null,
-  p_public_location_text text default null,
-  p_starts_at timestamptz,
-  p_ends_at timestamptz
+  p_public_location_text text default null
 ) returns jsonb language plpgsql security definer set search_path = public as $$
 declare v public.m18_community_events;
 begin

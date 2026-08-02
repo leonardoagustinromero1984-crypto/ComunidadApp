@@ -262,4 +262,26 @@ class SupabaseM18RemoteDataSource {
         "m18_list_registrations_for_manage",
         buildJsonObject { put("p_event_id", eventId) }
     )
+
+    suspend fun promoteNextWaitlisted(eventId: String): JsonObject? = runCatching {
+        decodeOne<JsonObject>(
+            "m18_promote_next_waitlisted",
+            buildJsonObject { put("p_event_id", eventId) }
+        )
+    }.getOrNull()
+
+    suspend fun markAttendance(registrationId: String): JsonObject = decodeOne(
+        "m18_mark_attendance",
+        buildJsonObject { put("p_registration_id", registrationId) }
+    )
+
+    suspend fun markNoShow(registrationId: String): JsonObject = decodeOne(
+        "m18_mark_no_show",
+        buildJsonObject { put("p_registration_id", registrationId) }
+    )
+
+    suspend fun rejectRegistration(registrationId: String): JsonObject = decodeOne(
+        "m18_reject_registration",
+        buildJsonObject { put("p_registration_id", registrationId) }
+    )
 }

@@ -264,13 +264,26 @@ class SupabaseM18EventRepository(
         }
 
     override suspend fun promoteNextWaitlisted(eventId: String): Result<M18EventRegistration?> =
-        M18EventErrorMapper.fail("M18_PROMOTE_MANUAL_REMOTE_UNAVAILABLE")
+        try {
+            val promoted = remote.promoteNextWaitlisted(eventId)?.toM18EventRegistration()
+            Result.success(promoted)
+        } catch (t: Throwable) {
+            M18EventErrorMapper.failure(t)
+        }
 
     override suspend fun markAttendance(registrationId: String): Result<M18EventRegistration> =
-        M18EventErrorMapper.fail("M18_ATTENDANCE_REMOTE_PENDING")
+        try {
+            Result.success(remote.markAttendance(registrationId).toM18EventRegistration())
+        } catch (t: Throwable) {
+            M18EventErrorMapper.failure(t)
+        }
 
     override suspend fun markNoShow(registrationId: String): Result<M18EventRegistration> =
-        M18EventErrorMapper.fail("M18_NOSHOW_REMOTE_PENDING")
+        try {
+            Result.success(remote.markNoShow(registrationId).toM18EventRegistration())
+        } catch (t: Throwable) {
+            M18EventErrorMapper.failure(t)
+        }
 
     override suspend fun refreshOperations(eventId: String): Result<M18EventOperationsSummary> =
         observeOperationsSummary(eventId)

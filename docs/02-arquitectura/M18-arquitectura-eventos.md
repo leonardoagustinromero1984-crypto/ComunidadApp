@@ -90,7 +90,7 @@ Producción (B2): `event.view` / `event.manage` vía M03 membership + RPC `has_o
 ## Estrategia Bloque 1 / 2
 
 - **B1:** `M18EventMemoryStore` con 8 eventos seed + inscripciones variadas
-- **B2:** migración `058_m18_community_events_and_registrations.sql` (creada, no aplicada)
+- **B2:** migraciones `058` + `059` — **aplicadas staging**; validación 110/110 PASS
 - `DataProvider.m18EventRepository` — mock o Supabase según `useSupabase`
 
 ## Rutas
@@ -114,10 +114,11 @@ Entrada: Sumate → Eventos → "Eventos comunitarios (M18)".
 | M08/M16 | Referencias opcionales |
 | M17 | Patrón Bloque 1 |
 
-## Bloque 2 (implementado)
+## Bloque 2–5 (completado)
 
-- Migración SQL 058 + RLS + RPCs
-- `SupabaseM18EventRepository` / `SupabaseM18RemoteDataSource`
+- Migraciones SQL 058 + 059 + RLS + RPCs — aplicadas staging
+- `SupabaseM18EventRepository` / `SupabaseM18RemoteDataSource` — operaciones remotas completas
 - `M18EventModerationAdapter` (M04)
-- Notificaciones M06 reales — **pendiente Bloque 3**
-- Check-in QR / geo (evaluar Bloque 3+)
+- Cierre oficial 2026-08-02
+- Notificaciones M06 reales — **fuera de alcance M18**
+- Check-in QR / geo — evaluar módulos futuros

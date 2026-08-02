@@ -1,7 +1,7 @@
 # M18 Bloque 4 — Validación local
 
 **Fecha:** 2026-08-02  
-**Veredicto local:** PASS (mock) — **validación remota 058 PENDIENTE**
+**Veredicto local:** PASS (mock) — **validación remota 058+059 PASS (110/110)**
 
 ## Tests
 
@@ -11,13 +11,13 @@ Cubre: ciclo de vida, capacidad inválida, historial cancelación, moderación M
 
 ## Compilación
 
-`compileLocalDebugKotlin` — ejecutada al cierre del bloque.
+`compileLocalDebugKotlin` — PASS al cierre Bloque 5.
 
 ## Documentación operativa
 
-- `docs/05-operacion/M18-aplicacion-migracion-058-supabase.md` (actualizado)
-- `docs/03-modulos/M18-cierre-global-preparacion.md`
+- `docs/05-operacion/M18-aplicacion-migraciones-058-059-supabase.md`
+- `docs/03-modulos/M18-cierre-oficial.md`
 
 ## Bloque 5
 
-No iniciado.
+Completado — cierre oficial M18.

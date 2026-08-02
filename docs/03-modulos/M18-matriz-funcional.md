@@ -6,15 +6,19 @@ Fundación local/mock de **eventos comunitarios gratuitos** vinculados a organiz
 
 ## Alcance Bloque 2
 
-Persistencia Supabase (migración 058, **no aplicada**): tablas, RLS, RPCs, repositorio remoto. Mock conservado.
+Persistencia Supabase (migraciones 058–059, **aplicadas staging**): tablas, RLS, RPCs, repositorio remoto. Mock conservado.
 
 ## Alcance Bloque 3
 
-Participación operativa: `M18EventOperationsService`, panel organizador, estados `ATTENDED`/`REJECTED` (mock), resumen `M18EventOperationsSummary`, UI participante con privacidad. **059 no requerida.**
+Participación operativa: `M18EventOperationsService`, panel organizador, estados `ATTENDED`/`REJECTED`, resumen `M18EventOperationsSummary`, UI participante con privacidad. RPCs 059.
 
 ## Alcance Bloque 4
 
 Integraciones M03/M04/M05/M06/M10, enlace M16→M18, filtros descubrimiento, métricas derivadas, resiliencia (`M18EventResilience`), preparación cierre global. **Recurrencia:** fuera de alcance D01.
+
+## Alcance Bloque 5
+
+Paridad remota, aplicación 058+059 staging, validación 110/110, cierre oficial.
 
 ## Tipos de evento
 
