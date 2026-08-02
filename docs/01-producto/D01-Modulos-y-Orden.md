@@ -112,12 +112,12 @@ M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/
 
 ## Próximo módulo
 
-**M26 — Inteligencia artificial.** Matching visual, duplicados, asistencia y recomendaciones evaluadas **sin cobros reales** (M24 pospuesto). Bloque 3 no iniciado.
+**M27 — Integraciones y API pública** (webhooks, OAuth, límites, sandbox). **M26 cerrado oficialmente.** M27 Bloques 1–2 pendientes.
 
 ## Módulos posteriores pendientes de definición operativa
 
 - **M24 Pagos** — pospuesto; preauditoría en `M24-auditoria-preliminar.md`.
-- **M27 Integraciones y API pública** — catálogo D01; no iniciado.
+- **M27 Integraciones y API pública** — catálogo D01; Bloques 1–2 pendientes; Bloque 3 no iniciado.
 
 ## Nota de implementación técnica (LeoVer)
 
