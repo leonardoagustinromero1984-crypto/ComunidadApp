@@ -117,7 +117,7 @@ M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/
 ## Módulos posteriores pendientes de definición operativa
 
 - **M24 Pagos** — pospuesto; preauditoría en `M24-auditoria-preliminar.md`.
-- **M27 Integraciones y API pública** — catálogo D01; Bloques 1–2 pendientes; Bloque 3 no iniciado.
+- **M27 Integraciones y API pública** — Bloques 1–2 cerrados localmente; migración 075 **no aplicada**; Bloque 3 no iniciado.
 
 ## Nota de implementación técnica (LeoVer)
 
