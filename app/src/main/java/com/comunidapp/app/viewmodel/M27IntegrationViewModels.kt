@@ -8,6 +8,9 @@ import com.comunidapp.app.data.model.M27PublicContract
 import com.comunidapp.app.data.model.M27PublicOAuthApp
 import com.comunidapp.app.data.model.M27PublicRateLimit
 import com.comunidapp.app.data.model.M27PublicWebhook
+import com.comunidapp.app.data.model.M27PublicAuditEntry
+import com.comunidapp.app.data.model.M27PublicIntegrationApp
+import com.comunidapp.app.data.model.M27PublicWebhookDelivery
 import com.comunidapp.app.data.model.RegisterM27OAuthAppInput
 import com.comunidapp.app.data.model.RegisterM27WebhookInput
 import com.comunidapp.app.data.provider.DataProvider
@@ -31,7 +34,9 @@ sealed class M27HubUiState {
         val webhookCount: Int,
         val oauthCount: Int,
         val keyCount: Int,
-        val contractCount: Int
+        val contractCount: Int,
+        val appCount: Int,
+        val deliveryCount: Int
     ) : M27HubUiState()
     data object Empty : M27HubUiState()
     data class Error(val message: String) : M27HubUiState()
@@ -44,17 +49,22 @@ class M27HubViewModel(private val repository: M27IntegrationRepository = DataPro
     init {
         viewModelScope.launch {
             combine(
-                repository.observeWebhooks(),
-                repository.observeOAuthApps(),
-                repository.observeApiKeys(),
-                repository.observePublishedContracts()
-            ) { webhooks, oauth, keys, contracts ->
-                listOf(webhooks.size, oauth.size, keys.size, contracts.size)
+                combine(
+                    repository.observeWebhooks(),
+                    repository.observeOAuthApps(),
+                    repository.observeApiKeys()
+                ) { webhooks, oauth, keys -> Triple(webhooks.size, oauth.size, keys.size) },
+                combine(
+                    repository.observePublishedContracts(),
+                    repository.observeIntegrationApps(),
+                    repository.observeDeliveries()
+                ) { contracts, apps, deliveries -> Triple(contracts.size, apps.size, deliveries.size) }
+            ) { first, second ->
+                listOf(first.first, first.second, first.third, second.first, second.second, second.third)
             }.catch { _uiState.value = M27HubUiState.Error(safeMessage(it)) }
                 .collect { counts ->
-                    val (w, o, k, c) = counts
-                    _uiState.value = if (w == 0 && o == 0 && k == 0 && c == 0) M27HubUiState.Empty
-                    else M27HubUiState.Content(w, o, k, c)
+                    _uiState.value = if (counts.all { it == 0 }) M27HubUiState.Empty
+                    else M27HubUiState.Content(counts[0], counts[1], counts[2], counts[3], counts[4], counts[5])
                 }
         }
     }
@@ -150,6 +160,51 @@ class M27RateLimitsViewModel(private val repository: M27IntegrationRepository = 
     init {
         viewModelScope.launch {
             repository.observeRateLimits().catch {
+                _uiState.value = M27ListUiState.Error(safeMessage(it))
+            }.collect {
+                _uiState.value = if (it.isEmpty()) M27ListUiState.Empty else M27ListUiState.Content(it)
+            }
+        }
+    }
+}
+
+class M27AppsViewModel(private val repository: M27IntegrationRepository = DataProvider.m27IntegrationRepository) : ViewModel() {
+    private val _uiState = MutableStateFlow<M27ListUiState<M27PublicIntegrationApp>>(M27ListUiState.Loading)
+    val uiState: StateFlow<M27ListUiState<M27PublicIntegrationApp>> = _uiState
+
+    init {
+        viewModelScope.launch {
+            repository.observeIntegrationApps().catch {
+                _uiState.value = M27ListUiState.Error(safeMessage(it))
+            }.collect {
+                _uiState.value = if (it.isEmpty()) M27ListUiState.Empty else M27ListUiState.Content(it)
+            }
+        }
+    }
+}
+
+class M27DeliveriesViewModel(private val repository: M27IntegrationRepository = DataProvider.m27IntegrationRepository) : ViewModel() {
+    private val _uiState = MutableStateFlow<M27ListUiState<M27PublicWebhookDelivery>>(M27ListUiState.Loading)
+    val uiState: StateFlow<M27ListUiState<M27PublicWebhookDelivery>> = _uiState
+
+    init {
+        viewModelScope.launch {
+            repository.observeDeliveries().catch {
+                _uiState.value = M27ListUiState.Error(safeMessage(it))
+            }.collect {
+                _uiState.value = if (it.isEmpty()) M27ListUiState.Empty else M27ListUiState.Content(it)
+            }
+        }
+    }
+}
+
+class M27AuditViewModel(private val repository: M27IntegrationRepository = DataProvider.m27IntegrationRepository) : ViewModel() {
+    private val _uiState = MutableStateFlow<M27ListUiState<M27PublicAuditEntry>>(M27ListUiState.Loading)
+    val uiState: StateFlow<M27ListUiState<M27PublicAuditEntry>> = _uiState
+
+    init {
+        viewModelScope.launch {
+            repository.observeAuditLog().catch {
                 _uiState.value = M27ListUiState.Error(safeMessage(it))
             }.collect {
                 _uiState.value = if (it.isEmpty()) M27ListUiState.Empty else M27ListUiState.Content(it)

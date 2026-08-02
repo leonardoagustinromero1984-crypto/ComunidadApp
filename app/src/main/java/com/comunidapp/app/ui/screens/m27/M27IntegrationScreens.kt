@@ -24,6 +24,9 @@ import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.viewmodel.M27ApiKeysViewModel
+import com.comunidapp.app.viewmodel.M27AppsViewModel
+import com.comunidapp.app.viewmodel.M27AuditViewModel
+import com.comunidapp.app.viewmodel.M27DeliveriesViewModel
 import com.comunidapp.app.viewmodel.M27ContractsViewModel
 import com.comunidapp.app.viewmodel.M27HubUiState
 import com.comunidapp.app.viewmodel.M27HubViewModel
@@ -40,6 +43,9 @@ fun M27HubScreen(
     onOpenApiKeys: () -> Unit,
     onOpenContracts: () -> Unit,
     onOpenRateLimits: () -> Unit,
+    onOpenApps: () -> Unit = {},
+    onOpenDeliveries: () -> Unit = {},
+    onOpenAudit: () -> Unit = {},
     viewModel: M27HubViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -50,13 +56,16 @@ fun M27HubScreen(
                 M27HubUiState.Empty -> EmptyState(title = "Sin integraciones", message = "Registrá webhooks, OAuth o claves API para empezar.")
                 is M27HubUiState.Error -> ErrorState(message = s.message)
                 is M27HubUiState.Content -> {
-                    Text("LeoVer M27 · Webhooks, OAuth stub, límites y contratos versionados.", color = MaterialTheme.colorScheme.primary)
-                    Text("${s.webhookCount} webhooks · ${s.oauthCount} apps OAuth · ${s.keyCount} claves · ${s.contractCount} contratos publicados")
-                    Button(onClick = onOpenWebhooks, modifier = Modifier.fillMaxWidth()) { Text("Webhooks") }
+                    Text("LeoVer M27 · Operaciones simuladas; entrega externa no productiva.", color = MaterialTheme.colorScheme.primary)
+                    Text("${s.webhookCount} webhooks · ${s.oauthCount} OAuth · ${s.keyCount} claves · ${s.appCount} apps · ${s.deliveryCount} entregas")
+                    Button(onClick = onOpenApps, modifier = Modifier.fillMaxWidth()) { Text("Mis aplicaciones") }
+                    OutlinedButton(onClick = onOpenWebhooks, modifier = Modifier.fillMaxWidth()) { Text("Webhooks") }
                     OutlinedButton(onClick = onOpenOAuth, modifier = Modifier.fillMaxWidth()) { Text("Aplicaciones OAuth (stub)") }
                     OutlinedButton(onClick = onOpenApiKeys, modifier = Modifier.fillMaxWidth()) { Text("Claves API") }
                     OutlinedButton(onClick = onOpenContracts, modifier = Modifier.fillMaxWidth()) { Text("Contratos publicados") }
                     OutlinedButton(onClick = onOpenRateLimits, modifier = Modifier.fillMaxWidth()) { Text("Límites y sandbox") }
+                    OutlinedButton(onClick = onOpenDeliveries, modifier = Modifier.fillMaxWidth()) { Text("Entregas webhook") }
+                    OutlinedButton(onClick = onOpenAudit, modifier = Modifier.fillMaxWidth()) { Text("Auditoría") }
                 }
             }
         }
@@ -161,7 +170,43 @@ fun M27RateLimitsScreen(onNavigateBack: () -> Unit, viewModel: M27RateLimitsView
         title = "Límites y sandbox",
         onNavigateBack = onNavigateBack,
         state = state,
-        itemLabel = { it.environment.name },
+        itemLabel = { "${it.environment} (SANDBOX simulado)" },
         itemDetail = { "${it.requestsPerMinute}/min · ${it.requestsPerDay}/día" }
+    )
+}
+
+@Composable
+fun M27AppsScreen(onNavigateBack: () -> Unit, viewModel: M27AppsViewModel = viewModel()) {
+    val state by viewModel.uiState.collectAsState()
+    M27ListScreen(
+        title = "Aplicaciones integradoras",
+        onNavigateBack = onNavigateBack,
+        state = state,
+        itemLabel = { "${it.name} · ${it.status}" },
+        itemDetail = { "${it.environment} · scopes: ${it.grantedScopes.joinToString()}" }
+    )
+}
+
+@Composable
+fun M27DeliveriesScreen(onNavigateBack: () -> Unit, viewModel: M27DeliveriesViewModel = viewModel()) {
+    val state by viewModel.uiState.collectAsState()
+    M27ListScreen(
+        title = "Entregas webhook",
+        onNavigateBack = onNavigateBack,
+        state = state,
+        itemLabel = { it.status.name },
+        itemDetail = { "Intento ${it.attemptCount}/${it.maxAttempts} · firma ${it.signatureVersion}" }
+    )
+}
+
+@Composable
+fun M27AuditScreen(onNavigateBack: () -> Unit, viewModel: M27AuditViewModel = viewModel()) {
+    val state by viewModel.uiState.collectAsState()
+    M27ListScreen(
+        title = "Auditoría",
+        onNavigateBack = onNavigateBack,
+        state = state,
+        itemLabel = { "${it.operation} · ${it.outcome}" },
+        itemDetail = { "${it.environment} · ${it.sanitizedReason.orEmpty()}" }
     )
 }

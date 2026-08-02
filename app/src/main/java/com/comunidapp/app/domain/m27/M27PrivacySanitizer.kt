@@ -8,6 +8,8 @@ import com.comunidapp.app.data.model.M27PublicContract
 import com.comunidapp.app.data.model.M27PublicOAuthApp
 import com.comunidapp.app.data.model.M27PublicWebhook
 import com.comunidapp.app.data.model.M27WebhookEndpoint
+import com.comunidapp.app.data.model.M27IntegrationApp
+import com.comunidapp.app.data.model.M27PublicIntegrationApp
 
 object M27PrivacySanitizer {
     private val secretPattern = Regex("(?i)(secret|token|bearer|api[_-]?key|client[_-]?secret)\\s*[:=]\\s*\\S+")
@@ -46,5 +48,13 @@ object M27PrivacySanitizer {
         version = contract.version,
         summary = scrubPublicText(contract.summary),
         publishedForDisplay = M27ContractEligibilityService.isEligibleForDisplay(contract)
+    )
+
+    fun toPublicApp(app: M27IntegrationApp): M27PublicIntegrationApp = M27PublicIntegrationApp(
+        name = scrubPublicText(app.name),
+        contractVersion = app.contractVersion,
+        grantedScopes = app.grantedScopes,
+        status = app.status,
+        environment = app.environment
     )
 }

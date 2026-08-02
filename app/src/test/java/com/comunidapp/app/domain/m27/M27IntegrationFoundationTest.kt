@@ -24,10 +24,10 @@ class M27IntegrationFoundationTest {
         assertEquals(null, M27IntegrationValidators.validateWebhook("Eventos municipales", "https://hooks.example.com/leover"))
 
     @Test fun invalidWebhookUrlRejected() =
-        assertEquals("M27_INVALID_WEBHOOK", M27IntegrationValidators.validateWebhook("Hook", "http://insecure.example.com/hook"))
+        assertEquals("M27_UNSAFE_WEBHOOK_URL", M27IntegrationValidators.validateWebhook("Hook", "http://insecure.example.com/hook"))
 
     @Test fun validOAuthAccepted() =
-        assertEquals(null, M27IntegrationValidators.validateOAuthApp("Portal", "https://portal.example.com/cb", listOf("adoptions_read")))
+        assertEquals(null, M27IntegrationValidators.validateOAuthApp("Portal", "https://portal.example.com/cb", listOf("adoptions.read.public")))
 
     @Test fun emptyScopesRejected() =
         assertEquals("M27_INVALID_OAUTH", M27IntegrationValidators.validateOAuthApp("Portal", "https://portal.example.com/cb", emptyList()))
@@ -67,7 +67,7 @@ class M27IntegrationFoundationTest {
     @Test fun developerCanIssueApiKey() = runBlocking {
         val repo = repository()
         repo.issueApiKey(
-            IssueM27ApiKeyInput("Clave test", listOf("sandbox_all"), M27Environment.SANDBOX)
+            IssueM27ApiKeyInput("Clave test", listOf("sandbox.execute"), M27Environment.SANDBOX)
         ).getOrThrow()
         val keys = repo.observeApiKeys().first()
         assertTrue(keys.any { it.label == "Clave test" })
@@ -81,9 +81,9 @@ class M27IntegrationFoundationTest {
         )
     }
 
-    @Test fun rateLimitsIncludeSandboxAndProduction() = runBlocking {
+    @Test fun rateLimitsIncludeSandboxStagingAndProduction() = runBlocking {
         val limits = repository().observeRateLimits().first()
-        assertEquals(2, limits.size)
+        assertEquals(3, limits.size)
         assertTrue(limits.any { it.environment == M27Environment.SANDBOX })
     }
 

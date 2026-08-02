@@ -21,6 +21,10 @@ import com.comunidapp.app.data.remote.supabase.m27.toM27PublicOAuthApp
 import com.comunidapp.app.data.remote.supabase.m27.toM27PublicRateLimit
 import com.comunidapp.app.data.remote.supabase.m27.toM27PublicWebhook
 import com.comunidapp.app.data.remote.supabase.m27.toM27WebhookEndpoint
+import com.comunidapp.app.data.remote.supabase.m27.toM27PublicIntegrationApp
+import com.comunidapp.app.data.remote.supabase.m27.toM27PublicWebhookDelivery
+import com.comunidapp.app.data.remote.supabase.m27.toM27PublicWebhookEvent
+import com.comunidapp.app.data.remote.supabase.m27.toM27PublicAuditEntry
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -112,6 +116,74 @@ class SupabaseM27IntegrationRepository(
         requireActor()
         remote.revokeApiKey(keyId)
         Result.success(Unit)
+    } catch (error: Throwable) {
+        M27IntegrationErrorMapper.failure(error)
+    }
+
+    override fun observeIntegrationApps(): Flow<List<com.comunidapp.app.data.model.M27PublicIntegrationApp>> = flow {
+        if (actorUserId() == null) emit(emptyList())
+        else emit(runCatching { remote.listMyIntegrationApps().map { it.toM27PublicIntegrationApp() } }.getOrElse { emptyList() })
+    }
+
+    override fun observeDeliveries(): Flow<List<com.comunidapp.app.data.model.M27PublicWebhookDelivery>> = flow {
+        if (actorUserId() == null) emit(emptyList())
+        else emit(runCatching { remote.listMyDeliveries().map { it.toM27PublicWebhookDelivery() } }.getOrElse { emptyList() })
+    }
+
+    override fun observeEvents(): Flow<List<com.comunidapp.app.data.model.M27PublicWebhookEvent>> = flow {
+        if (actorUserId() == null) emit(emptyList())
+        else emit(runCatching { remote.listMyEvents().map { it.toM27PublicWebhookEvent() } }.getOrElse { emptyList() })
+    }
+
+    override fun observeAuditLog(): Flow<List<com.comunidapp.app.data.model.M27PublicAuditEntry>> = flow {
+        if (actorUserId() == null) emit(emptyList())
+        else emit(runCatching { remote.listMyAuditLog().map { it.toM27PublicAuditEntry() } }.getOrElse { emptyList() })
+    }
+
+    override suspend fun createIntegrationApp(input: com.comunidapp.app.data.model.CreateM27IntegrationAppInput): Result<com.comunidapp.app.data.model.M27IntegrationApp> =
+        remoteOps { remote.createIntegrationApp(input) }
+
+    override suspend fun activateIntegrationApp(appId: String): Result<com.comunidapp.app.data.model.M27IntegrationApp> =
+        remoteOps { remote.activateIntegrationApp(appId) }
+
+    override suspend fun pauseIntegrationApp(appId: String): Result<com.comunidapp.app.data.model.M27IntegrationApp> =
+        remoteOps { remote.pauseIntegrationApp(appId) }
+
+    override suspend fun revokeIntegrationApp(appId: String): Result<com.comunidapp.app.data.model.M27IntegrationApp> =
+        remoteOps { remote.revokeIntegrationApp(appId) }
+
+    override suspend fun createApiKeyForApp(input: com.comunidapp.app.data.model.CreateM27ApiKeyInput): Result<com.comunidapp.app.data.model.M27IssuedCredential> =
+        remoteOps { remote.createApiKeyForApp(input) }
+
+    override suspend fun rotateApiKey(keyId: String): Result<com.comunidapp.app.data.model.M27IssuedCredential> =
+        remoteOps { remote.rotateApiKey(keyId) }
+
+    override suspend fun registerWebhookEndpoint(input: com.comunidapp.app.data.model.RegisterM27WebhookEndpointInput): Result<M27WebhookEndpointWithSecret> =
+        remoteOps { remote.registerWebhookEndpoint(input) }
+
+    override suspend fun verifyWebhookEndpoint(endpointId: String): Result<M27WebhookEndpoint> =
+        remoteOps { remote.verifyWebhookEndpoint(endpointId) }
+
+    override suspend fun subscribeWebhook(input: com.comunidapp.app.data.model.SubscribeM27WebhookInput): Result<com.comunidapp.app.data.model.M27WebhookSubscription> =
+        remoteOps { remote.subscribeWebhook(input) }
+
+    override suspend fun emitWebhookEvent(input: com.comunidapp.app.data.model.EmitM27WebhookEventInput): Result<com.comunidapp.app.data.model.M27WebhookEvent> =
+        remoteOps { remote.emitWebhookEvent(input) }
+
+    override suspend fun manualRetryDelivery(deliveryId: String): Result<com.comunidapp.app.data.model.M27WebhookDelivery> =
+        remoteOps { remote.manualRetryDelivery(deliveryId) }
+
+    override suspend fun checkAppRateLimit(appId: String, environment: com.comunidapp.app.data.model.M27Environment): com.comunidapp.app.data.model.M27RateLimitResult =
+        runCatching { remote.checkAppRateLimit(appId, environment.name) }.getOrElse {
+            com.comunidapp.app.data.model.M27RateLimitResult(false, "M27_REMOTE_NOT_READY", 60)
+        }
+
+    override suspend fun startOAuthStub(redirectUri: String, scopes: List<String>, state: String?): Result<com.comunidapp.app.data.model.M27OAuthStubSession> =
+        remoteOps { remote.startOAuthStub(redirectUri, scopes, state) }
+
+    private inline fun <T> remoteOps(block: () -> T): Result<T> = try {
+        requireActor()
+        Result.success(block())
     } catch (error: Throwable) {
         M27IntegrationErrorMapper.failure(error)
     }

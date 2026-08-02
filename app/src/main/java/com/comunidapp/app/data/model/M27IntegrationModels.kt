@@ -4,8 +4,8 @@ import com.comunidapp.app.domain.m27.M27ContractEligibilityService
 import com.comunidapp.app.domain.m27.M27PrivacySanitizer
 
 /** LeoVer M27 — Integraciones y API pública (Bloque 1 local; sin pagos ni M24). */
-enum class M27Environment { PRODUCTION, SANDBOX }
-enum class M27WebhookStatus { ACTIVE, DISABLED, PENDING }
+enum class M27Environment { SANDBOX, STAGING, PRODUCTION }
+enum class M27WebhookStatus { PENDING_VERIFICATION, ACTIVE, PAUSED, DISABLED, REVOKED, PENDING }
 enum class M27OAuthAppStatus { ACTIVE, REVOKED, PENDING }
 enum class M27ApiKeyStatus { ACTIVE, REVOKED, EXPIRED }
 enum class M27ContractStatus { DRAFT, PUBLISHED, DEPRECATED }
@@ -14,9 +14,11 @@ enum class M27ContractVersion { V1, V2 }
 data class M27WebhookEndpoint(
     val id: String,
     val ownerUserId: String,
+    val appId: String?,
     val label: String,
     val targetUrl: String,
     val secretPrefix: String,
+    val secretHash: String,
     val status: M27WebhookStatus,
     val environment: M27Environment,
     val createdAt: Long,
@@ -43,13 +45,16 @@ data class M27OAuthApplication(
 data class M27ApiCredential(
     val id: String,
     val ownerUserId: String,
+    val appId: String?,
     val label: String,
     val keyPrefix: String,
+    val keyHash: String,
     val scopes: List<String>,
     val status: M27ApiKeyStatus,
     val environment: M27Environment,
     val createdAt: Long,
-    val expiresAt: Long?
+    val expiresAt: Long?,
+    val lastUsedAt: Long? = null
 ) {
     fun toPublic(): M27PublicApiKey = M27PrivacySanitizer.toPublicApiKey(this)
 }
@@ -126,4 +131,8 @@ object M27MockIds {
     const val OAUTH_APP = "m27_oauth_app"
     const val API_KEY_PROD = "m27_key_prod"
     const val CONTRACT_V1 = "m27_contract_v1"
+    const val APP_ACTIVE = "m27_app_active"
+    const val APP_DRAFT = "m27_app_draft"
+    const val ENDPOINT_ACTIVE = "m27_endpoint_active"
+    const val SUBSCRIPTION_ACTIVE = "m27_sub_active"
 }

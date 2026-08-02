@@ -176,6 +176,9 @@ object NavRoutes {
     const val M27_API_KEYS = "m27/api-keys"
     const val M27_CONTRACTS = "m27/contracts"
     const val M27_RATE_LIMITS = "m27/rate-limits"
+    const val M27_APPS = "m27/apps"
+    const val M27_DELIVERIES = "m27/deliveries"
+    const val M27_AUDIT = "m27/audit"
 
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
