@@ -72,7 +72,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 - **M24 Pagos, comisiones y suscripciones:** pago, split, reembolso, conciliación y planes — **POSPUESTO por decisión de producto**; preauditoría documentada; implementación **no iniciada**; pagos no definidos.
 
 ### R7 — Comercio
-- **M25 Marketplace, pedidos y promociones:** catálogo, stock, carrito, pedido, envío y devolución — **próximo módulo autorizado** (sin pagos; M24 pospuesto).
+- **M25 Marketplace, pedidos y promociones:** catálogo, stock, carrito, pedido, envío y devolución — **Bloque 1 cerrado** (`9fdd8e7`); **Bloque 2 migración 070 creada, no aplicada**; sin pagos; M24 pospuesto.
 
 ### R8 — Escala inteligente
 - **M26 Inteligencia artificial:** matching visual, duplicados, asistencia y recomendaciones evaluadas.

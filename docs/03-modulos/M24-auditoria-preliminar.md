@@ -1,6 +1,6 @@
 # M24 — Auditoría preliminar (pagos)
 
-**Estado:** preauditoría documentada — **implementación NO iniciada**  
+**Estado:** **POSPUESTO por decisión de producto** — preauditoría documentada; implementación **no iniciada**  
 **Fecha:** 2026-08-02  
 **Prerrequisito cumplido:** M23 cerrado oficialmente (validación 110/110 + smoke 25/25 en staging)
 

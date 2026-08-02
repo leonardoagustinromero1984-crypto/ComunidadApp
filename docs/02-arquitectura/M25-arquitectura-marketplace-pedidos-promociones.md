@@ -31,6 +31,6 @@ Terminales: `CANCELLED`, `RETURNED`.
 - M03: `organizationId` opcional en tienda
 - M24: **no integrado** (pospuesto)
 
-## Bloque 2 (pendiente)
+## Bloque 2 (pendiente aplicación remota)
 
-Migración `070_m25_marketplace_catalog_cart_and_orders.sql` — tablas `m25_*`, RLS deny + RPC SECURITY DEFINER.
+Migración `070_m25_marketplace_catalog_cart_and_orders.sql` — tablas `m25_*`, RLS deny + RPC SECURITY DEFINER. **No aplicada.** Validación remota pendiente.

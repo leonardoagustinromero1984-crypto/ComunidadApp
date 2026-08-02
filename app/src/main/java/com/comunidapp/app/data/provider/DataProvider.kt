@@ -103,6 +103,9 @@ import com.comunidapp.app.data.repository.M25OrderRepository
 import com.comunidapp.app.data.repository.MockM25CartRepository
 import com.comunidapp.app.data.repository.MockM25MarketplaceRepository
 import com.comunidapp.app.data.repository.MockM25OrderRepository
+import com.comunidapp.app.data.repository.SupabaseM25CartRepository
+import com.comunidapp.app.data.repository.SupabaseM25MarketplaceRepository
+import com.comunidapp.app.data.repository.SupabaseM25OrderRepository
 import com.comunidapp.app.data.repository.MockM20MessagingRepository
 import com.comunidapp.app.data.repository.MockM21ReputationRepository
 import com.comunidapp.app.data.repository.MockM22ProviderRepository
@@ -1163,28 +1166,40 @@ object DataProvider {
         if (useSupabase) SupabaseM23BookingPolicyRepository() else MockM23BookingPolicyRepository(m23Store)
     }
 
-    /** M25 Bloque 1 — marketplace mock; persistencia remota en Bloque 2 bajo feature flag. */
+    /** M25 Bloque 2 — marketplace remoto bajo feature flag; mock conservado para local. */
     private val m25Store by lazy { M25MarketplaceMemoryStore() }
 
     val m25MarketplaceRepository: M25MarketplaceRepository by lazy {
-        MockM25MarketplaceRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: M25MockUsers.MERCHANT },
-            store = m25Store
-        )
+        if (useSupabase) {
+            SupabaseM25MarketplaceRepository(actorUserId = { AuthProvider.repository.getCurrentUser()?.id })
+        } else {
+            MockM25MarketplaceRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: M25MockUsers.MERCHANT },
+                store = m25Store
+            )
+        }
     }
 
     val m25CartRepository: M25CartRepository by lazy {
-        MockM25CartRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: M25MockUsers.CUSTOMER },
-            store = m25Store
-        )
+        if (useSupabase) {
+            SupabaseM25CartRepository(actorUserId = { AuthProvider.repository.getCurrentUser()?.id })
+        } else {
+            MockM25CartRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: M25MockUsers.CUSTOMER },
+                store = m25Store
+            )
+        }
     }
 
     val m25OrderRepository: M25OrderRepository by lazy {
-        MockM25OrderRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: M25MockUsers.CUSTOMER },
-            store = m25Store
-        )
+        if (useSupabase) {
+            SupabaseM25OrderRepository(actorUserId = { AuthProvider.repository.getCurrentUser()?.id })
+        } else {
+            MockM25OrderRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: M25MockUsers.CUSTOMER },
+                store = m25Store
+            )
+        }
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */
