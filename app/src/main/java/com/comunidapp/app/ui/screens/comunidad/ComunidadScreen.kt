@@ -57,6 +57,7 @@ fun ComunidadScreen(
     onOpenBookings: () -> Unit = {},
     onOpenMarketplace: () -> Unit = {},
     onOpenAiAssistance: () -> Unit = {},
+    onOpenIntegrations: () -> Unit = {},
     viewModel: ComunidadViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -122,6 +123,9 @@ fun ComunidadScreen(
                 OutlinedButton(onClick = onOpenAiAssistance, modifier = Modifier.fillMaxWidth()) {
                     Text("Inteligencia asistida (M26)")
                 }
+                OutlinedButton(onClick = onOpenIntegrations, modifier = Modifier.fillMaxWidth()) {
+                    Text("Integraciones y API (M27)")
+                }
                 Text(
                     text = "Todavía no hay servicios en esta categoría",
                     style = MaterialTheme.typography.bodyLarge
@@ -184,6 +188,11 @@ fun ComunidadScreen(
                 item {
                     OutlinedButton(onClick = onOpenAiAssistance, modifier = Modifier.fillMaxWidth()) {
                         Text("Inteligencia asistida (M26)")
+                    }
+                }
+                item {
+                    OutlinedButton(onClick = onOpenIntegrations, modifier = Modifier.fillMaxWidth()) {
+                        Text("Integraciones y API (M27)")
                     }
                 }
                 items(services, key = { it.id }) { service ->

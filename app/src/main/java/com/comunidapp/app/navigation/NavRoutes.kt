@@ -169,6 +169,14 @@ object NavRoutes {
     const val M26_HISTORY = "m26/history"
     const val M26_REVIEW_QUEUE = "m26/review-queue"
 
+    // M27 — Integraciones y API pública (Bloque 1 local; sin pagos ni M24)
+    const val M27_HUB = "m27/hub"
+    const val M27_WEBHOOKS = "m27/webhooks"
+    const val M27_OAUTH = "m27/oauth"
+    const val M27_API_KEYS = "m27/api-keys"
+    const val M27_CONTRACTS = "m27/contracts"
+    const val M27_RATE_LIMITS = "m27/rate-limits"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"

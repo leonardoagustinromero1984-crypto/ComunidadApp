@@ -527,7 +527,8 @@ private fun NavGraphBuilder.mainAppRoutes(
             onOpenProviders = { navController.navigate(NavRoutes.M22_HUB) },
             onOpenBookings = { navController.navigate(NavRoutes.M23_HOME) },
             onOpenMarketplace = { navController.navigate(NavRoutes.M25_HUB) },
-            onOpenAiAssistance = { navController.navigate(NavRoutes.M26_HUB) }
+            onOpenAiAssistance = { navController.navigate(NavRoutes.M26_HUB) },
+            onOpenIntegrations = { navController.navigate(NavRoutes.M27_HUB) }
         )
     }
     composable(NavRoutes.MY_BUSINESS) {
@@ -934,6 +935,7 @@ private fun NavGraphBuilder.mainAppRoutes(
     m23BookingRoutes(navController)
     m25MarketplaceRoutes(navController)
     m26AiRoutes(navController)
+    m27IntegrationRoutes(navController)
     composable(
         route = NavRoutes.ADOPTION_DETAIL,
         arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })

@@ -105,6 +105,10 @@ import com.comunidapp.app.data.repository.M26AiMemoryStore
 import com.comunidapp.app.data.repository.M26AiRepository
 import com.comunidapp.app.data.repository.MockM26AiRepository
 import com.comunidapp.app.data.repository.SupabaseM26AiRepository
+import com.comunidapp.app.data.model.M27MockUsers
+import com.comunidapp.app.data.repository.M27IntegrationMemoryStore
+import com.comunidapp.app.data.repository.M27IntegrationRepository
+import com.comunidapp.app.data.repository.MockM27IntegrationRepository
 import com.comunidapp.app.data.repository.MockM25CartRepository
 import com.comunidapp.app.data.repository.MockM25MarketplaceRepository
 import com.comunidapp.app.data.repository.MockM25OrderRepository
@@ -1221,6 +1225,15 @@ object DataProvider {
                 store = m26Store
             )
         }
+    }
+
+    private val m27Store by lazy { M27IntegrationMemoryStore() }
+
+    val m27IntegrationRepository: M27IntegrationRepository by lazy {
+        MockM27IntegrationRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: M27MockUsers.DEVELOPER },
+            store = m27Store
+        )
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */
