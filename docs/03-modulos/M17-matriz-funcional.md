@@ -99,3 +99,54 @@ Mock B1: `organizationManagers` (patrón M16). Producción: membership M03.
 | `m17/campaigns/{campaignId}/edit` | Editar borrador |
 
 **Entrada:** Sumate → Donaciones → "Campañas solidarias (M17)". Legacy DonationsContent preservado.
+
+## Bloque 3–4 — bienes, voluntariado, transparencia
+
+### Necesidades in-kind
+
+| Estado | Público | Terminal |
+|--------|---------|----------|
+| `DRAFT` | No | No |
+| `PUBLISHED` | Sí | No |
+| `FULFILLED` | Sí (histórico) | Sí |
+| `CANCELLED` | No | Sí |
+
+Pledges: `PLEDGED` → `ACCEPTED`/`DELIVERED`; cobertura org = `ACCEPTED` + `DELIVERED`.
+
+### Voluntariado
+
+| Estado oportunidad | Público | Terminal |
+|--------------------|---------|----------|
+| `DRAFT` | No | No |
+| `PUBLISHED` | Sí | No |
+| `PAUSED` | Sí (histórico) | No |
+| `FILLED` | Sí | Sí |
+| `COMPLETED` | Sí | Sí |
+| `CANCELLED` | No activo | Sí |
+
+Postulaciones: no públicas; no crean membresía M03 ni tránsito M15.
+
+### Transparencia
+
+- Montos `amount_minor` bigint (Long en Kotlin)
+- Rendición publicada no modifica contribuciones confirmadas
+- Comprobantes = refs M05 sanitizadas
+
+### Matriz acciones extendida
+
+| Acción | Anónimo | Autenticado | Org `donation.manage` |
+|--------|---------|-------------|----------------------|
+| Listar necesidades/oportunidades | Sí | Sí | Sí |
+| Ver detalle público | Sí | Sí | Sí |
+| Crear pledge / postularse | No | Sí | Sí |
+| Cancelar pledge / retirar postulación | No | Propio | — |
+| Gestionar necesidad/oportunidad | No | No | Sí |
+| Aceptar pledge / postulación | No | No | Sí |
+| Crear/publicar transparencia | No | No | Sí |
+| Ver transparencia publicada | Sí | Sí | Sí |
+
+### Persistencia
+
+- Migración **054** campañas — creada, no aplicada
+- Migración **055** bienes/voluntariado/transparencia — creada, no aplicada
+- Mock operativo en paralelo

@@ -74,6 +74,9 @@ import com.comunidapp.app.data.repository.MockM17TransparencyRepository
 import com.comunidapp.app.data.repository.MockM17VolunteerRepository
 import com.comunidapp.app.data.repository.MockM17DonationRepository
 import com.comunidapp.app.data.repository.SupabaseM17DonationRepository
+import com.comunidapp.app.data.repository.SupabaseM17InKindRepository
+import com.comunidapp.app.data.repository.SupabaseM17TransparencyRepository
+import com.comunidapp.app.data.repository.SupabaseM17VolunteerRepository
 import com.comunidapp.app.data.repository.M15PlacementDischargeRepository
 import com.comunidapp.app.data.repository.M15PlacementEvolutionRepository
 import com.comunidapp.app.data.repository.M15PlacementExpenseRepository
@@ -947,25 +950,41 @@ object DataProvider {
         }
     }
 
-    /** M17 Bloque 3 — bienes, voluntariado, transparencia (mock). */
+    /** M17 Bloque 3/4 — bienes, voluntariado, transparencia (mock o Supabase según flag). */
     private val m17ExtendedStore by lazy { M17ExtendedMemoryStore() }
 
     val m17InKindRepository: M17InKindRepository by lazy {
-        MockM17InKindRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
-            store = m17ExtendedStore
-        )
+        if (useSupabase) {
+            SupabaseM17InKindRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        } else {
+            MockM17InKindRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+                store = m17ExtendedStore
+            )
+        }
     }
 
     val m17VolunteerRepository: M17VolunteerRepository by lazy {
-        MockM17VolunteerRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
-            store = m17ExtendedStore
-        )
+        if (useSupabase) {
+            SupabaseM17VolunteerRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        } else {
+            MockM17VolunteerRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+                store = m17ExtendedStore
+            )
+        }
     }
 
     val m17TransparencyRepository: M17TransparencyRepository by lazy {
-        MockM17TransparencyRepository(store = m17ExtendedStore)
+        if (useSupabase) {
+            SupabaseM17TransparencyRepository()
+        } else {
+            MockM17TransparencyRepository(store = m17ExtendedStore)
+        }
     }
 
     val m17ContributionIntentService: M17ContributionIntentService by lazy {

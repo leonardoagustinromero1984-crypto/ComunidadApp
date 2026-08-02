@@ -48,6 +48,58 @@ object M17CampaignModerationAdapter {
         reporterId = reporterId
     )
 
+    suspend fun reportInKindNeed(
+        needId: String,
+        reason: String,
+        details: String? = null,
+        reporterId: String
+    ): Result<Unit> = submit(
+        targetId = needId,
+        otherDescription = "M17_IN_KIND_NEED",
+        reason = reason,
+        details = details,
+        reporterId = reporterId
+    )
+
+    suspend fun reportVolunteerOpportunity(
+        opportunityId: String,
+        reason: String,
+        details: String? = null,
+        reporterId: String
+    ): Result<Unit> = submit(
+        targetId = opportunityId,
+        otherDescription = "M17_VOLUNTEER_OPPORTUNITY",
+        reason = reason,
+        details = details,
+        reporterId = reporterId
+    )
+
+    suspend fun reportTransparencyReport(
+        reportId: String,
+        reason: String,
+        details: String? = null,
+        reporterId: String
+    ): Result<Unit> = submit(
+        targetId = reportId,
+        otherDescription = "M17_TRANSPARENCY_REPORT",
+        reason = reason,
+        details = details,
+        reporterId = reporterId
+    )
+
+    suspend fun reportInKindNeedImage(
+        imageRef: String,
+        reason: String,
+        details: String? = null,
+        reporterId: String
+    ): Result<Unit> = submit(
+        targetId = imageRef,
+        otherDescription = "M17_IN_KIND_NEED_IMAGE",
+        reason = reason,
+        details = details,
+        reporterId = reporterId
+    )
+
     private suspend fun submit(
         targetId: String,
         otherDescription: String,

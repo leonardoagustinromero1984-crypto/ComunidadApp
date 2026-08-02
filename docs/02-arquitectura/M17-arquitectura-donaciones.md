@@ -107,4 +107,15 @@ M03 (org), M02/M01 (auth), M04 (moderación), M05 (media ref), M06 (notif hooks)
 - `M17ContributionIntentService` — mock / unavailable (sin pasarela)
 - Hub UI `m17/hub` con pestañas
 - Enlace contextual M16 → M17
-- **Sin migración 055**
+
+## Bloque 4 — persistencia remota extendida
+
+- Migración **055** creada, **no aplicada** (depende de 054)
+- Tablas: in-kind needs/pledges, volunteer opportunities/applications, transparency reports/items/milestones
+- `SupabaseM17ExtendedRemoteDataSource` + mappers JSON
+- `SupabaseM17InKindRepository`, `SupabaseM17VolunteerRepository`, `SupabaseM17TransparencyRepository`
+- `DataProvider`: mock cuando `useSupabase=false`; Supabase cuando activo
+- RPCs públicas sanitizadas; mutaciones SECURITY DEFINER con M03
+- `M17CampaignModerationAdapter` extendido (M04)
+- M06 allowlist sin ampliar; notificaciones diferidas
+- Validación remota pendiente; cierre operativo global M17 pendiente (Bloque 5 no iniciado)
