@@ -15,11 +15,14 @@ supabase/migrations/061_m19_social_feed_media_and_moderation.sql
 060 — APLICADA EN STAGING NO PRODUCTIVO
 061 — APLICADA EN STAGING NO PRODUCTIVO
 Validación remota M19 — 105/105 PASS
+Smoke remoto M19 — 25/25 PASS
 ```
 
 Registro en `supabase_migrations.schema_migrations`: 060, 061.
 
-Validación: `scripts/ops/m19_remote_validation_060_061.sql`
+Validación: `scripts/ops/m19_remote_validation_060_061.sql`  
+Smoke: `scripts/ops/m19_smoke_remote_01_25.sql`  
+Verificación schema: `scripts/ops/m19_verify_staging_schema.sql`
 
 ## Procedimiento (referencia)
 
@@ -32,6 +35,12 @@ Validación: `scripts/ops/m19_remote_validation_060_061.sql`
 
 ```sql
 select public.m19_list_public_feed_page(null, null, null, 10, 'ALL');
+```
+
+7. Smoke operacional 01–25:
+
+```text
+supabase db query --linked -f scripts/ops/m19_smoke_remote_01_25.sql
 ```
 
 ## Rollback
