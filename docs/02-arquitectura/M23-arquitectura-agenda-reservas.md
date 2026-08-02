@@ -24,7 +24,7 @@ No tabla de slots infinita. Proyección acotada desde reglas + excepciones − r
 
 `068_m23_scheduling_availability_and_bookings.sql` crea reglas, excepciones, reservas e historial internos. RLS niega acceso directo a `anon` y `authenticated`; los repositorios Android consumen RPC `SECURITY DEFINER` con `search_path = public`.
 
-La migración está creada y **no aplicada**. Bloque 3 implementado localmente; Bloque 4 y M24 pendientes.
+La migración 068–069 está **aplicada en staging**. M23 cerrado oficialmente. M24 en preauditoría.
 
 ## Operaciones Bloque 3
 

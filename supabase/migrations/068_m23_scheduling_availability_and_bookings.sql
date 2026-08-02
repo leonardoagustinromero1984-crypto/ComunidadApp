@@ -248,7 +248,7 @@ begin
     select * into v_booking from public.m23_bookings where customer_user_id = v_actor and client_request_id = p_client_request_id;
     if found then return public._m23_booking_json(v_booking); end if;
   end if;
-  select public._m23_assert_provider_offering(p_provider_id, p_offering_id, p_branch_id) into v_provider;
+  v_provider := public._m23_assert_provider_offering(p_provider_id, p_offering_id, p_branch_id);
   if not exists (
     select 1
     from public.m23_availability_rules r
@@ -324,7 +324,7 @@ end;
 $$;
 
 create or replace function public.m23_list_provider_bookings(p_provider_id uuid)
-returns setof jsonb language plpgsql security definer set search_path = public as $$
+returns setof jsonb language sql security definer set search_path = public as $$
   select public._m23_booking_json(b) from public.m23_bookings b
   join public.m22_service_providers p on p.id = b.provider_id
   where b.provider_id = p_provider_id and public._m23_can_view(p, public._m23_actor()) order by b.starts_at desc;
@@ -360,7 +360,7 @@ create or replace function public.m23_create_availability_rule(
 ) returns jsonb language plpgsql security definer set search_path = public as $$
 declare v_actor uuid := public._m23_actor(); v_provider public.m22_service_providers; v_rule public.m23_availability_rules;
 begin
-  select public._m23_assert_provider_offering(p_provider_id, p_offering_id, p_branch_id) into v_provider;
+  v_provider := public._m23_assert_provider_offering(p_provider_id, p_offering_id, p_branch_id);
   if not public._m23_can_manage(v_provider, v_actor) then raise exception 'M23_PERMISSION_DENIED'; end if;
   if p_day_of_week not between 1 and 7 or p_end_time <= p_start_time or p_slot_duration_minutes not between 5 and 480
     or upper(coalesce(p_status, '')) not in ('ACTIVE', 'INACTIVE', 'ARCHIVED') then raise exception 'M23_INVALID_AVAILABILITY_RULE'; end if;

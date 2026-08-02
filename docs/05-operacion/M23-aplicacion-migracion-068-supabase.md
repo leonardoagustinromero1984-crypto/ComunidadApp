@@ -5,8 +5,10 @@
 ## Estado
 
 ```text
-068_m23_scheduling_availability_and_bookings.sql — CREADA, NO APLICADA
+068_m23_scheduling_availability_and_bookings.sql — APLICADA EN STAGING (ver 068-069 doc)
 ```
+
+Ver procedimiento actualizado: `docs/05-operacion/M23-aplicacion-migraciones-068-069-supabase.md`
 
 ## Prerrequisitos
 

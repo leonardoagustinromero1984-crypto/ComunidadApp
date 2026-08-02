@@ -16,7 +16,6 @@
 
 ## Estado
 
-- Bloques 1–3 implementados localmente.
-- `068_m23_scheduling_availability_and_bookings.sql` creada, **no aplicada**.
-- Bloque 4 pendiente (paridad remota, staging).
-- M24 no iniciado.
+- Bloques 1–4 completados; **cierre oficial** 2026-08-02.
+- Migraciones 068–069 aplicadas en staging.
+- M24 en preauditoría; sin pagos.
