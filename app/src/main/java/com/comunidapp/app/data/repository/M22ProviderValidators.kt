@@ -3,6 +3,8 @@ package com.comunidapp.app.data.repository
 import com.comunidapp.app.data.model.M22CoverageArea
 import com.comunidapp.app.data.model.M22CoverageType
 import com.comunidapp.app.data.model.M22PriceType
+import com.comunidapp.app.data.model.M22ProviderStatus
+import com.comunidapp.app.domain.m22.M22ProviderLifecycle
 
 object M22ProviderValidators {
     fun validateProvider(displayName: String, description: String, city: String): String? = when {
@@ -34,6 +36,15 @@ object M22ProviderValidators {
         M22CoverageType.NEIGHBORHOOD -> if (coverage.city.trim().isEmpty() || coverage.neighborhood.isNullOrBlank() || coverage.radiusKm != null) "M22_INVALID_BRANCH" else null
         M22CoverageType.RADIUS -> if (coverage.city.trim().isEmpty() || coverage.radiusKm == null || coverage.radiusKm !in 1..100) "M22_INVALID_BRANCH" else null
     }
+
+    fun validateStatusTransition(
+        current: M22ProviderStatus,
+        target: M22ProviderStatus,
+        hasActiveBranch: Boolean = false,
+        hasActiveOffering: Boolean = false
+    ): String? = M22ProviderLifecycle.validateTransition(
+        current, target, hasActiveBranch, hasActiveOffering
+    )
 
     private fun isSafeName(value: String): Boolean =
         value.trim().length in 2..120 && !unsafe(value)

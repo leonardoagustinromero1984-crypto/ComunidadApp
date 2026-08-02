@@ -67,7 +67,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 - **M21 Reputación, verificaciones y reseñas:** identidad, matrículas, reseñas transaccionales y apelaciones — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 064–065; validación 130/130 + smoke 25/25).
 
 ### R6 — Servicios
-- **M22 Prestadores y catálogo de servicios:** perfil, sedes, categorías, cobertura y precios — **Bloques 1–2 implementados localmente** (mock y persistencia Supabase); migración 066 **creada, no aplicada a staging**; **Bloque 3 no iniciado**.
+- **M22 Prestadores y catálogo de servicios:** perfil, sedes, categorías, cobertura y precios — **Bloques 1–3 implementados localmente** (mock, persistencia Supabase y operaciones de ciclo de vida); migración 066 **creada, no aplicada a staging**; **Bloque 4 pendiente**.
 - **M23 Agenda y reservas:** disponibilidad, reserva, confirmación, cambios y asistencia.
 - **M24 Pagos, comisiones y suscripciones:** pago, split, reembolso, conciliación y planes.
 

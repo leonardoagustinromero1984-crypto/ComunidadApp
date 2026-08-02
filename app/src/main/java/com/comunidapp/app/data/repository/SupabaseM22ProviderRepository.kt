@@ -1,8 +1,11 @@
 package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.CreateM22ProviderInput
+import com.comunidapp.app.data.model.M22CatalogFilter
+import com.comunidapp.app.data.model.M22NotificationHookState
 import com.comunidapp.app.data.model.M22ProviderBranch
 import com.comunidapp.app.data.model.M22ProviderProfile
+import com.comunidapp.app.data.model.M22ProviderStatus
 import com.comunidapp.app.data.model.M22PublicProviderDetail
 import com.comunidapp.app.data.model.M22PublicProviderListing
 import com.comunidapp.app.data.model.M22ServiceOffering
@@ -30,9 +33,9 @@ class SupabaseM22ProviderRepository(
         )
     }
 
-    override fun observeCatalog(category: com.comunidapp.app.data.model.M22ProviderCategory?): Flow<List<M22PublicProviderListing>> =
+    override fun observeCatalog(filter: M22CatalogFilter): Flow<List<M22PublicProviderListing>> =
         flow {
-            emit(runCatching { remote.listCatalog(category?.name, null).map { it.toM22PublicListing() } }
+            emit(runCatching { remote.listCatalog(filter.category?.name, filter.city?.trim()).map { it.toM22PublicListing() } }
                 .getOrElse { emptyList() })
         }
 
@@ -95,10 +98,32 @@ class SupabaseM22ProviderRepository(
         M22ProviderErrorMapper.failure(error)
     }
 
+    override suspend fun publishProvider(providerId: String): Result<M22ProviderProfile> =
+        updateProviderStatus(providerId, M22ProviderStatus.ACTIVE)
+
+    override suspend fun suspendProvider(providerId: String): Result<M22ProviderProfile> =
+        updateProviderStatus(providerId, M22ProviderStatus.SUSPENDED)
+
+    override suspend fun reactivateProvider(providerId: String): Result<M22ProviderProfile> =
+        updateProviderStatus(providerId, M22ProviderStatus.ACTIVE)
+
     override suspend fun archiveProvider(providerId: String): Result<Unit> = try {
         requireActor()
         remote.archiveProvider(providerId)
         Result.success(Unit)
+    } catch (error: Throwable) {
+        M22ProviderErrorMapper.failure(error)
+    }
+
+    override fun observeNotificationsHook(): Flow<M22NotificationHookState> =
+        flow { emit(M22NotificationHookState()) }
+
+    private suspend fun updateProviderStatus(
+        providerId: String,
+        status: M22ProviderStatus
+    ): Result<M22ProviderProfile> = try {
+        requireActor()
+        Result.success(remote.updateProviderStatus(providerId, status.name).toM22ProviderProfile())
     } catch (error: Throwable) {
         M22ProviderErrorMapper.failure(error)
     }

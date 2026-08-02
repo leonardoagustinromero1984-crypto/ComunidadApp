@@ -2,10 +2,12 @@ package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.CreateM22ProviderInput
 import com.comunidapp.app.data.model.M22BranchStatus
+import com.comunidapp.app.data.model.M22CatalogFilter
 import com.comunidapp.app.data.model.M22CoverageArea
 import com.comunidapp.app.data.model.M22CoverageType
 import com.comunidapp.app.data.model.M22MockProviderIds
 import com.comunidapp.app.data.model.M22MockUsers
+import com.comunidapp.app.data.model.M22NotificationHookState
 import com.comunidapp.app.data.model.M22ProviderBranch
 import com.comunidapp.app.data.model.M22ProviderCategory
 import com.comunidapp.app.data.model.M22ProviderProfile
@@ -24,14 +26,20 @@ import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
 interface M22ProviderRepository {
-    fun observeCatalog(category: M22ProviderCategory? = null): Flow<List<M22PublicProviderListing>>
+    fun observeCatalog(filter: M22CatalogFilter = M22CatalogFilter()): Flow<List<M22PublicProviderListing>>
+    fun observeCatalog(category: M22ProviderCategory?): Flow<List<M22PublicProviderListing>> =
+        observeCatalog(M22CatalogFilter(category = category))
     fun observeProviderDetail(providerId: String): Flow<M22PublicProviderDetail?>
     fun observeMyProviders(): Flow<List<M22ProviderProfile>>
     suspend fun createProvider(input: CreateM22ProviderInput): Result<M22ProviderProfile>
     suspend fun updateProvider(input: UpdateM22ProviderInput): Result<M22ProviderProfile>
     suspend fun upsertBranch(input: UpsertM22BranchInput): Result<M22ProviderBranch>
     suspend fun upsertOffering(input: UpsertM22OfferingInput): Result<M22ServiceOffering>
+    suspend fun publishProvider(providerId: String): Result<M22ProviderProfile>
+    suspend fun suspendProvider(providerId: String): Result<M22ProviderProfile>
+    suspend fun reactivateProvider(providerId: String): Result<M22ProviderProfile>
     suspend fun archiveProvider(providerId: String): Result<Unit>
+    fun observeNotificationsHook(): Flow<M22NotificationHookState>
 }
 
 class M22ProviderMemoryStore {
@@ -86,9 +94,13 @@ class MockM22ProviderRepository(
 ) : M22ProviderRepository {
     init { store.seedDefaults() }
 
-    override fun observeCatalog(category: M22ProviderCategory?): Flow<List<M22PublicProviderListing>> =
+    override fun observeCatalog(filter: M22CatalogFilter): Flow<List<M22PublicProviderListing>> =
         store.providers.map { providers ->
-            providers.filter { it.status == M22ProviderStatus.ACTIVE && (category == null || it.category == category) }
+            providers.filter {
+                it.status == M22ProviderStatus.ACTIVE &&
+                    (filter.category == null || it.category == filter.category) &&
+                    (filter.city.isNullOrBlank() || it.city.equals(filter.city.trim(), ignoreCase = true))
+            }
                 .map { it.toPublicListing(branchesFor(it.id), offeringsFor(it.id)) }
         }
 
@@ -124,6 +136,14 @@ class MockM22ProviderRepository(
             updatedAt = System.currentTimeMillis()
         )
         M22ProviderValidators.validateProvider(updated.displayName, updated.description, updated.city)?.let(::fail)
+        input.status?.let { status ->
+            M22ProviderValidators.validateStatusTransition(
+                provider.status,
+                status,
+                hasActiveBranch = branchesFor(provider.id).any { it.status == M22BranchStatus.ACTIVE },
+                hasActiveOffering = offeringsFor(provider.id).any { it.active }
+            )?.let(::fail)
+        }
         store.providers.value = store.providers.value.map { if (it.id == updated.id) updated else it }
         updated
     }
@@ -155,6 +175,15 @@ class MockM22ProviderRepository(
         }
     }
 
+    override suspend fun publishProvider(providerId: String): Result<M22ProviderProfile> =
+        transitionProvider(providerId, M22ProviderStatus.ACTIVE)
+
+    override suspend fun suspendProvider(providerId: String): Result<M22ProviderProfile> =
+        transitionProvider(providerId, M22ProviderStatus.SUSPENDED)
+
+    override suspend fun reactivateProvider(providerId: String): Result<M22ProviderProfile> =
+        transitionProvider(providerId, M22ProviderStatus.ACTIVE)
+
     override suspend fun archiveProvider(providerId: String): Result<Unit> = mutate {
         val provider = owned(providerId)
         if (provider.status != M22ProviderStatus.ARCHIVED) {
@@ -163,6 +192,26 @@ class MockM22ProviderRepository(
             }
         }
         Unit
+    }
+
+    override fun observeNotificationsHook(): Flow<M22NotificationHookState> =
+        kotlinx.coroutines.flow.flowOf(M22NotificationHookState())
+
+    private suspend fun transitionProvider(
+        providerId: String,
+        target: M22ProviderStatus
+    ): Result<M22ProviderProfile> = mutate {
+        val provider = owned(providerId)
+        M22ProviderValidators.validateStatusTransition(
+            provider.status,
+            target,
+            hasActiveBranch = branchesFor(provider.id).any { it.status == M22BranchStatus.ACTIVE },
+            hasActiveOffering = offeringsFor(provider.id).any { it.active }
+        )?.let(::fail)
+        if (provider.status == target) return@mutate provider
+        provider.copy(status = target, updatedAt = System.currentTimeMillis()).also { updated ->
+            store.providers.value = store.providers.value.map { if (it.id == providerId) updated else it }
+        }
     }
 
     private fun branchesFor(providerId: String) = store.branches.value.filter { it.providerId == providerId }

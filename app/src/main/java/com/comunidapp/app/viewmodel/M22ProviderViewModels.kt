@@ -67,6 +67,17 @@ class M22ManageViewModel(private val repository: M22ProviderRepository = DataPro
     private val _uiState = MutableStateFlow<M22ManageUiState>(M22ManageUiState.Loading)
     val uiState: StateFlow<M22ManageUiState> = _uiState
     init { viewModelScope.launch { repository.observeMyProviders().catch { _uiState.value = M22ManageUiState.Error(M22ProviderResilience.safeUserMessage(it)) }.collect { _uiState.value = if (it.isEmpty()) M22ManageUiState.Empty else M22ManageUiState.Content(it) } } }
+
+    fun publish(providerId: String) = perform { repository.publishProvider(providerId) }
+    fun suspend(providerId: String) = perform { repository.suspendProvider(providerId) }
+
+    private fun perform(operation: suspend () -> Result<M22ProviderProfile>) {
+        viewModelScope.launch {
+            operation().exceptionOrNull()?.let {
+                _uiState.value = M22ManageUiState.Error(M22ProviderResilience.safeUserMessage(it))
+            }
+        }
+    }
 }
 
 object M22ViewModelFactories {

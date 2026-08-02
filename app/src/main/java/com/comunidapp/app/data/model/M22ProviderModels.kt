@@ -9,6 +9,20 @@ enum class M22BranchStatus { ACTIVE, INACTIVE, ARCHIVED }
 enum class M22CoverageType { CITY, NEIGHBORHOOD, RADIUS }
 enum class M22PriceType { FIXED, FROM, QUOTE }
 
+data class M22CatalogFilter(
+    val category: M22ProviderCategory? = null,
+    val city: String? = null
+)
+
+/** Stub M06 — delivery infrastructure is not coupled to M22 operations. */
+data class M22NotificationHookState(
+    val available: Boolean = false,
+    val providerPublished: Boolean = false,
+    val providerSuspended: Boolean = false,
+    val providerReactivated: Boolean = false,
+    val message: String = "M22_NOTIFICATIONS_UNAVAILABLE"
+)
+
 data class M22ProviderProfile(
     val id: String,
     val ownerUserId: String,

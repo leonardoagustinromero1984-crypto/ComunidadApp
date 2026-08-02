@@ -158,6 +158,9 @@ class SupabaseM22RemoteDataSource {
         put("p_city", city); put("p_status", status)
     })
 
+    suspend fun updateProviderStatus(providerId: String, status: String): JsonObject =
+        updateProvider(providerId, null, null, null, status)
+
     suspend fun upsertBranch(
         providerId: String, branchId: String?, name: String, city: String, neighborhood: String?,
         coverage: M22CoverageArea, status: String

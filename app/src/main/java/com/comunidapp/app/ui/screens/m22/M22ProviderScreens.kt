@@ -21,6 +21,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.model.M22ProviderStatus
 import com.comunidapp.app.data.model.M22PublicProviderListing
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.state.EmptyState
@@ -110,6 +111,21 @@ fun M22ManageScreen(onNavigateBack: () -> Unit, viewModel: M22ManageViewModel = 
                         Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
                             Text(provider.displayName, fontWeight = FontWeight.Bold)
                             Text("${provider.category} · ${provider.status}")
+                            when (provider.status) {
+                                M22ProviderStatus.DRAFT -> Button(
+                                    onClick = { viewModel.publish(provider.id) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("Publicar") }
+                                M22ProviderStatus.ACTIVE -> OutlinedButton(
+                                    onClick = { viewModel.suspend(provider.id) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("Suspender") }
+                                M22ProviderStatus.SUSPENDED -> Button(
+                                    onClick = { viewModel.publish(provider.id) },
+                                    modifier = Modifier.fillMaxWidth()
+                                ) { Text("Reactivar") }
+                                M22ProviderStatus.ARCHIVED -> Unit
+                            }
                         } }
                     }
                 }
