@@ -103,6 +103,9 @@ import com.comunidapp.app.data.repository.MockM23BookingRepository
 import com.comunidapp.app.data.repository.SupabaseM20MessagingRepository
 import com.comunidapp.app.data.repository.SupabaseM21ReputationRepository
 import com.comunidapp.app.data.repository.SupabaseM22ProviderRepository
+import com.comunidapp.app.data.repository.SupabaseM23AvailabilityRepository
+import com.comunidapp.app.data.repository.SupabaseM23BookingPolicyRepository
+import com.comunidapp.app.data.repository.SupabaseM23BookingRepository
 import com.comunidapp.app.data.repository.SupabaseM17InKindRepository
 import com.comunidapp.app.data.repository.SupabaseM17TransparencyRepository
 import com.comunidapp.app.data.repository.SupabaseM17VolunteerRepository
@@ -1125,22 +1128,26 @@ object DataProvider {
         }
     }
 
-    /** M23 Bloque 1 — agenda local estrictamente mock; no existe adapter remoto todavía. */
+    /** M23 Bloque 2 — RPC remoto bajo feature flag; mocks B1 se preservan localmente. */
     private val m23Store by lazy { M23SchedulingMemoryStore() }
 
     val m23AvailabilityRepository: M23AvailabilityRepository by lazy {
-        MockM23AvailabilityRepository(m23Store)
+        if (useSupabase) SupabaseM23AvailabilityRepository() else MockM23AvailabilityRepository(m23Store)
     }
 
     val m23BookingRepository: M23BookingRepository by lazy {
-        MockM23BookingRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_customer" },
-            store = m23Store
-        )
+        if (useSupabase) {
+            SupabaseM23BookingRepository()
+        } else {
+            MockM23BookingRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_customer" },
+                store = m23Store
+            )
+        }
     }
 
     val m23BookingPolicyRepository: M23BookingPolicyRepository by lazy {
-        MockM23BookingPolicyRepository(m23Store)
+        if (useSupabase) SupabaseM23BookingPolicyRepository() else MockM23BookingPolicyRepository(m23Store)
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */
