@@ -75,8 +75,8 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 - **M25 Marketplace, pedidos y promociones:** catálogo, stock, carrito, pedido, envío y devolución — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 070–071; validación 120/120 + smoke 25/25; sin pagos; M24 pospuesto).
 
 ### R8 — Escala inteligente
-- **M26 Inteligencia artificial:** matching visual, duplicados, asistencia y recomendaciones evaluadas — **Bloque 1 cerrado**; **Bloque 2 migración 072 creada, no aplicada**; Bloque 3 no iniciado; sin pagos.
-- **M27 Integraciones y API pública:** webhooks, OAuth, límites, sandbox y contratos versionados.
+- **M26 Inteligencia artificial:** matching, duplicados, asistencia stub, recomendaciones, jobs, revisión humana — **cerrado oficialmente**; migraciones 072–074 aplicadas en staging; validación 125/125 + smoke 25/25; sin pagos ni motor externo.
+- **M27 Integraciones y API pública:** webhooks, OAuth, límites, sandbox y contratos versionados — **siguiente módulo; no iniciado**.
 
 ## Camino crítico
 

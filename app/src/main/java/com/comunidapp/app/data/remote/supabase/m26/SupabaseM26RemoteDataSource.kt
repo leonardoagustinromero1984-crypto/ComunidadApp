@@ -1,6 +1,16 @@
 package com.comunidapp.app.data.remote.supabase.m26
 
+import com.comunidapp.app.data.model.M26AiJob
+import com.comunidapp.app.data.model.M26AiJobStatus
+import com.comunidapp.app.data.model.M26AiJobType
+import com.comunidapp.app.data.model.M26AiProvenance
+import com.comunidapp.app.data.model.M26AiResult
+import com.comunidapp.app.data.model.M26AiResultStatus
 import com.comunidapp.app.data.model.M26AssistanceSession
+import com.comunidapp.app.data.model.M26ModelDescriptor
+import com.comunidapp.app.data.model.M26PublicAiResultSummary
+import com.comunidapp.app.data.model.M26PublicReviewQueueItem
+import com.comunidapp.app.data.model.M26ReasonCode
 import com.comunidapp.app.data.model.M26AssistanceSessionStatus
 import com.comunidapp.app.data.model.M26AssistanceTopic
 import com.comunidapp.app.data.model.M26ConfidenceBand
@@ -16,6 +26,7 @@ import com.comunidapp.app.data.model.M26VisualMatchStatus
 import com.comunidapp.app.data.model.M26VisualMatchSuggestion
 import com.comunidapp.app.data.remote.supabase.supabase
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -109,6 +120,69 @@ fun JsonObject.toM26EvaluatedRecommendation(): M26EvaluatedRecommendation = M26E
     updatedAt = parseTimestamp(string("updated_at"))
 )
 
+fun JsonObject.toM26AiJob(): M26AiJob = M26AiJob(
+    id = string("id").orEmpty(),
+    ownerUserId = string("owner_user_id").orEmpty(),
+    jobType = enumOr(string("job_type"), M26AiJobType.ASSISTANCE),
+    status = enumOr(string("status"), M26AiJobStatus.QUEUED),
+    clientRequestId = string("client_request_id"),
+    model = M26ModelDescriptor(string("model_name").orEmpty(), string("model_version").orEmpty()),
+    createdAt = parseTimestamp(string("created_at")),
+    updatedAt = parseTimestamp(string("updated_at")),
+    completedAt = string("completed_at")?.let(::parseTimestamp),
+    errorCode = string("error_code")
+)
+
+fun JsonObject.toM26AiResult(): M26AiResult {
+    val reasonRaw = this["reason_codes"]
+    val codes = when (reasonRaw) {
+        is JsonArray -> reasonRaw.mapNotNull { (it as? JsonPrimitive)?.contentOrNull?.let { c -> M26ReasonCode(c, c) } }
+        else -> emptyList()
+    }
+    return M26AiResult(
+        id = string("id").orEmpty(),
+        jobId = string("job_id").orEmpty(),
+        ownerUserId = string("owner_user_id").orEmpty(),
+        resultType = enumOr(string("result_type"), M26AiJobType.ASSISTANCE),
+        status = enumOr(string("status"), M26AiResultStatus.DRAFT),
+        summary = string("summary").orEmpty(),
+        reasonCodes = codes,
+        model = M26ModelDescriptor(string("model_name").orEmpty(), string("model_version").orEmpty()),
+        provenance = M26AiProvenance(
+            string("source_module").orEmpty(),
+            string("provenance_job_id"),
+            parseTimestamp(string("created_at"))
+        ),
+        createdAt = parseTimestamp(string("created_at")),
+        updatedAt = parseTimestamp(string("updated_at"))
+    )
+}
+
+fun JsonObject.toM26PublicAiResultSummary(): M26PublicAiResultSummary {
+    val reasonRaw = this["reason_codes"]
+    val codes = when (reasonRaw) {
+        is JsonArray -> reasonRaw.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+        else -> emptyList()
+    }
+    return M26PublicAiResultSummary(
+        summary = string("summary").orEmpty(),
+        resultType = enumOr(string("result_type"), M26AiJobType.ASSISTANCE),
+        status = enumOr(string("status"), M26AiResultStatus.DRAFT),
+        reasonCodes = codes,
+        modelName = string("model_name").orEmpty(),
+        modelVersion = string("model_version").orEmpty(),
+        isEstimate = boolean("is_estimate", true)
+    )
+}
+
+fun JsonObject.toM26PublicReviewQueueItem(): M26PublicReviewQueueItem = M26PublicReviewQueueItem(
+    resultId = string("result_id").orEmpty(),
+    summary = string("summary").orEmpty(),
+    resultType = enumOr(string("result_type"), M26AiJobType.ASSISTANCE),
+    status = enumOr(string("status"), M26AiResultStatus.PENDING_REVIEW),
+    modelVersion = string("model_version").orEmpty()
+)
+
 class SupabaseM26RemoteDataSource {
     private suspend inline fun <reified T : Any> one(function: String, parameters: JsonObject): T =
         supabase.postgrest.rpc(function, parameters).decodeSingle()
@@ -164,5 +238,31 @@ class SupabaseM26RemoteDataSource {
             put("p_recommendation_id", recommendationId)
             put("p_approved", approved)
             put("p_reviewer_note", reviewerNote)
+        })
+
+    suspend fun listMyJobs(): List<JsonObject> = list("m26_list_my_jobs", buildJsonObject {})
+
+    suspend fun listMyResults(): List<JsonObject> = list("m26_list_my_results", buildJsonObject {})
+
+    suspend fun listReviewQueue(): List<JsonObject> = list("m26_list_review_queue", buildJsonObject {})
+
+    suspend fun requestAiJob(jobType: String, payloadSummary: String, clientRequestId: String?): JsonObject =
+        one("m26_request_ai_job", buildJsonObject {
+            put("p_job_type", jobType)
+            put("p_payload_summary", payloadSummary)
+            put("p_client_request_id", clientRequestId)
+        })
+
+    suspend fun cancelAiJob(jobId: String): JsonObject =
+        one("m26_cancel_ai_job", buildJsonObject { put("p_job_id", jobId) })
+
+    suspend fun submitResultForReview(resultId: String): JsonObject =
+        one("m26_submit_result_for_review", buildJsonObject { put("p_result_id", resultId) })
+
+    suspend fun reviewAiResult(resultId: String, decision: String, publicReason: String?): JsonObject =
+        one("m26_review_ai_result", buildJsonObject {
+            put("p_result_id", resultId)
+            put("p_decision", decision)
+            put("p_public_reason", publicReason)
         })
 }

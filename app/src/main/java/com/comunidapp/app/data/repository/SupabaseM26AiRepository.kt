@@ -14,6 +14,7 @@ import com.comunidapp.app.data.model.M26PublicDuplicateCandidate
 import com.comunidapp.app.data.model.M26PublicRecommendation
 import com.comunidapp.app.data.model.M26PublicVisualMatch
 import com.comunidapp.app.data.model.M26VisualMatchSuggestion
+import com.comunidapp.app.data.model.M26ReviewDecision
 import com.comunidapp.app.data.model.RequestM26VisualMatchInput
 import com.comunidapp.app.data.model.ReviewM26RecommendationInput
 import com.comunidapp.app.data.model.StartM26AssistanceInput
@@ -27,6 +28,10 @@ import com.comunidapp.app.data.remote.supabase.m26.toM26PublicDuplicate
 import com.comunidapp.app.data.remote.supabase.m26.toM26PublicRecommendation
 import com.comunidapp.app.data.remote.supabase.m26.toM26PublicVisualMatch
 import com.comunidapp.app.data.remote.supabase.m26.toM26VisualMatchSuggestion
+import com.comunidapp.app.data.remote.supabase.m26.toM26AiJob
+import com.comunidapp.app.data.remote.supabase.m26.toM26AiResult
+import com.comunidapp.app.data.remote.supabase.m26.toM26PublicAiResultSummary
+import com.comunidapp.app.data.remote.supabase.m26.toM26PublicReviewQueueItem
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -41,26 +46,58 @@ class SupabaseM26AiRepository(
         )
     }
 
-    override fun observeMyJobs(): Flow<List<M26AiJob>> = flow { emit(emptyList()) }
+    override fun observeMyJobs(): Flow<List<M26AiJob>> = flow {
+        if (actorUserId() == null) emit(emptyList())
+        else emit(runCatching { remote.listMyJobs().map { it.toM26AiJob() } }.getOrElse { emptyList() })
+    }
 
-    override fun observeMyResults(): Flow<List<M26PublicAiResultSummary>> = flow { emit(emptyList()) }
+    override fun observeMyResults(): Flow<List<M26PublicAiResultSummary>> = flow {
+        if (actorUserId() == null) emit(emptyList())
+        else emit(runCatching { remote.listMyResults().map { it.toM26PublicAiResultSummary() } }.getOrElse { emptyList() })
+    }
 
-    override fun observeReviewQueue(): Flow<List<M26PublicReviewQueueItem>> = flow { emit(emptyList()) }
+    override fun observeReviewQueue(): Flow<List<M26PublicReviewQueueItem>> = flow {
+        if (actorUserId() == null) emit(emptyList())
+        else emit(runCatching { remote.listReviewQueue().map { it.toM26PublicReviewQueueItem() } }.getOrElse { emptyList() })
+    }
 
-    override suspend fun requestAnalysis(input: RequestM26AiJobInput): Result<M26AiJob> =
-        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
+    override suspend fun requestAnalysis(input: RequestM26AiJobInput): Result<M26AiJob> = try {
+        requireActor()
+        M26AiValidators.validateJobPayload(input.payloadSummary, input.jobType)?.let { return M26AiErrorMapper.fail(it) }
+        Result.success(
+            remote.requestAiJob(input.jobType.name, input.payloadSummary.trim(), input.clientRequestId?.trim())
+                .toM26AiJob()
+        )
+    } catch (error: Throwable) {
+        M26AiErrorMapper.failure(error)
+    }
 
-    override suspend fun cancelJob(jobId: String): Result<M26AiJob> =
-        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
+    override suspend fun cancelJob(jobId: String): Result<M26AiJob> = try {
+        requireActor()
+        Result.success(remote.cancelAiJob(jobId).toM26AiJob())
+    } catch (error: Throwable) {
+        M26AiErrorMapper.failure(error)
+    }
 
-    override suspend fun submitResultForReview(resultId: String): Result<M26AiResult> =
-        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
+    override suspend fun submitResultForReview(resultId: String): Result<M26AiResult> = try {
+        requireActor()
+        Result.success(remote.submitResultForReview(resultId).toM26AiResult())
+    } catch (error: Throwable) {
+        M26AiErrorMapper.failure(error)
+    }
 
-    override suspend fun reviewResult(input: ReviewM26AiResultInput): Result<M26AiResult> =
-        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
+    override suspend fun reviewResult(input: ReviewM26AiResultInput): Result<M26AiResult> = try {
+        requireActor()
+        Result.success(
+            remote.reviewAiResult(input.resultId, input.decision.name, input.publicReason?.trim())
+                .toM26AiResult()
+        )
+    } catch (error: Throwable) {
+        M26AiErrorMapper.failure(error)
+    }
 
     override suspend fun archiveResult(resultId: String): Result<M26AiResult> =
-        M26AiErrorMapper.fail("M26_REMOTE_NOT_READY")
+        reviewResult(ReviewM26AiResultInput(resultId, M26ReviewDecision.ARCHIVE, null))
 
     override fun observeVisualMatches(): Flow<List<M26PublicVisualMatch>> = flow {
         emit(runCatching { remote.listVisualMatches().map { it.toM26PublicVisualMatch() } }.getOrElse { emptyList() })
