@@ -8,11 +8,29 @@
 supabase/migrations/058_m18_community_events_and_registrations.sql
 ```
 
-## Estado actual (post Bloque 2)
+## Estado actual (post Bloques 1–4)
 
 ```text
 058 — CREADA, NO APLICADA
+059 — NO REQUERIDA
+Validación remota M18 — PENDIENTE
 ```
+
+## Script de preparación validación
+
+```text
+scripts/ops/m18_remote_validation_058_prep.sql
+```
+
+Ejecutar **después** de aplicar 058 para verificación estructural (tablas, RPC, RLS). No sustituye smoke funcional completo.
+
+## Aplicación parcial
+
+Si falla a mitad de 058:
+
+1. No re-ejecutar ciego — revisar `schema_migrations` y objetos creados.
+2. Corregir en migración incremental (059+) si hiciera falta; **no editar 058** retroactivamente.
+3. Rollback no destructivo: preservar filas existentes para auditoría.
 
 ## Prerrequisitos
 
@@ -86,5 +104,6 @@ No hay rollback automático. Ante fallo parcial, restaurar desde backup de stagi
 ## Referencias
 
 - `docs/03-modulos/M18-Bloque-2-auditoria.md`
-- `docs/03-modulos/M18-Bloque-2-validacion.md`
+- `docs/03-modulos/M18-Bloque-4-validacion.md`
+- `docs/03-modulos/M18-cierre-global-preparacion.md`
 - `docs/02-arquitectura/M18-arquitectura-eventos.md`

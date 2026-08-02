@@ -1,4 +1,4 @@
-# M18 — Matriz funcional (Bloques 1–3)
+# M18 — Matriz funcional (Bloques 1–4)
 
 ## Alcance Bloque 1
 
@@ -11,6 +11,10 @@ Persistencia Supabase (migración 058, **no aplicada**): tablas, RLS, RPCs, repo
 ## Alcance Bloque 3
 
 Participación operativa: `M18EventOperationsService`, panel organizador, estados `ATTENDED`/`REJECTED` (mock), resumen `M18EventOperationsSummary`, UI participante con privacidad. **059 no requerida.**
+
+## Alcance Bloque 4
+
+Integraciones M03/M04/M05/M06/M10, enlace M16→M18, filtros descubrimiento, métricas derivadas, resiliencia (`M18EventResilience`), preparación cierre global. **Recurrencia:** fuera de alcance D01.
 
 ## Tipos de evento
 

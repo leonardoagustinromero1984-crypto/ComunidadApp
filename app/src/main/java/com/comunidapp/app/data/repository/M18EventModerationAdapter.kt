@@ -35,6 +35,19 @@ object M18EventModerationAdapter {
         reporterId = reporterId
     )
 
+    suspend fun reportOrganizerContent(
+        eventId: String,
+        reason: String,
+        details: String? = null,
+        reporterId: String
+    ): Result<Unit> = submit(
+        targetId = eventId,
+        otherDescription = "M18_EVENT_ORGANIZER_CONTENT",
+        reason = reason,
+        details = details,
+        reporterId = reporterId
+    )
+
     private suspend fun submit(
         targetId: String,
         otherDescription: String,

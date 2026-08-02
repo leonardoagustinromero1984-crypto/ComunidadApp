@@ -30,7 +30,8 @@ fun NavGraphBuilder.m16ShelterRoutes(navController: NavHostController) {
         M16ShelterDetailScreen(
             shelterId = shelterId,
             onNavigateBack = { navController.popBackStack() },
-            onM17Hub = { navController.navigate(NavRoutes.M17_HUB) }
+            onM17Hub = { navController.navigate(NavRoutes.M17_HUB) },
+            onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) }
         )
     }
     composable(NavRoutes.M16_SHELTERS_MANAGE) {
