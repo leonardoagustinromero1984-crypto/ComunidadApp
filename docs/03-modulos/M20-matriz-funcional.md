@@ -78,4 +78,4 @@ Operaciones mock completas, UI bandeja/hilo ampliada, paginación, idempotencia,
 - Aplicación SQL 062 en staging
 - Upload adjuntos binarios
 - Retención avanzada
-- Cierre oficial M20 (Bloque 4 pendiente)
+- **M20 cerrado oficialmente** (Bloque 4 — 062+063 staging, 125/125 + smoke 25/25)

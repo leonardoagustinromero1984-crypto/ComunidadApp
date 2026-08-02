@@ -72,6 +72,12 @@ object M20MessagingValidators {
         return null
     }
 
+    fun validatePeerUserId(peerUserId: String, actorUserId: String? = null): String? = when {
+        peerUserId.isBlank() -> "M20_INVALID_MESSAGE"
+        actorUserId != null && peerUserId == actorUserId -> "M20_INVALID_MESSAGE"
+        else -> null
+    }
+
     private fun containsUnsafeMarkup(text: String): Boolean =
         Regex("(?i)<script|javascript:|on\\w+\\s*=|<iframe").containsMatchIn(text)
 }

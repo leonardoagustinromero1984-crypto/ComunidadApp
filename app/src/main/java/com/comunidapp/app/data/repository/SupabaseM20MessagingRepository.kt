@@ -53,7 +53,25 @@ class SupabaseM20MessagingRepository(
     override suspend fun createDirectConversation(
         input: CreateM20DirectConversationInput
     ): Result<M20PublicConversation> =
-        M20MessagingErrorMapper.fail("M20_PERMISSION_DENIED")
+        try {
+            val actor = requireActor()
+            M20MessagingValidators.validatePeerUserId(input.peerUserId, actor)?.let {
+                return M20MessagingErrorMapper.fail(it)
+            }
+            val context = input.context?.let { M20ContextHintResolver.resolve(it) }
+            Result.success(
+                remote.createDirectConversation(
+                    peerUserId = input.peerUserId,
+                    contextType = context?.type?.name,
+                    contextTargetId = context?.targetId,
+                    contextDisplayLabel = context?.displayLabel,
+                    contextIsPublic = context?.isPublic ?: true,
+                    conversationType = input.conversationType.name
+                ).toM20PublicConversation()
+            )
+        } catch (t: Throwable) {
+            M20MessagingErrorMapper.failure(t)
+        }
 
     override suspend fun getMessagesPage(
         conversationId: String,
@@ -93,7 +111,10 @@ class SupabaseM20MessagingRepository(
                 remote.sendMessage(
                     conversationId = input.conversationId,
                     content = input.content.trim(),
-                    attachmentRef = input.attachmentRef
+                    attachmentRef = input.attachmentRef,
+                    clientMessageId = input.clientMessageId,
+                    replyToMessageId = input.replyToMessageId,
+                    messageType = input.messageType.name
                 ).toM20PublicMessage()
             )
         } catch (t: Throwable) {
@@ -101,18 +122,40 @@ class SupabaseM20MessagingRepository(
         }
 
     override suspend fun editMessage(input: EditM20MessageInput): Result<M20PublicMessage> =
-        M20MessagingErrorMapper.fail("M20_PERMISSION_DENIED")
+        try {
+            requireActor()
+            M20MessagingValidators.validateEditContent(input.content)?.let {
+                return M20MessagingErrorMapper.fail(it)
+            }
+            Result.success(
+                remote.editMessage(input.messageId, input.content.trim()).toM20PublicMessage()
+            )
+        } catch (t: Throwable) {
+            M20MessagingErrorMapper.failure(t)
+        }
 
     override suspend fun deleteMessage(messageId: String): Result<Unit> =
-        M20MessagingErrorMapper.fail("M20_PERMISSION_DENIED")
+        try {
+            requireActor()
+            remote.deleteMessage(messageId)
+            Result.success(Unit)
+        } catch (t: Throwable) {
+            M20MessagingErrorMapper.failure(t)
+        }
 
     override suspend fun markRead(conversationId: String, lastReadMessageId: String): Result<Unit> =
-        markConversationRead(conversationId)
+        try {
+            requireActor()
+            remote.markConversationRead(conversationId, lastReadMessageId)
+            Result.success(Unit)
+        } catch (t: Throwable) {
+            M20MessagingErrorMapper.failure(t)
+        }
 
     override suspend fun markConversationRead(conversationId: String): Result<Unit> =
         try {
             requireActor()
-            getConversation(conversationId).getOrThrow()
+            remote.markConversationRead(conversationId, null)
             Result.success(Unit)
         } catch (t: Throwable) {
             M20MessagingErrorMapper.failure(t)

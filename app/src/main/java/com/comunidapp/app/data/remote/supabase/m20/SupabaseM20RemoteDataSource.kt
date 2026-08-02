@@ -95,6 +95,9 @@ fun JsonObject.toM20PublicConversation(): M20PublicConversation = M20PublicConve
     id = string("id").orEmpty(),
     peerDisplayName = string("peer_display_name").orEmpty(),
     status = safeEnumConversationStatus(string("status")),
+    conversationType = runCatching {
+        com.comunidapp.app.data.model.M20ConversationType.valueOf(string("conversation_type").orEmpty())
+    }.getOrDefault(com.comunidapp.app.data.model.M20ConversationType.DIRECT),
     contextHint = parseContextHint(),
     lastMessagePreview = string("last_message_preview"),
     lastMessageAt = string("last_message_at")?.let { parseTs(it) },
@@ -119,13 +122,29 @@ fun JsonObject.toM20Conversation(): M20Conversation {
     )
 }
 
+private fun JsonObject.parseReplyReference(): com.comunidapp.app.data.model.M20MessageReplyReference? {
+    val ref = this["reply_reference"]?.jsonObject ?: return null
+    val messageId = ref.string("message_id") ?: return null
+    return com.comunidapp.app.data.model.M20MessageReplyReference(
+        messageId = messageId,
+        preview = ref.string("preview").orEmpty(),
+        senderDisplayName = ref.string("sender_display_name").orEmpty()
+    )
+}
+
 fun JsonObject.toM20PublicMessage(): M20PublicMessage = M20PublicMessage(
     id = string("id").orEmpty(),
     conversationId = string("conversation_id").orEmpty(),
     senderDisplayName = string("sender_display_name").orEmpty(),
     content = string("content").orEmpty(),
     status = safeEnumMessageStatus(string("status")),
+    messageType = runCatching {
+        com.comunidapp.app.data.model.M20MessageType.valueOf(string("message_type").orEmpty())
+    }.getOrDefault(com.comunidapp.app.data.model.M20MessageType.TEXT),
     attachmentRef = string("attachment_ref"),
+    replyReference = parseReplyReference(),
+    editedAt = string("edited_at")?.let { parseTs(it) },
+    isDeleted = boolean("is_deleted"),
     sentAt = parseTs(string("sent_at")),
     isOwnMessage = boolean("is_own_message")
 )
@@ -189,13 +208,62 @@ class SupabaseM20RemoteDataSource {
     suspend fun sendMessage(
         conversationId: String,
         content: String,
-        attachmentRef: String? = null
+        attachmentRef: String? = null,
+        clientMessageId: String? = null,
+        replyToMessageId: String? = null,
+        messageType: String = "TEXT"
     ): JsonObject = decodeOne(
         "m20_send_message",
         buildJsonObject {
             put("p_conversation_id", conversationId)
             put("p_content", content)
             put("p_attachment_ref", attachmentRef)
+            put("p_client_message_id", clientMessageId)
+            put("p_reply_to_message_id", replyToMessageId)
+            put("p_message_type", messageType)
+        }
+    )
+
+    suspend fun createDirectConversation(
+        peerUserId: String,
+        contextType: String? = null,
+        contextTargetId: String? = null,
+        contextDisplayLabel: String? = null,
+        contextIsPublic: Boolean = true,
+        conversationType: String = "DIRECT"
+    ): JsonObject = decodeOne(
+        "m20_create_direct_conversation",
+        buildJsonObject {
+            put("p_peer_user_id", peerUserId)
+            put("p_context_type", contextType)
+            put("p_context_target_id", contextTargetId)
+            put("p_context_display_label", contextDisplayLabel)
+            put("p_context_is_public", contextIsPublic)
+            put("p_conversation_type", conversationType)
+        }
+    )
+
+    suspend fun editMessage(messageId: String, content: String): JsonObject = decodeOne(
+        "m20_edit_message",
+        buildJsonObject {
+            put("p_message_id", messageId)
+            put("p_content", content)
+        }
+    )
+
+    suspend fun deleteMessage(messageId: String): JsonObject = decodeOne(
+        "m20_delete_message",
+        buildJsonObject { put("p_message_id", messageId) }
+    )
+
+    suspend fun markConversationRead(
+        conversationId: String,
+        lastReadMessageId: String? = null
+    ): JsonObject = decodeOne(
+        "m20_mark_conversation_read",
+        buildJsonObject {
+            put("p_conversation_id", conversationId)
+            put("p_last_read_message_id", lastReadMessageId)
         }
     )
 

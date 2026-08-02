@@ -85,9 +85,10 @@ Entrada: **Comunidad → Mensajería (M20)**.
 - UI bandeja + hilo con estados completos
 - Tests `M20MessagingOperationsTest` (25)
 
-## Bloque 4 (pendiente)
+## Bloque 4 (cerrado)
 
-- Aplicación 062 (+ evaluación 063 si brecha persiste)
-- Upload adjuntos M05
-- Recibos READ remotos SQL
-- Retención y políticas
+- Migraciones **062+063** aplicadas staging `wystsapjfpdtoprlmizz`
+- Validación remota **125/125 PASS** · smoke **25/25 PASS**
+- `SupabaseM20MessagingRepository` paridad operaciones Bloque 3
+- Upload adjuntos M05 real — fuera de alcance
+- Retención avanzada — documentado futuro
