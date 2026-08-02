@@ -88,8 +88,11 @@ import com.comunidapp.app.data.repository.M20MessagingMemoryStore
 import com.comunidapp.app.data.repository.M20MessagingRepository
 import com.comunidapp.app.data.repository.M21ReputationMemoryStore
 import com.comunidapp.app.data.repository.M21ReputationRepository
+import com.comunidapp.app.data.repository.M22ProviderMemoryStore
+import com.comunidapp.app.data.repository.M22ProviderRepository
 import com.comunidapp.app.data.repository.MockM20MessagingRepository
 import com.comunidapp.app.data.repository.MockM21ReputationRepository
+import com.comunidapp.app.data.repository.MockM22ProviderRepository
 import com.comunidapp.app.data.repository.SupabaseM20MessagingRepository
 import com.comunidapp.app.data.repository.SupabaseM21ReputationRepository
 import com.comunidapp.app.data.repository.SupabaseM17InKindRepository
@@ -1096,6 +1099,16 @@ object DataProvider {
                 store = m21Store
             )
         }
+    }
+
+    /** M22 Bloque 1 — catálogo local; sin wiring Supabase todavía. */
+    private val m22Store by lazy { M22ProviderMemoryStore() }
+
+    val m22ProviderRepository: M22ProviderRepository by lazy {
+        MockM22ProviderRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+            store = m22Store
+        )
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */

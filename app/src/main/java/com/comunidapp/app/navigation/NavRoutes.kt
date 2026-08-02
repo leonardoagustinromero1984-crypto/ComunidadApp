@@ -130,6 +130,13 @@ object NavRoutes {
     const val ARG_M21_SUBJECT_ID = "id"
     const val ARG_M21_REVIEW_ID = "reviewId"
 
+    // M22 — Prestadores y catálogo de servicios (Bloque 1 local)
+    const val M22_HUB = "m22/hub"
+    const val M22_CATALOG = "m22/providers"
+    const val M22_PROVIDER_DETAIL = "m22/providers/{providerId}"
+    const val M22_MANAGE = "m22/providers/manage"
+    const val ARG_M22_PROVIDER_ID = "providerId"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -599,6 +606,9 @@ object NavRoutes {
 
     fun m21ReviewDetail(reviewId: String) =
         "m21/reviews/${java.net.URLEncoder.encode(reviewId, Charsets.UTF_8.name())}"
+
+    fun m22ProviderDetail(providerId: String) =
+        "m22/providers/${java.net.URLEncoder.encode(providerId, Charsets.UTF_8.name())}"
 
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"
