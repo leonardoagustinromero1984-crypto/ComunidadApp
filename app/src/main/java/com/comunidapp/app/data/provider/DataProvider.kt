@@ -96,10 +96,15 @@ import com.comunidapp.app.data.repository.M23BookingPolicyRepository
 import com.comunidapp.app.data.repository.M23BookingRepository
 import com.comunidapp.app.data.repository.M23SchedulingMemoryStore
 import com.comunidapp.app.data.model.M25MockUsers
+import com.comunidapp.app.data.model.M26MockUsers
 import com.comunidapp.app.data.repository.M25CartRepository
 import com.comunidapp.app.data.repository.M25MarketplaceMemoryStore
 import com.comunidapp.app.data.repository.M25MarketplaceRepository
 import com.comunidapp.app.data.repository.M25OrderRepository
+import com.comunidapp.app.data.repository.M26AiMemoryStore
+import com.comunidapp.app.data.repository.M26AiRepository
+import com.comunidapp.app.data.repository.MockM26AiRepository
+import com.comunidapp.app.data.repository.SupabaseM26AiRepository
 import com.comunidapp.app.data.repository.MockM25CartRepository
 import com.comunidapp.app.data.repository.MockM25MarketplaceRepository
 import com.comunidapp.app.data.repository.MockM25OrderRepository
@@ -1198,6 +1203,22 @@ object DataProvider {
             MockM25OrderRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: M25MockUsers.CUSTOMER },
                 store = m25Store
+            )
+        }
+    }
+
+    /** M26 Bloque 2 — inteligencia asistida remota bajo feature flag; mock conservado para local. */
+    private val m26Store by lazy { M26AiMemoryStore() }
+
+    val m26AiRepository: M26AiRepository by lazy {
+        if (useSupabase) {
+            SupabaseM26AiRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        } else {
+            MockM26AiRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: M26MockUsers.MEMBER },
+                store = m26Store
             )
         }
     }

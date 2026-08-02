@@ -160,6 +160,13 @@ object NavRoutes {
     const val ARG_M25_SHOP_ID = "shopId"
     const val ARG_M25_ORDER_ID = "orderId"
 
+    // M26 — Inteligencia asistida (Bloque 1 local; sin pagos ni M24)
+    const val M26_HUB = "m26/hub"
+    const val M26_VISUAL_MATCHING = "m26/visual-matching"
+    const val M26_DUPLICATES = "m26/duplicates"
+    const val M26_ASSISTANCE = "m26/assistance"
+    const val M26_RECOMMENDATIONS = "m26/recommendations"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
