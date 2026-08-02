@@ -95,6 +95,7 @@ import com.comunidapp.app.data.repository.MockM21ReputationRepository
 import com.comunidapp.app.data.repository.MockM22ProviderRepository
 import com.comunidapp.app.data.repository.SupabaseM20MessagingRepository
 import com.comunidapp.app.data.repository.SupabaseM21ReputationRepository
+import com.comunidapp.app.data.repository.SupabaseM22ProviderRepository
 import com.comunidapp.app.data.repository.SupabaseM17InKindRepository
 import com.comunidapp.app.data.repository.SupabaseM17TransparencyRepository
 import com.comunidapp.app.data.repository.SupabaseM17VolunteerRepository
@@ -1101,14 +1102,20 @@ object DataProvider {
         }
     }
 
-    /** M22 Bloque 1 — catálogo local; sin wiring Supabase todavía. */
+    /** M22 Bloque 2 — catálogo remoto bajo feature flag; mock conservado para local. */
     private val m22Store by lazy { M22ProviderMemoryStore() }
 
     val m22ProviderRepository: M22ProviderRepository by lazy {
-        MockM22ProviderRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
-            store = m22Store
-        )
+        if (useSupabase) {
+            SupabaseM22ProviderRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        } else {
+            MockM22ProviderRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+                store = m22Store
+            )
+        }
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */
