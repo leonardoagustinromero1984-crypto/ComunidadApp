@@ -35,6 +35,9 @@ object M25MarketplaceValidators {
     fun validateReturnReason(reason: String): String? =
         if (reason.trim().length in 10..500 && !unsafe(reason)) null else "M25_INVALID_RETURN"
 
+    fun validateStockAdjustReason(reason: String): String? =
+        if (reason.trim().length in 5..200 && !unsafe(reason)) null else "M25_INVALID_STOCK"
+
     fun validateShopStatusTransition(
         current: M25ShopStatus,
         target: M25ShopStatus,
@@ -74,6 +77,9 @@ object M25MarketplaceErrors {
         "M25_SHOP_NOT_PUBLIC" -> "Esta tienda no está disponible."
         "M25_PROMOTION_INVALID" -> "La promoción no es válida."
         "M25_DUPLICATE_CLIENT_REQUEST" -> "La solicitud ya fue procesada."
+        "M25_INVALID_RETURN" -> "La devolución no es válida."
+        "M25_INVALID_RETURN_TRANSITION" -> "No se puede cambiar el estado de la devolución."
+        "M25_INVALID_PROMOTION" -> "La promoción no es válida."
         else -> "No pudimos completar la operación."
     }
 

@@ -4,15 +4,18 @@ import com.comunidapp.app.domain.m25.M25PrivacySanitizer
 
 /** LeoVer M25 — Marketplace, pedidos y promociones (Bloque 1 local; sin pagos). */
 enum class M25ShopCategory { PET_FOOD, ACCESSORIES, HEALTH, GROOMING, OTHER }
-enum class M25ShopStatus { DRAFT, ACTIVE, SUSPENDED, ARCHIVED }
-enum class M25ProductStatus { ACTIVE, INACTIVE, ARCHIVED }
+enum class M25ShopStatus { DRAFT, ACTIVE, PAUSED, SUSPENDED, CLOSED, ARCHIVED }
+enum class M25ProductStatus { DRAFT, ACTIVE, INACTIVE, OUT_OF_STOCK, PAUSED, ARCHIVED, REMOVED_BY_MODERATION }
 enum class M25PromotionType { PERCENTAGE, FIXED_AMOUNT }
 enum class M25PromotionStatus { DRAFT, ACTIVE, EXPIRED, ARCHIVED }
 enum class M25OrderStatus {
-    DRAFT, SUBMITTED, ACCEPTED, PREPARING, SHIPPED, DELIVERED, CANCELLED, RETURN_REQUESTED, RETURNED
+    DRAFT, SUBMITTED, ACCEPTED, PREPARING, READY_FOR_DISPATCH, SHIPPED, DELIVERED,
+    REJECTED, CANCELLED, CANCELLED_BY_CUSTOMER, CANCELLED_BY_MERCHANT,
+    RETURN_REQUESTED, RETURNED, CLOSED
 }
 enum class M25ReturnStatus { REQUESTED, APPROVED, REJECTED, RECEIVED, CLOSED }
 enum class M25ShippingMode { PICKUP, DELIVERY }
+enum class M25StockMovementType { RESERVE, RELEASE, COMMIT, REPLENISH, ADJUST }
 
 data class M25CatalogFilter(
     val category: M25ShopCategory? = null,
@@ -83,7 +86,53 @@ data class M25OrderLine(
     val productName: String,
     val quantity: Int,
     val unitPriceCents: Long,
-    val currency: String = "ARS"
+    val currency: String = "ARS",
+    val discountCents: Long = 0,
+    val subtotalCents: Long = unitPriceCents * quantity
+)
+
+data class M25OrderHistoryEntry(
+    val id: String,
+    val orderId: String,
+    val fromStatus: M25OrderStatus?,
+    val toStatus: M25OrderStatus,
+    val publicReason: String? = null,
+    val actorRole: String,
+    val createdAt: Long
+)
+
+data class M25ShippingTracking(
+    val status: M25OrderStatus,
+    val trackingCode: String? = null,
+    val carrierText: String? = null,
+    val dispatchedAt: Long? = null,
+    val deliveredAt: Long? = null,
+    val estimatedAt: Long? = null
+)
+
+data class M25StockMovement(
+    val id: String,
+    val productId: String,
+    val movementType: M25StockMovementType,
+    val quantity: Int,
+    val reason: String? = null,
+    val createdAt: Long
+)
+
+data class M25ReturnLine(
+    val productId: String,
+    val quantity: Int
+)
+
+data class M25ReturnRequest(
+    val id: String,
+    val orderId: String,
+    val customerUserId: String,
+    val reason: String,
+    val status: M25ReturnStatus,
+    val lines: List<M25ReturnLine> = emptyList(),
+    val createdAt: Long,
+    val updatedAt: Long
 )
 
 data class M25Order(
@@ -100,18 +149,21 @@ data class M25Order(
     val shippingNotes: String? = null,
     val promotionCode: String? = null,
     val clientRequestId: String? = null,
+    val tracking: M25ShippingTracking? = null,
     val createdAt: Long,
     val updatedAt: Long
 )
 
-data class M25ReturnRequest(
-    val id: String,
-    val orderId: String,
-    val customerUserId: String,
-    val reason: String,
-    val status: M25ReturnStatus,
-    val createdAt: Long,
-    val updatedAt: Long
+data class M25MerchantMetrics(
+    val created: Int = 0,
+    val accepted: Int = 0,
+    val preparing: Int = 0,
+    val dispatched: Int = 0,
+    val delivered: Int = 0,
+    val cancelled: Int = 0,
+    val returns: Int = 0,
+    val unitsSold: Int = 0,
+    val lowStockProducts: Int = 0
 )
 
 data class M25PublicShopListing(
@@ -181,6 +233,30 @@ data class AddM25CartItemInput(
     val productId: String,
     val quantity: Int,
     val clientLineId: String? = null
+)
+
+data class RequestM25ReturnInput(
+    val orderId: String,
+    val reason: String,
+    val lines: List<M25ReturnLine>,
+    val clientRequestId: String? = null
+)
+
+data class UpsertM25PromotionInput(
+    val shopId: String,
+    val promotionId: String? = null,
+    val code: String,
+    val type: M25PromotionType,
+    val value: Long,
+    val startsAt: Long,
+    val endsAt: Long,
+    val status: M25PromotionStatus = M25PromotionStatus.DRAFT
+)
+
+data class AdjustM25StockInput(
+    val productId: String,
+    val newTotal: Int,
+    val reason: String
 )
 
 data class SubmitM25OrderInput(

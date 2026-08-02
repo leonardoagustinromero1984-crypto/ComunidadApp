@@ -33,6 +33,30 @@ fun NavGraphBuilder.m25MarketplaceRoutes(navController: NavHostController) {
         M25ShopDetailScreen(shopId = id, onNavigateBack = { navController.popBackStack() })
     }
     composable(NavRoutes.M25_CART) { M25CartScreen(onNavigateBack = { navController.popBackStack() }) }
-    composable(NavRoutes.M25_ORDERS) { M25OrdersScreen(onNavigateBack = { navController.popBackStack() }) }
-    composable(NavRoutes.M25_MANAGE) { M25ManageScreen(onNavigateBack = { navController.popBackStack() }) }
+    composable(NavRoutes.M25_ORDERS) {
+        M25OrdersScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onOrderClick = { orderId -> navController.navigate(NavRoutes.m25OrderDetail(orderId)) }
+        )
+    }
+    composable(NavRoutes.M25_MANAGE) {
+        M25ManageScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onOpenMerchantOrders = { shopId -> navController.navigate(NavRoutes.m25MerchantOrders(shopId)) }
+        )
+    }
+    composable(
+        NavRoutes.M25_MERCHANT_ORDERS,
+        arguments = listOf(navArgument(NavRoutes.ARG_M25_SHOP_ID) { type = NavType.StringType })
+    ) { entry ->
+        val shopId = URLDecoder.decode(entry.arguments?.getString(NavRoutes.ARG_M25_SHOP_ID).orEmpty(), StandardCharsets.UTF_8.name())
+        M25MerchantOrdersScreen(shopId = shopId, onNavigateBack = { navController.popBackStack() })
+    }
+    composable(
+        NavRoutes.M25_ORDER_DETAIL,
+        arguments = listOf(navArgument(NavRoutes.ARG_M25_ORDER_ID) { type = NavType.StringType })
+    ) { entry ->
+        val orderId = URLDecoder.decode(entry.arguments?.getString(NavRoutes.ARG_M25_ORDER_ID).orEmpty(), StandardCharsets.UTF_8.name())
+        M25OrderDetailScreen(orderId = orderId, onNavigateBack = { navController.popBackStack() })
+    }
 }

@@ -155,7 +155,10 @@ object NavRoutes {
     const val M25_CART = "m25/cart"
     const val M25_ORDERS = "m25/orders"
     const val M25_MANAGE = "m25/shops/manage"
+    const val M25_MERCHANT_ORDERS = "m25/merchant/orders/{shopId}"
+    const val M25_ORDER_DETAIL = "m25/orders/{orderId}"
     const val ARG_M25_SHOP_ID = "shopId"
+    const val ARG_M25_ORDER_ID = "orderId"
 
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
@@ -635,6 +638,12 @@ object NavRoutes {
 
     fun m25ShopDetail(shopId: String) =
         "m25/shops/${java.net.URLEncoder.encode(shopId, Charsets.UTF_8.name())}"
+
+    fun m25MerchantOrders(shopId: String) =
+        "m25/merchant/orders/${java.net.URLEncoder.encode(shopId, Charsets.UTF_8.name())}"
+
+    fun m25OrderDetail(orderId: String) =
+        "m25/orders/${java.net.URLEncoder.encode(orderId, Charsets.UTF_8.name())}"
 
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"

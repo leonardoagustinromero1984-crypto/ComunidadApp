@@ -118,7 +118,7 @@ fun M25CartScreen(onNavigateBack: () -> Unit, viewModel: M25CartViewModel = view
 }
 
 @Composable
-fun M25OrdersScreen(onNavigateBack: () -> Unit, viewModel: M25OrdersViewModel = viewModel()) {
+fun M25OrdersScreen(onNavigateBack: () -> Unit, onOrderClick: (String) -> Unit = {}, viewModel: M25OrdersViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(topBar = { ComunidappTopBar(title = "Mis pedidos", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -128,7 +128,12 @@ fun M25OrdersScreen(onNavigateBack: () -> Unit, viewModel: M25OrdersViewModel = 
                 is M25OrdersUiState.Error -> ErrorState(message = s.message)
                 is M25OrdersUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(s.orders, key = { it.id }) { order ->
-                        Text("${order.shopName} · ${order.status} · ${order.currency} ${order.subtotalCents}")
+                        Card(Modifier.fillMaxWidth().clickable { onOrderClick(order.id) }) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text("${order.shopName} · ${order.status}")
+                                Text("${order.currency} ${order.subtotalCents}")
+                            }
+                        }
                     }
                 }
             }
@@ -137,7 +142,7 @@ fun M25OrdersScreen(onNavigateBack: () -> Unit, viewModel: M25OrdersViewModel = 
 }
 
 @Composable
-fun M25ManageScreen(onNavigateBack: () -> Unit, viewModel: M25ManageViewModel = viewModel()) {
+fun M25ManageScreen(onNavigateBack: () -> Unit, onOpenMerchantOrders: (String) -> Unit = {}, viewModel: M25ManageViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(topBar = { ComunidappTopBar(title = "Mis tiendas", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -151,6 +156,11 @@ fun M25ManageScreen(onNavigateBack: () -> Unit, viewModel: M25ManageViewModel = 
                             Column(Modifier.padding(16.dp)) {
                                 Text(shop.displayName, fontWeight = FontWeight.Bold)
                                 Text("${shop.status}${if (shop.status == M25ShopStatus.DRAFT) " · publicá con productos activos" else ""}")
+                                if (shop.status == M25ShopStatus.ACTIVE || shop.status == M25ShopStatus.PAUSED) {
+                                    OutlinedButton(onClick = { onOpenMerchantOrders(shop.id) }, modifier = Modifier.fillMaxWidth()) {
+                                        Text("Pedidos del comercio")
+                                    }
+                                }
                             }
                         }
                     }
@@ -168,6 +178,50 @@ private fun M25ShopCard(listing: M25PublicShopListing, onClick: () -> Unit) {
             Text("${listing.category} · ${listing.city}")
             listing.priceSummary?.let { Text(it) }
             Text("${listing.productCount} productos")
+        }
+    }
+}
+
+@Composable
+fun M25MerchantOrdersScreen(shopId: String, onNavigateBack: () -> Unit, viewModel: M25MerchantOrdersViewModel = viewModel(factory = M25ViewModelFactories.merchantOrders(shopId))) {
+    val state by viewModel.uiState.collectAsState()
+    Scaffold(topBar = { ComunidappTopBar(title = "Pedidos comercio", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+        Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
+            when (val s = state) {
+                M25MerchantOrdersUiState.Loading -> LoadingState()
+                M25MerchantOrdersUiState.Empty -> EmptyState(title = "Sin pedidos", message = "No hay pedidos para esta tienda.")
+                is M25MerchantOrdersUiState.Error -> ErrorState(message = s.message)
+                is M25MerchantOrdersUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    items(s.orders, key = { it.id }) { order ->
+                        Card(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(12.dp)) {
+                                Text("${order.status} · ${order.lines.size} ítems")
+                                Text("${order.currency} ${order.subtotalCents}")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun M25OrderDetailScreen(orderId: String, onNavigateBack: () -> Unit, viewModel: M25OrderDetailViewModel = viewModel(factory = M25ViewModelFactories.orderDetail(orderId))) {
+    val state by viewModel.uiState.collectAsState()
+    Scaffold(topBar = { ComunidappTopBar(title = "Detalle pedido", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+        Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            when (val s = state) {
+                M25OrderDetailUiState.Loading -> LoadingState()
+                M25OrderDetailUiState.Empty -> EmptyState(title = "No encontrado", message = "El pedido no está disponible.")
+                is M25OrderDetailUiState.Error -> ErrorState(message = s.message)
+                is M25OrderDetailUiState.Content -> {
+                    Text("Estado: ${s.order.status}", fontWeight = FontWeight.Bold)
+                    Text("Subtotal operativo: ${s.order.currency} ${s.order.subtotalCents}")
+                    Text("Pago no gestionado por LeoVer", color = MaterialTheme.colorScheme.primary)
+                    s.order.lines.forEach { line -> Text("${line.productName} x${line.quantity}") }
+                }
+            }
         }
     }
 }

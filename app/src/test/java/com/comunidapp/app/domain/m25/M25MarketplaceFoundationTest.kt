@@ -57,9 +57,10 @@ class M25MarketplaceFoundationTest {
         cartRepo.addItem(AddM25CartItemInput(M25MockProductIds.COLLAR, 1)).getOrThrow()
         val orderRepo = orders(s = s)
         val input = SubmitM25OrderInput(M25MockShopIds.ACTIVE, M25ShippingMode.PICKUP, "CABA", clientRequestId = "req-dup-1")
-        orderRepo.submitFromCart(input).getOrThrow()
-        assertTrue(orderRepo.submitFromCart(input).isFailure)
+        val first = orderRepo.submitFromCart(input).getOrThrow()
+        val second = orderRepo.submitFromCart(input).getOrThrow()
+        assertEquals(first.id, second.id)
     }
-    @Test fun terminalOrderCannotTransition() = assertEquals("M25_ORDER_TERMINAL", M25OrderOperationsService.validateOrderTransition(M25OrderStatus.CANCELLED, M25OrderStatus.SHIPPED))
+    @Test fun terminalOrderCannotTransition() = assertEquals("M25_ORDER_TERMINAL", M25OrderOperationsService.validateOrderTransition(M25OrderStatus.CANCELLED_BY_CUSTOMER, M25OrderStatus.SHIPPED))
     @Test fun deliveredCanRequestReturn() = assertNull(M25OrderOperationsService.validateOrderTransition(M25OrderStatus.DELIVERED, M25OrderStatus.RETURN_REQUESTED))
 }

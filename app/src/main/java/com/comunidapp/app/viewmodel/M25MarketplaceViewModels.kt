@@ -134,8 +134,54 @@ class M25ManageViewModel(private val repository: M25MarketplaceRepository = Data
 object M25ViewModelFactories {
     fun catalog(category: M25ShopCategory? = null) = factory { M25CatalogViewModel(category) }
     fun detail(shopId: String) = factory { M25DetailViewModel(shopId) }
+    fun merchantOrders(shopId: String) = factory { M25MerchantOrdersViewModel(shopId) }
+    fun orderDetail(orderId: String) = factory { M25OrderDetailViewModel(orderId) }
     private fun factory(create: () -> ViewModel): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T = create() as T
+    }
+}
+
+sealed class M25MerchantOrdersUiState {
+    data object Loading : M25MerchantOrdersUiState()
+    data class Content(val orders: List<M25Order>) : M25MerchantOrdersUiState()
+    data object Empty : M25MerchantOrdersUiState()
+    data class Error(val message: String) : M25MerchantOrdersUiState()
+}
+
+class M25MerchantOrdersViewModel(
+    shopId: String,
+    private val repository: M25OrderRepository = DataProvider.m25OrderRepository
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<M25MerchantOrdersUiState>(M25MerchantOrdersUiState.Loading)
+    val uiState: StateFlow<M25MerchantOrdersUiState> = _uiState
+    init {
+        viewModelScope.launch {
+            repository.observeShopOrders(shopId).catch {
+                _uiState.value = M25MerchantOrdersUiState.Error(M25MarketplaceResilience.safeUserMessage(it))
+            }.collect { _uiState.value = if (it.isEmpty()) M25MerchantOrdersUiState.Empty else M25MerchantOrdersUiState.Content(it) }
+        }
+    }
+}
+
+sealed class M25OrderDetailUiState {
+    data object Loading : M25OrderDetailUiState()
+    data class Content(val order: M25Order) : M25OrderDetailUiState()
+    data object Empty : M25OrderDetailUiState()
+    data class Error(val message: String) : M25OrderDetailUiState()
+}
+
+class M25OrderDetailViewModel(
+    orderId: String,
+    private val repository: M25OrderRepository = DataProvider.m25OrderRepository
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<M25OrderDetailUiState>(M25OrderDetailUiState.Loading)
+    val uiState: StateFlow<M25OrderDetailUiState> = _uiState
+    init {
+        viewModelScope.launch {
+            repository.observeOrder(orderId).catch {
+                _uiState.value = M25OrderDetailUiState.Error(M25MarketplaceResilience.safeUserMessage(it))
+            }.collect { _uiState.value = it?.let(M25OrderDetailUiState::Content) ?: M25OrderDetailUiState.Empty }
+        }
     }
 }
