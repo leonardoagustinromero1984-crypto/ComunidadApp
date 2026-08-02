@@ -31,6 +31,12 @@ Pendiente commit `feat(m23): add booking operations and provider agenda`
 .\gradlew.bat compileLocalDebugKotlin — PASS
 ```
 
+## Incidencia transitoria de test (resuelta)
+
+- `completeTerminal` falló una vez: fixture con reserva CONFIRMED en horario futuro.
+- Regla `M23_COMPLETE_TOO_EARLY` correcta; fixture corregido.
+- Regresión M23 final: **84/84 PASS**. No es defecto abierto.
+
 ## Brechas 068 documentadas para Bloque 4
 
 - Reprogramación RPC

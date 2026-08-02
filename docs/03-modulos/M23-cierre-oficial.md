@@ -12,7 +12,11 @@ M23 Agenda y reservas queda **cerrado oficialmente** tras Bloques 1–4:
 | 1 | `4051a81` | Fundación mock, dominio, UI base |
 | 2 | `ce84f21` | Migración 068, repositorios Supabase |
 | 3 | `0377e98` | Operaciones completas, agenda, M20/M21/M06 |
-| 4 | pendiente | 069, staging, validación 110/110 |
+| 4 | `e1379e5` | 069, staging, validación 110/110, smoke 25/25, cierre |
+
+## HEAD cierre oficial
+
+`e1379e5717e596a37f866e999d3c3cb7eef8f6c2`
 
 ## Migraciones
 
@@ -35,9 +39,13 @@ Advisory lock transaccional + EXCLUDE gist + idempotencia `client_request_id`.
 
 ## Validación
 
-- SQL/RLS/privacidad: **110/110 PASS**
-- Smoke remoto: **25/25 PASS**
+- SQL/RLS/privacidad: **110/110 PASS** (2026-08-02)
+- Smoke remoto repositorio: **25/25 PASS**
 - Tests unitarios M23: **84/84 PASS**
+
+## Incidencias transitorias
+
+Documentadas en `M23-Bloque-4-validacion.md`. Resueltas; no bloquean cierre.
 
 ## Deuda no bloqueante
 

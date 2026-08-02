@@ -11,7 +11,37 @@
 
 Registro `schema_migrations`: 068, 069 (post 067).
 
-Validación: `scripts/ops/m23_remote_validation_068_069.sql` — **110/110 PASS**.
+Validación: `scripts/ops/m23_remote_validation_068_069.sql` — **110/110 PASS** (2026-08-02).
+
+## Verificación read-only (sin re-aplicar SQL)
+
+Consultas de confirmación permitidas:
+
+```sql
+-- schema_migrations
+select version from supabase_migrations.schema_migrations
+where version in ('068','069') order by version;
+
+-- tablas + RLS (esperado: 4 filas, rowsecurity = true)
+select tablename, rowsecurity from pg_tables
+where schemaname = 'public' and tablename like 'm23_%';
+
+-- RPC M23 (esperado: 18 funciones públicas m23_*)
+select count(*) from pg_proc p
+join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'public' and p.proname like 'm23_%';
+
+-- columnas 069
+select column_name from information_schema.columns
+where table_name = 'm23_bookings'
+  and column_name in ('pet_id','rescheduled_from_booking_id');
+```
+
+**No repetir** ejecución de archivos `068`/`069` ni `migration repair` si ya registradas.
+
+## Incidencia transitoria CLI
+
+Timeout puntual al registrar `schema_migrations` (conexión CLI, no error SQL). Reintento exitoso. Ver `M23-Bloque-4-validacion.md`.
 
 ## Prerrequisitos
 
