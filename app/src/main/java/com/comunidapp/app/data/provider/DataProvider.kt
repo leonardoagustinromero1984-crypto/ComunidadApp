@@ -87,6 +87,7 @@ import com.comunidapp.app.data.repository.SupabaseM19SocialRepository
 import com.comunidapp.app.data.repository.M20MessagingMemoryStore
 import com.comunidapp.app.data.repository.M20MessagingRepository
 import com.comunidapp.app.data.repository.MockM20MessagingRepository
+import com.comunidapp.app.data.repository.SupabaseM20MessagingRepository
 import com.comunidapp.app.data.repository.SupabaseM17InKindRepository
 import com.comunidapp.app.data.repository.SupabaseM17TransparencyRepository
 import com.comunidapp.app.data.repository.SupabaseM17VolunteerRepository
@@ -1061,14 +1062,20 @@ object DataProvider {
         }
     }
 
-    /** M20 — mensajería (Bloque 1 mock). */
+    /** M20 — mensajería; mock o Supabase según flag. */
     private val m20Store by lazy { M20MessagingMemoryStore() }
 
     val m20MessagingRepository: M20MessagingRepository by lazy {
-        MockM20MessagingRepository(
-            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
-            store = m20Store
-        )
+        if (useSupabase) {
+            SupabaseM20MessagingRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        } else {
+            MockM20MessagingRepository(
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+                store = m20Store
+            )
+        }
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */

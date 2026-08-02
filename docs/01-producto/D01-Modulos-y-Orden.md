@@ -63,7 +63,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 - **M17 Donaciones y voluntariado:** campañas, bienes, dinero, tiempo y trazabilidad — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 054–057); pagos reales **M24**.
 - **M18 Eventos:** creación, cupos, inscripción, recordatorios y check-in — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 058–059 aplicadas; validación 110/110 PASS).
 - **M19 Red social y contenido:** publicaciones, comentarios, reacciones, feed y reportes — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 060–061; validación 105/105 PASS).
-- **M20 Mensajería:** conversaciones, adjuntos, bloqueos, contexto y retención — **Bloque 1 en desarrollo**; Bloque 3 no iniciado.
+- **M20 Mensajería:** conversaciones, adjuntos, bloqueos, contexto y retención — **Bloques 1–2 implementados** (mock + persistencia SQL 062 **no aplicada**); Bloque 3 no iniciado; **no cerrado**.
 - **M21 Reputación, verificaciones y reseñas:** identidad, matrículas, reseñas transaccionales y apelaciones.
 
 ### R6 — Servicios
