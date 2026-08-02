@@ -28,26 +28,36 @@
 | 19 | Ruta `m20/inbox` + alias `m20/conversations` | ✓ |
 | 20 | Seeds mock 20 escenarios (direct/org/context/archived/…) | ✓ |
 
-## Fuera de alcance (documentado)
+## Incidencia de validación local (tests)
 
-- Aplicación migración **062** en staging — pendiente Bloque 4
+| Evento | Detalle |
+|--------|---------|
+| Runs interrumpidos | >9 min sin completar; exit `4294967295` |
+| Interpretación | Interrupción de proceso, **no** fallo de assertions |
+| Causa funcional | `validateReplyTarget(null)` rechazaba envíos sin reply |
+| Fix | Guard en `sendMessage`: validar reply solo si `replyToMessageId != null` |
+| Resultado post-fix | 46/46 PASS (~47 s) |
+
+## Fuera de alcance (documentado al cierre B3)
+
+- Aplicación migración **062** en staging — completada en **Bloque 4**
 - Upload adjuntos M05 real — referencias only
 - Retención avanzada / políticas SQL
-- Recibos READ remotos completos en Supabase repo (stub parcial)
+- Recibos READ remotos — completados en B4 vía RPC `m20_mark_conversation_read`
 
 ## Persistencia 062 vs dominio Bloque 3
 
-| Función | 062 | Brecha Bloque 3 |
-|---------|-----|-----------------|
-| Conversaciones DIRECT básicas | Sí | — |
-| `conversationType` / tipos mensaje ampliados | No | **063 futuro** |
-| `clientMessageId` idempotente | No | **063 futuro** |
-| Edición / borrado lógico | No | **063 futuro** |
-| Archivo per-participante | No | **063 futuro** |
-| Context CAMPAIGN / SOCIAL_POST | No | **063 futuro** |
+| Función | 062 | Brecha Bloque 3 | Resolución |
+|---------|-----|-----------------|------------|
+| Conversaciones DIRECT básicas | Sí | — | 062 |
+| `conversationType` / tipos mensaje ampliados | No | Sí | **063** (B4) |
+| `clientMessageId` idempotente | No | Sí | **063** (B4) |
+| Edición / borrado lógico | No | Sí | **063** (B4) |
+| Archivo per-participante | No | Sí | **063** (B4) |
+| Context CAMPAIGN / SOCIAL_POST | No | Sí | **063** (B4) |
 
-**062 no aplicada** al cierre Bloque 3 (correcto). No se creó 063 en este bloque.
+**062 no aplicada** al cierre de implementación Bloque 3 (correcto). **063** creada y aplicada en Bloque 4.
 
 ## Bloque 4
 
-No iniciado al cierre de auditoría Bloque 3.
+Cerrado — ver `M20-Bloque-4-validacion.md` y `M20-cierre-oficial.md`.
