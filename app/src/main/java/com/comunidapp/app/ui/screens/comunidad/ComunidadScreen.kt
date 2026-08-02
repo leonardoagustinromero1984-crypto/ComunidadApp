@@ -55,6 +55,7 @@ fun ComunidadScreen(
     onOpenReputation: () -> Unit = {},
     onOpenProviders: () -> Unit = {},
     onOpenBookings: () -> Unit = {},
+    onOpenMarketplace: () -> Unit = {},
     viewModel: ComunidadViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -114,6 +115,9 @@ fun ComunidadScreen(
                 OutlinedButton(onClick = onOpenBookings, modifier = Modifier.fillMaxWidth()) {
                     Text("Agenda y reservas")
                 }
+                OutlinedButton(onClick = onOpenMarketplace, modifier = Modifier.fillMaxWidth()) {
+                    Text("Marketplace (M25)")
+                }
                 Text(
                     text = "Todavía no hay servicios en esta categoría",
                     style = MaterialTheme.typography.bodyLarge
@@ -166,6 +170,11 @@ fun ComunidadScreen(
                 item {
                     OutlinedButton(onClick = onOpenBookings, modifier = Modifier.fillMaxWidth()) {
                         Text("Agenda y reservas")
+                    }
+                }
+                item {
+                    OutlinedButton(onClick = onOpenMarketplace, modifier = Modifier.fillMaxWidth()) {
+                        Text("Marketplace (M25)")
                     }
                 }
                 items(services, key = { it.id }) { service ->

@@ -148,6 +148,15 @@ object NavRoutes {
     const val M23_MANAGE_BOOKING_DETAIL = "m23/manage/bookings"
     const val ARG_M23_BOOKING_ID = "bookingId"
 
+    // M25 — Marketplace, pedidos y promociones (Bloque 1 local; sin pagos)
+    const val M25_HUB = "m25/hub"
+    const val M25_CATALOG = "m25/shops"
+    const val M25_SHOP_DETAIL = "m25/shops/{shopId}"
+    const val M25_CART = "m25/cart"
+    const val M25_ORDERS = "m25/orders"
+    const val M25_MANAGE = "m25/shops/manage"
+    const val ARG_M25_SHOP_ID = "shopId"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -623,6 +632,9 @@ object NavRoutes {
 
     fun m23BookingDetail(bookingId: String) =
         "m23/bookings/${java.net.URLEncoder.encode(bookingId, Charsets.UTF_8.name())}"
+
+    fun m25ShopDetail(shopId: String) =
+        "m25/shops/${java.net.URLEncoder.encode(shopId, Charsets.UTF_8.name())}"
 
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"

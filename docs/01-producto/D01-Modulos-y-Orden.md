@@ -68,11 +68,11 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 
 ### R6 — Servicios
 - **M22 Prestadores y catálogo de servicios:** perfil, sedes, categorías, cobertura y precios — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 066–067; validación 75/75 + smoke 25/25).
-- **M23 Agenda y reservas:** disponibilidad, reserva, confirmación, cambios y asistencia — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 068–069; validación 110/110 + smoke 25/25).
-- **M24 Pagos, comisiones y suscripciones:** pago, split, reembolso, conciliación y planes — **preauditoría documentada**; implementación **no iniciada**.
+- **M23 Agenda y reservas:** disponibilidad, reserva, confirmación, cambios y asistencia — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 068–069; validación 110/110 + smoke 25/25; SHA cierre `f293c97`).
+- **M24 Pagos, comisiones y suscripciones:** pago, split, reembolso, conciliación y planes — **POSPUESTO por decisión de producto**; preauditoría documentada; implementación **no iniciada**; pagos no definidos.
 
 ### R7 — Comercio
-- **M25 Marketplace, pedidos y promociones:** catálogo, stock, carrito, pedido, envío y devolución.
+- **M25 Marketplace, pedidos y promociones:** catálogo, stock, carrito, pedido, envío y devolución — **próximo módulo autorizado** (sin pagos; M24 pospuesto).
 
 ### R8 — Escala inteligente
 - **M26 Inteligencia artificial:** matching visual, duplicados, asistencia y recomendaciones evaluadas.
@@ -80,7 +80,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 
 ## Camino crítico
 
-M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/M15/M16 → M17–M21 → M22–M24 → M25 → M26/M27.
+M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/M15/M16 → M17–M21 → M22–M23 → **M25** → M26/M27. **M24 pospuesto** (pagos no definidos).
 
 ## Contenido obligatorio de cada especificación de módulo
 
@@ -112,7 +112,13 @@ M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/
 
 ## Próximo módulo
 
-**M00 — Fundación técnica de Leover.** El proyecto Android ya existe; no debe recrearse. Se auditará lo construido y se completarán arquitectura, entornos, calidad, backend base, CI/CD, manejo de errores, observabilidad y reglas del repositorio.
+**M25 — Marketplace, pedidos y promociones.** Catálogo, stock, carrito, pedido, envío y devolución **sin cobros reales** (M24 pospuesto). No iniciar pagos, PSP ni campos financieros hasta nueva autorización explícita.
+
+## Módulos posteriores pendientes de definición operativa
+
+- **M24 Pagos** — pospuesto; preauditoría en `M24-auditoria-preliminar.md`.
+- **M26 Inteligencia artificial** — catálogo D01; no iniciado.
+- **M27 Integraciones y API pública** — catálogo D01; no iniciado.
 
 ## Nota de implementación técnica (LeoVer)
 
