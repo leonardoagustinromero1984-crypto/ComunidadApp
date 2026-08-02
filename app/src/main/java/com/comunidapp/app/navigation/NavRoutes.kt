@@ -114,6 +114,11 @@ object NavRoutes {
     const val M19_POST_EDIT = "m19/posts/{postId}/edit"
     const val ARG_M19_POST_ID = "postId"
 
+    // M20 — Mensajería (Bloque 1 local)
+    const val M20_CONVERSATIONS = "m20/conversations"
+    const val M20_THREAD = "m20/conversations/{conversationId}"
+    const val ARG_M20_CONVERSATION_ID = "conversationId"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -574,6 +579,9 @@ object NavRoutes {
 
     fun m19PostEdit(postId: String) =
         "m19/posts/${java.net.URLEncoder.encode(postId, Charsets.UTF_8.name())}/edit"
+
+    fun m20Thread(conversationId: String) =
+        "m20/conversations/${java.net.URLEncoder.encode(conversationId, Charsets.UTF_8.name())}"
 
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"

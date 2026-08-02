@@ -50,6 +50,7 @@ private val comunidadCategories = listOf(
 fun ComunidadScreen(
     onServiceClick: (String) -> Unit,
     onOpenSocialFeed: () -> Unit = {},
+    onOpenMessaging: () -> Unit = {},
     viewModel: ComunidadViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -97,6 +98,9 @@ fun ComunidadScreen(
                 Button(onClick = onOpenSocialFeed, modifier = Modifier.fillMaxWidth()) {
                     Text("Red social (M19)")
                 }
+                Button(onClick = onOpenMessaging, modifier = Modifier.fillMaxWidth()) {
+                    Text("Mensajería (M20)")
+                }
                 Text(
                     text = "Todavía no hay servicios en esta categoría",
                     style = MaterialTheme.typography.bodyLarge
@@ -120,6 +124,14 @@ fun ComunidadScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Red social (M19)")
+                    }
+                }
+                item {
+                    Button(
+                        onClick = onOpenMessaging,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Mensajería (M20)")
                     }
                 }
                 items(services, key = { it.id }) { service ->

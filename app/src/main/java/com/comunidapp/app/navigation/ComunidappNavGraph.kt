@@ -521,7 +521,8 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.COMUNIDAD) {
         ComunidadScreen(
             onServiceClick = { id -> navController.navigate(NavRoutes.serviceDetail(id)) },
-            onOpenSocialFeed = { navController.navigate(NavRoutes.M19_FEED) }
+            onOpenSocialFeed = { navController.navigate(NavRoutes.M19_FEED) },
+            onOpenMessaging = { navController.navigate(NavRoutes.M20_CONVERSATIONS) }
         )
     }
     composable(NavRoutes.MY_BUSINESS) {
@@ -922,6 +923,7 @@ private fun NavGraphBuilder.mainAppRoutes(
     m17DonationRoutes(navController)
     m18EventRoutes(navController)
     m19SocialRoutes(navController)
+    m20MessagingRoutes(navController)
     composable(
         route = NavRoutes.ADOPTION_DETAIL,
         arguments = listOf(navArgument(NavRoutes.ARG_ADOPTION_ID) { type = NavType.StringType })

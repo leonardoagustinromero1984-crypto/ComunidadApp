@@ -84,6 +84,9 @@ import com.comunidapp.app.data.repository.M19SocialRepository
 import com.comunidapp.app.data.repository.MockM19SocialAuthorityPolicy
 import com.comunidapp.app.data.repository.MockM19SocialRepository
 import com.comunidapp.app.data.repository.SupabaseM19SocialRepository
+import com.comunidapp.app.data.repository.M20MessagingMemoryStore
+import com.comunidapp.app.data.repository.M20MessagingRepository
+import com.comunidapp.app.data.repository.MockM20MessagingRepository
 import com.comunidapp.app.data.repository.SupabaseM17InKindRepository
 import com.comunidapp.app.data.repository.SupabaseM17TransparencyRepository
 import com.comunidapp.app.data.repository.SupabaseM17VolunteerRepository
@@ -1056,6 +1059,16 @@ object DataProvider {
                 authority = m19Authority
             )
         }
+    }
+
+    /** M20 — mensajería (Bloque 1 mock). */
+    private val m20Store by lazy { M20MessagingMemoryStore() }
+
+    val m20MessagingRepository: M20MessagingRepository by lazy {
+        MockM20MessagingRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+            store = m20Store
+        )
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */
