@@ -1,26 +1,7 @@
-# M22 — Aplicación de migración 066 en Supabase
+# Operación — migración 066 (M22 prestadores)
 
-## Estado
+**Estado:** 066 aplicada en staging (2026-08-02).
 
-`066_m22_service_providers_and_catalog.sql` fue creada localmente para M22 Bloque 2. No fue aplicada a staging ni producción.
+Ver procedimiento completo y migración correctiva 067 en:
 
-## Precondiciones
-
-- Revisar que el proyecto contenga las migraciones 001–065.
-- Confirmar la existencia de `organizations`, `users`, `organization_branches` y los permisos M03.
-- Autorizar explícitamente el entorno objetivo.
-
-## Aplicación
-
-Ejecutar la migración por el flujo habitual de Supabase. No editar ni reordenar migraciones ya aplicadas.
-
-## Verificación posterior
-
-- Comprobar que las tres tablas `m22_*` tengan RLS activo.
-- Confirmar que `anon` no tenga privilegios sobre las tablas.
-- Ejecutar los RPC públicos y autenticados descritos en la validación M22 Bloque 2.
-- Verificar que los importes retornados y persistidos estén en centavos.
-
-## Rollback
-
-La migración es forward-only. Si se requiere corregirla, crear una migración posterior; no eliminar ni modificar 066 aplicada.
+`docs/05-operacion/M22-aplicacion-migraciones-066-067-supabase.md`
