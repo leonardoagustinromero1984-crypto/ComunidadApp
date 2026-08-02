@@ -6,9 +6,13 @@ import com.comunidapp.app.data.model.SubmitM21ReviewInput
 import com.comunidapp.app.data.repository.M21ReputationMemoryStore
 import com.comunidapp.app.data.repository.M21ReputationValidators
 import com.comunidapp.app.data.repository.MockM21ReputationRepository
+import com.comunidapp.app.data.repository.SupabaseM21ReputationRepository
 import com.comunidapp.app.data.remote.supabase.m21.M21ReputationErrorMapper
+import com.comunidapp.app.data.remote.supabase.m21.toM21PublicReview
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -75,5 +79,38 @@ class M21ReputationFoundationTest {
         val second = repository.submitReview(input)
         assertTrue(second.isFailure)
         assertEquals("M21_DUPLICATE_REVIEW", second.exceptionOrNull()?.let { M21ReputationErrorMapper.codeOf(it) })
+    }
+
+    @Test
+    fun publicReviewMapperOmitsReviewerUserId() {
+        val json = buildJsonObject {
+            put("id", "rev-1")
+            put("target_type", "SERVICE")
+            put("target_display_label", "Turno")
+            put("reviewer_display_name", "Ana")
+            put("rating", 5)
+            put("content", "Excelente")
+            put("status", "PUBLISHED")
+            put("created_at", "2026-01-01T12:00:00Z")
+            put("is_own_review", false)
+        }
+        val public = json.toM21PublicReview()
+        assertFalse(public.toString().contains("reviewer_user_id"))
+    }
+
+    @Test
+    fun remoteRepositoryRequiresAuthentication() = runBlocking {
+        val repo = SupabaseM21ReputationRepository(actorUserId = { null })
+        val result = repo.submitReview(
+            SubmitM21ReviewInput(
+                targetType = M21ReviewTargetType.SERVICE,
+                targetId = "x",
+                targetDisplayLabel = "X",
+                rating = 5,
+                content = "Hola"
+            )
+        )
+        assertTrue(result.isFailure)
+        assertEquals("NOT_AUTHENTICATED", result.exceptionOrNull()?.let { M21ReputationErrorMapper.codeOf(it) })
     }
 }

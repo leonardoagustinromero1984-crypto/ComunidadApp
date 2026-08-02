@@ -64,7 +64,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 - **M18 Eventos:** creación, cupos, inscripción, recordatorios y check-in — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 058–059 aplicadas; validación 110/110 PASS).
 - **M19 Red social y contenido:** publicaciones, comentarios, reacciones, feed y reportes — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 060–061; validación 105/105 PASS).
 - **M20 Mensajería:** conversaciones, adjuntos, bloqueos, contexto — **cerrado** (Bloques 1–4; 062+063 staging; validación 125/125 + smoke 25/25).
-- **M21 Reputación, verificaciones y reseñas:** identidad, matrículas, reseñas transaccionales y apelaciones.
+- **M21 Reputación, verificaciones y reseñas:** identidad, matrículas, reseñas transaccionales y apelaciones — **Bloques 1–2 implementados** (064 creada, no aplicada; Bloque 3 no iniciado).
 
 ### R6 — Servicios
 - **M22 Prestadores y catálogo de servicios:** perfil, sedes, categorías, cobertura y precios.
