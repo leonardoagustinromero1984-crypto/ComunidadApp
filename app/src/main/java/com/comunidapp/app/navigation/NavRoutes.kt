@@ -103,6 +103,7 @@ object NavRoutes {
     const val M18_EVENTS_MANAGE = "m18/events/manage"
     const val M18_EVENTS_CREATE = "m18/events/create"
     const val M18_EVENT_EDIT = "m18/events/{eventId}/edit"
+    const val M18_EVENT_OPERATIONS = "m18/events/{eventId}/operations"
     const val ARG_M18_EVENT_ID = "eventId"
 
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
@@ -556,6 +557,9 @@ object NavRoutes {
 
     fun m18EventEdit(eventId: String) =
         "m18/events/${java.net.URLEncoder.encode(eventId, Charsets.UTF_8.name())}/edit"
+
+    fun m18EventOperations(eventId: String) =
+        "m18/events/${java.net.URLEncoder.encode(eventId, Charsets.UTF_8.name())}/operations"
 
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"

@@ -29,10 +29,14 @@ enum class M18RegistrationStatus {
     WAITLISTED,
     CANCELLED,
     CHECKED_IN,
-    NO_SHOW;
+    ATTENDED,
+    NO_SHOW,
+    REJECTED;
 
-    val isTerminal: Boolean get() = this == CANCELLED || this == CHECKED_IN || this == NO_SHOW
-    val occupiesCapacity: Boolean get() = this == REGISTERED || this == CHECKED_IN
+    val isTerminal: Boolean
+        get() = this in setOf(CANCELLED, ATTENDED, NO_SHOW, REJECTED)
+    val occupiesCapacity: Boolean
+        get() = this in setOf(REGISTERED, CHECKED_IN, ATTENDED)
 }
 
 enum class M18ReminderStatus {
@@ -137,6 +141,46 @@ data class M18PublicRegistrationStats(
     val checkedInCount: Int
 )
 
+/** Resumen operativo para panel organizador (sin PII). */
+data class M18EventOperationsSummary(
+    val eventId: String,
+    val maxCapacity: Int,
+    val registeredCount: Int,
+    val waitlistCount: Int,
+    val cancelledCount: Int,
+    val checkedInCount: Int,
+    val attendedCount: Int,
+    val noShowCount: Int,
+    val rejectedCount: Int = 0,
+    val availableSpots: Int,
+    val occupancyPercent: Int,
+    val registrationToAttendancePercent: Int,
+    val hasCapacityInconsistency: Boolean
+)
+
+/** Ítem administrativo mínimo — alias permitido, sin userId expuesto en UI. */
+data class M18EventParticipantItem(
+    val registrationId: String,
+    val displayAlias: String,
+    val status: M18RegistrationStatus,
+    val registeredAt: Long,
+    val checkedInAt: Long? = null,
+    val canCheckIn: Boolean = false,
+    val canMarkAttendance: Boolean = false,
+    val canMarkNoShow: Boolean = false
+)
+
+enum class M18ParticipantVisibility {
+    HIDDEN,
+    ALIAS_ONLY,
+    ORGANIZER_ONLY
+}
+
+data class M18EventRegistrationFilter(
+    val status: M18RegistrationStatus? = null,
+    val includeCancelled: Boolean = false
+)
+
 data class M18EventReminder(
     val id: String,
     val eventId: String,
@@ -153,7 +197,9 @@ data class M18EventSearchFilter(
     val activeOnly: Boolean = true,
     val completedOnly: Boolean = false,
     val withOpenSpotsOnly: Boolean = false,
-    val upcomingOnly: Boolean = true
+    val upcomingOnly: Boolean = true,
+    val locationQuery: String = "",
+    val freeOnly: Boolean = false
 )
 
 object M18PermissionCodes {
@@ -165,8 +211,13 @@ object M18M06Hooks {
     const val EVENT_CREATED = "M18_EVENT_CREATED"
     const val EVENT_PUBLISHED = "M18_EVENT_PUBLISHED"
     const val REGISTRATION_CONFIRMED = "M18_REGISTRATION_CONFIRMED"
+    const val WAITLIST_JOINED = "M18_WAITLIST_JOINED"
+    const val WAITLIST_PROMOTED = "M18_WAITLIST_PROMOTED"
+    const val REGISTRATION_CANCELLED = "M18_REGISTRATION_CANCELLED"
     const val REMINDER_SCHEDULED = "M18_REMINDER_SCHEDULED"
     const val CHECK_IN_RECORDED = "M18_CHECK_IN_RECORDED"
+    const val EVENT_SCHEDULE_CHANGED = "M18_EVENT_SCHEDULE_CHANGED"
+    const val EVENT_CANCELLED = "M18_EVENT_CANCELLED"
     const val INFRASTRUCTURE = "M18_NOTIFICATION_INFRASTRUCTURE"
 }
 
@@ -242,7 +293,10 @@ object M18CapacityCalculator {
         M18PublicRegistrationStats(
             registeredCount = registrations.count { it.status.occupiesCapacity },
             waitlistCount = registrations.count { it.status == M18RegistrationStatus.WAITLISTED },
-            checkedInCount = registrations.count { it.status == M18RegistrationStatus.CHECKED_IN }
+            checkedInCount = registrations.count {
+                it.status == M18RegistrationStatus.CHECKED_IN ||
+                    it.status == M18RegistrationStatus.ATTENDED
+            }
         )
 }
 

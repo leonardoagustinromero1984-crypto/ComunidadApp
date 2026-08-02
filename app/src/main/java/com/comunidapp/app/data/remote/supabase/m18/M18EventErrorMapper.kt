@@ -30,6 +30,12 @@ object M18EventErrorMapper {
         "M18_CHECKIN_WINDOW_CLOSED",
         "M18_REMINDER_ALREADY_SCHEDULED",
         "M18_NOTIFICATION_INFRASTRUCTURE_UNAVAILABLE",
+        "M18_INVALID_ATTENDANCE_STATE",
+        "M18_INVALID_NOSHOW_STATE",
+        "M18_EVENT_NOT_ENDED",
+        "M18_ATTENDANCE_REMOTE_PENDING",
+        "M18_NOSHOW_REMOTE_PENDING",
+        "M18_PROMOTE_MANUAL_REMOTE_UNAVAILABLE",
         "NOT_AUTHENTICATED"
     )
 
@@ -56,6 +62,15 @@ object M18EventErrorMapper {
         "M18_REMINDER_ALREADY_SCHEDULED" -> "El recordatorio ya está programado."
         "M18_NOTIFICATION_INFRASTRUCTURE_UNAVAILABLE" ->
             "Las notificaciones no están disponibles para eventos."
+        "M18_INVALID_ATTENDANCE_STATE" -> "Esta inscripción no puede marcarse como asistente."
+        "M18_INVALID_NOSHOW_STATE" -> "Esta inscripción no puede marcarse como ausente."
+        "M18_EVENT_NOT_ENDED" -> "El evento aún no finalizó."
+        "M18_ATTENDANCE_REMOTE_PENDING" ->
+            "Marcar asistencia requiere activación remota pendiente (058 sin ATTENDED)."
+        "M18_NOSHOW_REMOTE_PENDING" ->
+            "Marcar no-show requiere RPC remota pendiente."
+        "M18_PROMOTE_MANUAL_REMOTE_UNAVAILABLE" ->
+            "La promoción manual de lista de espera ocurre al cancelar (058)."
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión."
         else -> "No se pudo completar la operación."
     }

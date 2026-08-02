@@ -5,10 +5,13 @@ import com.comunidapp.app.data.model.M18CommunityEvent
 import com.comunidapp.app.data.model.M18EventCapacitySummary
 import com.comunidapp.app.data.model.M18EventRegistration
 import com.comunidapp.app.data.model.M18EventReminder
+import com.comunidapp.app.data.model.M18EventOperationsSummary
+import com.comunidapp.app.data.model.M18EventParticipantItem
 import com.comunidapp.app.data.model.M18EventSearchFilter
 import com.comunidapp.app.data.model.M18EventStatus
 import com.comunidapp.app.data.model.M18PublicEvent
 import com.comunidapp.app.data.model.M18PublicRegistrationStats
+import com.comunidapp.app.data.model.M18RegistrationStatus
 import com.comunidapp.app.data.model.UpdateM18EventCapacityInput
 import com.comunidapp.app.data.model.UpdateM18EventDetailsInput
 import com.comunidapp.app.data.provider.DataProvider
@@ -19,8 +22,9 @@ import com.comunidapp.app.data.remote.supabase.m18.toM18EventCapacitySummary
 import com.comunidapp.app.data.remote.supabase.m18.toM18EventRegistration
 import com.comunidapp.app.data.remote.supabase.m18.toM18PublicEvent
 import com.comunidapp.app.data.remote.supabase.m18.toM18PublicRegistrationStats
-import com.comunidapp.app.domain.organization.OrganizationId
+import com.comunidapp.app.domain.m18.M18EventOperationsService
 import com.comunidapp.app.domain.organization.authorization.OrganizationPermissionCode
+import com.comunidapp.app.domain.organization.OrganizationId
 import com.comunidapp.app.domain.user.AccountStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -238,6 +242,43 @@ class SupabaseM18EventRepository(
     } catch (t: Throwable) {
         M18EventErrorMapper.failure(t)
     }
+
+    override suspend fun observeOperationsSummary(eventId: String): Result<M18EventOperationsSummary> =
+        try {
+            val event = remote.getEvent(eventId).toM18CommunityEvent()
+            val regs = remote.listRegistrationsForManage(eventId).map { it.toM18EventRegistration() }
+            Result.success(M18EventOperationsService.buildOperationsSummary(event, regs))
+        } catch (t: Throwable) {
+            M18EventErrorMapper.failure(t)
+        }
+
+    override suspend fun listParticipantItems(eventId: String): Result<List<M18EventParticipantItem>> =
+        try {
+            val event = remote.getEvent(eventId).toM18CommunityEvent()
+            val items = remote.listRegistrationsForManage(eventId).map { dto ->
+                M18EventOperationsService.toParticipantItem(dto.toM18EventRegistration(), event)
+            }
+            Result.success(items)
+        } catch (t: Throwable) {
+            M18EventErrorMapper.failure(t)
+        }
+
+    override suspend fun promoteNextWaitlisted(eventId: String): Result<M18EventRegistration?> =
+        M18EventErrorMapper.fail("M18_PROMOTE_MANUAL_REMOTE_UNAVAILABLE")
+
+    override suspend fun markAttendance(registrationId: String): Result<M18EventRegistration> =
+        M18EventErrorMapper.fail("M18_ATTENDANCE_REMOTE_PENDING")
+
+    override suspend fun markNoShow(registrationId: String): Result<M18EventRegistration> =
+        M18EventErrorMapper.fail("M18_NOSHOW_REMOTE_PENDING")
+
+    override suspend fun refreshOperations(eventId: String): Result<M18EventOperationsSummary> =
+        observeOperationsSummary(eventId)
+
+    override fun observeRegistrationForCurrentUser(eventId: String): Flow<M18RegistrationStatus?> =
+        flow {
+            emit(getMyRegistration(eventId)?.status)
+        }
 
     private suspend fun getEventInternal(eventId: String): Result<M18CommunityEvent> = try {
         if (eventId.isBlank()) M18EventErrorMapper.fail("M18_EVENT_NOT_FOUND")

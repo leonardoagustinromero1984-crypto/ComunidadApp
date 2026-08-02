@@ -5,6 +5,8 @@ import com.comunidapp.app.data.model.CreateM18EventInput
 import com.comunidapp.app.data.model.M18CapacityCalculator
 import com.comunidapp.app.data.model.M18CommunityEvent
 import com.comunidapp.app.data.model.M18EventCapacitySummary
+import com.comunidapp.app.data.model.M18EventOperationsSummary
+import com.comunidapp.app.data.model.M18EventParticipantItem
 import com.comunidapp.app.data.model.M18EventReference
 import com.comunidapp.app.data.model.M18EventRegistration
 import com.comunidapp.app.data.model.M18EventReminder
@@ -22,6 +24,7 @@ import com.comunidapp.app.data.model.UpdateM18EventCapacityInput
 import com.comunidapp.app.data.model.UpdateM18EventDetailsInput
 import com.comunidapp.app.data.remote.supabase.m18.M18EventErrorMapper
 import com.comunidapp.app.data.remote.supabase.m18.M18Exception
+import com.comunidapp.app.domain.m18.M18EventOperationsService
 import com.comunidapp.app.domain.organization.OrganizationType
 import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
@@ -210,10 +213,30 @@ class M18EventMemoryStore {
             startsOffsetDays = 5
         )
 
-        listOf(eFair, eVolunteer, eFull, ePaused, eCompleted, eCancelled, eDraft, eOpenSpots)
+        val eEmpty = event(
+            id = nextId("m18_event"),
+            org = M18MockOrganizations.ORG_SUR,
+            title = "Voluntariado sin inscriptos",
+            type = M18EventType.VOLUNTEER_DAY,
+            status = M18EventStatus.PUBLISHED,
+            capacity = 10,
+            actor = actorUserId,
+            now = now,
+            startsOffsetDays = 12
+        )
+
+        listOf(eFair, eVolunteer, eFull, ePaused, eCompleted, eCancelled, eDraft, eOpenSpots, eEmpty)
             .forEach { upsertEvent(it) }
 
-        seedRegistrations(eFair.id, eVolunteer.id, eFull.id, eCompleted.id, actorUserId, now)
+        seedRegistrations(
+            fairId = eFair.id,
+            volunteerId = eVolunteer.id,
+            fullId = eFull.id,
+            completedId = eCompleted.id,
+            openSpotsId = eOpenSpots.id,
+            actorUserId = actorUserId,
+            now = now
+        )
     }
 
     private fun event(
@@ -259,6 +282,7 @@ class M18EventMemoryStore {
         volunteerId: String,
         fullId: String,
         completedId: String,
+        openSpotsId: String,
         actorUserId: String,
         now: Long
     ) {
@@ -271,8 +295,15 @@ class M18EventMemoryStore {
             reg(fullId, "user_full_2", M18RegistrationStatus.REGISTERED, "U2", now),
             reg(fullId, "user_full_3", M18RegistrationStatus.REGISTERED, "U3", now),
             reg(fullId, "user_wait_1", M18RegistrationStatus.WAITLISTED, "Wait 1", now),
-            reg(completedId, "user_done_1", M18RegistrationStatus.CHECKED_IN, "Asistente", now - 604_800_000L),
-            reg(completedId, "user_done_2", M18RegistrationStatus.NO_SHOW, "Ausente", now - 604_800_000L)
+            reg(openSpotsId, "user_cancelled", M18RegistrationStatus.CANCELLED, "Cancelado", now - 86_400_000L),
+            reg(completedId, "user_done_1", M18RegistrationStatus.ATTENDED, "Asistente", now - 604_800_000L).copy(
+                checkedInAt = now - 604_800_000L
+            ),
+            reg(completedId, "user_done_2", M18RegistrationStatus.NO_SHOW, "Ausente", now - 604_800_000L),
+            reg(completedId, "user_checked", M18RegistrationStatus.CHECKED_IN, "Check-in", now - 604_800_000L).copy(
+                checkedInAt = now - 604_700_000L
+            ),
+            reg(fairId, "user_rejected", M18RegistrationStatus.REJECTED, "Rechazado", now - 172_800_000L)
         )
         samples.forEach { upsertRegistration(it) }
     }
@@ -319,6 +350,13 @@ interface M18EventRepository {
     suspend fun isOrganizationEligible(organizationId: String): Boolean
     suspend fun getMyRegistration(eventId: String): M18EventRegistration?
     suspend fun listRegistrationsForManage(eventId: String): Result<List<M18EventRegistration>>
+    suspend fun observeOperationsSummary(eventId: String): Result<M18EventOperationsSummary>
+    suspend fun listParticipantItems(eventId: String): Result<List<M18EventParticipantItem>>
+    suspend fun promoteNextWaitlisted(eventId: String): Result<M18EventRegistration?>
+    suspend fun markAttendance(registrationId: String): Result<M18EventRegistration>
+    suspend fun markNoShow(registrationId: String): Result<M18EventRegistration>
+    suspend fun refreshOperations(eventId: String): Result<M18EventOperationsSummary>
+    fun observeRegistrationForCurrentUser(eventId: String): Flow<M18RegistrationStatus?>
 }
 
 interface M18EventAuthorityPolicy {
@@ -396,7 +434,14 @@ class MockM18EventRepository(
                         e.description.contains(filter.query, ignoreCase = true)
                 }
                 .filter { e -> filter.type == null || e.eventType == filter.type }
-                .filter { e -> filter.organizationId == null || e.organizationId == filter.organizationId }
+                .filter { e ->
+                    filter.organizationId == null || e.organizationId == filter.organizationId
+                }
+                .filter { e ->
+                    filter.locationQuery.isBlank() ||
+                        e.reference.publicLocationText?.contains(filter.locationQuery, ignoreCase = true) == true ||
+                        e.venueName?.contains(filter.locationQuery, ignoreCase = true) == true
+                }
                 .filter { e ->
                     !filter.withOpenSpotsOnly || summaryFor(e).availableSpots > 0
                 }
@@ -537,22 +582,22 @@ class MockM18EventRepository(
                 M18EventValidators.validateRegistration(event)?.let { failM18(it) }
                 val existing = store.registrationForUser(eventId, actor)
                 if (existing != null) {
+                    if (M18EventOperationsService.shouldIdempotentReturn(existing)) {
+                        store.recordIdempotentRetry()
+                        return@runCatching existing
+                    }
                     when (existing.status) {
-                        M18RegistrationStatus.REGISTERED,
-                        M18RegistrationStatus.WAITLISTED,
-                        M18RegistrationStatus.CHECKED_IN -> {
-                            store.recordIdempotentRetry()
-                            return@runCatching existing
-                        }
-                        M18RegistrationStatus.CANCELLED -> { /* allow re-register */ }
-                        M18RegistrationStatus.NO_SHOW -> { /* allow re-register */ }
+                        M18RegistrationStatus.CANCELLED,
+                        M18RegistrationStatus.NO_SHOW,
+                        M18RegistrationStatus.REJECTED -> { /* allow re-register */ }
+                        else -> { /* handled above */ }
                     }
                 }
-                val summary = summaryFor(event)
-                val status = when {
-                    summary.availableSpots > 0 -> M18RegistrationStatus.REGISTERED
-                    summary.isWaitlistOpen -> M18RegistrationStatus.WAITLISTED
-                    else -> failM18("M18_EVENT_FULL")
+                val regs = store.registrationsFor(eventId)
+                val status = try {
+                    M18EventOperationsService.resolveRegistrationStatus(event, existing, regs)
+                } catch (_: IllegalStateException) {
+                    failM18("M18_EVENT_FULL")
                 }
                 val registration = M18EventRegistration(
                     id = existing?.id ?: store.nextId("m18_reg"),
@@ -592,13 +637,36 @@ class MockM18EventRepository(
 
     private fun promoteWaitlist(eventId: String) {
         val event = store.events.value.firstOrNull { it.id == eventId } ?: return
-        val summary = summaryFor(event)
-        if (summary.availableSpots <= 0) return
-        val nextWait = store.registrationsFor(eventId)
-            .filter { it.status == M18RegistrationStatus.WAITLISTED }
-            .minByOrNull { it.registeredAt } ?: return
-        store.upsertRegistration(nextWait.copy(status = M18RegistrationStatus.REGISTERED))
+        val promoted = M18EventOperationsService.promoteNextWaitlisted(
+            event, store.registrationsFor(eventId)
+        ) ?: return
+        store.upsertRegistration(promoted)
     }
+
+    override suspend fun promoteNextWaitlisted(eventId: String): Result<M18EventRegistration?> =
+        store.withLock {
+            runCatching {
+                val actor = requireActor()
+                val event = getEventOrFail(eventId)
+                requireManage(event.organizationId, actor)
+                val before = store.registrationsFor(eventId)
+                val promoted = M18EventOperationsService.promoteNextWaitlisted(event, before)
+                if (promoted == null) {
+                    store.recordIdempotentRetry()
+                    return@runCatching null
+                }
+                val existing = before.firstOrNull { it.id == promoted.id }
+                if (existing?.status == M18RegistrationStatus.REGISTERED) {
+                    store.recordIdempotentRetry()
+                    return@runCatching existing
+                }
+                store.upsertRegistration(promoted)
+                promoted
+            }.fold(
+                onSuccess = { Result.success(it) },
+                onFailure = { M18EventErrorMapper.failure(it) }
+            )
+        }
 
     override suspend fun checkInRegistration(registrationId: String): Result<M18EventRegistration> =
         store.withLock {
@@ -686,6 +754,83 @@ class MockM18EventRepository(
             onSuccess = { Result.success(it) },
             onFailure = { M18EventErrorMapper.failure(it) }
         )
+
+    override suspend fun observeOperationsSummary(eventId: String): Result<M18EventOperationsSummary> =
+        runCatching {
+            val actor = requireActor()
+            val event = getEventOrFail(eventId)
+            requireManage(event.organizationId, actor)
+            M18EventOperationsService.buildOperationsSummary(event, store.registrationsFor(eventId))
+        }.fold(
+            onSuccess = { Result.success(it) },
+            onFailure = { M18EventErrorMapper.failure(it) }
+        )
+
+    override suspend fun listParticipantItems(eventId: String): Result<List<M18EventParticipantItem>> =
+        runCatching {
+            val actor = requireActor()
+            val event = getEventOrFail(eventId)
+            requireManage(event.organizationId, actor)
+            store.registrationsFor(eventId).map {
+                M18EventOperationsService.toParticipantItem(it, event)
+            }
+        }.fold(
+            onSuccess = { Result.success(it) },
+            onFailure = { M18EventErrorMapper.failure(it) }
+        )
+
+    override suspend fun markAttendance(registrationId: String): Result<M18EventRegistration> =
+        store.withLock {
+            runCatching {
+                val actor = requireActor()
+                val registration = store.registrations.value.firstOrNull { it.id == registrationId }
+                    ?: failM18("M18_REGISTRATION_NOT_FOUND")
+                val event = getEventOrFail(registration.eventId)
+                requireManage(event.organizationId, actor)
+                if (registration.status == M18RegistrationStatus.ATTENDED) {
+                    store.recordIdempotentRetry()
+                    return@runCatching registration
+                }
+                M18EventOperationsService.validateMarkAttendance(event, registration)?.let { failM18(it) }
+                val updated = registration.copy(status = M18RegistrationStatus.ATTENDED)
+                store.upsertRegistration(updated)
+                updated
+            }.fold(
+                onSuccess = { Result.success(it) },
+                onFailure = { M18EventErrorMapper.failure(it) }
+            )
+        }
+
+    override suspend fun markNoShow(registrationId: String): Result<M18EventRegistration> =
+        store.withLock {
+            runCatching {
+                val actor = requireActor()
+                val registration = store.registrations.value.firstOrNull { it.id == registrationId }
+                    ?: failM18("M18_REGISTRATION_NOT_FOUND")
+                val event = getEventOrFail(registration.eventId)
+                requireManage(event.organizationId, actor)
+                if (registration.status == M18RegistrationStatus.NO_SHOW) {
+                    store.recordIdempotentRetry()
+                    return@runCatching registration
+                }
+                M18EventOperationsService.validateMarkNoShow(event, registration)?.let { failM18(it) }
+                val updated = registration.copy(status = M18RegistrationStatus.NO_SHOW)
+                store.upsertRegistration(updated)
+                updated
+            }.fold(
+                onSuccess = { Result.success(it) },
+                onFailure = { M18EventErrorMapper.failure(it) }
+            )
+        }
+
+    override suspend fun refreshOperations(eventId: String): Result<M18EventOperationsSummary> =
+        observeOperationsSummary(eventId)
+
+    override fun observeRegistrationForCurrentUser(eventId: String): Flow<M18RegistrationStatus?> =
+        store.registrations.map { list ->
+            val actor = actorUserId() ?: return@map null
+            list.firstOrNull { it.eventId == eventId && it.userId == actor }?.status
+        }
 
     private suspend fun transition(
         eventId: String,

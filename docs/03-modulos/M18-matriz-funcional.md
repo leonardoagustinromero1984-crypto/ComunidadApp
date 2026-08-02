@@ -1,4 +1,4 @@
-# M18 — Matriz funcional (Bloques 1–2)
+# M18 — Matriz funcional (Bloques 1–3)
 
 ## Alcance Bloque 1
 
@@ -7,6 +7,10 @@ Fundación local/mock de **eventos comunitarios gratuitos** vinculados a organiz
 ## Alcance Bloque 2
 
 Persistencia Supabase (migración 058, **no aplicada**): tablas, RLS, RPCs, repositorio remoto. Mock conservado.
+
+## Alcance Bloque 3
+
+Participación operativa: `M18EventOperationsService`, panel organizador, estados `ATTENDED`/`REJECTED` (mock), resumen `M18EventOperationsSummary`, UI participante con privacidad. **059 no requerida.**
 
 ## Tipos de evento
 
@@ -38,8 +42,10 @@ Persistencia Supabase (migración 058, **no aplicada**): tablas, RLS, RPCs, repo
 | `REGISTERED` | Sí | No |
 | `WAITLISTED` | No | No |
 | `CANCELLED` | No | Sí |
-| `CHECKED_IN` | Sí | Sí |
+| `CHECKED_IN` | Sí | No |
+| `ATTENDED` | Sí (mock) | Sí |
 | `NO_SHOW` | No | Sí |
+| `REJECTED` | No | Sí |
 
 ## Cupos y lista de espera
 

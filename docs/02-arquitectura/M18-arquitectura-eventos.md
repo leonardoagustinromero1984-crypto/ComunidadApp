@@ -19,7 +19,7 @@ Un evento **nunca** crea organización, usuario, mascota ni refugio.
 M18CommunityEvent
         │
         ├── M18EventRegistration (interno: userId, attendeeDisplayName)
-        │         └── estados: REGISTERED | WAITLISTED | CANCELLED | CHECKED_IN | NO_SHOW
+        │         └── estados: REGISTERED | WAITLISTED | CANCELLED | CHECKED_IN | ATTENDED | NO_SHOW | REJECTED
         │
         └── M18EventReminder (mock M06)
                   └── estados: SCHEDULED | SENT | SKIPPED
@@ -35,7 +35,7 @@ UI (M18EventScreens)
   → M18EventRepository (interface)
   → MockM18EventRepository | SupabaseM18EventRepository
   → M18EventMemoryStore (mock) | SupabaseM18RemoteDataSource (RPC)
-  → M18EventValidators / M18CapacityCalculator
+  → M18EventValidators / M18CapacityCalculator / M18EventOperationsService
   → M18PrivacySanitizer → M18PublicEvent
 ```
 

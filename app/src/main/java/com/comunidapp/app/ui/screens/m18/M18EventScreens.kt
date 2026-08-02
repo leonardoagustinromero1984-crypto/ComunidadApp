@@ -46,6 +46,9 @@ import com.comunidapp.app.viewmodel.M18EventEditUiState
 import com.comunidapp.app.viewmodel.M18EventEditViewModel
 import com.comunidapp.app.viewmodel.M18EventManageUiState
 import com.comunidapp.app.viewmodel.M18EventManageViewModel
+import com.comunidapp.app.viewmodel.M18EventOperationsUiState
+import com.comunidapp.app.viewmodel.M18EventOperationsViewModel
+import com.comunidapp.app.viewmodel.M18EventParticipationUiState
 import com.comunidapp.app.viewmodel.M18EventsListUiState
 import com.comunidapp.app.viewmodel.M18EventsListViewModel
 import com.comunidapp.app.viewmodel.m18EventStatusLabel
@@ -170,6 +173,7 @@ fun M18EventDetailScreen(
     val event by viewModel.event.collectAsState()
     val stats by viewModel.stats.collectAsState()
     val myRegistration by viewModel.myRegistration.collectAsState()
+    val participation by viewModel.participation.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val message by viewModel.message.collectAsState()
 
@@ -218,18 +222,25 @@ fun M18EventDetailScreen(
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.tertiary
                     )
+                    Text(
+                        "La lista de participantes no es pública. Solo ves tu estado de inscripción.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.tertiary
+                    )
                     myRegistration?.let {
                         Text("Tu inscripción: ${m18RegistrationStatusLabel(it)}")
                     }
-                    when (myRegistration) {
-                        null, M18RegistrationStatus.CANCELLED, M18RegistrationStatus.NO_SHOW -> {
-                            if (e.isRegistrationOpen) {
-                                Button(onClick = { viewModel.register() }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Inscribirme")
-                                }
+                    when (participation) {
+                        M18EventParticipationUiState.Loading -> Unit
+                        M18EventParticipationUiState.NotAuthenticated -> {
+                            Text("Iniciá sesión para inscribirte.")
+                        }
+                        M18EventParticipationUiState.Available -> {
+                            Button(onClick = { viewModel.register() }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Inscribirme")
                             }
                         }
-                        M18RegistrationStatus.REGISTERED, M18RegistrationStatus.WAITLISTED -> {
+                        M18EventParticipationUiState.Registered -> {
                             OutlinedButton(onClick = { viewModel.cancelRegistration() }, modifier = Modifier.fillMaxWidth()) {
                                 Text("Cancelar inscripción")
                             }
@@ -237,8 +248,27 @@ fun M18EventDetailScreen(
                                 Text("Programar recordatorio (mock M06)")
                             }
                         }
-                        M18RegistrationStatus.CHECKED_IN -> {
-                            Text("Check-in completado", color = MaterialTheme.colorScheme.primary)
+                        M18EventParticipationUiState.Waitlisted -> {
+                            Text("Estás en lista de espera.", color = MaterialTheme.colorScheme.primary)
+                            OutlinedButton(onClick = { viewModel.cancelRegistration() }, modifier = Modifier.fillMaxWidth()) {
+                                Text("Salir de la lista de espera")
+                            }
+                        }
+                        M18EventParticipationUiState.Cancelled -> {
+                            if (e.isRegistrationOpen) {
+                                Button(onClick = { viewModel.register() }, modifier = Modifier.fillMaxWidth()) {
+                                    Text("Volver a inscribirme")
+                                }
+                            }
+                        }
+                        M18EventParticipationUiState.EventFull -> {
+                            Text("Evento completo — sin lista de espera disponible.")
+                        }
+                        M18EventParticipationUiState.EventClosed -> {
+                            Text("Inscripciones cerradas para este evento.")
+                        }
+                        is M18EventParticipationUiState.Error -> {
+                            Text((participation as M18EventParticipationUiState.Error).message, color = MaterialTheme.colorScheme.error)
                         }
                     }
                     message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
@@ -249,9 +279,101 @@ fun M18EventDetailScreen(
 }
 
 @Composable
+fun M18EventOperationsScreen(
+    eventId: String,
+    onNavigateBack: () -> Unit,
+    viewModel: M18EventOperationsViewModel = viewModel(factory = M18EventOperationsViewModel.factory(eventId))
+) {
+    val state by viewModel.uiState.collectAsState()
+    val message by viewModel.message.collectAsState()
+
+    LaunchedEffect(message) {
+        if (message != null) viewModel.consumeMessage()
+    }
+
+    Scaffold(
+        topBar = {
+            ComunidappTopBar(
+                title = "Panel operativo",
+                showBackButton = true,
+                onBackClick = onNavigateBack
+            )
+        }
+    ) { padding ->
+        Column(
+            Modifier.padding(padding).padding(16.dp).fillMaxSize(),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                "Panel organizador — alias permitidos, sin emails ni teléfonos.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.primary
+            )
+            when (val s = state) {
+                M18EventOperationsUiState.Loading -> LoadingState()
+                M18EventOperationsUiState.PermissionDenied ->
+                    ErrorState(message = "No tenés permiso para operar este evento.")
+                is M18EventOperationsUiState.Error -> ErrorState(message = s.message, onRetry = { viewModel.refresh() })
+                is M18EventOperationsUiState.Content -> {
+                    val summary = s.summary
+                    Card(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Text("Resumen operativo", fontWeight = FontWeight.Bold)
+                            Text("Capacidad: ${summary.registeredCount}/${summary.maxCapacity}")
+                            Text("Lista de espera: ${summary.waitlistCount}")
+                            Text("Cancelados: ${summary.cancelledCount}")
+                            Text("Check-ins: ${summary.checkedInCount}")
+                            Text("Asistentes: ${summary.attendedCount}")
+                            Text("No-shows: ${summary.noShowCount}")
+                            Text("Cupos disponibles: ${summary.availableSpots}")
+                            Text("Ocupación: ${summary.occupancyPercent}%")
+                            if (summary.hasCapacityInconsistency) {
+                                Text("⚠ Inconsistencia de capacidad detectada", color = MaterialTheme.colorScheme.error)
+                            }
+                        }
+                    }
+                    OutlinedButton(onClick = { viewModel.promoteWaitlist() }) {
+                        Text("Promover lista de espera (manual)")
+                    }
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(s.participants, key = { it.registrationId }) { p ->
+                            Card(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Text(p.displayAlias, fontWeight = FontWeight.Medium)
+                                    Text(m18RegistrationStatusLabel(p.status), style = MaterialTheme.typography.bodySmall)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        if (p.canCheckIn) {
+                                            OutlinedButton(onClick = { viewModel.checkIn(p.registrationId) }) {
+                                                Text("Check-in")
+                                            }
+                                        }
+                                        if (p.canMarkAttendance) {
+                                            OutlinedButton(onClick = { viewModel.markAttendance(p.registrationId) }) {
+                                                Text("Asistió")
+                                            }
+                                        }
+                                        if (p.canMarkNoShow) {
+                                            OutlinedButton(onClick = { viewModel.markNoShow(p.registrationId) }) {
+                                                Text("No-show")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+        }
+    }
+}
+
+@Composable
 fun M18EventManageScreen(
     onNavigateBack: () -> Unit,
     onEditEvent: (String) -> Unit,
+    onOperations: (String) -> Unit,
     onCreate: () -> Unit,
     viewModel: M18EventManageViewModel = viewModel(factory = M18EventManageViewModel.factory())
 ) {
@@ -295,6 +417,7 @@ fun M18EventManageScreen(
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                     OutlinedButton(onClick = { onEditEvent(ev.id) }) { Text("Editar") }
+                                    OutlinedButton(onClick = { onOperations(ev.id) }) { Text("Operaciones") }
                                     if (ev.status == com.comunidapp.app.data.model.M18EventStatus.DRAFT) {
                                         Button(onClick = { viewModel.publish(ev.id) }) { Text("Publicar") }
                                     }

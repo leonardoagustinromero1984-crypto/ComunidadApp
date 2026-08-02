@@ -70,12 +70,15 @@ object M18EventValidators {
         return null
     }
 
-    fun validateRegistration(event: M18CommunityEvent): String? = when (event.status) {
-        M18EventStatus.PUBLISHED -> null
-        M18EventStatus.PAUSED -> "M18_EVENT_NOT_OPEN"
-        M18EventStatus.COMPLETED, M18EventStatus.CANCELLED -> "M18_EVENT_TERMINAL"
-        else -> "M18_EVENT_NOT_PUBLIC"
-    }
+    fun validateRegistration(event: M18CommunityEvent, now: Long = System.currentTimeMillis()): String? =
+        when (event.status) {
+            M18EventStatus.PUBLISHED -> {
+                if (now > event.endsAt) "M18_EVENT_TERMINAL" else null
+            }
+            M18EventStatus.PAUSED -> "M18_EVENT_NOT_OPEN"
+            M18EventStatus.COMPLETED, M18EventStatus.CANCELLED -> "M18_EVENT_TERMINAL"
+            else -> "M18_EVENT_NOT_PUBLIC"
+        }
 
     fun validateCheckIn(
         event: M18CommunityEvent,

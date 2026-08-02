@@ -7,7 +7,8 @@ import com.comunidapp.app.data.model.CreateM18EventInput
 import com.comunidapp.app.data.model.M18CommunityEvent
 import com.comunidapp.app.data.model.M18EventCapacitySummary
 import com.comunidapp.app.data.model.M18EventReference
-import com.comunidapp.app.data.model.M18EventRegistration
+import com.comunidapp.app.data.model.M18EventOperationsSummary
+import com.comunidapp.app.data.model.M18EventParticipantItem
 import com.comunidapp.app.data.model.M18EventSearchFilter
 import com.comunidapp.app.data.model.M18EventStatus
 import com.comunidapp.app.data.model.M18EventType
@@ -68,6 +69,16 @@ class M18EventsListViewModel(
         load()
     }
 
+    fun setOrganization(organizationId: String?) {
+        _filter.value = _filter.value.copy(organizationId = organizationId)
+        load()
+    }
+
+    fun setLocationQuery(value: String) {
+        _filter.value = _filter.value.copy(locationQuery = value)
+        load()
+    }
+
     fun clearFilters() {
         _filter.value = M18EventSearchFilter()
         load()
@@ -114,21 +125,55 @@ class M18EventDetailViewModel(
     private val _loading = MutableStateFlow(true)
     val loading: StateFlow<Boolean> = _loading.asStateFlow()
 
+    private val _participation = MutableStateFlow<M18EventParticipationUiState>(M18EventParticipationUiState.Loading)
+    val participation: StateFlow<M18EventParticipationUiState> = _participation.asStateFlow()
+
     init { refresh() }
 
     fun refresh() {
         viewModelScope.launch {
             _loading.value = true
+            _participation.value = M18EventParticipationUiState.Loading
             repository.getPublicEventById(eventId)
-                .onSuccess { _event.value = it }
-                .onFailure {
-                    _message.value = M18EventErrorMapper.userMessage(M18EventErrorMapper.codeOf(it))
+                .onSuccess { ev ->
+                    _event.value = ev
+                    repository.observePublicRegistrationStats(eventId)
+                        .onSuccess { _stats.value = it }
+                    val reg = repository.getMyRegistration(eventId)?.status
+                    _myRegistration.value = reg
+                    _participation.value = resolveParticipation(ev, reg)
                 }
-            repository.observePublicRegistrationStats(eventId)
-                .onSuccess { _stats.value = it }
-            _myRegistration.value = repository.getMyRegistration(eventId)?.status
+                .onFailure {
+                    val code = M18EventErrorMapper.codeOf(it)
+                    _message.value = M18EventErrorMapper.userMessage(code)
+                    _participation.value = when (code) {
+                        "NOT_AUTHENTICATED" -> M18EventParticipationUiState.NotAuthenticated
+                        "M18_EVENT_TERMINAL" -> M18EventParticipationUiState.EventClosed
+                        else -> M18EventParticipationUiState.Error(
+                            M18EventErrorMapper.userMessage(code)
+                        )
+                    }
+                }
             _loading.value = false
         }
+    }
+
+    private fun resolveParticipation(
+        event: M18PublicEvent,
+        registration: M18RegistrationStatus?
+    ): M18EventParticipationUiState = when {
+        registration == M18RegistrationStatus.REGISTERED -> M18EventParticipationUiState.Registered
+        registration == M18RegistrationStatus.WAITLISTED -> M18EventParticipationUiState.Waitlisted
+        registration == M18RegistrationStatus.CANCELLED -> M18EventParticipationUiState.Cancelled
+        registration == M18RegistrationStatus.CHECKED_IN ||
+            registration == M18RegistrationStatus.ATTENDED ->
+            M18EventParticipationUiState.Registered
+        registration == M18RegistrationStatus.REJECTED -> M18EventParticipationUiState.EventClosed
+        !event.isRegistrationOpen && event.isFull && !event.isWaitlistOpen ->
+            M18EventParticipationUiState.EventFull
+        event.status.isTerminal -> M18EventParticipationUiState.EventClosed
+        event.isRegistrationOpen -> M18EventParticipationUiState.Available
+        else -> M18EventParticipationUiState.EventClosed
     }
 
     fun register() {
@@ -263,6 +308,115 @@ class M18EventManageViewModel(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 M18EventManageViewModel() as T
+        }
+    }
+}
+
+sealed class M18EventParticipationUiState {
+    data object Loading : M18EventParticipationUiState()
+    data object Available : M18EventParticipationUiState()
+    data object Registered : M18EventParticipationUiState()
+    data object Waitlisted : M18EventParticipationUiState()
+    data object Cancelled : M18EventParticipationUiState()
+    data object EventFull : M18EventParticipationUiState()
+    data object EventClosed : M18EventParticipationUiState()
+    data object NotAuthenticated : M18EventParticipationUiState()
+    data class Error(val message: String) : M18EventParticipationUiState()
+}
+
+sealed class M18EventOperationsUiState {
+    data object Loading : M18EventOperationsUiState()
+    data object PermissionDenied : M18EventOperationsUiState()
+    data class Content(
+        val summary: M18EventOperationsSummary,
+        val participants: List<M18EventParticipantItem>
+    ) : M18EventOperationsUiState()
+    data class Error(val message: String) : M18EventOperationsUiState()
+}
+
+class M18EventOperationsViewModel(
+    private val eventId: String,
+    private val repository: M18EventRepository = DataProvider.m18EventRepository
+) : ViewModel() {
+    private val _uiState = MutableStateFlow<M18EventOperationsUiState>(M18EventOperationsUiState.Loading)
+    val uiState: StateFlow<M18EventOperationsUiState> = _uiState.asStateFlow()
+    private val _message = MutableStateFlow<String?>(null)
+    val message: StateFlow<String?> = _message.asStateFlow()
+
+    init { refresh() }
+
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.value = M18EventOperationsUiState.Loading
+            val summary = repository.observeOperationsSummary(eventId)
+            val participants = repository.listParticipantItems(eventId)
+            when {
+                summary.isFailure && M18EventErrorMapper.codeOf(summary.exceptionOrNull()!!) ==
+                    "M18_PERMISSION_DENIED" ->
+                    _uiState.value = M18EventOperationsUiState.PermissionDenied
+                summary.isSuccess && participants.isSuccess ->
+                    _uiState.value = M18EventOperationsUiState.Content(
+                        summary.getOrThrow(),
+                        participants.getOrThrow()
+                    )
+                else -> _uiState.value = M18EventOperationsUiState.Error(
+                    M18EventErrorMapper.userMessage(
+                        M18EventErrorMapper.codeOf(
+                            summary.exceptionOrNull() ?: participants.exceptionOrNull()!!
+                        )
+                    )
+                )
+            }
+        }
+    }
+
+    fun checkIn(registrationId: String) {
+        viewModelScope.launch {
+            repository.checkInRegistration(registrationId)
+                .onSuccess { refresh() }
+                .onFailure {
+                    _message.value = M18EventErrorMapper.userMessage(M18EventErrorMapper.codeOf(it))
+                }
+        }
+    }
+
+    fun markAttendance(registrationId: String) {
+        viewModelScope.launch {
+            repository.markAttendance(registrationId)
+                .onSuccess { refresh() }
+                .onFailure {
+                    _message.value = M18EventErrorMapper.userMessage(M18EventErrorMapper.codeOf(it))
+                }
+        }
+    }
+
+    fun markNoShow(registrationId: String) {
+        viewModelScope.launch {
+            repository.markNoShow(registrationId)
+                .onSuccess { refresh() }
+                .onFailure {
+                    _message.value = M18EventErrorMapper.userMessage(M18EventErrorMapper.codeOf(it))
+                }
+        }
+    }
+
+    fun promoteWaitlist() {
+        viewModelScope.launch {
+            repository.promoteNextWaitlisted(eventId)
+                .onSuccess { refresh() }
+                .onFailure {
+                    _message.value = M18EventErrorMapper.userMessage(M18EventErrorMapper.codeOf(it))
+                }
+        }
+    }
+
+    fun consumeMessage() { _message.value = null }
+
+    companion object {
+        fun factory(eventId: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                M18EventOperationsViewModel(eventId) as T
         }
     }
 }
@@ -413,5 +567,7 @@ fun m18RegistrationStatusLabel(status: M18RegistrationStatus): String = when (st
     M18RegistrationStatus.WAITLISTED -> "Lista de espera"
     M18RegistrationStatus.CANCELLED -> "Cancelado"
     M18RegistrationStatus.CHECKED_IN -> "Check-in realizado"
+    M18RegistrationStatus.ATTENDED -> "Asistió"
     M18RegistrationStatus.NO_SHOW -> "No asistió"
+    M18RegistrationStatus.REJECTED -> "Rechazado"
 }
