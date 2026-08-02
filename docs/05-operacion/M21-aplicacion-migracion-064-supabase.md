@@ -11,19 +11,16 @@ supabase/migrations/064_m21_reputation_reviews_and_verifications.sql
 ## Estado
 
 ```text
-064 — CREADA, NO APLICADA
+064 — APLICADA EN STAGING (2026-08-02)
 ```
+
+Ver también `docs/05-operacion/M21-aplicacion-migraciones-064-065-supabase.md` para el procedimiento completo con 065.
 
 ## Prerrequisitos
 
 Migraciones 001–063 aplicadas en orden.
 
-## Procedimiento (cuando se autorice)
-
-1. Confirmar entorno no productivo.
-2. Aplicar 064 vía `supabase db query --linked -f supabase/migrations/064_m21_reputation_reviews_and_verifications.sql`
-3. `supabase migration repair 064 --status applied --linked`
-
 ## Referencias
 
 - `docs/03-modulos/M21-Bloque-2-auditoria.md`
+- `docs/03-modulos/M21-cierre-oficial.md`
