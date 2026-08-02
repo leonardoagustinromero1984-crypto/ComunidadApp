@@ -1,5 +1,6 @@
 package com.comunidapp.app.domain.m21
 
+import com.comunidapp.app.data.model.M21MockTargetIds
 import com.comunidapp.app.data.model.M21MockUsers
 import com.comunidapp.app.data.model.M21ReviewTargetType
 import com.comunidapp.app.data.model.SubmitM21ReviewInput
@@ -53,13 +54,27 @@ class M21ReputationFoundationTest {
 
     @Test
     fun submitReviewWorks() = runBlocking {
+        val context = com.comunidapp.app.data.model.M21ReviewContextReference(
+            contextType = com.comunidapp.app.data.model.M21ReviewContextType.DONATION_COMPLETED,
+            contextId = "mock_donation_unique_${System.nanoTime()}",
+            publicLabel = "Donación única test"
+        )
+        store.eligibilityRecords.value = store.eligibilityRecords.value + com.comunidapp.app.data.repository.M21EligibilityRecord(
+            reviewerUserId = M21MockUsers.ADMIN,
+            subject = com.comunidapp.app.data.model.M21ReviewSubjectReference(
+                M21ReviewTargetType.DONATION, M21MockTargetIds.DONATION, "Donación demo"
+            ),
+            context = context,
+            completedAt = System.currentTimeMillis()
+        )
         val result = repository.submitReview(
             SubmitM21ReviewInput(
                 targetType = M21ReviewTargetType.DONATION,
-                targetId = "mock_donation_unique",
+                targetId = M21MockTargetIds.DONATION,
                 targetDisplayLabel = "Donación demo",
                 rating = 5,
-                content = "Gran experiencia con la campaña."
+                content = "Gran experiencia con la campaña.",
+                contextReference = context
             )
         ).getOrThrow()
         assertEquals(5, result.rating)
@@ -68,12 +83,26 @@ class M21ReputationFoundationTest {
 
     @Test
     fun duplicateReviewRejected() = runBlocking {
+        val context = com.comunidapp.app.data.model.M21ReviewContextReference(
+            contextType = com.comunidapp.app.data.model.M21ReviewContextType.SERVICE_COMPLETED,
+            contextId = "mock_user_dup_ctx_${System.nanoTime()}",
+            publicLabel = "Servicio dup"
+        )
         val input = SubmitM21ReviewInput(
-            targetType = M21ReviewTargetType.USER,
-            targetId = "mock_user_dup",
-            targetDisplayLabel = "Usuario",
+            targetType = M21ReviewTargetType.SERVICE,
+            targetId = "mock_service_dup",
+            targetDisplayLabel = "Servicio",
             rating = 4,
-            content = "Primera reseña válida para duplicado."
+            content = "Primera reseña válida para duplicado.",
+            contextReference = context
+        )
+        store.eligibilityRecords.value = store.eligibilityRecords.value + com.comunidapp.app.data.repository.M21EligibilityRecord(
+            reviewerUserId = M21MockUsers.ADMIN,
+            subject = com.comunidapp.app.data.model.M21ReviewSubjectReference(
+                M21ReviewTargetType.SERVICE, "mock_service_dup", "Servicio"
+            ),
+            context = context,
+            completedAt = System.currentTimeMillis()
         )
         repository.submitReview(input).getOrThrow()
         val second = repository.submitReview(input)

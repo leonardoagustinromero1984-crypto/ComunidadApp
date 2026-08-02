@@ -120,10 +120,15 @@ object NavRoutes {
     const val M20_THREAD = "m20/conversations/{conversationId}"
     const val ARG_M20_CONVERSATION_ID = "conversationId"
 
-    // M21 — Reputación, verificaciones y reseñas (Bloques 1–2)
+    // M21 — Reputación, verificaciones y reseñas (Bloques 1–3)
     const val M21_HUB = "m21/hub"
     const val M21_REVIEWS = "m21/reviews"
     const val M21_VERIFICATIONS = "m21/verifications"
+    const val M21_SUBJECT = "m21/subject/{type}/{id}"
+    const val M21_REVIEW_DETAIL = "m21/reviews/{reviewId}"
+    const val ARG_M21_SUBJECT_TYPE = "type"
+    const val ARG_M21_SUBJECT_ID = "id"
+    const val ARG_M21_REVIEW_ID = "reviewId"
 
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
@@ -588,6 +593,12 @@ object NavRoutes {
 
     fun m20Thread(conversationId: String) =
         "m20/conversations/${java.net.URLEncoder.encode(conversationId, Charsets.UTF_8.name())}"
+
+    fun m21Subject(type: String, id: String) =
+        "m21/subject/${java.net.URLEncoder.encode(type, Charsets.UTF_8.name())}/${java.net.URLEncoder.encode(id, Charsets.UTF_8.name())}"
+
+    fun m21ReviewDetail(reviewId: String) =
+        "m21/reviews/${java.net.URLEncoder.encode(reviewId, Charsets.UTF_8.name())}"
 
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"

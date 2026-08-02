@@ -13,6 +13,14 @@ object M21ReputationErrors {
         "M21_LICENSE_REQUIRED" -> "Necesitamos los datos de la matrícula."
         "M21_DUPLICATE_REVIEW" -> "Ya dejaste una reseña para esta transacción."
         "M21_APPEAL_EXISTS" -> "Ya existe una apelación abierta."
+        "M21_SELF_REVIEW" -> "No podés reseñarte a vos mismo."
+        "M21_NOT_ELIGIBLE" -> "Todavía no podés dejar una reseña para esta experiencia."
+        "M21_REVIEW_ELIGIBILITY_UNAVAILABLE" -> "No pudimos verificar tu elegibilidad."
+        "M21_INVALID_RESPONSE" -> "La respuesta no es válida."
+        "M21_INVALID_DISPUTE" -> "La disputa no es válida."
+        "M21_DISPUTE_EXISTS" -> "Ya existe una disputa abierta."
+        "M21_RESPONSE_EXISTS" -> "Ya existe una respuesta activa."
+        "M21_NOTIFICATIONS_UNAVAILABLE" -> "Las notificaciones no están disponibles."
         else -> "No pudimos completar la operación."
     }
 
