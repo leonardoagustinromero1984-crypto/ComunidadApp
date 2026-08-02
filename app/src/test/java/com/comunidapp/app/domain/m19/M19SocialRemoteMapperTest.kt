@@ -117,8 +117,8 @@ class M19SocialRemoteMapperTest {
 
     @Test
     fun reactionTypesMinimalSet() {
-        assertEquals(3, M19ReactionType.entries.size)
-        assertTrue(M19ReactionType.LIKE.name.isNotBlank())
+        assertEquals(4, M19ReactionType.entries.size)
+        assertTrue(M19ReactionType.LOVE.name.isNotBlank())
     }
 }
 

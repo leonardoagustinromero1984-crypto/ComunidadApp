@@ -1,8 +1,13 @@
 package com.comunidapp.app.data.remote.supabase.m19
 
 import com.comunidapp.app.data.model.M19Comment
+import com.comunidapp.app.data.model.M19ContentReference
+import com.comunidapp.app.data.model.M19ContentReferenceType
 import com.comunidapp.app.data.model.M19EngagementSummary
+import com.comunidapp.app.data.model.M19FeedPage
+import com.comunidapp.app.data.model.M19MediaAttachment
 import com.comunidapp.app.data.model.M19Post
+import com.comunidapp.app.data.model.M19PostVisibility
 import com.comunidapp.app.data.model.M19PostStatus
 import com.comunidapp.app.data.model.M19PublicComment
 import com.comunidapp.app.data.model.M19PublicPost
@@ -57,6 +62,55 @@ private fun safeEnumReactionType(raw: String?): M19ReactionType =
     runCatching { M19ReactionType.valueOf(raw.orEmpty()) }
         .getOrDefault(M19ReactionType.LIKE)
 
+private fun safeEnumVisibility(raw: String?): M19PostVisibility =
+    runCatching { M19PostVisibility.valueOf(raw.orEmpty()) }
+        .getOrDefault(M19PostVisibility.PUBLIC)
+
+private fun JsonObject.parseMediaAttachments(): List<M19MediaAttachment> {
+    val arr = this["media_attachments"] as? kotlinx.serialization.json.JsonArray ?: return emptyList()
+    return arr.mapNotNull { el ->
+        val o = el as? JsonObject ?: return@mapNotNull null
+        val ref = o.string("ref") ?: return@mapNotNull null
+        M19MediaAttachment(
+            ref = ref,
+            isPublic = o.boolean("is_public", default = true),
+            mimeHint = o.string("mime_hint")
+        )
+    }
+}
+
+private fun JsonObject.parseContentReferences(): List<M19ContentReference> {
+    val arr = this["content_references"] as? kotlinx.serialization.json.JsonArray ?: return emptyList()
+    return arr.mapNotNull { el ->
+        val o = el as? JsonObject ?: return@mapNotNull null
+        val typeRaw = o.string("type") ?: return@mapNotNull null
+        val targetId = o.string("target_id") ?: return@mapNotNull null
+        val type = runCatching { M19ContentReferenceType.valueOf(typeRaw) }.getOrNull()
+            ?: return@mapNotNull null
+        M19ContentReference(
+            type = type,
+            targetId = targetId,
+            displayLabel = o.string("display_label").orEmpty(),
+            isPublic = o.boolean("is_public", default = true)
+        )
+    }
+}
+
+private fun JsonObject.parsePublicReferences(): List<com.comunidapp.app.data.model.M19PublicContentReference> {
+    val arr = this["content_references"] as? kotlinx.serialization.json.JsonArray ?: return emptyList()
+    return arr.mapNotNull { el ->
+        val o = el as? JsonObject ?: return@mapNotNull null
+        val typeRaw = o.string("type") ?: return@mapNotNull null
+        val type = runCatching { M19ContentReferenceType.valueOf(typeRaw) }.getOrNull()
+            ?: return@mapNotNull null
+        com.comunidapp.app.data.model.M19PublicContentReference(
+            type = type,
+            displayLabel = o.string("display_label").orEmpty(),
+            routeHint = o.string("route_hint").orEmpty()
+        )
+    }
+}
+
 fun JsonObject.toM19Post(): M19Post = M19Post(
     id = string("id").orEmpty(),
     organizationId = string("organization_id").orEmpty(),
@@ -66,7 +120,10 @@ fun JsonObject.toM19Post(): M19Post = M19Post(
     title = string("title").orEmpty(),
     content = string("content").orEmpty(),
     status = safeEnumPostStatus(string("status") ?: string("post_status")),
+    visibility = safeEnumVisibility(string("visibility")),
     coverImageRef = string("cover_image_ref"),
+    mediaAttachments = parseMediaAttachments(),
+    contentReferences = parseContentReferences(),
     moderationStatus = string("moderation_status"),
     publishedAt = string("published_at")?.let { parseTs(it) },
     createdBy = string("created_by").orEmpty(),
@@ -81,7 +138,10 @@ fun JsonObject.toM19PublicPost(): M19PublicPost = M19PublicPost(
     organizationDisplayName = string("organization_display_name").orEmpty(),
     authorDisplayName = string("author_display_name").orEmpty(),
     status = safeEnumPostStatus(string("status")),
+    visibility = safeEnumVisibility(string("visibility")),
     coverImageRef = string("cover_image_ref"),
+    mediaAttachments = parseMediaAttachments(),
+    contentReferences = parsePublicReferences(),
     likeCount = int("like_count"),
     loveCount = int("love_count"),
     supportCount = int("support_count"),
@@ -129,6 +189,18 @@ fun JsonObject.toM19EngagementSummary(): M19EngagementSummary = M19EngagementSum
     commentCount = int("comment_count")
 )
 
+fun JsonObject.toM19FeedPage(): M19FeedPage {
+    val itemsElement = this["items"]
+    val items = if (itemsElement is kotlinx.serialization.json.JsonArray) {
+        itemsElement.mapNotNull { (it as? JsonObject)?.toM19PublicPost() }
+    } else emptyList()
+    return M19FeedPage(
+        items = items,
+        nextCursor = string("next_cursor"),
+        hasMore = boolean("has_more")
+    )
+}
+
 class SupabaseM19RemoteDataSource {
 
     private suspend inline fun <reified T : Any> decodeOne(function: String, parameters: JsonObject): T =
@@ -139,6 +211,29 @@ class SupabaseM19RemoteDataSource {
 
     suspend fun listPublicFeed(params: JsonObject): List<JsonObject> =
         decodeList("m19_list_public_feed", params)
+
+    suspend fun listPublicFeedPage(params: JsonObject): JsonObject = decodeOne(
+        "m19_list_public_feed_page",
+        params
+    )
+
+    suspend fun archivePost(postId: String): JsonObject = decodeOne(
+        "m19_archive_post",
+        buildJsonObject { put("p_post_id", postId) }
+    )
+
+    suspend fun editComment(commentId: String, content: String): JsonObject = decodeOne(
+        "m19_edit_comment",
+        buildJsonObject {
+            put("p_comment_id", commentId)
+            put("p_content", content)
+        }
+    )
+
+    suspend fun archiveComment(commentId: String): JsonObject = decodeOne(
+        "m19_archive_comment",
+        buildJsonObject { put("p_comment_id", commentId) }
+    )
 
     suspend fun getPublicPost(postId: String): JsonObject = decodeOne(
         "m19_get_public_post",

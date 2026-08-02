@@ -12,7 +12,16 @@ supabase/migrations/060_m19_social_posts_and_engagement.sql
 
 ```text
 060 — CREADA, NO APLICADA
+061 — NO EXISTE
 Validación remota M19 — PENDIENTE
+```
+
+## Estado actual (post cierre M19)
+
+```text
+060 — APLICADA EN STAGING NO PRODUCTIVO
+061 — APLICADA EN STAGING NO PRODUCTIVO
+Validación remota M19 — 105/105 PASS
 ```
 
 ## Prerrequisitos

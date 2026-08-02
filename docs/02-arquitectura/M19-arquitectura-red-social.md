@@ -86,3 +86,10 @@ Entrada principal: **Comunidad → Red social (M19)**. M18 eventos permanece en 
 - `M19FeedService` — paginación cursor `publishedAt|postId`
 - `M19ContentReferenceResolver` — snapshots M08/M16/M17/M18
 - `M19SocialResilience` — PartialData ante fallos parciales
+
+## Bloque 4 (cierre)
+
+- Migración **061** — feed paginado RPC, ARCHIVED, LOVE, visibility, JSON references/media, comment edit/archive
+- `SupabaseM19SocialRepository.searchFeedPage` → `m19_list_public_feed_page`
+- Validación staging: 105/105 PASS
+- **M19 cerrado oficialmente** 2026-08-02

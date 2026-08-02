@@ -1,6 +1,10 @@
-# M19 — Matriz funcional (Bloques 1–3)
+# M19 — Matriz funcional (Bloques 1–4)
 
-## Alcance Bloque 3
+## Estado
+
+**M19 cerrado oficialmente** — staging 060+061, validación 105/105 PASS.
+
+## Alcance Bloque 3–4
 
 Feed paginado, filtros, referencias M08/M16/M17/M18, media M05, visibilidad, ARCHIVED, moderación ampliada, LOVE, comentarios editar/archivar. Navegación: Comunidad → Red social.
 

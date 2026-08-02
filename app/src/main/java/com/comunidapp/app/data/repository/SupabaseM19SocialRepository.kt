@@ -18,6 +18,7 @@ import com.comunidapp.app.data.remote.supabase.m19.toM19EngagementSummary
 import com.comunidapp.app.data.remote.supabase.m19.toM19Post
 import com.comunidapp.app.data.remote.supabase.m19.toM19PublicComment
 import com.comunidapp.app.data.remote.supabase.m19.toM19PublicPost
+import com.comunidapp.app.data.remote.supabase.m19.toM19FeedPage
 import com.comunidapp.app.data.remote.supabase.m19.toM19Reaction
 import com.comunidapp.app.domain.organization.OrganizationId
 import com.comunidapp.app.domain.organization.authorization.OrganizationPermissionCode
@@ -50,37 +51,17 @@ class SupabaseM19SocialRepository(
 
     override suspend fun searchFeedPage(filter: M19FeedFilter): Result<M19FeedPage> =
         try {
-            val publicPosts = remote.listPublicFeed(
-                buildJsonObject {
-                    put("p_query", filter.query.takeIf { it.isNotBlank() })
-                    put("p_organization_id", filter.organizationId)
-                    put("p_published_only", filter.publishedOnly)
-                }
-            ).map { it.toM19PublicPost() }
-            val posts = publicPosts.map { public ->
-                M19Post(
-                    id = public.id,
-                    organizationId = "",
-                    organizationDisplayName = public.organizationDisplayName,
-                    authorUserId = "",
-                    authorDisplayName = public.authorDisplayName,
-                    title = public.title,
-                    content = public.content,
-                    status = public.status,
-                    visibility = public.visibility,
-                    coverImageRef = public.coverImageRef,
-                    mediaAttachments = public.mediaAttachments,
-                    contentReferences = emptyList(),
-                    publishedAt = public.publishedAt,
-                    createdBy = "",
-                    createdAt = public.createdAt,
-                    updatedAt = public.createdAt
-                )
-            }
-            val page = M19FeedService.paginate(posts, filter) { post ->
-                publicPosts.first { it.id == post.id }
-            }
-            Result.success(page)
+            Result.success(
+                remote.listPublicFeedPage(
+                    buildJsonObject {
+                        put("p_query", filter.query.takeIf { it.isNotBlank() })
+                        put("p_organization_id", filter.organizationId)
+                        put("p_cursor", filter.cursor)
+                        put("p_page_size", filter.pageSize)
+                        put("p_kind", filter.kind.name)
+                    }
+                ).toM19FeedPage()
+            )
         } catch (t: Throwable) {
             M19SocialErrorMapper.failure(t)
         }
@@ -129,16 +110,29 @@ class SupabaseM19SocialRepository(
         transition(postId, M19PostStatus.HIDDEN)
 
     override suspend fun archivePost(postId: String): Result<M19Post> =
-        transition(postId, M19PostStatus.ARCHIVED)
+        try {
+            Result.success(remote.archivePost(postId).toM19Post())
+        } catch (t: Throwable) {
+            M19SocialErrorMapper.failure(t)
+        }
 
     override suspend fun removePost(postId: String): Result<M19Post> =
         transition(postId, M19PostStatus.REMOVED)
 
     override suspend fun editComment(commentId: String, content: String): Result<M19PublicComment> =
-        M19SocialErrorMapper.fail("M19_COMMENT_NOT_FOUND")
+        try {
+            Result.success(remote.editComment(commentId, content).toM19PublicComment())
+        } catch (t: Throwable) {
+            M19SocialErrorMapper.failure(t)
+        }
 
     override suspend fun archiveComment(commentId: String): Result<Unit> =
-        M19SocialErrorMapper.fail("M19_COMMENT_NOT_FOUND")
+        try {
+            remote.archiveComment(commentId)
+            Result.success(Unit)
+        } catch (t: Throwable) {
+            M19SocialErrorMapper.failure(t)
+        }
 
     override suspend fun listPublicComments(postId: String): Result<List<M19PublicComment>> =
         try {
