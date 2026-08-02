@@ -11,7 +11,8 @@
 
 Registro `schema_migrations`: 068, 069 (post 067).
 
-Validación: `scripts/ops/m23_remote_validation_068_069.sql` — **110/110 PASS** (2026-08-02).
+Validación: `scripts/ops/m23_remote_validation_068_069.sql` — **110/110 PASS** (2026-08-02).  
+Smoke: `scripts/ops/m23_remote_smoke_25.sql` — **25/25 PASS** (2026-08-02).
 
 ## Verificación read-only (sin re-aplicar SQL)
 
@@ -39,9 +40,9 @@ where table_name = 'm23_bookings'
 
 **No repetir** ejecución de archivos `068`/`069` ni `migration repair` si ya registradas.
 
-## Incidencia transitoria CLI
+## Incidencia transitoria CLI (tasks 19241, 19242)
 
-Timeout puntual al registrar `schema_migrations` (conexión CLI, no error SQL). Reintento exitoso. Ver `M23-Bloque-4-validacion.md`.
+Timeout puntual al registrar/verificar `schema_migrations` vía Supabase CLI (conexión, **no error SQL**). Task **19242** confirmado como timeout transitorio; migración **069 aplicada**; columnas `pet_id` y `rescheduled_from_booking_id` verificadas en staging. Reintento exitoso. **No re-ejecutar** 069 ni `migration repair`. Detalle: `M23-Bloque-4-validacion.md`.
 
 ## Prerrequisitos
 

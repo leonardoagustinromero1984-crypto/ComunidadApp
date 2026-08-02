@@ -2,7 +2,7 @@
 
 **Estado:** preauditoría documentada — **implementación NO iniciada**  
 **Fecha:** 2026-08-02  
-**Prerrequisito cumplido:** M23 cerrado oficialmente (`e1379e5`)
+**Prerrequisito cumplido:** M23 cerrado oficialmente (validación 110/110 + smoke 25/25 en staging)
 
 ---
 

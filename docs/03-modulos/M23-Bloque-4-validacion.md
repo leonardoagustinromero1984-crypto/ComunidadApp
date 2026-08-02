@@ -26,7 +26,15 @@ Resultado verificado: **110 PASS / 0 FAIL** (2026-08-02, staging `wystsapjfpdtop
 
 ## Smoke remoto 25/25
 
-Validación a nivel repositorio Supabase (no smoke físico APK). Detalle y mapeo a casos SQL: ver sección *Smoke remoto* al final de este documento.
+Script dedicado: `scripts/ops/m23_remote_smoke_25.sql`
+
+```bash
+supabase db query --linked -f scripts/ops/m23_remote_smoke_25.sql
+```
+
+Resultado verificado: **25 PASS / 0 FAIL** (2026-08-02, staging `wystsapjfpdtoprlmizz`)
+
+Validación a nivel repositorio Supabase (no smoke físico APK). Complementa — no reemplaza — la validación 110/110.
 
 ## Tests Kotlin M23
 
@@ -58,12 +66,13 @@ No afectada.
 - Reejecución final: **84/84 PASS**, `BUILD SUCCESSFUL`.
 - No reejecutar salvo cambios Kotlin M23.
 
-### Registro remoto — timeout de conexión
+### Registro remoto — timeout de conexión CLI (tasks 19241, 19242)
 
-- El primer intento de registro/verificación de `schema_migrations` agotó tiempo de conexión CLI.
-- No fue error SQL ni fallo de migración.
-- Reintento exitoso: **068** y **069** registradas en staging `wystsapjfpdtoprlmizz`.
-- Verificación read-only posterior: 4 tablas `m23_*`, RLS activo, 18 RPC `m23_*`.
+- Primer intento de registro/verificación de `schema_migrations` agotó tiempo de conexión Supabase CLI (task **19241**).
+- Reintento posterior volvió a agotar timeout transitorio (task **19242**); **no fue error SQL** ni fallo de migración 069.
+- Tras reconexión CLI: **068** y **069** registradas en staging `wystsapjfpdtoprlmizz`.
+- Verificación read-only posterior confirmó columnas **`pet_id`** y **`rescheduled_from_booking_id`** en `m23_bookings`, 4 tablas `m23_*`, RLS activo, 18 RPC `m23_*`.
+- **Estado:** incidencia transitoria **resuelta**; no re-ejecutar migración 069 ni `migration repair`.
 
 ## Evidencia validación 110/110
 
@@ -97,4 +106,4 @@ Validación a nivel repositorio/remoto documentada en Bloque 4. Casos 56–90 de
 | 24 | Sin PII | casos 91–110 |
 | 25 | Sin pagos M24 | sin tablas/RPC pago; M24 no iniciado |
 
-**Resultado smoke:** **25/25 PASS** (evidencia repositorio + validación SQL).
+**Resultado smoke:** **25/25 PASS** (2026-08-02, script `scripts/ops/m23_remote_smoke_25.sql`, staging `wystsapjfpdtoprlmizz`).
