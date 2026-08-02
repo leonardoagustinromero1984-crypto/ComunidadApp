@@ -90,9 +90,16 @@ import com.comunidapp.app.data.repository.M21ReputationMemoryStore
 import com.comunidapp.app.data.repository.M21ReputationRepository
 import com.comunidapp.app.data.repository.M22ProviderMemoryStore
 import com.comunidapp.app.data.repository.M22ProviderRepository
+import com.comunidapp.app.data.repository.M23AvailabilityRepository
+import com.comunidapp.app.data.repository.M23BookingPolicyRepository
+import com.comunidapp.app.data.repository.M23BookingRepository
+import com.comunidapp.app.data.repository.M23SchedulingMemoryStore
 import com.comunidapp.app.data.repository.MockM20MessagingRepository
 import com.comunidapp.app.data.repository.MockM21ReputationRepository
 import com.comunidapp.app.data.repository.MockM22ProviderRepository
+import com.comunidapp.app.data.repository.MockM23AvailabilityRepository
+import com.comunidapp.app.data.repository.MockM23BookingPolicyRepository
+import com.comunidapp.app.data.repository.MockM23BookingRepository
 import com.comunidapp.app.data.repository.SupabaseM20MessagingRepository
 import com.comunidapp.app.data.repository.SupabaseM21ReputationRepository
 import com.comunidapp.app.data.repository.SupabaseM22ProviderRepository
@@ -1116,6 +1123,24 @@ object DataProvider {
                 store = m22Store
             )
         }
+    }
+
+    /** M23 Bloque 1 — agenda local estrictamente mock; no existe adapter remoto todavía. */
+    private val m23Store by lazy { M23SchedulingMemoryStore() }
+
+    val m23AvailabilityRepository: M23AvailabilityRepository by lazy {
+        MockM23AvailabilityRepository(m23Store)
+    }
+
+    val m23BookingRepository: M23BookingRepository by lazy {
+        MockM23BookingRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_customer" },
+            store = m23Store
+        )
+    }
+
+    val m23BookingPolicyRepository: M23BookingPolicyRepository by lazy {
+        MockM23BookingPolicyRepository(m23Store)
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */

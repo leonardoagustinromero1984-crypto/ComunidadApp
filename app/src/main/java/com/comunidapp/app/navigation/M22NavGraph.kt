@@ -31,7 +31,12 @@ fun NavGraphBuilder.m22ProviderRoutes(navController: NavHostController) {
         arguments = listOf(navArgument(NavRoutes.ARG_M22_PROVIDER_ID) { type = NavType.StringType })
     ) { entry ->
         val id = URLDecoder.decode(entry.arguments?.getString(NavRoutes.ARG_M22_PROVIDER_ID).orEmpty(), StandardCharsets.UTF_8.name())
-        M22ProviderDetailScreen(id, onNavigateBack = { navController.popBackStack() })
+        M22ProviderDetailScreen(
+            id,
+            onNavigateBack = { navController.popBackStack() },
+            onBook = { navController.navigate(NavRoutes.M23_PROVIDER) },
+            onViewAvailability = { navController.navigate(NavRoutes.M23_AVAILABILITY) }
+        )
     }
     composable(NavRoutes.M22_MANAGE) {
         M22ManageScreen(onNavigateBack = { navController.popBackStack() })

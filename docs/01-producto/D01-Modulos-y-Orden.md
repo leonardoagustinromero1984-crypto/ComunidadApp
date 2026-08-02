@@ -68,7 +68,7 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 
 ### R6 — Servicios
 - **M22 Prestadores y catálogo de servicios:** perfil, sedes, categorías, cobertura y precios — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 066–067; validación 75/75 + smoke 25/25).
-- **M23 Agenda y reservas:** disponibilidad, reserva, confirmación, cambios y asistencia.
+- **M23 Agenda y reservas:** disponibilidad, reserva, confirmación, cambios y asistencia — **Bloque 1 implementado localmente** (mock, dominio, UI `m23/*`); migración 068 **pendiente Bloque 2**; M24 no iniciado.
 - **M24 Pagos, comisiones y suscripciones:** pago, split, reembolso, conciliación y planes.
 
 ### R7 — Comercio

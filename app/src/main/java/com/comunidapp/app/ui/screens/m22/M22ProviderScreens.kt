@@ -75,7 +75,13 @@ fun M22CatalogScreen(onNavigateBack: () -> Unit, onProviderClick: (String) -> Un
 }
 
 @Composable
-fun M22ProviderDetailScreen(providerId: String, onNavigateBack: () -> Unit, viewModel: M22DetailViewModel = viewModel(factory = M22ViewModelFactories.detail(providerId))) {
+fun M22ProviderDetailScreen(
+    providerId: String,
+    onNavigateBack: () -> Unit,
+    onBook: () -> Unit = {},
+    onViewAvailability: () -> Unit = {},
+    viewModel: M22DetailViewModel = viewModel(factory = M22ViewModelFactories.detail(providerId))
+) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(topBar = { ComunidappTopBar(title = "Prestador", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -91,6 +97,8 @@ fun M22ProviderDetailScreen(providerId: String, onNavigateBack: () -> Unit, view
                     s.provider.branches.forEach { Text("${it.name} · ${it.coverage}") }
                     Text("Servicios", fontWeight = FontWeight.Bold)
                     s.provider.offerings.forEach { Text("${it.name} · ${it.priceType}${it.priceAmount?.let { amount -> " ARS $amount" }.orEmpty()}") }
+                    Button(onClick = onViewAvailability, modifier = Modifier.fillMaxWidth()) { Text("Ver disponibilidad") }
+                    OutlinedButton(onClick = onBook, modifier = Modifier.fillMaxWidth()) { Text("Reservar") }
                 }
             }
         }

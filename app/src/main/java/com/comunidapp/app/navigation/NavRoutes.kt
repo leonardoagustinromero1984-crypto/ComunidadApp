@@ -137,6 +137,17 @@ object NavRoutes {
     const val M22_MANAGE = "m22/providers/manage"
     const val ARG_M22_PROVIDER_ID = "providerId"
 
+    // M23 — Agenda y reservas (Bloque 1 local)
+    const val M23_HOME = "m23/home"
+    const val M23_PROVIDER = "m23/provider"
+    const val M23_AVAILABILITY = "m23/availability"
+    const val M23_BOOKINGS = "m23/bookings"
+    const val M23_BOOKING_DETAIL = "m23/bookings/{bookingId}"
+    const val M23_MANAGE = "m23/manage"
+    const val M23_MANAGE_CALENDAR = "m23/manage/calendar"
+    const val M23_MANAGE_BOOKING_DETAIL = "m23/manage/bookings"
+    const val ARG_M23_BOOKING_ID = "bookingId"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -609,6 +620,9 @@ object NavRoutes {
 
     fun m22ProviderDetail(providerId: String) =
         "m22/providers/${java.net.URLEncoder.encode(providerId, Charsets.UTF_8.name())}"
+
+    fun m23BookingDetail(bookingId: String) =
+        "m23/bookings/${java.net.URLEncoder.encode(bookingId, Charsets.UTF_8.name())}"
 
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"
