@@ -97,6 +97,14 @@ object NavRoutes {
     const val M17_CAMPAIGN_EDIT = "m17/campaigns/{campaignId}/edit"
     const val ARG_M17_CAMPAIGN_ID = "campaignId"
 
+    // M18 — Eventos comunitarios (Bloque 1 local)
+    const val M18_EVENTS = "m18/events"
+    const val M18_EVENT_DETAIL = "m18/events/{eventId}"
+    const val M18_EVENTS_MANAGE = "m18/events/manage"
+    const val M18_EVENTS_CREATE = "m18/events/create"
+    const val M18_EVENT_EDIT = "m18/events/{eventId}/edit"
+    const val ARG_M18_EVENT_ID = "eventId"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"
@@ -542,6 +550,12 @@ object NavRoutes {
 
     fun m17CampaignEdit(campaignId: String) =
         "m17/campaigns/${java.net.URLEncoder.encode(campaignId, Charsets.UTF_8.name())}/edit"
+
+    fun m18EventDetail(eventId: String) =
+        "m18/events/${java.net.URLEncoder.encode(eventId, Charsets.UTF_8.name())}"
+
+    fun m18EventEdit(eventId: String) =
+        "m18/events/${java.net.URLEncoder.encode(eventId, Charsets.UTF_8.name())}/edit"
 
     fun m15PlacementEvolution(placementId: String) =
         "${m15PlacementDetail(placementId)}/evolution"

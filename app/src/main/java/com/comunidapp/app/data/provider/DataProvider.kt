@@ -74,6 +74,10 @@ import com.comunidapp.app.data.repository.MockM17TransparencyRepository
 import com.comunidapp.app.data.repository.MockM17VolunteerRepository
 import com.comunidapp.app.data.repository.MockM17DonationRepository
 import com.comunidapp.app.data.repository.SupabaseM17DonationRepository
+import com.comunidapp.app.data.repository.M18EventMemoryStore
+import com.comunidapp.app.data.repository.M18EventRepository
+import com.comunidapp.app.data.repository.MockM18EventAuthorityPolicy
+import com.comunidapp.app.data.repository.MockM18EventRepository
 import com.comunidapp.app.data.repository.SupabaseM17InKindRepository
 import com.comunidapp.app.data.repository.SupabaseM17TransparencyRepository
 import com.comunidapp.app.data.repository.SupabaseM17VolunteerRepository
@@ -1008,6 +1012,19 @@ object DataProvider {
                 authority = m17Authority
             )
         }
+    }
+
+    /** M18 Bloque 1 — eventos comunitarios vinculados a organización M03; mock only (sin Supabase). */
+    private val m18Store by lazy { M18EventMemoryStore() }
+
+    private val m18Authority by lazy { MockM18EventAuthorityPolicy() }
+
+    val m18EventRepository: M18EventRepository by lazy {
+        MockM18EventRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+            store = m18Store,
+            authority = m18Authority
+        )
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */

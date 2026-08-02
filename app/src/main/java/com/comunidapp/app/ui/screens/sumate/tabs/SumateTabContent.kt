@@ -157,6 +157,7 @@ private fun FosterHomeCard(
 
 @Composable
 fun AdoptionEventsContent(
+    onM18Events: () -> Unit = {},
     bottomPadding: Dp = 0.dp,
     viewModel: CommunityViewModel = viewModel()
 ) {
@@ -186,6 +187,14 @@ fun AdoptionEventsContent(
             ),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            item {
+                androidx.compose.material3.OutlinedButton(
+                    onClick = onM18Events,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Eventos comunitarios (M18)")
+                }
+            }
             items(events, key = { it.id }) { event ->
                 AdoptionEventCard(
                     event = event,
