@@ -72,15 +72,15 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 - **M24 Pagos, comisiones y suscripciones:** pago, split, reembolso, conciliación y planes — **POSPUESTO por decisión de producto**; preauditoría documentada; implementación **no iniciada**; pagos no definidos.
 
 ### R7 — Comercio
-- **M25 Marketplace, pedidos y promociones:** catálogo, stock, carrito, pedido, envío y devolución — **Bloque 1 cerrado** (`9fdd8e7`); **Bloque 2 migración 070 creada, no aplicada**; sin pagos; M24 pospuesto.
+- **M25 Marketplace, pedidos y promociones:** catálogo, stock, carrito, pedido, envío y devolución — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 070–071; validación 120/120 + smoke 25/25; sin pagos; M24 pospuesto).
 
 ### R8 — Escala inteligente
-- **M26 Inteligencia artificial:** matching visual, duplicados, asistencia y recomendaciones evaluadas.
+- **M26 Inteligencia artificial:** matching visual, duplicados, asistencia y recomendaciones evaluadas — **Bloque 1 cerrado**; **Bloque 2 migración 072 creada, no aplicada**; Bloque 3 no iniciado; sin pagos.
 - **M27 Integraciones y API pública:** webhooks, OAuth, límites, sandbox y contratos versionados.
 
 ## Camino crítico
 
-M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/M15/M16 → M17–M21 → M22–M23 → **M25** → M26/M27. **M24 pospuesto** (pagos no definidos).
+M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/M15/M16 → M17–M21 → M22–M23 → **M25** → **M26** → M27. **M24 pospuesto** (pagos no definidos).
 
 ## Contenido obligatorio de cada especificación de módulo
 
@@ -112,12 +112,11 @@ M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/
 
 ## Próximo módulo
 
-**M25 — Marketplace, pedidos y promociones.** Catálogo, stock, carrito, pedido, envío y devolución **sin cobros reales** (M24 pospuesto). No iniciar pagos, PSP ni campos financieros hasta nueva autorización explícita.
+**M26 — Inteligencia artificial.** Matching visual, duplicados, asistencia y recomendaciones evaluadas **sin cobros reales** (M24 pospuesto). Bloque 3 no iniciado.
 
 ## Módulos posteriores pendientes de definición operativa
 
 - **M24 Pagos** — pospuesto; preauditoría en `M24-auditoria-preliminar.md`.
-- **M26 Inteligencia artificial** — catálogo D01; no iniciado.
 - **M27 Integraciones y API pública** — catálogo D01; no iniciado.
 
 ## Nota de implementación técnica (LeoVer)
