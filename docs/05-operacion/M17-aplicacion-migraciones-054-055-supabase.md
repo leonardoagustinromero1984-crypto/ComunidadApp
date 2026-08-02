@@ -9,12 +9,18 @@ supabase/migrations/054_m17_donation_campaigns_and_contributions.sql
 supabase/migrations/055_m17_in_kind_volunteering_and_transparency.sql
 ```
 
-## Estado actual (post Bloque 4)
+## Estado actual (post Bloque 5 / cierre M17)
 
 ```text
-054 — CREADA, NO APLICADA
-055 — CREADA, NO APLICADA
+054 — APLICADA EN STAGING NO PRODUCTIVO
+055 — APLICADA EN STAGING NO PRODUCTIVO
+056 — APLICADA EN STAGING (fix moderador)
+057 — APLICADA EN STAGING (fix listado voluntariado)
 ```
+
+Registro en `supabase_migrations.schema_migrations`: 054, 055, 056, 057.
+
+Validación: `scripts/ops/m17_remote_validation_054_055.sql` — **120/120 PASS**.
 
 ## Prerrequisitos
 

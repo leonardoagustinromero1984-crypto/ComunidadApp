@@ -57,11 +57,11 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 ### R4 — Adopción y rescate
 - **M14 Adopciones y postulaciones:** publicación, evaluación, entrevista, entrega y seguimiento.
 - **M15 Hogares de tránsito:** disponibilidad, solicitudes, alojamiento, evolución y egreso — **CIERRE OFICIAL COMPLETADO** (2026-08-01).
-- **M16 Refugios y gestión de casos:** animales, equipos, necesidades, tareas y reportes — **M16 Refugios cerrado oficialmente** (2026-08-01); **migración 053 aplicada en entorno no productivo**; **producción no afectada**; **M17 Donaciones y voluntariado — Bloques 1–4 técnicamente completados** (campañas, bienes, voluntariado, transparencia; migraciones 054/055 pendientes de aplicación; cierre operativo global pendiente; pagos reales diferidos a M24).
+- **M16 Refugios y gestión de casos:** … **M17 Donaciones cerrado oficialmente** (2026-08-02); **M18 Eventos en desarrollo**.
 
 ### R5 — Comunidad
-- **M17 Donaciones y voluntariado:** campañas, bienes, dinero, tiempo y trazabilidad — **Bloques 1–4** implementados (mock + Supabase); migraciones **054/055 creadas, no aplicadas**; validación remota pendiente; **M17 completo: no todavía** (cierre operativo global pendiente; Bloque 5 no iniciado); pagos reales **M24**.
-- **M18 Eventos:** creación, cupos, inscripción, recordatorios y check-in.
+- **M17 Donaciones y voluntariado:** campañas, bienes, dinero, tiempo y trazabilidad — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 054–057); pagos reales **M24**.
+- **M18 Eventos:** creación, cupos, inscripción, recordatorios y check-in — en desarrollo.
 - **M19 Red social y contenido:** publicaciones, comentarios, reacciones, feed y reportes.
 - **M20 Mensajería:** conversaciones, adjuntos, bloqueos, contexto y retención.
 - **M21 Reputación, verificaciones y reseñas:** identidad, matrículas, reseñas transaccionales y apelaciones.
