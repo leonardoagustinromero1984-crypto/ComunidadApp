@@ -86,7 +86,10 @@ import com.comunidapp.app.data.repository.MockM19SocialRepository
 import com.comunidapp.app.data.repository.SupabaseM19SocialRepository
 import com.comunidapp.app.data.repository.M20MessagingMemoryStore
 import com.comunidapp.app.data.repository.M20MessagingRepository
+import com.comunidapp.app.data.repository.M21ReputationMemoryStore
+import com.comunidapp.app.data.repository.M21ReputationRepository
 import com.comunidapp.app.data.repository.MockM20MessagingRepository
+import com.comunidapp.app.data.repository.MockM21ReputationRepository
 import com.comunidapp.app.data.repository.SupabaseM20MessagingRepository
 import com.comunidapp.app.data.repository.SupabaseM17InKindRepository
 import com.comunidapp.app.data.repository.SupabaseM17TransparencyRepository
@@ -1076,6 +1079,16 @@ object DataProvider {
                 store = m20Store
             )
         }
+    }
+
+    /** M21 — reputación, verificaciones y reseñas (mock; Supabase en Bloque 2). */
+    private val m21Store by lazy { M21ReputationMemoryStore() }
+
+    val m21ReputationRepository: M21ReputationRepository by lazy {
+        MockM21ReputationRepository(
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+            store = m21Store
+        )
     }
 
     /** M16 Bloque 3 — proyección operativa (ocupación derivada M08/M09/M11/M15). */

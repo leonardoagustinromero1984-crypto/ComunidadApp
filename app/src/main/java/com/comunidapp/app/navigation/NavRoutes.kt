@@ -120,6 +120,11 @@ object NavRoutes {
     const val M20_THREAD = "m20/conversations/{conversationId}"
     const val ARG_M20_CONVERSATION_ID = "conversationId"
 
+    // M21 — Reputación, verificaciones y reseñas (Bloques 1–2)
+    const val M21_HUB = "m21/hub"
+    const val M21_REVIEWS = "m21/reviews"
+    const val M21_VERIFICATIONS = "m21/verifications"
+
     const val ADOPTION_DETAIL = "adoption_detail/{adoptionId}"
     const val ADOPTION_FORM = "adoption_form"
     const val ADOPTION_FORM_EDIT = "adoption_form/{adoptionId}"

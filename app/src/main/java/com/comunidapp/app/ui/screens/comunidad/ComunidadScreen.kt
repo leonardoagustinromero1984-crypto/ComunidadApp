@@ -18,6 +18,7 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -51,6 +52,7 @@ fun ComunidadScreen(
     onServiceClick: (String) -> Unit,
     onOpenSocialFeed: () -> Unit = {},
     onOpenMessaging: () -> Unit = {},
+    onOpenReputation: () -> Unit = {},
     viewModel: ComunidadViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -101,6 +103,9 @@ fun ComunidadScreen(
                 Button(onClick = onOpenMessaging, modifier = Modifier.fillMaxWidth()) {
                     Text("Mensajería (M20)")
                 }
+                OutlinedButton(onClick = onOpenReputation, modifier = Modifier.fillMaxWidth()) {
+                    Text("Reputación (M21)")
+                }
                 Text(
                     text = "Todavía no hay servicios en esta categoría",
                     style = MaterialTheme.typography.bodyLarge
@@ -132,6 +137,14 @@ fun ComunidadScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Mensajería (M20)")
+                    }
+                }
+                item {
+                    OutlinedButton(
+                        onClick = onOpenReputation,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Reputación (M21)")
                     }
                 }
                 items(services, key = { it.id }) { service ->
