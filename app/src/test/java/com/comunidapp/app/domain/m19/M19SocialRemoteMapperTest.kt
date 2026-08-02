@@ -72,7 +72,7 @@ class M19SocialRemoteMapperTest {
 
     @Test
     fun draftNotPublicStatus() {
-        assertFalse(M19PostStatus.DRAFT.isPublic)
+        assertFalse(M19PostStatus.DRAFT.isPublicFeed)
     }
 
     @Test

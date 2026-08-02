@@ -2,12 +2,18 @@ package com.comunidapp.app.data.repository
 
 import com.comunidapp.app.data.model.CreateM19PostInput
 import com.comunidapp.app.data.model.M19Comment
+import com.comunidapp.app.data.model.M19ContentReference
+import com.comunidapp.app.data.model.M19ContentReferenceType
 import com.comunidapp.app.data.model.M19EngagementCalculator
 import com.comunidapp.app.data.model.M19EngagementSummary
 import com.comunidapp.app.data.model.M19FeedFilter
+import com.comunidapp.app.data.model.M19FeedPage
+import com.comunidapp.app.data.model.M19MediaAttachment
 import com.comunidapp.app.data.model.M19MockOrganizations
+import com.comunidapp.app.data.model.M19MockReferenceIds
 import com.comunidapp.app.data.model.M19Post
 import com.comunidapp.app.data.model.M19PostStatus
+import com.comunidapp.app.data.model.M19PostVisibility
 import com.comunidapp.app.data.model.M19PublicComment
 import com.comunidapp.app.data.model.M19PublicPost
 import com.comunidapp.app.data.model.M19Reaction
@@ -28,7 +34,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** LeoVer M19 — store + contratos + mock (Bloque 1, sin red). */
+/** LeoVer M19 — store + contratos + mock (Bloques 1–3). */
 
 class M19SocialMemoryStore {
     private val idSeq = AtomicLong(0)
@@ -82,6 +88,9 @@ class M19SocialMemoryStore {
     fun commentsFor(postId: String): List<M19Comment> =
         _comments.value.filter { it.postId == postId }
 
+    fun commentById(commentId: String): M19Comment? =
+        _comments.value.firstOrNull { it.id == commentId }
+
     fun reactionsFor(postId: String): List<M19Reaction> =
         _reactions.value.filter { it.postId == postId }
 
@@ -111,69 +120,88 @@ class M19SocialMemoryStore {
             M19MockOrganizations.ORG_OESTE to "Red Solidaria Oeste"
         )
 
+        val refsPet = listOf(
+            M19ContentReferenceResolver.snapshot(M19ContentReferenceType.PET, M19MockReferenceIds.PET, "Mascota Luna")
+        )
+        val refsEvent = listOf(
+            M19ContentReferenceResolver.snapshot(M19ContentReferenceType.EVENT, M19MockReferenceIds.EVENT, "Feria adopciones")
+        )
+        val refsAll = listOf(
+            M19ContentReferenceResolver.snapshot(M19ContentReferenceType.SHELTER, M19MockReferenceIds.SHELTER, "Refugio Norte"),
+            M19ContentReferenceResolver.snapshot(M19ContentReferenceType.CAMPAIGN, M19MockReferenceIds.CAMPAIGN, "Campaña invierno")
+        )
+
         val pPublished1 = post(
-            id = nextId("m19_post"),
-            org = M19MockOrganizations.ORG_NORTE,
+            id = nextId("m19_post"), org = M19MockOrganizations.ORG_NORTE,
             title = "Historias de adopción en el refugio",
-            content = "Compartimos el impacto de las adopciones del mes. Contacto: info@refugio.org",
-            status = M19PostStatus.PUBLISHED,
-            actor = actorUserId,
-            now = now,
-            publishedOffsetDays = -2
+            content = "Compartimos el impacto de las adopciones del mes.",
+            status = M19PostStatus.PUBLISHED, actor = actorUserId, now = now,
+            publishedOffsetDays = -2, references = refsPet
         )
         val pPublished2 = post(
-            id = nextId("m19_post"),
-            org = M19MockOrganizations.ORG_SUR,
+            id = nextId("m19_post"), org = M19MockOrganizations.ORG_SUR,
             title = "Gracias a nuestros voluntarios",
-            content = "La jornada de ayer fue un éxito. Sumate al próximo encuentro comunitario.",
-            status = M19PostStatus.PUBLISHED,
-            actor = actorUserId,
-            now = now,
-            publishedOffsetDays = -1
+            content = "La jornada de ayer fue un éxito.",
+            status = M19PostStatus.PUBLISHED, actor = actorUserId, now = now,
+            publishedOffsetDays = -1, references = refsEvent
         )
         val pPublished3 = post(
-            id = nextId("m19_post"),
-            org = M19MockOrganizations.ORG_OESTE,
+            id = nextId("m19_post"), org = M19MockOrganizations.ORG_OESTE,
             title = "Tips de tenencia responsable",
-            content = "Recordá vacunar y castrar. Más info en nuestra sede.",
-            status = M19PostStatus.PUBLISHED,
-            actor = actorUserId,
-            now = now,
-            publishedOffsetDays = 0
+            content = "Recordá vacunar y castrar.",
+            status = M19PostStatus.PUBLISHED, actor = actorUserId, now = now,
+            publishedOffsetDays = 0, references = refsAll,
+            media = listOf(M19MediaAttachment("mock://m19/gallery/1", isPublic = true))
         )
         val pDraft = post(
-            id = nextId("m19_post"),
-            org = M19MockOrganizations.ORG_NORTE,
+            id = nextId("m19_post"), org = M19MockOrganizations.ORG_NORTE,
             title = "Borrador — campaña de invierno",
             content = "Contenido en preparación para la campaña de abrigo.",
-            status = M19PostStatus.DRAFT,
-            actor = actorUserId,
-            now = now
+            status = M19PostStatus.DRAFT, actor = actorUserId, now = now
         )
         val pHidden = post(
-            id = nextId("m19_post"),
-            org = M19MockOrganizations.ORG_SUR,
+            id = nextId("m19_post"), org = M19MockOrganizations.ORG_SUR,
             title = "Publicación oculta por revisión",
             content = "Contenido temporalmente no visible en el feed.",
-            status = M19PostStatus.HIDDEN,
-            actor = actorUserId,
-            now = now,
-            publishedOffsetDays = -5
+            status = M19PostStatus.HIDDEN, actor = actorUserId, now = now, publishedOffsetDays = -5
+        )
+        val pModerated = post(
+            id = nextId("m19_post"), org = M19MockOrganizations.ORG_OESTE,
+            title = "Contenido moderado",
+            content = "Publicación retirada por moderación.",
+            status = M19PostStatus.REMOVED_BY_MODERATION, actor = actorUserId, now = now,
+            moderationStatus = "BLOCKED", publishedOffsetDays = -3
+        )
+        val pArchived = post(
+            id = nextId("m19_post"), org = M19MockOrganizations.ORG_NORTE,
+            title = "Archivo histórico",
+            content = "Publicación archivada por la organización.",
+            status = M19PostStatus.ARCHIVED, actor = actorUserId, now = now, publishedOffsetDays = -10
+        )
+        val pPrivateMedia = post(
+            id = nextId("m19_post"), org = M19MockOrganizations.ORG_SUR,
+            title = "Galería con archivo privado",
+            content = "Solo referencias públicas visibles.",
+            status = M19PostStatus.PUBLISHED, actor = actorUserId, now = now, publishedOffsetDays = -1,
+            media = listOf(
+                M19MediaAttachment("mock://m19/public/1", isPublic = true),
+                M19MediaAttachment("private://m19/internal/1", isPublic = false)
+            )
         )
         val pRemoved = post(
-            id = nextId("m19_post"),
-            org = M19MockOrganizations.ORG_OESTE,
+            id = nextId("m19_post"), org = M19MockOrganizations.ORG_OESTE,
             title = "Publicación eliminada",
             content = "Contenido retirado del feed.",
-            status = M19PostStatus.REMOVED,
-            actor = actorUserId,
-            now = now - 604_800_000L
+            status = M19PostStatus.REMOVED, actor = actorUserId, now = now - 604_800_000L
         )
 
-        listOf(pPublished1, pPublished2, pPublished3, pDraft, pHidden, pRemoved).forEach { upsertPost(it) }
+        listOf(
+            pPublished1, pPublished2, pPublished3, pDraft, pHidden,
+            pModerated, pArchived, pPrivateMedia, pRemoved
+        ).forEach { upsertPost(it) }
 
         seedCommentsAndReactions(
-            publishedIds = listOf(pPublished1.id, pPublished2.id, pPublished3.id),
+            publishedIds = listOf(pPublished1.id, pPublished2.id, pPublished3.id, pPrivateMedia.id),
             actorUserId = actorUserId,
             now = now
         )
@@ -187,9 +215,13 @@ class M19SocialMemoryStore {
         status: M19PostStatus,
         actor: String,
         now: Long,
-        publishedOffsetDays: Int? = null
+        publishedOffsetDays: Int? = null,
+        references: List<M19ContentReference> = emptyList(),
+        media: List<M19MediaAttachment> = emptyList(),
+        moderationStatus: String? = null
     ): M19Post {
         val publishedAt = publishedOffsetDays?.let { now + it * 86_400_000L }
+        val resolvedRefs = M19ContentReferenceResolver.resolveAll(references)
         return M19Post(
             id = id,
             organizationId = org,
@@ -199,7 +231,11 @@ class M19SocialMemoryStore {
             title = title,
             content = content,
             status = status,
-            coverImageRef = "mock://m19/cover/$id",
+            visibility = M19PostVisibility.PUBLIC,
+            coverImageRef = media.firstOrNull()?.ref ?: "mock://m19/cover/$id",
+            mediaAttachments = media,
+            contentReferences = resolvedRefs,
+            moderationStatus = moderationStatus,
             publishedAt = if (status == M19PostStatus.PUBLISHED) publishedAt else null,
             createdBy = actor,
             createdAt = now,
@@ -219,7 +255,7 @@ class M19SocialMemoryStore {
                     postId = postId,
                     userId = "user_vol_$index",
                     authorDisplayName = "Voluntario ${index + 1}",
-                    content = "¡Gracias por compartir! info@test.com",
+                    content = "¡Gracias por compartir!",
                     createdAt = now - index * 3_600_000L
                 )
             )
@@ -251,6 +287,15 @@ class M19SocialMemoryStore {
                         createdAt = now
                     )
                 )
+                upsertReaction(
+                    M19Reaction(
+                        id = nextId("m19_reaction"),
+                        postId = postId,
+                        userId = "user_love",
+                        reactionType = M19ReactionType.LOVE,
+                        createdAt = now
+                    )
+                )
             }
         }
     }
@@ -260,14 +305,18 @@ interface M19SocialRepository {
     fun observePostById(postId: String): Flow<M19Post?>
     fun observePostsForOrganization(organizationId: String): Flow<List<M19Post>>
     suspend fun searchFeed(filter: M19FeedFilter): Result<List<M19PublicPost>>
+    suspend fun searchFeedPage(filter: M19FeedFilter): Result<M19FeedPage>
     suspend fun getPublicPostById(postId: String): Result<M19PublicPost>
     suspend fun createPost(input: CreateM19PostInput): Result<M19Post>
     suspend fun updatePost(input: UpdateM19PostInput): Result<M19Post>
     suspend fun publishPost(postId: String): Result<M19Post>
     suspend fun hidePost(postId: String): Result<M19Post>
+    suspend fun archivePost(postId: String): Result<M19Post>
     suspend fun removePost(postId: String): Result<M19Post>
     suspend fun listPublicComments(postId: String): Result<List<M19PublicComment>>
     suspend fun addComment(postId: String, content: String): Result<M19PublicComment>
+    suspend fun editComment(commentId: String, content: String): Result<M19PublicComment>
+    suspend fun archiveComment(commentId: String): Result<Unit>
     suspend fun addReaction(postId: String, type: M19ReactionType): Result<M19Reaction>
     suspend fun removeReaction(postId: String): Result<Unit>
     suspend fun getMyReaction(postId: String): M19ReactionType?
@@ -318,6 +367,9 @@ class MockM19SocialRepository(
     private fun getPostOrFail(id: String): M19Post =
         store.posts.value.firstOrNull { it.id == id } ?: failM19("M19_POST_NOT_FOUND")
 
+    private fun toPublic(post: M19Post): M19PublicPost =
+        post.toPublicPost(store.engagementFor(post.id))
+
     override fun observePostById(postId: String): Flow<M19Post?> =
         store.posts.map { list -> list.firstOrNull { it.id == postId } }
 
@@ -325,20 +377,11 @@ class MockM19SocialRepository(
         store.posts.map { list -> list.filter { it.organizationId == organizationId } }
 
     override suspend fun searchFeed(filter: M19FeedFilter): Result<List<M19PublicPost>> =
+        searchFeedPage(filter).map { it.items }
+
+    override suspend fun searchFeedPage(filter: M19FeedFilter): Result<M19FeedPage> =
         runCatching {
-            store.posts.value
-                .filter { post ->
-                    !filter.publishedOnly || post.status == M19PostStatus.PUBLISHED
-                }
-                .filter { post ->
-                    filter.query.isBlank() ||
-                        post.title.contains(filter.query, ignoreCase = true) ||
-                        post.content.contains(filter.query, ignoreCase = true)
-                }
-                .filter { post ->
-                    filter.organizationId == null || post.organizationId == filter.organizationId
-                }
-                .map { post -> post.toPublicPost(store.engagementFor(post.id)) }
+            M19FeedService.paginate(store.posts.value, filter) { toPublic(it) }
         }.fold(
             onSuccess = { Result.success(it) },
             onFailure = { M19SocialErrorMapper.failure(it) }
@@ -347,8 +390,8 @@ class MockM19SocialRepository(
     override suspend fun getPublicPostById(postId: String): Result<M19PublicPost> =
         runCatching {
             val post = getPostOrFail(postId)
-            M19SocialValidators.validatePublicRead(post.status)?.let { failM19(it) }
-            post.toPublicPost(store.engagementFor(postId))
+            M19SocialValidators.validatePublicRead(post)?.let { failM19(it) }
+            toPublic(post)
         }.fold(
             onSuccess = { Result.success(it) },
             onFailure = { M19SocialErrorMapper.failure(it) }
@@ -361,6 +404,7 @@ class MockM19SocialRepository(
                 requireManage(input.organizationId, actor)
                 M19SocialValidators.validateTitle(input.title)?.let { failM19(it) }
                 M19SocialValidators.validateContent(input.content)?.let { failM19(it) }
+                M19SocialValidators.validateMedia(input.mediaAttachments)?.let { failM19(it) }
                 val now = System.currentTimeMillis()
                 val post = M19Post(
                     id = store.nextId("m19_post"),
@@ -372,7 +416,10 @@ class MockM19SocialRepository(
                     title = input.title.trim(),
                     content = input.content.trim(),
                     status = M19PostStatus.DRAFT,
+                    visibility = input.visibility,
                     coverImageRef = input.coverImageRef,
+                    mediaAttachments = input.mediaAttachments,
+                    contentReferences = M19ContentReferenceResolver.resolveAll(input.contentReferences),
                     createdBy = actor,
                     createdAt = now,
                     updatedAt = now
@@ -387,14 +434,19 @@ class MockM19SocialRepository(
 
     override suspend fun updatePost(input: UpdateM19PostInput): Result<M19Post> =
         mutate(input.postId) { post, _ ->
+            if (post.status == M19PostStatus.REMOVED_BY_MODERATION) failM19("M19_STATE_ALREADY_FINAL")
             if (post.status == M19PostStatus.REMOVED) failM19("M19_STATE_ALREADY_FINAL")
             M19SocialValidators.validateTitle(input.title)?.let { failM19(it) }
             M19SocialValidators.validateContent(input.content)?.let { failM19(it) }
+            input.mediaAttachments?.let { M19SocialValidators.validateMedia(it)?.let { c -> failM19(c) } }
             post.copy(
                 title = input.title.trim(),
                 content = input.content.trim(),
-                coverImageRef = input.coverImageRef,
-                updatedAt = System.currentTimeMillis()
+                coverImageRef = input.coverImageRef ?: post.coverImageRef,
+                visibility = input.visibility ?: post.visibility,
+                mediaAttachments = input.mediaAttachments ?: post.mediaAttachments,
+                contentReferences = input.contentReferences?.let { M19ContentReferenceResolver.resolveAll(it) }
+                    ?: post.contentReferences
             )
         }
 
@@ -404,16 +456,18 @@ class MockM19SocialRepository(
     override suspend fun hidePost(postId: String): Result<M19Post> =
         transition(postId, M19PostStatus.HIDDEN)
 
+    override suspend fun archivePost(postId: String): Result<M19Post> =
+        transition(postId, M19PostStatus.ARCHIVED)
+
     override suspend fun removePost(postId: String): Result<M19Post> =
         transition(postId, M19PostStatus.REMOVED)
 
     override suspend fun listPublicComments(postId: String): Result<List<M19PublicComment>> =
         runCatching {
             val post = getPostOrFail(postId)
-            M19SocialValidators.validatePublicRead(post.status)?.let { failM19(it) }
+            M19SocialValidators.validatePublicRead(post)?.let { failM19(it) }
             store.commentsFor(postId)
-                .filterNot { it.hidden }
-                .map { it.toPublicComment() }
+                .mapNotNull { it.toPublicComment() }
         }.fold(
             onSuccess = { Result.success(it) },
             onFailure = { M19SocialErrorMapper.failure(it) }
@@ -424,18 +478,54 @@ class MockM19SocialRepository(
             runCatching {
                 val actor = requireActor()
                 val post = getPostOrFail(postId)
-                M19SocialValidators.validatePublicRead(post.status)?.let { failM19(it) }
+                M19SocialValidators.validatePublicRead(post)?.let { failM19(it) }
                 M19SocialValidators.validateComment(content)?.let { failM19(it) }
+                val now = System.currentTimeMillis()
                 val comment = M19Comment(
                     id = store.nextId("m19_comment"),
                     postId = postId,
                     userId = actor,
                     authorDisplayName = "Participante mock",
                     content = content.trim(),
-                    createdAt = System.currentTimeMillis()
+                    createdAt = now,
+                    updatedAt = now
                 )
                 store.upsertComment(comment)
-                comment.toPublicComment()
+                comment.toPublicComment() ?: failM19("M19_INVALID_COMMENT")
+            }.fold(
+                onSuccess = { Result.success(it) },
+                onFailure = { M19SocialErrorMapper.failure(it) }
+            )
+        }
+
+    override suspend fun editComment(commentId: String, content: String): Result<M19PublicComment> =
+        store.withLock {
+            runCatching {
+                val actor = requireActor()
+                val comment = store.commentById(commentId) ?: failM19("M19_COMMENT_NOT_FOUND")
+                if (comment.userId != actor) failM19("M19_PERMISSION_DENIED")
+                if (comment.archived) failM19("M19_COMMENT_NOT_FOUND")
+                M19SocialValidators.validateComment(content)?.let { failM19(it) }
+                val updated = comment.copy(content = content.trim(), updatedAt = System.currentTimeMillis())
+                store.upsertComment(updated)
+                updated.toPublicComment() ?: failM19("M19_INVALID_COMMENT")
+            }.fold(
+                onSuccess = { Result.success(it) },
+                onFailure = { M19SocialErrorMapper.failure(it) }
+            )
+        }
+
+    override suspend fun archiveComment(commentId: String): Result<Unit> =
+        store.withLock {
+            runCatching {
+                val actor = requireActor()
+                val comment = store.commentById(commentId) ?: failM19("M19_COMMENT_NOT_FOUND")
+                if (comment.userId != actor) failM19("M19_PERMISSION_DENIED")
+                if (comment.archived) {
+                    store.recordIdempotentRetry()
+                    return@runCatching Unit
+                }
+                store.upsertComment(comment.copy(archived = true, updatedAt = System.currentTimeMillis()))
             }.fold(
                 onSuccess = { Result.success(it) },
                 onFailure = { M19SocialErrorMapper.failure(it) }
@@ -447,7 +537,7 @@ class MockM19SocialRepository(
             runCatching {
                 val actor = requireActor()
                 val post = getPostOrFail(postId)
-                M19SocialValidators.validatePublicRead(post.status)?.let { failM19(it) }
+                M19SocialValidators.validateReactionTarget(post)?.let { failM19(it) }
                 val existing = store.reactionForUser(postId, actor)
                 if (existing != null) {
                     if (existing.reactionType == type) {
@@ -529,6 +619,7 @@ class MockM19SocialRepository(
 
     private suspend fun transition(postId: String, target: M19PostStatus): Result<M19Post> =
         mutate(postId) { post, _ ->
+            if (post.status == M19PostStatus.REMOVED_BY_MODERATION) failM19("M19_STATE_ALREADY_FINAL")
             if (post.status == target) {
                 store.recordIdempotentRetry()
                 return@mutate post
@@ -539,9 +630,9 @@ class MockM19SocialRepository(
                 status = target,
                 publishedAt = when {
                     target == M19PostStatus.PUBLISHED && post.publishedAt == null -> now
+                    target == M19PostStatus.ARCHIVED -> post.publishedAt
                     else -> post.publishedAt
-                },
-                updatedAt = now
+                }
             )
         }
 }

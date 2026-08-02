@@ -83,6 +83,7 @@ fun JsonObject.toM19PublicPost(): M19PublicPost = M19PublicPost(
     status = safeEnumPostStatus(string("status")),
     coverImageRef = string("cover_image_ref"),
     likeCount = int("like_count"),
+    loveCount = int("love_count"),
     supportCount = int("support_count"),
     celebrateCount = int("celebrate_count"),
     commentCount = int("comment_count"),
@@ -95,7 +96,8 @@ fun JsonObject.toM19PublicComment(): M19PublicComment = M19PublicComment(
     postId = string("post_id").orEmpty(),
     authorDisplayName = string("author_display_name").orEmpty(),
     content = string("content").orEmpty(),
-    createdAt = parseTs(string("created_at"))
+    createdAt = parseTs(string("created_at")),
+    updatedAt = parseTs(string("updated_at") ?: string("created_at"))
 )
 
 fun JsonObject.toM19Comment(): M19Comment = M19Comment(
@@ -121,6 +123,7 @@ fun JsonObject.toM19Reaction(): M19Reaction = M19Reaction(
 
 fun JsonObject.toM19EngagementSummary(): M19EngagementSummary = M19EngagementSummary(
     likeCount = int("like_count"),
+    loveCount = int("love_count"),
     supportCount = int("support_count"),
     celebrateCount = int("celebrate_count"),
     commentCount = int("comment_count")

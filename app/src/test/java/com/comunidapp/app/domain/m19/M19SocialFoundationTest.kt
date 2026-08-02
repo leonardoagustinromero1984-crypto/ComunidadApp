@@ -41,7 +41,7 @@ class M19SocialFoundationTest {
 
     @Test
     fun draftNotPublic() {
-        assertFalse(M19PostStatus.DRAFT.isPublic)
+        assertFalse(M19PostStatus.DRAFT.isPublicFeed)
         assertEquals("M19_POST_NOT_PUBLIC", M19SocialValidators.validatePublicRead(M19PostStatus.DRAFT))
     }
 

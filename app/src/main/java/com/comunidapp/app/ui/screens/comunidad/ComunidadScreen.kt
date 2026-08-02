@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
@@ -48,6 +49,7 @@ private val comunidadCategories = listOf(
 @Composable
 fun ComunidadScreen(
     onServiceClick: (String) -> Unit,
+    onOpenSocialFeed: () -> Unit = {},
     viewModel: ComunidadViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -89,9 +91,12 @@ fun ComunidadScreen(
                     .fillMaxSize()
                     .padding(padding)
                     .padding(24.dp),
-                verticalArrangement = Arrangement.Center,
+                verticalArrangement = Arrangement.spacedBy(16.dp, Alignment.CenterVertically),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
+                Button(onClick = onOpenSocialFeed, modifier = Modifier.fillMaxWidth()) {
+                    Text("Red social (M19)")
+                }
                 Text(
                     text = "Todavía no hay servicios en esta categoría",
                     style = MaterialTheme.typography.bodyLarge
@@ -109,6 +114,14 @@ fun ComunidadScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                item {
+                    Button(
+                        onClick = onOpenSocialFeed,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Red social (M19)")
+                    }
+                }
                 items(services, key = { it.id }) { service ->
                     ServiceProfileCard(
                         service = service,

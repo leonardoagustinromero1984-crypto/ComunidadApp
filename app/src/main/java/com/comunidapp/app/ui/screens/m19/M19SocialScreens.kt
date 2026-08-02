@@ -1,6 +1,7 @@
 package com.comunidapp.app.ui.screens.m19
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,6 +14,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -29,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.model.M19FeedFilterKind
 import com.comunidapp.app.data.model.M19PostStatus
 import com.comunidapp.app.data.model.M19PublicPost
 import com.comunidapp.app.data.model.M19ReactionType
@@ -43,6 +46,7 @@ import com.comunidapp.app.viewmodel.M19PostsManageUiState
 import com.comunidapp.app.viewmodel.M19PostsManageViewModel
 import com.comunidapp.app.viewmodel.M19SocialFeedUiState
 import com.comunidapp.app.viewmodel.M19SocialFeedViewModel
+import com.comunidapp.app.viewmodel.m19FeedFilterKindLabel
 import com.comunidapp.app.viewmodel.m19PostStatusLabel
 import com.comunidapp.app.viewmodel.m19ReactionTypeLabel
 
@@ -60,7 +64,7 @@ fun M19SocialFeedScreen(
 
     Scaffold(
         topBar = {
-            ComunidappTopBar(title = "Feed comunitario", showBackButton = true, onBackClick = onNavigateBack)
+            ComunidappTopBar(title = "Red social", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -84,16 +88,47 @@ fun M19SocialFeedScreen(
                 OutlinedButton(onClick = onManage) { Text("Administrar") }
                 Button(onClick = onCreate) { Text("Nueva") }
             }
+            Row(
+                modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                M19FeedFilterKind.entries.forEach { kind ->
+                    FilterChip(
+                        selected = filter.kind == kind,
+                        onClick = { viewModel.setKind(kind) },
+                        label = { Text(m19FeedFilterKindLabel(kind)) }
+                    )
+                }
+            }
             when (val s = state) {
                 M19SocialFeedUiState.Loading -> LoadingState()
                 M19SocialFeedUiState.Empty -> EmptyState(
                     title = "Sin publicaciones",
                     message = "No hay contenido publicado con estos filtros."
                 )
-                is M19SocialFeedUiState.Error -> ErrorState(message = s.message, onRetry = { viewModel.load() })
+                is M19SocialFeedUiState.Error -> ErrorState(message = s.message, onRetry = { viewModel.refresh() })
+                is M19SocialFeedUiState.PartialData -> {
+                    Text(s.message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        items(s.items, key = { it.id }) { item ->
+                            M19PostCard(item, onClick = { onPostClick(item.id) })
+                        }
+                    }
+                }
                 is M19SocialFeedUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(s.items, key = { it.id }) { item ->
                         M19PostCard(item, onClick = { onPostClick(item.id) })
+                    }
+                    if (s.hasMore) {
+                        item {
+                            OutlinedButton(
+                                onClick = { viewModel.loadMore() },
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !s.loadingMore
+                            ) {
+                                Text(if (s.loadingMore) "Cargando…" else "Cargar más")
+                            }
+                        }
                     }
                 }
             }
@@ -109,8 +144,11 @@ private fun M19PostCard(post: M19PublicPost, onClick: () -> Unit) {
             Text(post.organizationDisplayName, style = MaterialTheme.typography.bodySmall)
             Text(post.authorDisplayName, style = MaterialTheme.typography.labelMedium)
             Text(post.content, style = MaterialTheme.typography.bodyMedium, maxLines = 3)
+            post.contentReferences.forEach { ref ->
+                Text("↗ ${ref.displayLabel}", style = MaterialTheme.typography.labelMedium)
+            }
             Text(
-                "👍 ${post.likeCount} · 🤝 ${post.supportCount} · 🎉 ${post.celebrateCount} · 💬 ${post.commentCount}",
+                "👍 ${post.likeCount} · ❤ ${post.loveCount} · 🤝 ${post.supportCount} · 🎉 ${post.celebrateCount} · 💬 ${post.commentCount}",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )

@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.model.CreateM19PostInput
 import com.comunidapp.app.data.model.M19FeedFilter
+import com.comunidapp.app.data.model.M19FeedFilterKind
 import com.comunidapp.app.data.model.M19MockOrganizations
 import com.comunidapp.app.data.model.M19Post
 import com.comunidapp.app.data.model.M19PostStatus
@@ -14,7 +15,10 @@ import com.comunidapp.app.data.model.M19ReactionType
 import com.comunidapp.app.data.model.UpdateM19PostInput
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m19.M19SocialErrorMapper
+import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.data.repository.M19SocialModerationAdapter
 import com.comunidapp.app.data.repository.M19SocialRepository
+import com.comunidapp.app.domain.m19.M19SocialResilience
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -25,7 +29,16 @@ import kotlinx.coroutines.launch
 sealed class M19SocialFeedUiState {
     data object Loading : M19SocialFeedUiState()
     data object Empty : M19SocialFeedUiState()
-    data class Content(val items: List<M19PublicPost>) : M19SocialFeedUiState()
+    data class Content(
+        val items: List<M19PublicPost>,
+        val hasMore: Boolean = false,
+        val loadingMore: Boolean = false
+    ) : M19SocialFeedUiState()
+    data class PartialData(
+        val items: List<M19PublicPost>,
+        val message: String,
+        val hasMore: Boolean = false
+    ) : M19SocialFeedUiState()
     data class Error(val message: String) : M19SocialFeedUiState()
 }
 
@@ -37,39 +50,85 @@ class M19SocialFeedViewModel(
     private val _filter = MutableStateFlow(M19FeedFilter())
     val filter: StateFlow<M19FeedFilter> = _filter.asStateFlow()
     private var loadJob: Job? = null
+    private var nextCursor: String? = null
+    private var accumulated = mutableListOf<M19PublicPost>()
 
-    init { load() }
+    init { refresh() }
 
     fun setQuery(value: String) {
         _filter.value = _filter.value.copy(query = value)
-        load()
+        refresh()
+    }
+
+    fun setKind(kind: M19FeedFilterKind) {
+        _filter.value = _filter.value.copy(kind = kind)
+        refresh()
     }
 
     fun setOrganization(organizationId: String?) {
         _filter.value = _filter.value.copy(organizationId = organizationId)
-        load()
+        refresh()
     }
 
     fun clearFilters() {
         _filter.value = M19FeedFilter()
-        load()
+        refresh()
     }
 
-    fun load() {
+    fun refresh() {
         loadJob?.cancel()
+        nextCursor = null
+        accumulated = mutableListOf()
         loadJob = viewModelScope.launch {
             _uiState.value = M19SocialFeedUiState.Loading
-            repository.searchFeed(_filter.value)
-                .onSuccess { list ->
-                    _uiState.value = if (list.isEmpty()) M19SocialFeedUiState.Empty
-                    else M19SocialFeedUiState.Content(list)
+            loadPage(replace = true)
+        }
+    }
+
+    fun loadMore() {
+        val current = _uiState.value
+        if (current is M19SocialFeedUiState.Content && (current.loadingMore || !current.hasMore)) return
+        if (nextCursor == null && accumulated.isNotEmpty()) return
+        loadJob?.cancel()
+        loadJob = viewModelScope.launch {
+            if (current is M19SocialFeedUiState.Content) {
+                _uiState.value = current.copy(loadingMore = true)
+            }
+            loadPage(replace = false)
+        }
+    }
+
+    private suspend fun loadPage(replace: Boolean) {
+        val request = _filter.value.copy(cursor = if (replace) null else nextCursor)
+        repository.searchFeedPage(request)
+            .onSuccess { page ->
+                val merged = if (replace) page.items else {
+                    (accumulated + page.items).distinctBy { it.id }
                 }
-                .onFailure {
-                    _uiState.value = M19SocialFeedUiState.Error(
-                        M19SocialErrorMapper.userMessage(M19SocialErrorMapper.codeOf(it))
+                accumulated = merged.toMutableList()
+                nextCursor = page.nextCursor
+                _uiState.value = when {
+                    merged.isEmpty() -> M19SocialFeedUiState.Empty
+                    else -> M19SocialFeedUiState.Content(
+                        items = merged,
+                        hasMore = page.hasMore,
+                        loadingMore = false
                     )
                 }
-        }
+            }
+            .onFailure {
+                val preserved = accumulated.toList()
+                val msg = M19SocialResilience.safeUserMessage(it)
+                _uiState.value = if (preserved.isNotEmpty()) {
+                    M19SocialFeedUiState.PartialData(
+                        items = preserved,
+                        message = msg,
+                        hasMore = nextCursor != null
+                    )
+                } else {
+                    M19SocialFeedUiState.Error(msg)
+                }
+            }
     }
 
     companion object {
@@ -83,7 +142,8 @@ class M19SocialFeedViewModel(
 
 class M19PostDetailViewModel(
     private val postId: String,
-    private val repository: M19SocialRepository = DataProvider.m19SocialRepository
+    private val repository: M19SocialRepository = DataProvider.m19SocialRepository,
+    private val actorUserId: () -> String? = { AuthProvider.repository.getCurrentUser()?.id }
 ) : ViewModel() {
     private val _post = MutableStateFlow<M19PublicPost?>(null)
     val post: StateFlow<M19PublicPost?> = _post.asStateFlow()
@@ -104,7 +164,7 @@ class M19PostDetailViewModel(
             repository.getPublicPostById(postId)
                 .onSuccess { _post.value = it }
                 .onFailure {
-                    _message.value = M19SocialErrorMapper.userMessage(M19SocialErrorMapper.codeOf(it))
+                    _message.value = M19SocialResilience.safeUserMessage(it)
                 }
             repository.listPublicComments(postId)
                 .onSuccess { _comments.value = it }
@@ -121,8 +181,17 @@ class M19PostDetailViewModel(
                     refresh()
                 }
                 .onFailure {
-                    _message.value = M19SocialErrorMapper.userMessage(M19SocialErrorMapper.codeOf(it))
+                    _message.value = M19SocialResilience.safeUserMessage(it)
                 }
+        }
+    }
+
+    fun reportPost(reason: String = "spam") {
+        viewModelScope.launch {
+            val actor = actorUserId() ?: return@launch
+            M19SocialModerationAdapter.reportPost(postId, reason, reporterId = actor)
+                .onSuccess { _message.value = "Reporte enviado." }
+                .onFailure { _message.value = M19SocialResilience.safeUserMessage(it) }
         }
     }
 
@@ -131,7 +200,7 @@ class M19PostDetailViewModel(
             repository.addReaction(postId, type)
                 .onSuccess { refresh() }
                 .onFailure {
-                    _message.value = M19SocialErrorMapper.userMessage(M19SocialErrorMapper.codeOf(it))
+                    _message.value = M19SocialResilience.safeUserMessage(it)
                 }
         }
     }
@@ -194,7 +263,7 @@ class M19PostsManageViewModel(
             repository.publishPost(postId)
                 .onSuccess { _message.value = "Publicación visible en el feed." }
                 .onFailure {
-                    _message.value = M19SocialErrorMapper.userMessage(M19SocialErrorMapper.codeOf(it))
+                    _message.value = M19SocialResilience.safeUserMessage(it)
                 }
         }
     }
@@ -204,7 +273,17 @@ class M19PostsManageViewModel(
             repository.hidePost(postId)
                 .onSuccess { _message.value = "Publicación oculta del feed." }
                 .onFailure {
-                    _message.value = M19SocialErrorMapper.userMessage(M19SocialErrorMapper.codeOf(it))
+                    _message.value = M19SocialResilience.safeUserMessage(it)
+                }
+        }
+    }
+
+    fun archive(postId: String) {
+        viewModelScope.launch {
+            repository.archivePost(postId)
+                .onSuccess { _message.value = "Publicación archivada." }
+                .onFailure {
+                    _message.value = M19SocialResilience.safeUserMessage(it)
                 }
         }
     }
@@ -281,7 +360,7 @@ class M19PostEditViewModel(
             result
                 .onSuccess { onSaved(it.id) }
                 .onFailure {
-                    _message.value = M19SocialErrorMapper.userMessage(M19SocialErrorMapper.codeOf(it))
+                    _message.value = M19SocialResilience.safeUserMessage(it)
                 }
         }
     }
@@ -303,11 +382,25 @@ fun m19PostStatusLabel(status: M19PostStatus): String = when (status) {
     M19PostStatus.DRAFT -> "Borrador"
     M19PostStatus.PUBLISHED -> "Publicado"
     M19PostStatus.HIDDEN -> "Oculto"
+    M19PostStatus.ARCHIVED -> "Archivado"
     M19PostStatus.REMOVED -> "Eliminado"
+    M19PostStatus.REMOVED_BY_MODERATION -> "Moderado"
 }
 
 fun m19ReactionTypeLabel(type: M19ReactionType): String = when (type) {
     M19ReactionType.LIKE -> "Me gusta"
+    M19ReactionType.LOVE -> "Me encanta"
     M19ReactionType.SUPPORT -> "Apoyo"
     M19ReactionType.CELEBRATE -> "Celebrar"
+}
+
+fun m19FeedFilterKindLabel(kind: M19FeedFilterKind): String = when (kind) {
+    M19FeedFilterKind.ALL -> "Todos"
+    M19FeedFilterKind.ORGANIZATIONS -> "Organizaciones"
+    M19FeedFilterKind.PETS -> "Mascotas"
+    M19FeedFilterKind.SHELTERS -> "Refugios"
+    M19FeedFilterKind.CAMPAIGNS -> "Campañas"
+    M19FeedFilterKind.EVENTS -> "Eventos"
+    M19FeedFilterKind.MEDIA -> "Multimedia"
+    M19FeedFilterKind.TEXT -> "Texto"
 }

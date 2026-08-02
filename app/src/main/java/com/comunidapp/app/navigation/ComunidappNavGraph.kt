@@ -500,8 +500,7 @@ private fun NavGraphBuilder.mainAppRoutes(
             onVeterinaryDirectory = { navController.navigate(NavRoutes.VETERINARY_DIRECTORY) },
             onM16Shelters = { navController.navigate(NavRoutes.M16_SHELTERS) },
             onM17Campaigns = { navController.navigate(NavRoutes.M17_HUB) },
-            onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) },
-            onM19Feed = { navController.navigate(NavRoutes.M19_FEED) }
+            onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) }
         )
     }
     composable(NavRoutes.PUBLISH) {
@@ -521,7 +520,8 @@ private fun NavGraphBuilder.mainAppRoutes(
     }
     composable(NavRoutes.COMUNIDAD) {
         ComunidadScreen(
-            onServiceClick = { id -> navController.navigate(NavRoutes.serviceDetail(id)) }
+            onServiceClick = { id -> navController.navigate(NavRoutes.serviceDetail(id)) },
+            onOpenSocialFeed = { navController.navigate(NavRoutes.M19_FEED) }
         )
     }
     composable(NavRoutes.MY_BUSINESS) {

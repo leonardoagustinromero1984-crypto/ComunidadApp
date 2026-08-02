@@ -3,6 +3,7 @@ package com.comunidapp.app.data.repository
 import com.comunidapp.app.data.model.CreateM19PostInput
 import com.comunidapp.app.data.model.M19EngagementSummary
 import com.comunidapp.app.data.model.M19FeedFilter
+import com.comunidapp.app.data.model.M19FeedPage
 import com.comunidapp.app.data.model.M19Post
 import com.comunidapp.app.data.model.M19PostStatus
 import com.comunidapp.app.data.model.M19PublicComment
@@ -45,15 +46,41 @@ class SupabaseM19SocialRepository(
         }
 
     override suspend fun searchFeed(filter: M19FeedFilter): Result<List<M19PublicPost>> =
+        searchFeedPage(filter).map { it.items }
+
+    override suspend fun searchFeedPage(filter: M19FeedFilter): Result<M19FeedPage> =
         try {
-            val list = remote.listPublicFeed(
+            val publicPosts = remote.listPublicFeed(
                 buildJsonObject {
                     put("p_query", filter.query.takeIf { it.isNotBlank() })
                     put("p_organization_id", filter.organizationId)
                     put("p_published_only", filter.publishedOnly)
                 }
             ).map { it.toM19PublicPost() }
-            Result.success(list)
+            val posts = publicPosts.map { public ->
+                M19Post(
+                    id = public.id,
+                    organizationId = "",
+                    organizationDisplayName = public.organizationDisplayName,
+                    authorUserId = "",
+                    authorDisplayName = public.authorDisplayName,
+                    title = public.title,
+                    content = public.content,
+                    status = public.status,
+                    visibility = public.visibility,
+                    coverImageRef = public.coverImageRef,
+                    mediaAttachments = public.mediaAttachments,
+                    contentReferences = emptyList(),
+                    publishedAt = public.publishedAt,
+                    createdBy = "",
+                    createdAt = public.createdAt,
+                    updatedAt = public.createdAt
+                )
+            }
+            val page = M19FeedService.paginate(posts, filter) { post ->
+                publicPosts.first { it.id == post.id }
+            }
+            Result.success(page)
         } catch (t: Throwable) {
             M19SocialErrorMapper.failure(t)
         }
@@ -101,8 +128,17 @@ class SupabaseM19SocialRepository(
     override suspend fun hidePost(postId: String): Result<M19Post> =
         transition(postId, M19PostStatus.HIDDEN)
 
+    override suspend fun archivePost(postId: String): Result<M19Post> =
+        transition(postId, M19PostStatus.ARCHIVED)
+
     override suspend fun removePost(postId: String): Result<M19Post> =
         transition(postId, M19PostStatus.REMOVED)
+
+    override suspend fun editComment(commentId: String, content: String): Result<M19PublicComment> =
+        M19SocialErrorMapper.fail("M19_COMMENT_NOT_FOUND")
+
+    override suspend fun archiveComment(commentId: String): Result<Unit> =
+        M19SocialErrorMapper.fail("M19_COMMENT_NOT_FOUND")
 
     override suspend fun listPublicComments(postId: String): Result<List<M19PublicComment>> =
         try {

@@ -1,29 +1,26 @@
-# M19 — Matriz funcional (Bloques 1–2)
+# M19 — Matriz funcional (Bloques 1–3)
 
-## Alcance Bloque 1
+## Alcance Bloque 3
 
-Fundación local/mock de **red social y contenido** vinculado a organizaciones M03. Publicaciones, comentarios, reacciones y feed público sanitizado.
-
-## Alcance Bloque 2
-
-Persistencia Supabase (migración 060, **no aplicada**): tablas, RLS, RPCs, repositorio remoto. Mock conservado.
+Feed paginado, filtros, referencias M08/M16/M17/M18, media M05, visibilidad, ARCHIVED, moderación ampliada, LOVE, comentarios editar/archivar. Navegación: Comunidad → Red social.
 
 ## Estados de publicación
 
 | Estado | Público en feed | Terminal |
 |--------|-----------------|----------|
 | `DRAFT` | No | No |
-| `PUBLISHED` | Sí | No |
+| `PUBLISHED` | Sí (según visibilidad) | No |
 | `HIDDEN` | No | No |
+| `ARCHIVED` | No | Sí (autor) |
 | `REMOVED` | No | Sí |
-
-**Idempotencia:** publicar, ocultar y eliminar repetidos son no-op con registro interno.
+| `REMOVED_BY_MODERATION` | No | Sí |
 
 ## Tipos de reacción
 
 | Código | Descripción |
 |--------|-------------|
 | `LIKE` | Me gusta |
+| `LOVE` | Me encanta |
 | `SUPPORT` | Apoyo |
 | `CELEBRATE` | Celebrar |
 

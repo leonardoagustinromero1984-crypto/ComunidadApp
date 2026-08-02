@@ -78,3 +78,11 @@ Producción (B2): `social.view` / `social.manage` vía M03 membership + RPC `has
 | `m19/posts/manage` | Panel organizador |
 | `m19/posts/create` | Nueva publicación |
 | `m19/posts/{postId}/edit` | Edición |
+
+Entrada principal: **Comunidad → Red social (M19)**. M18 eventos permanece en Sumate → Eventos.
+
+## Bloque 3
+
+- `M19FeedService` — paginación cursor `publishedAt|postId`
+- `M19ContentReferenceResolver` — snapshots M08/M16/M17/M18
+- `M19SocialResilience` — PartialData ante fallos parciales
