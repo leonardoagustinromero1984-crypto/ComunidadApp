@@ -13,11 +13,11 @@ M23 Agenda y reservas queda **cerrado oficialmente** tras Bloques 1–4:
 | 2 | `ce84f21` | Migración 068, repositorios Supabase |
 | 3 | `0377e98` | Operaciones completas, agenda, M20/M21/M06 |
 | 4 | `e1379e5` | 069, staging, validación 110/110 |
-| cierre | *(HEAD post-smoke)* | smoke 25/25 script dedicado, cierre oficial documental |
+| cierre | `f293c97` | smoke 25/25 script dedicado, cierre oficial documental |
 
 ## HEAD cierre oficial
 
-Ver commit de cierre post-smoke en `main` (incluye `scripts/ops/m23_remote_smoke_25.sql` y evidencia documental).
+`f293c97edd1df37b399e831e0582bff032639057`
 
 Commit técnico Bloque 4: `e1379e5717e596a37f866e999d3c3cb7eef8f6c2`
 
