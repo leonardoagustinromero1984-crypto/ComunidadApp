@@ -11,7 +11,13 @@
 | 1 | `f9b3620` | `feat(m21): establish reputation and reviews foundation` |
 | 2 | `3ebc030` | `feat(m21): add reputation and reviews persistence` |
 | 3 | `9764e17` | `feat(m21): add review operations and verification workflows` |
-| 4 | *(este cierre)* | `fix(m21): complete remote validation and module closure` |
+| 4 | `599363e` | `fix(m21): complete remote validation and module closure` |
+
+**Reconciliación historial (2026-08-02):** migración 065 aplicada vía `db query`; objetos verificados; `supabase migration repair 065 --status applied --linked` completado tras disponibilidad de credenciales. `schema_migrations`: 064 y 065 registradas.
+
+## Tests Kotlin — historial
+
+Cuatro tests fallaron en ejecución intermedia (`errorDoesNotExposePayload`, `disputeCreatesM04Case`, `duplicateReviewRejected`, `submitReviewWorks`) sobre código previo a correcciones de Bloques 3–4. **Ejecución final:** 42/42 PASS — no hay assertions fallidas vigentes. No re-ejecutar suite M21 salvo cambios Kotlin M21.
 
 ## Migraciones
 
