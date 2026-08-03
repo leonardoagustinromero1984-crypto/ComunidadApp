@@ -958,7 +958,7 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateBack = { navController.popBackStack() },
             onSubmitted = {
                 navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS) {
-                    popUpTo(NavRoutes.ADOPTIONS) { inclusive = false }
+                    popUpTo(NavRoutes.SUMATE) { inclusive = false }
                 }
             }
         )
