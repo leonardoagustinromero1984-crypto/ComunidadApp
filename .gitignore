@@ -30,6 +30,7 @@ supabase/.env
 *.jks
 *.keystore
 apk/
+/artifacts/
 supabase/.temp/
 
 # Logs
