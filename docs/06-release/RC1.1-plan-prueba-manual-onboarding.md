@@ -1,6 +1,6 @@
 # RC1.1 — Plan de prueba manual — Onboarding
 
-**Entorno:** APK debug posterior a RC1.1 (no generada en esta entrega).  
+**Entorno:** `artifacts\rc1.1\LeoVer-RC1.1-local-debug.apk` (generada 2026-08-02).
 **Estado global:** prueba física **PENDIENTE**.
 
 | ID | Recorrido | Pasos resumidos | Estado |

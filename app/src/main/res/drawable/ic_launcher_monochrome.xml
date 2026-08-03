@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Silueta monocromática del isotipo oficial (Android 13+ themed icon). -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/logo_leover_isotype_monochrome"
+    android:inset="18%" />

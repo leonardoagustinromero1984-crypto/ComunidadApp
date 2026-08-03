@@ -4,6 +4,8 @@
 **Fecha de generación:** 2026-08-02 22:03 (hora local del build)  
 **Propósito:** Primera APK integral para prueba manual RC1 (M00–M27, sin pagos).
 
+> **Versión posterior:** RC1.1 con ícono corregido y onboarding — ver [`RC1.1-icono-y-apk-entrega.md`](RC1.1-icono-y-apk-entrega.md) (`artifacts\rc1.1\LeoVer-RC1.1-local-debug.apk`, versionCode 2).
+
 ## Origen Git
 
 | Campo | Valor |

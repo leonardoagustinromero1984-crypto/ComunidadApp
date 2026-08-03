@@ -19,6 +19,7 @@
 | UI-002 | BAJO | M17 | Tabs sin destino | UX muerta | M17 hub | Ver NAV-002 | No | **Sí** | No | No | No |
 | UI-003 | MEJORA | Nav | Hub naming | Consistencia | NavRoutes | Normalizar RC2 | No | **Sí** | No | No | No |
 | ONB-001 | — | RC1.1 | Onboarding primer ingreso | Activación orientada a acción | FirstRunOnboarding* | Implementado RC1.1 | **Sí** | No (prueba física) | No | No | Sí |
+| ICON-001 | MEDIO | RC1.1 | Launcher con logo completo | Recorte / halo blanco | ic_launcher + logo_leover.jpg | Isotipo + adaptive corregido | **Sí** | No (prueba física) | No | No | Sí |
 
 ## Resumen por severidad
 
