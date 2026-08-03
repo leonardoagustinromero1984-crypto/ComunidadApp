@@ -76,11 +76,11 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 
 ### R8 — Escala inteligente
 - **M26 Inteligencia artificial:** matching, duplicados, asistencia stub, recomendaciones, jobs, revisión humana — **cerrado oficialmente**; migraciones 072–074 aplicadas en staging; validación 125/125 + smoke 25/25; sin pagos ni motor externo.
-- **M27 Integraciones y API pública:** webhooks, OAuth, límites, sandbox y contratos versionados — **Bloques 1–2 cerrados localmente; migración 075 creada sin aplicar; Bloque 3 no iniciado**.
+- **M27 Integraciones y API pública:** webhooks, OAuth stub, límites, sandbox y contratos versionados — **CIERRE OFICIAL COMPLETADO** (staging `wyst****mizz`; migraciones 075–077; validación 130/130 + smoke 25/25; sin pagos; entrega simulada).
 
 ## Camino crítico
 
-M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/M15/M16 → M17–M21 → M22–M23 → **M25** → **M26** → M27. **M24 pospuesto** (pagos no definidos).
+M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/M15/M16 → M17–M21 → M22–M23 → **M25** → **M26** → **M27**. **M24 pospuesto** (pagos no definidos). **M28+** pendiente de definición en D01.
 
 ## Contenido obligatorio de cada especificación de módulo
 
@@ -112,12 +112,12 @@ M00/M07 → M01/M02 → M03/M05 → M08 → M09 → M10/M11 → M12/M13 → M14/
 
 ## Próximo módulo
 
-**M27 — Integraciones y API pública** (webhooks, OAuth, límites, sandbox). **M26 cerrado oficialmente.** M27 Bloques 1–2 **cerrados localmente** (075 pendiente de aplicación remota).
+**M28 — pendiente de definición en D01.** **M27 cerrado oficialmente** (2026-08-03; staging 075–077; 130/130 + 25/25). **M24 pagos pospuesto.**
 
 ## Módulos posteriores pendientes de definición operativa
 
 - **M24 Pagos** — pospuesto; preauditoría en `M24-auditoria-preliminar.md`.
-- **M27 Integraciones y API pública** — Bloques 1–2 cerrados localmente; migración 075 **no aplicada**; Bloque 3 no iniciado.
+- **M28+** — no catalogados en D01 v1.0; no iniciar sin especificación aprobada.
 
 ## Nota de implementación técnica (LeoVer)
 

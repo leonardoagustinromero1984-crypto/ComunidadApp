@@ -9,4 +9,4 @@ Operaciones implementadas localmente: apps, claves (hash + reveal-once), webhook
 
 Resultado esperado: **54 tests PASS** (14 foundation + 40 operations), compilación PASS.
 
-Migración 075: **no aplicada**. Validación remota pendiente Bloque 4.
+Migración 075–077: **aplicadas en staging**. Validación remota Bloque 4: **130/130 PASS**.
