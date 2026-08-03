@@ -92,6 +92,7 @@ fun ProfileScreen(
     onNavigateToObservability: () -> Unit = {},
     onNavigateToSearchFriends: () -> Unit = {},
     onNavigateToAccountSecurity: () -> Unit = {},
+    onNavigateToFirstRunTutorial: () -> Unit = {},
     onNavigateToMyOrganizations: () -> Unit = {},
     onFriendClick: (String) -> Unit = {},
     onPetClick: (String) -> Unit = {},
@@ -443,6 +444,18 @@ fun ProfileScreen(
                                 post = post,
                                 modifier = Modifier.padding(horizontal = 16.dp)
                             )
+                        }
+                    }
+
+                    item {
+                        OutlinedButton(
+                            onClick = onNavigateToFirstRunTutorial,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 4.dp),
+                            shape = RoundedCornerShape(14.dp)
+                        ) {
+                            Text("Ver tutorial de inicio")
                         }
                     }
 

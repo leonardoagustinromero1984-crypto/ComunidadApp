@@ -62,6 +62,12 @@ fun MyPetsScreen(
                 ),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
+                item {
+                    com.comunidapp.app.ui.components.ContextualFirstVisitHelp(
+                        helpId = com.comunidapp.app.domain.onboarding.ContextualHelpId.PET_PASSPORT,
+                        message = com.comunidapp.app.ui.components.ContextualHelpMessages.PET_PASSPORT
+                    )
+                }
                 if (pets.isEmpty()) {
                     item {
                         Text(

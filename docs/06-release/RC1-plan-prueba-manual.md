@@ -15,11 +15,13 @@ Ejecutar cuando se genere APK debug autorizada. Entorno recomendado: **mock mode
 1. Abrir app → pantalla login.
 2. Registrar usuario nuevo o iniciar sesión.
 3. Completar consentimiento legal si aplica.
-4. Verificar llegada a `home`.
+4. Verificar llegada a `home` o onboarding RC1.1 si es primer ingreso (`NOT_STARTED` / `IN_PROGRESS`).
+
+### 1b. Onboarding RC1.1 (primer ingreso)
+Ver plan detallado: [`RC1.1-plan-prueba-manual-onboarding.md`](RC1.1-plan-prueba-manual-onboarding.md) (OB-01–OB-17, todos **PENDIENTE**).
 
 ### 2. Crear mascota
 1. Perfil → Mis mascotas → Agregar.
-2. Completar datos mínimos.
 3. Guardar y verificar en listado.
 
 ### 3. Editar mascota

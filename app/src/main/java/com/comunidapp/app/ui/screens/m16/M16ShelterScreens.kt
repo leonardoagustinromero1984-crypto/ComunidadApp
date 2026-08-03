@@ -84,6 +84,10 @@ fun M16SheltersListScreen(
             Modifier.padding(padding).padding(16.dp).fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
+            com.comunidapp.app.ui.components.ContextualFirstVisitHelp(
+                helpId = com.comunidapp.app.domain.onboarding.ContextualHelpId.SHELTERS,
+                message = com.comunidapp.app.ui.components.ContextualHelpMessages.SHELTERS
+            )
             Text(
                 "Directorio público M16 — sin datos personales.",
                 style = MaterialTheme.typography.bodySmall,

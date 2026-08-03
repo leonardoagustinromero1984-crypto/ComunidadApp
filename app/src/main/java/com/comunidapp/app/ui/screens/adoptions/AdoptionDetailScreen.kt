@@ -370,6 +370,12 @@ fun MyAdoptionsScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
+                com.comunidapp.app.ui.components.ContextualFirstVisitHelp(
+                    helpId = com.comunidapp.app.domain.onboarding.ContextualHelpId.ADOPTIONS,
+                    message = com.comunidapp.app.ui.components.ContextualHelpMessages.ADOPTIONS
+                )
+            }
+            item {
                 Button(
                     onClick = onCreateAdoption,
                     modifier = Modifier.fillMaxWidth()

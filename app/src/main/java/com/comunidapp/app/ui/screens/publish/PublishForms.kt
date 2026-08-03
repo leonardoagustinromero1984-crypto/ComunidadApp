@@ -307,6 +307,11 @@ fun PublishLostFoundScreen(
             viewModel.publishLostFound(type, petName, species, location, description, contactInfo, imageUri)
         }
     ) {
+        com.comunidapp.app.ui.components.ContextualFirstVisitHelp(
+            helpId = com.comunidapp.app.domain.onboarding.ContextualHelpId.ALERTS,
+            message = com.comunidapp.app.ui.components.ContextualHelpMessages.ALERTS,
+            modifier = Modifier.padding(bottom = 8.dp)
+        )
         imageUri?.let { uri ->
             PetImage(
                 imageUrl = uri.toString(),

@@ -30,6 +30,12 @@ Cursor puede resolver la implementación técnica, pero no debe decidir por sí 
 9. Observabilidad, pruebas y documentación desde el comienzo.
 10. IA asistida, nunca decisoria en salud, adopción o sanciones.
 
+## Experiencias y recorridos principales
+
+**Primer ingreso y activación:** LeoVer ofrecerá un onboarding breve, opcional y orientado a acciones. La persona podrá indicar qué desea hacer primero sin quedar limitada a un único rol. La plataforma solicitará únicamente los datos mínimos y pedirá permisos móviles en contexto. La activación se considerará alcanzada cuando el usuario complete una primera acción útil, como registrar una mascota, publicar una pérdida o hallazgo, explorar una adopción, ofrecer tránsito, vincularse con una organización o elegir una forma de colaborar.
+
+*(Implementación RC1.1 — onboarding local en app Android; sin SQL; sin roles automáticos.)*
+
 ## Catálogo y releases
 
 ### R0 — Fundación

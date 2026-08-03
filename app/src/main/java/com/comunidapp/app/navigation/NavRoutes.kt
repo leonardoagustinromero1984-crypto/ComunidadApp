@@ -14,6 +14,10 @@ object NavRoutes {
     const val PROFILE_ONBOARDING = "profile_onboarding"
     const val ACCOUNT_ACCESS_BLOCKED = "account_access_blocked"
 
+    /** RC1.1 — onboarding de primer ingreso (opcional, local). */
+    const val FIRST_RUN_ONBOARDING = "first_run_onboarding/{restart}"
+    const val ARG_ONBOARDING_RESTART = "restart"
+
     const val HOME = "home"
     const val SUMATE = "sumate"
     const val COMUNIDAD = "comunidad"
@@ -538,6 +542,7 @@ object NavRoutes {
     fun petStatusHistory(petId: String) =
         "pet_status_history/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
     fun emailVerification(email: String) = "email_verification/$email"
+    fun firstRunOnboarding(restart: Boolean = false) = "first_run_onboarding/$restart"
     fun editPet(petId: String) = "edit_pet/$petId"
     fun userProfile(userId: String) =
         "user_profile/${java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())}"

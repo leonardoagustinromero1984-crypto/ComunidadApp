@@ -144,6 +144,7 @@ import com.comunidapp.app.ui.screens.organization.OrganizationBranchesScreen
 import com.comunidapp.app.ui.screens.organization.OrganizationManageScreen
 import com.comunidapp.app.ui.screens.organization.OrganizationTeamScreen
 import com.comunidapp.app.ui.screens.organization.PublicOrganizationScreen
+import com.comunidapp.app.ui.screens.onboarding.FirstRunOnboardingScreen
 import com.comunidapp.app.ui.screens.onboarding.ProfileOnboardingScreen
 import com.comunidapp.app.ui.screens.security.AccountAccessBlockedScreen
 import com.comunidapp.app.ui.screens.security.AccountSecurityScreen
@@ -248,6 +249,7 @@ import com.comunidapp.app.viewmodel.PetFormViewModel
 import com.comunidapp.app.viewmodel.PetResponsibilitiesViewModel
 import com.comunidapp.app.viewmodel.PetStatusHistoryViewModel
 import com.comunidapp.app.viewmodel.PetTransfersViewModel
+import com.comunidapp.app.viewmodel.FirstRunOnboardingViewModel
 import com.comunidapp.app.viewmodel.SessionState
 import com.comunidapp.app.viewmodel.SessionViewModel
 
@@ -388,10 +390,19 @@ private fun RootNavHost(
 @Composable
 private fun MainScreen(accountType: AccountType) {
     val navController = rememberNavController()
+    val onboardingViewModel: FirstRunOnboardingViewModel = viewModel()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val bottomNavRoutes = bottomNavItemsFor(accountType).map { it.route }
     val showBottomBar = currentRoute in bottomNavRoutes
+
+    LaunchedEffect(Unit) {
+        if (onboardingViewModel.shouldAutoShow()) {
+            navController.navigate(NavRoutes.firstRunOnboarding(restart = false)) {
+                launchSingleTop = true
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         val pending = NotificationPendingNavigationStore.consume() ?: return@LaunchedEffect
@@ -472,6 +483,28 @@ private fun NavGraphBuilder.mainAppRoutes(
     navController: NavHostController,
     accountType: AccountType
 ) {
+    composable(
+        route = NavRoutes.FIRST_RUN_ONBOARDING,
+        arguments = listOf(
+            navArgument(NavRoutes.ARG_ONBOARDING_RESTART) {
+                type = NavType.BoolType
+                defaultValue = false
+            }
+        )
+    ) { entry ->
+        val restart = entry.arguments?.getBoolean(NavRoutes.ARG_ONBOARDING_RESTART) == true
+        FirstRunOnboardingScreen(
+            forceVisualRestart = restart,
+            onExit = { navController.popBackStack() },
+            onNavigateToRoute = { route ->
+                navController.navigate(route) {
+                    popUpTo(NavRoutes.HOME) { inclusive = false }
+                    launchSingleTop = true
+                }
+            },
+            onOpenPrivacy = { navController.navigate(NavRoutes.LEGAL_PRIVACY) }
+        )
+    }
     composable(NavRoutes.HOME) {
         HomeScreen(
             onAuthorClick = { userId ->
@@ -559,6 +592,11 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateToObservability = { navController.navigate(NavRoutes.OBSERVABILITY_OVERVIEW) },
             onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
             onNavigateToAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
+            onNavigateToFirstRunTutorial = {
+                navController.navigate(NavRoutes.firstRunOnboarding(restart = true)) {
+                    launchSingleTop = true
+                }
+            },
             onNavigateToMyOrganizations = { navController.navigate(NavRoutes.MY_ORGANIZATIONS) },
             onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
             onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
