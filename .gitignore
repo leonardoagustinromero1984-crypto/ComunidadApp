@@ -37,6 +37,17 @@ supabase/.temp/
 *.log
 scripts/ops/*_last_run.txt
 
+# Web / Node (LeoVer web workspace)
+web/node_modules/
+web/.next/
+web/.open-next/
+web/.wrangler/
+web/.env
+web/.env.*
+!web/.env.example
+web/coverage/
+web/*.tsbuildinfo
+
 # Firebase / secretos locales (google-services.json SÍ se sube en repo privado)
 # Si el repo es público, descomentá la línea siguiente:
 # app/google-services.json

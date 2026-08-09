@@ -1,0 +1,43 @@
+{
+  "name": "leover-web",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "pnpm@10.12.4",
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "cf:build": "next build && node scripts/prepare-opennext.mjs && opennextjs-cloudflare build --skipNextBuild",
+    "start": "next start",
+    "preview": "pnpm cf:build && opennextjs-cloudflare preview",
+    "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "lint": "eslint",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
+  },
+  "dependencies": {
+    "@supabase/ssr": "^0.6.1",
+    "@supabase/supabase-js": "^2.49.4",
+    "next": "15.5.12",
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@opennextjs/cloudflare": "^1.20.2",
+    "@tailwindcss/postcss": "^4",
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.3.0",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "@vitejs/plugin-react": "^4.4.1",
+    "eslint": "^9",
+    "eslint-config-next": "15.5.12",
+    "jsdom": "^26.1.0",
+    "tailwindcss": "^4",
+    "typescript": "^5",
+    "vitest": "^3.1.2",
+    "wrangler": "^4.86.0"
+  }
+}

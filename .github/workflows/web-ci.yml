@@ -1,0 +1,83 @@
+name: Web CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web-ci.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "web/**"
+      - ".github/workflows/web-ci.yml"
+
+concurrency:
+  group: web-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  web-quality:
+    name: Typecheck, tests, build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: web
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.12.4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "pnpm"
+          cache-dependency-path: web/pnpm-lock.yaml
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Guard against service role in web sources
+        run: |
+          if rg -n "service_role|SUPABASE_SERVICE_ROLE" . --glob '!node_modules/**' --glob '!.open-next/**'; then
+            echo "service role references are not allowed in web/"
+            exit 1
+          fi
+
+      - name: Typecheck
+        run: pnpm typecheck
+        env:
+          NEXT_PUBLIC_APP_URL: https://leover.com.ar
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: example-anon-key
+
+      - name: Test
+        run: pnpm test
+        env:
+          NEXT_PUBLIC_APP_URL: https://leover.com.ar
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: example-anon-key
+
+      - name: Build
+        run: pnpm build
+        env:
+          NEXT_PUBLIC_APP_URL: https://leover.com.ar
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: example-anon-key
+
+      - name: OpenNext build
+        run: node scripts/prepare-opennext.mjs && pnpm exec opennextjs-cloudflare build --skipNextBuild
+        env:
+          NEXT_PUBLIC_APP_URL: https://leover.com.ar
+          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: example-anon-key
