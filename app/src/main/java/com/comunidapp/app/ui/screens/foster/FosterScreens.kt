@@ -651,9 +651,9 @@ fun FosterPlacementDetailScreen(
                     Text("Hogar: ${p.fosterHomeId}")
                     Text("Cuidador temporal: ${p.fosterUserId}")
                     p.temporaryResponsibilityId?.let {
-                        Text("Custodia M08: $it (TEMPORARY_CUSTODIAN)")
+                        Text("Vínculo temporal activo")
                     }
-                    Text("El responsable PRINCIPAL no cambia.")
+                    Text("El responsable principal no cambia.")
                 }
             }
         }

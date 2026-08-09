@@ -245,12 +245,17 @@ class FakeStage5PetRepository(
 }
 
 class FakeStage5UserRepository(
-    var profiles: List<PublicUserProfile> = emptyList()
+    var profiles: List<PublicUserProfile> = emptyList(),
+    var usersById: Map<String, User> = emptyMap()
 ) : UserRepository {
 
     var searchCalls = 0
+    var getUserCalls = 0
 
-    override suspend fun getUser(userId: String): User? = null
+    override suspend fun getUser(userId: String): User? {
+        getUserCalls++
+        return usersById[userId]
+    }
     override suspend fun createUser(user: User): Result<Unit> = Result.success(Unit)
     override suspend fun updateUser(user: User): Result<Unit> = Result.success(Unit)
     override suspend fun searchUsers(query: String, excludeUserId: String): List<User> = emptyList()

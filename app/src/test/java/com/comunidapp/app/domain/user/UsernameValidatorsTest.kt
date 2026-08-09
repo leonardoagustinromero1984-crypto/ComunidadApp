@@ -43,6 +43,21 @@ class UsernameValidatorsTest {
     }
 
     @Test
+    fun normalize_strips_at_and_lowercases() {
+        assertEquals("veroobregon", UsernameValidators.normalize("  @VeroObregon  "))
+        assertEquals("veroobregon", UsernameValidators.normalize("@@veroobregon"))
+    }
+
+    @Test
+    fun rejects_uuid_like_and_extra_reserved() {
+        assertTrue(
+            UsernameValidators.validate("550e8400-e29b-41d4-a716-446655440000").isFailure
+        )
+        assertTrue(UsernameValidators.validate("administrador").isFailure)
+        assertTrue(UsernameValidators.validate("auth").isFailure)
+    }
+
+    @Test
     fun setup_complete_requires_username_and_status() {
         val u = UsernameValidators.validate("okuser").getOrThrow()
         assertTrue(UsernameValidators.isSetupComplete(u, ProfileSetupStatus.COMPLETED))

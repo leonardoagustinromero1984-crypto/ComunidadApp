@@ -57,7 +57,7 @@ class M08Stage5StaticGuardsTest {
             "app/src/main/java/com/comunidapp/app/ui/screens/pets/PetDetailScreen.kt"
         ).readText()
         assertTrue(screen.contains("canViewGovernance"))
-        assertTrue(screen.contains("Responsables y permisos"))
+        assertTrue(screen.contains("PetCareNetworkSection") || screen.contains("onNavigateToResponsibilities"))
         assertFalse(screen.contains("ownerId =="))
         val viewModel = sourceFile(
             "app/src/main/java/com/comunidapp/app/viewmodel/PetDetailViewModel.kt"

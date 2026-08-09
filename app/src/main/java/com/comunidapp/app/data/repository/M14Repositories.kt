@@ -114,7 +114,7 @@ interface M14AuthorityPolicy {
     fun canVerifyAsIssuer(actorUserId: String, credentialCreatedBy: String): Boolean
 }
 
-/** Autoridad local B1: responsable M08 vía ownerId; sin autoverificación. */
+/** Autoridad local B1: responsable principal vía ownerId; sin autoverificación. */
 class MockM14AuthorityPolicy(
     private val isModerator: (String) -> Boolean = { false },
     private val isOrgVerifier: (String) -> Boolean = { false }

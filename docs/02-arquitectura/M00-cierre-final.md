@@ -93,7 +93,7 @@ Evidencia por etapa: `M00-auditoria-inicial.md`, `M00-etapa-2-cierre.md`, `M00-e
 
 ## 7. Siguiente módulo habilitado
 
-**M01** — según [D01 — Módulos y Orden](../01-producto/D01-Modulos-y-Orden.md).
+**M01** — según [D01 v1.2 — Módulos y Orden](../01-producto/D01-Modulos-y-Orden-v1.2.md).
 
 ### Condiciones de entrada a M01
 

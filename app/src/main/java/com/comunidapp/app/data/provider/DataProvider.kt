@@ -44,6 +44,10 @@ import com.comunidapp.app.data.repository.M13SightingRepository
 import com.comunidapp.app.data.repository.M14CredentialRepository
 import com.comunidapp.app.data.repository.M14MemoryStore
 import com.comunidapp.app.data.repository.M14OperationsRepository
+import com.comunidapp.app.data.repository.M28MemoryStore
+import com.comunidapp.app.data.repository.M28Repository
+import com.comunidapp.app.data.repository.MockM28Repository
+import com.comunidapp.app.data.repository.SupabaseM28Repository
 import com.comunidapp.app.data.repository.M14PassportRepository
 import com.comunidapp.app.data.repository.M14VerificationRepository
 import com.comunidapp.app.data.repository.M15FosterHomeRepository
@@ -880,6 +884,28 @@ object DataProvider {
             MockM14OperationsRepository(
                 store = m14Store,
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+            )
+        }
+    }
+
+    /** M28 — Portal veterinario profesional (Pilot Minimum). Permisos: veterinary.care.* */
+    private val m28Store by lazy { M28MemoryStore() }
+
+    val m28Repository: M28Repository by lazy {
+        if (useSupabase) {
+            SupabaseM28Repository()
+        } else {
+            MockM28Repository(
+                store = m28Store,
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+                resolvePet = m14ResolvePet,
+                isPetResponsible = { petId, userId ->
+                    val pet = InMemoryDataStore.getPetById(petId)
+                    pet != null && pet.ownerId == userId
+                },
+                orgRoleForClinic = { _, userId ->
+                    if (AuthProvider.repository.getCurrentUser()?.id == userId) "VETERINARIAN" else "NONE"
+                }
             )
         }
     }

@@ -62,7 +62,7 @@ class M12VeterinaryBlock4StaticGuardsTest {
         assertTrue("debe existir 050 M14", names.any { it.startsWith("050") })
         assertTrue("debe existir 051 hotfix M14", names.any { it.startsWith("051") })
         assertTrue("debe existir 052 M14 B3", names.any { it.startsWith("052") })
-        assertFalse("no debe existir 053", names.any { it.startsWith("053") })
+        assertTrue("debe existir 080 M28", names.any { it.startsWith("080_m28_") })
     }
 
     @Test

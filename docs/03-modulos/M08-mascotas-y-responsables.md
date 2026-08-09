@@ -61,7 +61,11 @@ Perfil público: mascotas ajenas ocultas (sin SELECT-all / sin vitrina pública)
 
 Definir la identidad animal de LeoVer como entidad independiente del responsable humano y de las publicaciones (regla D01 #2), con un grafo de responsabilidad, autorizaciones, custodia (personal u organizacional), transferencias auditables y ciclo de vida (activa, archivada, fallecida).
 
-M08 es el fundamento de M09 (pasaporte), M12/M13 (reencuentro) y M14â€“M16 (adopciÃ³n/rescate).
+M08 es el fundamento de **M09** (adopciones), **M14** (pasaporte), **M13** (avistamientos sobre lost_found legacy), **M12** (veterinarias) y **M15/M16** (transito y refugios).
+
+### Estado estratégico — microchip
+
+**Estado estratégico actual:** la infraestructura histórica de microchip puede existir en persistencia (columnas, modelos, migraciones), pero la **funcionalidad de microchip queda fuera de V1 y del piloto**. No debe exponerse como requisito, flujo obligatorio, búsqueda pública, dependencia del alta de mascota, dependencia del Pasaporte, integración con registros externos ni requisito para adopciones o perdidos/encontrados. Su eventual activación futura requerirá una **decisión formal** registrada en ADR y actualización de producto.
 
 ---
 
@@ -83,11 +87,12 @@ M08 es el fundamento de M09 (pasaporte), M12/M13 (reencuentro) y M14â€“M16 
 
 | Tema | MÃ³dulo |
 |---|---|
-| Pasaporte, QR, documentos sanitarios formales | M09 |
-| Geoservicios / mapas | M10 |
-| Alertas perdidos/encontrados productivas | M12â€“M13 |
-| Flujo completo de adopciÃ³n | M14 |
-| Hogares de trÃ¡nsito / gestiÃ³n de refugio | M15â€“M16 |
+| Pasaporte, QR, documentos sanitarios formales | **M14** |
+| Flujo completo de adopciÃ³n | **M09** |
+| Alertas perdidos/encontrados (legacy + avistamientos) | **lost_found_*** + **M13** |
+| Geoservicios / mapas | Transversal (PostGIS + Google Maps); **M10 = trÃ¡nsito SQL** |
+| Hogares de trÃ¡nsito | **M10** (persistencia) + **M15** (operaciÃ³n) |
+| OperaciÃ³n / perfiles refugio org | **M11** + **M16** |
 | Chat, feed social avanzado | M19â€“M20 |
 | Pagos | M24 |
 

@@ -33,8 +33,14 @@ import kotlinx.coroutines.launch
 import java.util.Calendar
 
 data class ComunidadUiState(
-    val selectedCategory: ServiceCategory = ServiceCategory.VET
-)
+    val selectedCategory: ServiceCategory = ServiceCategory.VET,
+    val isLoading: Boolean = false,
+    val locationQuery: String = "",
+    val activeOnly: Boolean = false
+) {
+    val activeFilterCount: Int
+        get() = (if (locationQuery.isNotBlank()) 1 else 0) + (if (activeOnly) 1 else 0)
+}
 
 data class ServiceDetailUiState(
     val service: ServiceProfile? = null,
@@ -78,8 +84,30 @@ class ComunidadViewModel(
         .flatMapLatest { state -> serviceRepository.observeServices(state.selectedCategory) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    init {
+        viewModelScope.launch {
+            services.collect {
+                _uiState.update { state -> state.copy(isLoading = false) }
+            }
+        }
+    }
+
     fun selectCategory(category: ServiceCategory) {
-        _uiState.update { it.copy(selectedCategory = category) }
+        if (_uiState.value.selectedCategory == category) return
+        _uiState.update { it.copy(selectedCategory = category, isLoading = true) }
+    }
+
+    fun applyFilters(locationQuery: String, activeOnly: Boolean) {
+        _uiState.update {
+            it.copy(
+                locationQuery = locationQuery.trim(),
+                activeOnly = activeOnly
+            )
+        }
+    }
+
+    fun clearFilters() {
+        _uiState.update { it.copy(locationQuery = "", activeOnly = false) }
     }
 }
 

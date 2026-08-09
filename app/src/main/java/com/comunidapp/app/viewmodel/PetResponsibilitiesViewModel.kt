@@ -41,6 +41,8 @@ data class PetResponsibilitiesUiState(
     val coResponsibles: List<PetResponsibility> = emptyList(),
     val custodians: List<PetResponsibility> = emptyList(),
     val inactiveLinks: List<PetResponsibility> = emptyList(),
+    /** Clave holder → nombre amigable (nunca UUID). */
+    val displayNames: Map<String, String> = emptyMap(),
     val isSubmitting: Boolean = false,
     val actionMessage: String? = null,
     val searchQuery: String = "",
@@ -108,19 +110,44 @@ class PetResponsibilitiesViewModel(
                 return@launch
             }
             val active = links.filter { it.status == PetLinkStatus.ACTIVE }
+            val principal = active.firstOrNull { r -> r.role == PetResponsibilityRole.PRINCIPAL }
+            val co = active.filter { r -> r.role == PetResponsibilityRole.CO_RESPONSIBLE }
+            val custodians = active.filter { r -> r.role == PetResponsibilityRole.TEMPORARY_CUSTODIAN }
+            val names = resolveDisplayNames(listOfNotNull(principal) + co + custodians)
+            val inactive = links.filter { it.status != PetLinkStatus.ACTIVE }
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     loadErrorMessage = null,
                     access = access,
                     petStatus = petStatus,
-                    principal = active.firstOrNull { r -> r.role == PetResponsibilityRole.PRINCIPAL },
-                    coResponsibles = active.filter { r -> r.role == PetResponsibilityRole.CO_RESPONSIBLE },
-                    custodians = active.filter { r -> r.role == PetResponsibilityRole.TEMPORARY_CUSTODIAN },
-                    inactiveLinks = links.filter { r -> r.status != PetLinkStatus.ACTIVE }
+                    principal = principal,
+                    coResponsibles = co,
+                    custodians = custodians,
+                    inactiveLinks = inactive,
+                    displayNames = names
                 )
             }
         }
+    }
+
+    private suspend fun resolveDisplayNames(links: List<PetResponsibility>): Map<String, String> {
+        val out = linkedMapOf<String, String>()
+        links.forEach { link ->
+            when (val holder = link.holder) {
+                is PetPrincipalHolder.Person -> {
+                    val key = "p:${holder.userId}"
+                    val name = runCatching { userRepository.getUser(holder.userId)?.name?.trim() }
+                        .getOrNull()
+                        ?.takeIf { it.isNotBlank() }
+                    if (name != null) out[key] = name
+                }
+                is PetPrincipalHolder.Organization -> {
+                    out["o:${holder.organizationId.value}"] = "Organización"
+                }
+            }
+        }
+        return out
     }
 
     fun updateSearchQuery(query: String) {

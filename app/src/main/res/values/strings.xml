@@ -1,7 +1,8 @@
 <resources>
     <string name="app_name">LeoVer</string>
     <string name="brand_name">LeoVer</string>
-    <string name="brand_tagline">Tu ecosistema animal: adopciones, rescate y comunidad cerca tuyo</string>
+    <string name="brand_tagline">Conectamos mascotas, personas y comunidad.</string>
+    <string name="brand_slogan">Conectamos mascotas, personas y comunidad.</string>
     <string name="logout">Cerrar sesión</string>
     <string name="edit_profile">Editar perfil</string>
     <string name="save_profile">Guardar cambios</string>

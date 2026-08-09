@@ -112,7 +112,7 @@ fun VeterinaryClinicManageHubScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
-            Text("Persistencia remota vía RPC M12 (Bloque 2).")
+            Text("Persistencia remota vía servicio veterinario (Bloque 2).")
             OutlinedButton(onClick = onProfessionals, modifier = Modifier.fillMaxWidth()) {
                 Text("Profesionales")
             }

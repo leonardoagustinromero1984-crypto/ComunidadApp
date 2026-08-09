@@ -8,7 +8,7 @@ Producto M15 = mismo alcance (sin remapeo cruzado como M14/M09)
 Legacy M10 = implementación previa preservada
 ```
 
-Fuente: `ADR-015-M15-hogares-de-transito.md`, `D01-Modulos-y-Orden.md`.
+Fuente: `ADR-015-M15-hogares-de-transito.md`, `D01-Modulos-y-Orden-v1.2.md`.
 
 ## 2. Objetivo
 

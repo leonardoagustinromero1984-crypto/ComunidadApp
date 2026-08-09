@@ -65,7 +65,7 @@ fun M15FosterHubScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Disponibilidad, solicitudes y alojamiento temporal (M15).",
+                "Disponibilidad, solicitudes y alojamiento temporal.",
                 style = MaterialTheme.typography.bodySmall
             )
             when (val s = state) {

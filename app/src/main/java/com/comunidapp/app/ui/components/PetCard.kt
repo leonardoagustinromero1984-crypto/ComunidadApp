@@ -123,11 +123,20 @@ fun AdoptionCard(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Text(
-                        text = post.shelterName,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    if (post.shelterName.isNotBlank() || !post.publisherOrganizationId.isNullOrBlank()) {
+                        Text(
+                            text = "Publicado por",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = post.shelterName.ifBlank { "Organización" } +
+                                if (!post.publisherOrganizationId.isNullOrBlank()) " ✓" else "",
+                            style = MaterialTheme.typography.bodySmall,
+                            fontWeight = FontWeight.Medium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
                     Text(
                         text = "${post.species.toDisplayName()} · ${post.sex.toDisplayName()} · ${post.ageDisplay()}",
                         style = MaterialTheme.typography.bodySmall,

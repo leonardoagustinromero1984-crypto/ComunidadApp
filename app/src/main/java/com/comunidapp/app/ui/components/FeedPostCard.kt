@@ -257,6 +257,8 @@ private fun PostTypeBadge(type: PostType) {
         PostType.QUESTION -> "Pregunta" to MaterialTheme.colorScheme.tertiaryContainer
         PostType.PROMO -> "Publicidad" to MaterialTheme.colorScheme.secondaryContainer
         PostType.GENERAL -> "General" to MaterialTheme.colorScheme.surfaceVariant
+        PostType.REEL -> "Reel" to MaterialTheme.colorScheme.secondaryContainer
+        PostType.STORY -> "Historia" to MaterialTheme.colorScheme.tertiaryContainer
     }
     val textColor = if (type == PostType.URGENT) UrgentRed else MaterialTheme.colorScheme.onSurface
 

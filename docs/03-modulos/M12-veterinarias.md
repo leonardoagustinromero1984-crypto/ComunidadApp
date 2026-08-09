@@ -23,7 +23,7 @@ Riesgo aceptado: validación funcional remota diferida
 > `docs/02-arquitectura/M12-matriz-funcional-final.md`. El smoke pendiente vive en
 > `docs/05-operacion/M12-smoke-funcional-pendiente-cierre.md`.
 
-> Nota D01: M12 técnico (Veterinarias) ≠ M12 producto (mascotas perdidas). Ver nota en D01.
+> **Numeración vigente (D01 v1.2):** **M12 = Veterinarias**. Perdidos/encontrados = legacy `lost_found_*` + **M13**. Portal profesional futuro = **M28**.
 
 ## Bloque 1 — dominio y directorio local
 

@@ -77,7 +77,7 @@ fun OrganizationVerificationQueueScreen(
                         .clickable { onShelterVerificationClick(req.id) }
                 ) {
                     Text(
-                        text = "Refugio M16 · ${req.shelterDisplayName}",
+                        text = "Refugio · ${req.shelterDisplayName}",
                         fontWeight = FontWeight.SemiBold,
                         modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp)
                     )

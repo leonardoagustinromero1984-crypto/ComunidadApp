@@ -568,7 +568,11 @@ object MockData {
             location = "Estación La Plata",
             description = "Golden retriever encontrado con collar rojo sin placa. Muy dócil.",
             contactInfo = "carlos@email.com / 221-4567890",
-            date = "28/06/2025"
+            // Mock/demo GPS only — no se inventa en datos productivos remotos.
+            latitude = -34.9214,
+            longitude = -57.9544,
+            date = "28/06/2025",
+            createdAt = System.currentTimeMillis() - 2L * 24 * 60 * 60 * 1000
         ),
         LostFoundPost(
             id = "lf_2",
@@ -581,7 +585,10 @@ object MockData {
             location = "Palermo, CABA",
             description = "Gata blanca con manchas grises. Ojos verdes. Muy asustadiza.",
             contactInfo = "maria@email.com / 11-1234-5678",
-            date = "27/06/2025"
+            latitude = -34.5889,
+            longitude = -58.4300,
+            date = "27/06/2025",
+            createdAt = System.currentTimeMillis() - 1L * 24 * 60 * 60 * 1000
         ),
         LostFoundPost(
             id = "lf_3",
@@ -593,7 +600,10 @@ object MockData {
             location = "Villa Crespo, CABA",
             description = "Perro mestizo pequeño, color marrón. Sin collar.",
             contactInfo = "contacto@patitas.org",
-            date = "26/06/2025"
+            latitude = -34.5980,
+            longitude = -58.4410,
+            date = "26/06/2025",
+            createdAt = System.currentTimeMillis() - 3L * 24 * 60 * 60 * 1000
         )
     )
 }

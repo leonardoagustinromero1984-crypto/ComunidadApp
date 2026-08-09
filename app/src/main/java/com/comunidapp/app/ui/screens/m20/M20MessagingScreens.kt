@@ -66,7 +66,7 @@ fun M20ConversationListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "LeoVer M20 — bandeja con contexto y sin PII en modelos públicos.",
+                "Bandeja de mensajes — con contexto y sin PII en modelos públicos.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )

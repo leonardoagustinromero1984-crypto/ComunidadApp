@@ -93,37 +93,76 @@ class M14PetPassportViewModel(
 
     fun createFromPet() {
         if (_busy.value) return
+        if (petId.isBlank()) {
+            _message.value = M14ErrorMapper.userMessage("PET_NOT_FOUND")
+            return
+        }
         viewModelScope.launch {
             _busy.value = true
-            val pet = _pet.value ?: petRepository.observePet(petId).first()
+            _message.value = null
+            // Prefer cache/fetch; avoid hanging on observePet().first() if el Flow no emite.
+            val pet = _pet.value
+                ?: runCatching { petRepository.getPetById(petId) }.getOrNull()
+                ?: runCatching { petRepository.fetchPetById(petId) }.getOrNull()
             if (pet == null) {
                 _message.value = M14ErrorMapper.userMessage("PET_NOT_FOUND")
                 _busy.value = false
                 return@launch
             }
-            passportRepository.createPassport(
+            if (_passport.value != null) {
+                _message.value = M14ErrorMapper.userMessage("PASSPORT_ALREADY_EXISTS")
+                _busy.value = false
+                return@launch
+            }
+            val result = passportRepository.createPassport(
                 CreateM14PassportInput(
                     petId = pet.id,
-                    displayName = pet.name,
+                    displayName = pet.name.ifBlank { "Mascota" },
                     species = pet.species,
-                    breedText = pet.breed,
+                    breedText = pet.breed?.takeIf { it.isNotBlank() },
                     sex = pet.sex,
-                    primaryColor = pet.color,
-                    microchipNumber = pet.microchipId ?: pet.microchipNormalized,
+                    primaryColor = pet.color?.takeIf { it.isNotBlank() },
+                    // Microchip retirado de la UX; no enviarlo en creación.
+                    microchipNumber = null,
                     visibility = M14Visibility.PRIVATE
                 )
-            ).onFailure { e ->
-                _message.value = M14ErrorMapper.userMessage(M14ErrorMapper.codeOf(e))
+            )
+            result.onSuccess { created ->
+                // observePassportForPet is a one-shot cold flow; apply create result directly.
+                _passport.value = created
+                _message.value = "Pasaporte creado"
+            }.onFailure { e ->
+                val code = M14ErrorMapper.codeOf(e)
+                if (code == "PASSPORT_ALREADY_EXISTS") {
+                    runCatching {
+                        passportRepository.observePassportForPet(pet.id).first()
+                    }.getOrNull()?.let { found ->
+                        _passport.value = found
+                        _message.value = M14ErrorMapper.userMessage(code)
+                        _busy.value = false
+                        return@launch
+                    }
+                }
+                val userCode = when (code) {
+                    "UNAUTHORIZED",
+                    "PET_NOT_FOUND",
+                    "PET_NOT_ELIGIBLE",
+                    "PASSPORT_ALREADY_EXISTS",
+                    "INVALID_PASSPORT_INPUT",
+                    "NOT_AUTHENTICATED" -> code
+                    else -> "PASSPORT_CREATE_FAILED"
+                }
+                _message.value = M14ErrorMapper.userMessage(userCode)
             }
             _busy.value = false
         }
     }
 
-    fun activate() = runAction { passportRepository.activatePassport(requirePassportId()) }
+    fun activate() = runAction { id -> passportRepository.activatePassport(id) }
 
-    fun setPublicRedacted() = runAction {
+    fun setPublicRedacted() = runAction { id ->
         passportRepository.updatePassport(
-            requirePassportId(),
+            id,
             UpdateM14PassportInput(visibility = M14Visibility.PUBLIC_REDACTED)
         )
     }
@@ -132,14 +171,16 @@ class M14PetPassportViewModel(
         _message.value = null
     }
 
-    private fun requirePassportId(): String =
-        _passport.value?.id ?: error("PASSPORT_NOT_FOUND")
-
-    private fun runAction(block: suspend () -> Result<*>) {
+    private fun runAction(block: suspend (passportId: String) -> Result<*>) {
         if (_busy.value) return
+        val passportId = _passport.value?.id
+        if (passportId.isNullOrBlank()) {
+            _message.value = M14ErrorMapper.userMessage("PASSPORT_NOT_FOUND")
+            return
+        }
         viewModelScope.launch {
             _busy.value = true
-            block().onFailure { e ->
+            block(passportId).onFailure { e ->
                 _message.value = M14ErrorMapper.userMessage(M14ErrorMapper.codeOf(e))
             }
             _busy.value = false

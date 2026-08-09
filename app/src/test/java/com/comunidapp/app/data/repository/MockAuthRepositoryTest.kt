@@ -64,19 +64,21 @@ class MockAuthRepositoryTest {
     fun register_and_duplicate() = runBlocking {
         val email = "nueva@email.com"
         val first = repo.register(
-            "Nueva",
-            email,
-            "password1",
-            demoConsent,
-            com.comunidapp.app.data.model.AccountType.SHELTER
+            name = "Nueva",
+            email = email,
+            password = "password1",
+            consent = demoConsent,
+            username = "nueva_user",
+            accountType = com.comunidapp.app.data.model.AccountType.SHELTER
         )
         assertTrue(first.isSuccess)
         assertEquals(com.comunidapp.app.data.model.AccountType.PERSON, first.getOrNull()?.accountType)
+        assertEquals("nueva_user", first.getOrNull()?.username)
         val saved = repo.consentFor(email)
         assertEquals(LegalDocumentConfig.terms.version, saved?.termsVersion)
         assertEquals(LegalDocumentConfig.privacy.version, saved?.privacyVersion)
 
-        val dup = repo.register("Otra", email, "password1", demoConsent)
+        val dup = repo.register("Otra", email, "password1", demoConsent, "otra_user")
         assertTrue(dup.isFailure)
         assertEquals(
             AuthErrorCode.EMAIL_ALREADY_REGISTERED.name,
@@ -86,7 +88,7 @@ class MockAuthRepositoryTest {
 
     @Test
     fun register_short_password() = runBlocking {
-        val result = repo.register("X", "corta@email.com", "1234567", demoConsent)
+        val result = repo.register("X", "corta@email.com", "1234567", demoConsent, "corta_user")
         assertTrue(result.isFailure)
         assertEquals(
             AuthErrorCode.WEAK_PASSWORD.name,
@@ -97,7 +99,7 @@ class MockAuthRepositoryTest {
     @Test
     fun verification_and_login() = runBlocking {
         val email = "verify@email.com"
-        repo.register("V", email, "password1", demoConsent)
+        repo.register("V", email, "password1", demoConsent, "verify_user")
         assertNull(repo.getCurrentUser())
         assertFalse(repo.isEmailVerified(email))
 
@@ -110,7 +112,7 @@ class MockAuthRepositoryTest {
     @Test
     fun verifyEmailOtp_accepts_eight_digits_complete() = runBlocking {
         val email = "otp8@email.com"
-        repo.register("O", email, "password1", demoConsent)
+        repo.register("O", email, "password1", demoConsent, "otp8_user")
         val result = repo.verifyEmailOtp(email, "  87654321  ")
         assertTrue(result.isSuccess)
         assertTrue(repo.isEmailVerified(email))
@@ -119,7 +121,7 @@ class MockAuthRepositoryTest {
     @Test
     fun verifyEmailOtp_rejects_five_and_eleven_digits() = runBlocking {
         val email = "otpbad@email.com"
-        repo.register("O", email, "password1", demoConsent)
+        repo.register("O", email, "password1", demoConsent, "otpbad_user")
         assertTrue(repo.verifyEmailOtp(email, "12345").isFailure)
         assertTrue(repo.verifyEmailOtp(email, "12345678901").isFailure)
         assertFalse(repo.isEmailVerified(email))

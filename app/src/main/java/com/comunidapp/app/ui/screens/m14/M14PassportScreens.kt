@@ -19,6 +19,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,8 +29,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.data.model.M14CredentialType
 import com.comunidapp.app.data.model.M14PassportStatus
 import com.comunidapp.app.data.model.M14Visibility
@@ -134,31 +137,77 @@ fun M14PetPassportScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             val p = passport
+            val petName = pet?.name?.takeIf { it.isNotBlank() } ?: "tu mascota"
             if (p == null) {
-                Text("Mascota: ${pet?.name ?: petId}")
-                Text(
-                    "Todavía no hay pasaporte. El responsable M08 puede crearlo.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-                Spacer(Modifier.height(12.dp))
-                Button(
-                    onClick = { viewModel.createFromPet() },
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text(if (busy) "Creando…" else "Crear pasaporte") }
+                val createFailed =
+                    message?.contains("No pudimos crear el pasaporte", ignoreCase = true) == true
+                if (createFailed) {
+                    Text(
+                        text = "No pudimos crear el pasaporte",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Revisá tu conexión e intentá nuevamente.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = {
+                            viewModel.clearMessage()
+                            viewModel.createFromPet()
+                        },
+                        enabled = !busy && petId.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (busy) "Creando…" else "Reintentar") }
+                    TextButton(
+                        onClick = onNavigateBack,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Volver") }
+                } else {
+                    Text(
+                        text = "Pasaporte de $petName",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = "Reuní en un solo lugar su información más importante.",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(Modifier.height(12.dp))
+                    Button(
+                        onClick = { viewModel.createFromPet() },
+                        enabled = !busy && petId.isNotBlank(),
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (busy) "Creando…" else "Crear pasaporte") }
+                }
             } else {
                 Text(p.displayName, fontWeight = FontWeight.Bold)
                 Text("Nº ${p.passportNumber}")
-                Text("Estado: ${p.status}")
                 Text(
-                    "Microchip: ${
-                        M14Validators.maskMicrochip(
-                            M14Validators.normalizeMicrochip(p.microchipNumber)
-                        ) ?: "—"
+                    "Estado: ${
+                        when (p.status) {
+                            M14PassportStatus.DRAFT -> "Borrador"
+                            M14PassportStatus.ACTIVE -> "Activo"
+                            M14PassportStatus.SUSPENDED -> "Suspendido"
+                            M14PassportStatus.REVOKED -> "Revocado"
+                            M14PassportStatus.ARCHIVED -> "Archivado"
+                        }
                     }"
                 )
-                Text("Visibilidad: ${p.visibility}")
-                p.publicCode?.let { Text("Código público: $it") }
+                Text(
+                    "Visibilidad: ${
+                        when (p.visibility) {
+                            M14Visibility.PRIVATE -> "Privado"
+                            M14Visibility.RESPONSIBLES -> "Red de cuidado"
+                            M14Visibility.AUTHORIZED_ORGANIZATIONS -> "Organizaciones autorizadas"
+                            M14Visibility.PUBLIC_REDACTED -> "Público resumido"
+                        }
+                    }"
+                )
                 Spacer(Modifier.height(8.dp))
                 if (p.status == M14PassportStatus.DRAFT) {
                     Button(
@@ -228,7 +277,6 @@ fun M14PassportEditScreen(
     var breed by remember { mutableStateOf("") }
     var color by remember { mutableStateOf("") }
     var marks by remember { mutableStateOf("") }
-    var microchip by remember { mutableStateOf("") }
 
     LaunchedEffect(passport?.id) {
         passport?.let {
@@ -236,7 +284,6 @@ fun M14PassportEditScreen(
             breed = it.breedText.orEmpty()
             color = it.primaryColor.orEmpty()
             marks = it.distinctiveMarks.orEmpty()
-            microchip = it.microchipNumber.orEmpty()
         }
     }
     LaunchedEffect(saved) {
@@ -282,12 +329,6 @@ fun M14PassportEditScreen(
                 label = { Text("Marcas distintivas") },
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
-                value = microchip,
-                onValueChange = { microchip = it },
-                label = { Text("Microchip (se enmascara en público)") },
-                modifier = Modifier.fillMaxWidth()
-            )
             Spacer(Modifier.height(12.dp))
             Button(
                 onClick = {
@@ -296,7 +337,7 @@ fun M14PassportEditScreen(
                         breedText = breed.ifBlank { null },
                         primaryColor = color.ifBlank { null },
                         distinctiveMarks = marks.ifBlank { null },
-                        microchip = microchip.ifBlank { null },
+                        microchip = null,
                         sex = passport?.sex
                     )
                 },
@@ -345,7 +386,7 @@ fun M14CredentialsScreen(
             if (items.isEmpty()) {
                 EmptyState(
                     title = "Sin credenciales",
-                    message = "Agregá identidad, microchip u otras atestaciones documentales."
+                    message = "Agregá identidad u otras atestaciones documentales."
                 )
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -419,7 +460,7 @@ fun M14CredentialCreateScreen(
             OutlinedTextField(
                 value = media,
                 onValueChange = { media = it },
-                label = { Text("Media M05 (m05:// o file_asset:)") },
+                label = { Text("Referencia de archivo (opcional)") },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
@@ -582,7 +623,6 @@ fun M14PublicPassportScreen(
                     Text("Color: ${p.primaryColor ?: "—"}")
                     Text("Marcas: ${p.distinctiveMarks ?: "—"}")
                     Text("Estado: ${p.passportStatus}")
-                    Text("Microchip: ${p.microchipMasked ?: "—"}")
                     Spacer(Modifier.height(8.dp))
                     Text("Credenciales visibles:")
                     if (p.credentialsPublic.isEmpty()) {
@@ -594,6 +634,41 @@ fun M14PublicPassportScreen(
                     }
                 }
             }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "PassportCreationEmptyPreview")
+@Composable
+private fun PassportCreationEmptyPreview() {
+    ComunidappTheme {
+        Column(Modifier.padding(16.dp)) {
+            Text("Pasaporte de Luna", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(8.dp))
+            Text("Reuní en un solo lugar su información más importante.")
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
+                Text("Crear pasaporte")
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "PassportCreationErrorPreview")
+@Composable
+private fun PassportCreationErrorPreview() {
+    ComunidappTheme {
+        Column(Modifier.padding(16.dp)) {
+            Text(
+                "No pudimos crear el pasaporte",
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.error
+            )
+            Spacer(Modifier.height(8.dp))
+            Text("Revisá tu conexión e intentá nuevamente.")
+            Spacer(Modifier.height(12.dp))
+            Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Reintentar") }
+            TextButton(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Volver") }
         }
     }
 }

@@ -414,7 +414,7 @@ fun ShelterIntakeScreen(
             Modifier.padding(padding).padding(16.dp).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedTextField(petId, { petId = it }, label = { Text("Mascota ID (M08)") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(petId, { petId = it }, label = { Text("Identificador de mascota") }, modifier = Modifier.fillMaxWidth())
             ShelterIntakeType.entries.filter { it != ShelterIntakeType.UNKNOWN }.forEach { t ->
                 RowRadio(t.name, type == t) { type = t }
             }
@@ -453,8 +453,14 @@ fun ShelterOpsPetDetailScreen(
                     Text("${p.petName ?: p.petId}", fontWeight = FontWeight.SemiBold)
                     Text("Estado: ${p.status.name}")
                     Text("Ingreso: ${p.intakeType.name}")
-                    Text("Responsabilidad org M08: ${p.organizationalResponsibilityId ?: "—"}")
-                    Text("PRINCIPAL no se elimina desde M11.")
+                    Text(
+                        if (p.organizationalResponsibilityId.isNullOrBlank()) {
+                            "Sin vínculo organizacional registrado"
+                        } else {
+                            "Vínculo organizacional activo"
+                        }
+                    )
+                    Text("El responsable principal no se elimina desde operaciones de refugio.")
                     p.endReason?.let { Text("Egreso: $it") }
                 }
             }

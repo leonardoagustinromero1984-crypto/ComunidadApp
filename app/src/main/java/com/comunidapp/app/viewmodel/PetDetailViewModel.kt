@@ -13,6 +13,7 @@ import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.PlatformRepository
+import com.comunidapp.app.data.repository.UserRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -25,16 +26,17 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
- * LeoVer M08 — detalle de mascota + Etapa 6 (fallecimiento / restore / gating).
+ * Detalle de mascota + ciclo de vida (fallecimiento / restore / gating).
  * Autorización solo por PetAccessContext; nunca por ownerId.
  *
- * M08-SMOKE-001: carga explícita con loading/error; no trata “sin mascota” como loading eterno.
+ * Carga explícita con loading/error; no trata “sin mascota” como loading eterno.
  */
 class PetDetailViewModel(
     savedStateHandle: SavedStateHandle,
     private val authRepository: AuthRepository = AuthProvider.repository,
     private val petRepository: PetRepository = DataProvider.petRepository,
-    private val platformRepository: PlatformRepository = DataProvider.platformRepository
+    private val platformRepository: PlatformRepository = DataProvider.platformRepository,
+    private val userRepository: UserRepository = DataProvider.userRepository
 ) : ViewModel() {
 
     private val petId: String = savedStateHandle["petId"] ?: ""
@@ -51,9 +53,14 @@ class PetDetailViewModel(
     private val _petLoadError = MutableStateFlow<String?>(null)
     val petLoadError: StateFlow<String?> = _petLoadError.asStateFlow()
 
-    /** Último motivo de historial (p. ej. ADOPTED tras finalización M09). */
     private val _statusReasonCode = MutableStateFlow<String?>(null)
     val statusReasonCode: StateFlow<String?> = _statusReasonCode.asStateFlow()
+
+    private val _principalDisplayName = MutableStateFlow<String?>(null)
+    val principalDisplayName: StateFlow<String?> = _principalDisplayName.asStateFlow()
+
+    private val _principalLoading = MutableStateFlow(false)
+    val principalLoading: StateFlow<Boolean> = _principalLoading.asStateFlow()
 
     val clinicalRecords: StateFlow<List<PetClinicalRecord>> =
         if (petId.isBlank()) {
@@ -197,8 +204,28 @@ class PetDetailViewModel(
         if (petId.isBlank()) return
         viewModelScope.launch {
             petRepository.getPetAccessContext(petId)
-                .onSuccess { accessContext.value = it }
+                .onSuccess { ctx ->
+                    accessContext.value = ctx
+                    resolvePrincipalName(ctx)
+                }
                 .onFailure { /* keep gates false */ }
+        }
+    }
+
+    private fun resolvePrincipalName(ctx: PetAccessContext) {
+        val personId = ctx.principalPersonId?.takeIf { it.isNotBlank() }
+        if (personId == null) {
+            _principalDisplayName.value = null
+            _principalLoading.value = false
+            return
+        }
+        viewModelScope.launch {
+            _principalLoading.value = true
+            val name = runCatching { userRepository.getUser(personId)?.name?.trim() }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+            _principalDisplayName.value = name
+            _principalLoading.value = false
         }
     }
 

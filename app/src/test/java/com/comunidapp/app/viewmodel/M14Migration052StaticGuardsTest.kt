@@ -15,13 +15,13 @@ class M14Migration052StaticGuardsTest {
         File(repoRoot(), "supabase/migrations/052_m14_credential_verification_and_public_access.sql").readText()
 
     @Test
-    fun migration_052_exists_without_053_and_001_to_051_present() {
+    fun migration_052_exists_and_001_to_051_present() {
         val names = File(repoRoot(), "supabase/migrations").listFiles()!!
             .map { it.name }
             .filter { it.matches(Regex("^\\d{3}_.*\\.sql$")) }
         val nums = names.map { it.substring(0, 3).toInt() }
-        assertEquals(52, nums.maxOrNull())
-        assertFalse(nums.contains(53))
+        assertTrue(nums.contains(52))
+        assertTrue(nums.contains(80))
         (1..51).forEach { n ->
             assertTrue("falta migración ${n.toString().padStart(3, '0')}", nums.contains(n))
         }

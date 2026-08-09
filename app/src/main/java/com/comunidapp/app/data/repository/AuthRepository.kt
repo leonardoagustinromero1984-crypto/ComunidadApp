@@ -12,6 +12,7 @@ import com.comunidapp.app.domain.auth.AuthException
 import com.comunidapp.app.domain.auth.ConsentMetadata
 import com.comunidapp.app.domain.auth.validation.AuthValidators
 import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
+import com.comunidapp.app.domain.user.UsernameValidators
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -35,6 +36,7 @@ interface AuthRepository {
         email: String,
         password: String,
         consent: ConsentMetadata,
+        username: String,
         accountType: AccountType = AccountType.PERSON
     ): Result<User>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
@@ -176,6 +178,7 @@ class MockAuthRepository : AuthRepository {
         email: String,
         password: String,
         consent: ConsentMetadata,
+        username: String,
         accountType: AccountType
     ): Result<User> {
         delay(50)
@@ -184,6 +187,14 @@ class MockAuthRepository : AuthRepository {
                 AuthErrorMapper.toException(
                     AuthErrorCode.UNKNOWN_AUTH_ERROR,
                     "name required",
+                )
+            )
+        }
+        val normalizedUsername = UsernameValidators.validate(username).getOrElse {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.UNKNOWN_AUTH_ERROR,
+                    "username invalid"
                 )
             )
         }
@@ -219,6 +230,17 @@ class MockAuthRepository : AuthRepository {
                 )
             )
         }
+        val usernameTaken = MockUserStore.allUsers().any {
+            it.username.equals(normalizedUsername.value, ignoreCase = true)
+        }
+        if (usernameTaken) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.UNKNOWN_AUTH_ERROR,
+                    "USERNAME_UNAVAILABLE"
+                )
+            )
+        }
 
         val effectiveType = AccountType.PERSON
 
@@ -243,7 +265,10 @@ class MockAuthRepository : AuthRepository {
             name = name.trim(),
             email = normalizedEmail,
             accountType = effectiveType,
-            emailVerified = false
+            emailVerified = false,
+            username = normalizedUsername.value,
+            displayName = name.trim(),
+            onboardingStatus = "COMPLETED"
         )
         MockUserStore.upsert(user)
         setLoggedInUser(user)

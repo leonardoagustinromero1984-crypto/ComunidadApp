@@ -96,7 +96,7 @@ fun PetResponsibilitiesScreen(
     Scaffold(
         topBar = {
             ComunidappTopBar(
-                title = "Responsables",
+                title = "Red de cuidado",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -126,11 +126,17 @@ fun PetResponsibilitiesScreen(
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
-                    .semantics { contentDescription = "Responsables de la mascota" }
+                    .semantics { contentDescription = "Red de cuidado de la mascota" }
             ) {
+                Text(
+                    text = "Personas que colaboran en el cuidado.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(bottom = 12.dp)
+                )
                 if (state.mutationsLocked) {
                     Text(
-                        text = "La mascota no está activa: la gestión de responsables está deshabilitada.",
+                        text = "La mascota no está activa: no se puede modificar la red de cuidado.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -151,6 +157,7 @@ fun PetResponsibilitiesScreen(
                     )
                     else -> ResponsibilityCard(
                         responsibility = principal,
+                        displayName = state.displayNames[holderKey(principal.holder)],
                         canRevoke = false,
                         onRevoke = {}
                     )
@@ -158,13 +165,13 @@ fun PetResponsibilitiesScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Co-responsables",
+                    text = "Personas de confianza",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                if (state.coResponsibles.isEmpty()) {
+                if (state.coResponsibles.isEmpty() && state.custodians.isEmpty()) {
                     Text(
-                        text = "Sin co-responsables activos.",
+                        text = "Todavía no agregaste personas de confianza.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
@@ -173,47 +180,18 @@ fun PetResponsibilitiesScreen(
                 state.coResponsibles.forEach { item ->
                     ResponsibilityCard(
                         responsibility = item,
+                        displayName = state.displayNames[holderKey(item.holder)],
                         canRevoke = state.canManage && !state.mutationsLocked && !state.isSubmitting,
                         onRevoke = { revokeTargetId = item.id.value }
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-                Text(
-                    text = "Custodias temporales",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold
-                )
-                if (state.custodians.isEmpty()) {
-                    Text(
-                        text = "Sin custodias temporales activas.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
                 state.custodians.forEach { item ->
                     ResponsibilityCard(
                         responsibility = item,
+                        displayName = state.displayNames[holderKey(item.holder)],
                         canRevoke = state.canManage && !state.mutationsLocked && !state.isSubmitting,
                         onRevoke = { revokeTargetId = item.id.value }
                     )
-                }
-
-                if (state.inactiveLinks.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(16.dp))
-                    Text(
-                        text = "Historial de vínculos",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    state.inactiveLinks.forEach { item ->
-                        ResponsibilityCard(
-                            responsibility = item,
-                            canRevoke = false,
-                            onRevoke = {}
-                        )
-                    }
                 }
 
                 if (state.canManage && !state.mutationsLocked) {
@@ -242,7 +220,12 @@ private fun AddResponsibilitySection(viewModel: PetResponsibilitiesViewModel) {
             ?: ""
         AlertDialog(
             onDismissRequest = { showConfirm = false },
-            title = { Text(if (roleIsCustody) "Asignar custodia temporal" else "Agregar co-responsable") },
+            title = {
+                Text(
+                    if (roleIsCustody) "Agregar ayuda temporal"
+                    else "Agregar persona de confianza"
+                )
+            },
             text = { Text("¿Confirmás el vínculo para $destinationLabel?") },
             confirmButton = {
                 TextButton(
@@ -293,12 +276,12 @@ private fun AddResponsibilitySection(viewModel: PetResponsibilitiesViewModel) {
                 FilterChip(
                     selected = !roleIsCustody,
                     onClick = { roleIsCustody = false },
-                    label = { Text("Co-responsable") }
+                    label = { Text("Persona de confianza") }
                 )
                 FilterChip(
                     selected = roleIsCustody,
                     onClick = { roleIsCustody = true },
-                    label = { Text("Custodia temporal") }
+                    label = { Text("Ayuda temporal") }
                 )
             }
 
@@ -363,7 +346,7 @@ private fun AddResponsibilitySection(viewModel: PetResponsibilitiesViewModel) {
                         endsAtText = it
                         dateError = false
                     },
-                    label = { Text("Fin de custodia (AAAA-MM-DD)") },
+                    label = { Text("Fecha de fin (AAAA-MM-DD)") },
                     isError = dateError,
                     supportingText = {
                         if (dateError) Text("Fecha inválida. Usá el formato AAAA-MM-DD.")
@@ -389,7 +372,7 @@ private fun AddResponsibilitySection(viewModel: PetResponsibilitiesViewModel) {
                     .fillMaxWidth()
                     .padding(top = 12.dp)
             ) {
-                Text(if (roleIsCustody) "Asignar custodia" else "Agregar co-responsable")
+                Text(if (roleIsCustody) "Agregar ayuda temporal" else "Agregar persona de confianza")
             }
         }
     }
@@ -398,6 +381,7 @@ private fun AddResponsibilitySection(viewModel: PetResponsibilitiesViewModel) {
 @Composable
 private fun ResponsibilityCard(
     responsibility: PetResponsibility,
+    displayName: String? = null,
     canRevoke: Boolean,
     onRevoke: () -> Unit
 ) {
@@ -409,7 +393,8 @@ private fun ResponsibilityCard(
     ) {
         Column(modifier = Modifier.padding(12.dp)) {
             Text(
-                text = holderLabel(responsibility.holder),
+                text = displayName?.takeIf { it.isNotBlank() }
+                    ?: friendlyHolderLabel(responsibility.holder),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
@@ -432,22 +417,31 @@ private fun ResponsibilityCard(
                     onClick = onRevoke,
                     modifier = Modifier.padding(top = 8.dp)
                 ) {
-                    Text("Revocar", color = MaterialTheme.colorScheme.error)
+                    Text("Quitar de la red de cuidado", color = MaterialTheme.colorScheme.error)
                 }
             }
         }
     }
 }
 
-internal fun holderLabel(holder: PetPrincipalHolder): String = when (holder) {
-    is PetPrincipalHolder.Person -> "Persona: ${holder.userId}"
-    is PetPrincipalHolder.Organization -> "Organización: ${holder.organizationId.value}"
+internal fun holderKey(holder: PetPrincipalHolder): String = when (holder) {
+    is PetPrincipalHolder.Person -> "p:${holder.userId}"
+    is PetPrincipalHolder.Organization -> "o:${holder.organizationId.value}"
 }
 
+/** Nunca muestra UUID/ID crudo como etiqueta principal. */
+internal fun friendlyHolderLabel(holder: PetPrincipalHolder): String = when (holder) {
+    is PetPrincipalHolder.Person -> "No pudimos cargar esta persona"
+    is PetPrincipalHolder.Organization -> "Organización"
+}
+
+@Deprecated("Usar friendlyHolderLabel + displayNames resueltos", ReplaceWith("friendlyHolderLabel(holder)"))
+internal fun holderLabel(holder: PetPrincipalHolder): String = friendlyHolderLabel(holder)
+
 private fun roleLabel(role: PetResponsibilityRole): String = when (role) {
-    PetResponsibilityRole.PRINCIPAL -> "Principal"
-    PetResponsibilityRole.CO_RESPONSIBLE -> "Co-responsable"
-    PetResponsibilityRole.TEMPORARY_CUSTODIAN -> "Custodia temporal"
+    PetResponsibilityRole.PRINCIPAL -> "Responsable principal"
+    PetResponsibilityRole.CO_RESPONSIBLE -> "Persona de confianza"
+    PetResponsibilityRole.TEMPORARY_CUSTODIAN -> "Ayuda temporal"
 }
 
 internal fun linkStatusLabel(status: PetLinkStatus): String = when (status) {

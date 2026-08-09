@@ -16,9 +16,14 @@ import com.comunidapp.app.domain.auth.SignUpCommand
 import com.comunidapp.app.domain.auth.validation.AuthValidationException
 import com.comunidapp.app.domain.auth.validation.AuthValidators
 import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
+import com.comunidapp.app.domain.user.UsernameErrorCode
+import com.comunidapp.app.domain.user.UsernameValidationException
+import com.comunidapp.app.domain.user.UsernameValidators
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -113,8 +118,22 @@ class LoginViewModel(
     }
 }
 
+enum class UsernameAvailabilityUi {
+    IDLE,
+    CHECKING,
+    AVAILABLE,
+    TAKEN,
+    RESERVED,
+    INVALID,
+    ERROR
+}
+
 data class RegisterUiState(
-    val name: String = "",
+    val firstName: String = "",
+    val lastName: String = "",
+    val username: String = "",
+    val usernameNormalized: String = "",
+    val usernameAvailability: UsernameAvailabilityUi = UsernameAvailabilityUi.IDLE,
     val email: String = "",
     val password: String = "",
     val confirmPassword: String = "",
@@ -124,17 +143,77 @@ data class RegisterUiState(
     val errorMessage: String? = null,
     val fieldErrors: Map<String, String> = emptyMap(),
     val registeredEmail: String? = null
-)
+) {
+    val name: String
+        get() = listOf(firstName.trim(), lastName.trim()).filter { it.isNotEmpty() }.joinToString(" ")
 
+    val canSubmit: Boolean
+        get() = !isLoading &&
+            firstName.isNotBlank() &&
+            lastName.isNotBlank() &&
+            usernameNormalized.length >= UsernameValidators.MIN_LENGTH &&
+            usernameAvailability == UsernameAvailabilityUi.AVAILABLE &&
+            email.isNotBlank() &&
+            password.isNotBlank() &&
+            confirmPassword.isNotBlank() &&
+            acceptedTerms &&
+            acceptedPrivacy &&
+            fieldErrors.isEmpty()
+}
+
+@OptIn(kotlinx.coroutines.FlowPreview::class)
 class RegisterViewModel(
-    private val authRepository: AuthRepository = AuthProvider.repository
+    private val authRepository: AuthRepository = AuthProvider.repository,
+    private val userRepository: com.comunidapp.app.data.repository.UserRepository =
+        com.comunidapp.app.data.provider.DataProvider.userRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(RegisterUiState())
     val uiState: StateFlow<RegisterUiState> = _uiState.asStateFlow()
 
-    fun onNameChange(name: String) {
-        _uiState.update { it.copy(name = name, errorMessage = null, fieldErrors = it.fieldErrors - "name") }
+    private val usernameQuery = MutableStateFlow("")
+    private var availabilityToken = 0L
+
+    init {
+        viewModelScope.launch {
+            usernameQuery
+                .debounce(400)
+                .distinctUntilChanged()
+                .collect { raw -> checkUsername(raw) }
+        }
+    }
+
+    fun onFirstNameChange(value: String) {
+        _uiState.update {
+            it.copy(firstName = value, errorMessage = null, fieldErrors = it.fieldErrors - "name")
+        }
+    }
+
+    fun onLastNameChange(value: String) {
+        _uiState.update {
+            it.copy(lastName = value, errorMessage = null, fieldErrors = it.fieldErrors - "name")
+        }
+    }
+
+    @Deprecated("Usar onFirstNameChange / onLastNameChange", ReplaceWith("onFirstNameChange(name)"))
+    fun onNameChange(name: String) = onFirstNameChange(name)
+
+    fun onUsernameChange(raw: String) {
+        val normalized = UsernameValidators.normalize(raw)
+        _uiState.update {
+            it.copy(
+                username = raw,
+                usernameNormalized = normalized,
+                usernameAvailability = if (normalized.isBlank()) {
+                    UsernameAvailabilityUi.IDLE
+                } else {
+                    UsernameAvailabilityUi.CHECKING
+                },
+                fieldErrors = it.fieldErrors - "username",
+                errorMessage = null
+            )
+        }
+        usernameQuery.value = raw
     }
 
     fun onEmailChange(email: String) {
@@ -169,9 +248,78 @@ class RegisterViewModel(
         }
     }
 
+    private suspend fun checkUsername(raw: String) {
+        val token = ++availabilityToken
+        val normalized = UsernameValidators.normalize(raw)
+        if (normalized.isBlank()) {
+            if (token == availabilityToken) {
+                _uiState.update {
+                    it.copy(usernameAvailability = UsernameAvailabilityUi.IDLE, usernameNormalized = "")
+                }
+            }
+            return
+        }
+        val validation = UsernameValidators.validate(raw)
+        if (validation.isFailure) {
+            val code = (validation.exceptionOrNull() as? UsernameValidationException)?.error?.code
+            if (token != availabilityToken) return
+            _uiState.update {
+                it.copy(
+                    usernameNormalized = normalized,
+                    usernameAvailability = when (code) {
+                        UsernameErrorCode.RESERVED.name -> UsernameAvailabilityUi.RESERVED
+                        else -> UsernameAvailabilityUi.INVALID
+                    },
+                    fieldErrors = it.fieldErrors + (
+                        "username" to (
+                            (validation.exceptionOrNull() as? UsernameValidationException)
+                                ?.error?.userMessage
+                                ?: UsernameValidators.userMessage(UsernameErrorCode.INVALID_CHARS)
+                            )
+                        )
+                )
+            }
+            return
+        }
+        _uiState.update {
+            it.copy(
+                usernameNormalized = normalized,
+                usernameAvailability = UsernameAvailabilityUi.CHECKING,
+                fieldErrors = it.fieldErrors - "username"
+            )
+        }
+        val available = userRepository.isUsernameAvailable(normalized).getOrElse {
+            if (token != availabilityToken) return
+            _uiState.update {
+                it.copy(
+                    usernameAvailability = UsernameAvailabilityUi.ERROR,
+                    fieldErrors = it.fieldErrors + (
+                        "username" to "No pudimos comprobar la disponibilidad. Intentá nuevamente."
+                        )
+                )
+            }
+            return
+        }
+        if (token != availabilityToken) return
+        _uiState.update {
+            it.copy(
+                usernameAvailability = if (available) {
+                    UsernameAvailabilityUi.AVAILABLE
+                } else {
+                    UsernameAvailabilityUi.TAKEN
+                },
+                fieldErrors = if (available) {
+                    it.fieldErrors - "username"
+                } else {
+                    it.fieldErrors + ("username" to "Este nombre ya está en uso.")
+                }
+            )
+        }
+    }
+
     fun register() {
         val state = _uiState.value
-        if (state.isLoading) return
+        if (state.isLoading || !state.canSubmit) return
         AuthAnalytics.track("signup_started")
 
         LegalDocumentConfig.requireUsableForAuth().getOrElse { err ->
@@ -185,6 +333,7 @@ class RegisterViewModel(
             email = state.email,
             password = state.password,
             confirmPassword = state.confirmPassword,
+            username = state.usernameNormalized,
             acceptedTerms = state.acceptedTerms,
             acceptedPrivacy = state.acceptedPrivacy,
             termsVersion = LegalDocumentConfig.terms.version,
@@ -193,7 +342,15 @@ class RegisterViewModel(
 
         val fieldErrors = mutableMapOf<String, String>()
         if (command.name.isBlank()) {
-            fieldErrors["name"] = "Ingresá tu nombre."
+            fieldErrors["name"] = "Ingresá tu nombre y apellido."
+        }
+        UsernameValidators.validate(command.username).onFailure { err ->
+            fieldErrors["username"] = (err as? UsernameValidationException)?.error?.userMessage
+                ?: "Nombre de usuario inválido."
+        }
+        if (state.usernameAvailability != UsernameAvailabilityUi.AVAILABLE) {
+            fieldErrors["username"] = fieldErrors["username"]
+                ?: "Comprobá la disponibilidad del nombre de usuario."
         }
         AuthValidators.validateEmail(command.email).onFailure { err ->
             fieldErrors["email"] = userMessage(err)
@@ -226,7 +383,8 @@ class RegisterViewModel(
                 name = command.name,
                 email = command.email,
                 password = command.password,
-                consent = consent
+                consent = consent,
+                username = command.username
             )
                 .onSuccess {
                     AuthAnalytics.track("signup_completed")
@@ -242,11 +400,30 @@ class RegisterViewModel(
                     val appError = AuthErrorMapper.fromThrowable(error)
                     val alreadyRegistered =
                         appError.code == AuthErrorCode.EMAIL_ALREADY_REGISTERED.name
+                    val usernameConflict =
+                        appError.technicalMessage.contains("USERNAME", ignoreCase = true) ||
+                            error.message.orEmpty().contains("USERNAME", ignoreCase = true)
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            // Respuesta genérica / dirigir a verificación sin enumerar
-                            errorMessage = if (alreadyRegistered) null else appError.userMessage,
+                            errorMessage = when {
+                                alreadyRegistered -> null
+                                usernameConflict ->
+                                    "Este nombre acaba de ser utilizado. Elegí otro."
+                                else -> appError.userMessage
+                            },
+                            usernameAvailability = if (usernameConflict) {
+                                UsernameAvailabilityUi.TAKEN
+                            } else {
+                                it.usernameAvailability
+                            },
+                            fieldErrors = if (usernameConflict) {
+                                it.fieldErrors + (
+                                    "username" to "Este nombre acaba de ser utilizado. Elegí otro."
+                                    )
+                            } else {
+                                it.fieldErrors
+                            },
                             registeredEmail = if (alreadyRegistered) {
                                 AuthValidators.normalizeEmail(command.email)
                             } else {

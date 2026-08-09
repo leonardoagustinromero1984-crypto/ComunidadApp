@@ -16,7 +16,11 @@ import kotlinx.serialization.json.put
  */
 class SupabasePetM08RemoteDataSource : PetM08RemoteDataSource {
 
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        isLenient = true
+    }
 
     override suspend fun listAccessiblePets(status: String?): List<AccessiblePetM08Row> {
         return supabase.postgrest.rpc(

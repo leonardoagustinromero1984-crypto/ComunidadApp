@@ -14,6 +14,7 @@ data class SignUpCommand(
     val email: String,
     val password: String,
     val confirmPassword: String,
+    val username: String,
     val acceptedTerms: Boolean,
     val acceptedPrivacy: Boolean,
     val termsVersion: String,

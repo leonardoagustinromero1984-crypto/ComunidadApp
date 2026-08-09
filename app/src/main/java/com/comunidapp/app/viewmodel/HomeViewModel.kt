@@ -112,6 +112,11 @@ class HomeViewModel(
             .take(12)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    /** Nombre para saludo de Home (solo presentación). */
+    val greetingName: StateFlow<String?> = authRepository.observeAuthState()
+        .map { user -> user?.name?.takeIf { it.isNotBlank() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     val hasMore: StateFlow<Boolean> = combine(
         visibleFeedPosts.map { it.size },
         _visibleCount

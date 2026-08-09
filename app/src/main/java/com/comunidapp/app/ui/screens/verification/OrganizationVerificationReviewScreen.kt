@@ -57,7 +57,7 @@ fun OrganizationVerificationReviewScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             SnackbarHost(snackbar)
-            Text("Los documentos físicos se gestionan en M05. Acá solo referencias lógicas.")
+            Text("Los documentos físicos se gestionan aparte. Acá solo referencias lógicas.")
             if (review == null) {
                 Text("Revisión no encontrada.")
             } else {

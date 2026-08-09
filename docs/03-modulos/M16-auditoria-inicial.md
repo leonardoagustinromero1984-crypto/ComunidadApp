@@ -1,5 +1,7 @@
 # M16 — Auditoría inicial (Bloque 1)
 
+> **Nota de vigencia (2026-08-09):** documento histórico de inicio de Bloque 1. Para numeración Mxx actual consultar `D01-Modulos-y-Orden-v1.2.md` (p. ej. M10 = tránsito SQL, no geoservicios).
+
 ## 1. HEAD inicial
 
 `058ea74d70f5dd5e7a6ab56ff5e13cba2c03c76b` — `docs(m15): complete foster care module closure`

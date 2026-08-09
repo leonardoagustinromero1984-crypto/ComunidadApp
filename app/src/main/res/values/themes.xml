@@ -4,8 +4,9 @@
     <style name="Theme.Comunidapp" parent="android:Theme.Material.Light.NoActionBar" />
 
     <style name="Theme.Comunidapp.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/leover_background</item>
-        <item name="windowSplashScreenAnimatedIcon">@drawable/logo_leover</item>
+        <item name="windowSplashScreenBackground">@color/brand_cream</item>
+        <!-- Icono con transparencia (sin wordmark) — el fondo crema lo aporta windowSplashScreenBackground -->
+        <item name="windowSplashScreenAnimatedIcon">@drawable/leover_isotype_official</item>
         <item name="postSplashScreenTheme">@style/Theme.Comunidapp</item>
     </style>
 </resources>

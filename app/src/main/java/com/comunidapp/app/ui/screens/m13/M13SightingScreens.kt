@@ -181,7 +181,7 @@ fun M13SightingCreateScreen(
             OutlinedTextField(
                 value = mediaRef,
                 onValueChange = { mediaRef = it },
-                label = { Text("Media M05 (opcional, m05:...)") },
+                label = { Text("Foto o evidencia (opcional)") },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
@@ -446,7 +446,7 @@ fun M13MetricsScreen(
     Scaffold(
         topBar = {
             ComunidappTopBar(
-                title = "Métricas M13",
+                title = "Métricas de avistamientos",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )

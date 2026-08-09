@@ -2,9 +2,17 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
-    <color name="leover_orange">#FFFF8F00</color>
-    <color name="leover_orange_dark">#FFE65100</color>
-    <color name="leover_green">#FF43A047</color>
-    <color name="leover_green_dark">#FF2E7D32</color>
-    <color name="leover_background">#FFFFFBFE</color>
+    <!-- LeoVer identidad visual oficial v1.0 -->
+    <color name="brand_orange">#FFFF7A00</color>
+    <color name="brand_orange_soft">#FFFFA64D</color>
+    <color name="brand_green">#FF49B749</color>
+    <color name="brand_green_dark">#FF247A3D</color>
+    <color name="brand_cream">#FFFFF6EA</color>
+    <color name="brand_text">#FF2F3A37</color>
+    <!-- Aliases legacy → tokens oficiales -->
+    <color name="leover_orange">@color/brand_orange</color>
+    <color name="leover_orange_dark">@color/brand_orange_soft</color>
+    <color name="leover_green">@color/brand_green</color>
+    <color name="leover_green_dark">@color/brand_green_dark</color>
+    <color name="leover_background">@color/brand_cream</color>
 </resources>

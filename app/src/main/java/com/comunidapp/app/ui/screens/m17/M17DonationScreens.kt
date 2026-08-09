@@ -72,7 +72,7 @@ fun M17CampaignsListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Directorio público M17 — sin datos financieros sensibles.",
+                "Directorio público de campañas — sin datos financieros sensibles.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )

@@ -272,7 +272,7 @@ fun ShelterEmergencyFormScreen(
             OutlinedTextField(
                 evidenceRef,
                 { evidenceRef = it },
-                label = { Text("Evidencia M05 (opcional)") },
+                label = { Text("Evidencia (opcional)") },
                 modifier = Modifier.fillMaxWidth()
             )
             Text("Categoría")
@@ -550,7 +550,7 @@ fun ShelterEventFormScreen(
             OutlinedTextField(
                 coverRef,
                 { coverRef = it },
-                label = { Text("Portada M05 (opcional)") },
+                label = { Text("Portada (opcional)") },
                 modifier = Modifier.fillMaxWidth()
             )
             Text("Tipo")

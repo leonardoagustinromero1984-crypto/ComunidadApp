@@ -9,7 +9,7 @@ Documentos relacionados:
 
 - [M00-auditoria-inicial.md](M00-auditoria-inicial.md)
 - [ADR-0001 Supabase](../adr/ADR-0001-Supabase-como-backend-principal.md)
-- [D01](../01-producto/D01-Modulos-y-Orden.md)
+- [D01 v1.2](../01-producto/D01-Modulos-y-Orden-v1.2.md)
 
 ---
 

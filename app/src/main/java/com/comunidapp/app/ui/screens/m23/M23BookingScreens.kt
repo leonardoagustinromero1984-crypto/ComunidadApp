@@ -114,7 +114,7 @@ fun M23BookingDetailScreen(
                     Text("Historial")
                     s.history.forEach { entry -> Text("${entry.from ?: "-"} → ${entry.to}") }
                 }
-                if (s.reviewEligible) Text("Podés dejar una reseña cuando M21 esté disponible.")
+                if (s.reviewEligible) Text("Podés dejar una reseña cuando las reseñas estén disponibles.")
                 when (s.booking.status) {
                     M23BookingStatus.REQUESTED -> {
                         Button(onClick = { viewModel.confirm() }) { Text("Confirmar (prestador)") }

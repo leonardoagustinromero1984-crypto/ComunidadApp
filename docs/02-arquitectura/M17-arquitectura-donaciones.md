@@ -98,7 +98,7 @@ Producción (B2): `donation.view` / `donation.manage` vía M03 membership; verif
 
 ## Dependencias
 
-M03 (org), M02/M01 (auth), M04 (moderación), M05 (media ref), M06 (notif hooks), M08 (pet ref), M10 (ubicación), M16 (shelter ref), M24 (pagos futuro).
+M03 (org), M02/M01 (auth), M04 (moderación), M05 (media ref), M06 (notif hooks), M08 (pet ref), geografía transversal (PostGIS + Google Maps), M16 (shelter ref), M24 (pagos futuro).
 
 ## Bloque 3 — bienes, voluntariado, transparencia
 

@@ -134,8 +134,58 @@ data class PostRow(
     @SerialName("like_count") val likeCount: Int = 0,
     @SerialName("comment_count") val commentCount: Int = 0,
     @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("pet_id") val petId: String? = null,
+    @SerialName("expires_at") val expiresAt: String? = null
+)
+
+/**
+ * Insert/update compatible con schema previo a migración 078
+ * (sin columnas `pet_id` / `expires_at` en `public.posts`).
+ */
+@Serializable
+data class PostRowLegacy(
+    val id: String,
+    @SerialName("author_id") val authorId: String,
+    @SerialName("author_name") val authorName: String,
+    @SerialName("author_image_url") val authorImageUrl: String? = null,
+    val type: String,
+    val title: String,
+    val content: String,
+    @SerialName("image_url") val imageUrl: String? = null,
+    @SerialName("location_text") val locationText: String? = null,
+    @SerialName("like_count") val likeCount: Int = 0,
+    @SerialName("comment_count") val commentCount: Int = 0,
+    @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
 )
+
+fun PostRow.toLegacy(): PostRowLegacy = PostRowLegacy(
+    id = id,
+    authorId = authorId,
+    authorName = authorName,
+    authorImageUrl = authorImageUrl,
+    type = type,
+    title = title,
+    content = content,
+    imageUrl = imageUrl,
+    locationText = locationText,
+    likeCount = likeCount,
+    commentCount = commentCount,
+    createdAt = createdAt,
+    updatedAt = updatedAt
+)
+
+fun Throwable.isMissingPostsSchemaColumn(column: String): Boolean {
+    val blob = buildString {
+        append(message.orEmpty())
+        generateSequence(cause) { it.cause }.forEach { append(' ').append(it.message.orEmpty()) }
+    }
+    return blob.contains(column, ignoreCase = true) &&
+        (blob.contains("schema cache", ignoreCase = true) ||
+            blob.contains("Could not find", ignoreCase = true) ||
+            blob.contains("PGRST204", ignoreCase = true))
+}
 
 @Serializable
 data class UserUpdateRow(
@@ -332,7 +382,9 @@ fun parseFeedPost(row: PostRow): FeedPost = FeedPost(
     likeCount = row.likeCount,
     commentCount = row.commentCount,
     createdAt = row.createdAt.toEpochMillis(),
-    updatedAt = row.updatedAt.toEpochMillis()
+    updatedAt = row.updatedAt.toEpochMillis(),
+    petId = row.petId,
+    expiresAt = row.expiresAt.toEpochMillis()
 )
 
 fun FeedPost.toPostRow(now: Instant = Instant.now()): PostRow = PostRow(
@@ -347,6 +399,8 @@ fun FeedPost.toPostRow(now: Instant = Instant.now()): PostRow = PostRow(
     locationText = locationText,
     likeCount = likeCount,
     commentCount = commentCount,
+    petId = petId,
+    expiresAt = expiresAt?.let { Instant.ofEpochMilli(it).toString() },
     createdAt = (createdAt?.let { Instant.ofEpochMilli(it) } ?: now).toString(),
     updatedAt = now.toString()
 )

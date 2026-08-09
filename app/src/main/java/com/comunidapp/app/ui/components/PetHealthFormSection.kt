@@ -96,16 +96,9 @@ fun PetHealthFormSection(
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
-        OutlinedTextField(
-            value = microchipId,
-            onValueChange = onMicrochipChange,
-            label = { Text("Microchip / identificación") },
-            placeholder = { Text("Nº de chip o identificador oficial") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            enabled = enabled
-        )
+        // Microchip retirado de la UX (campo legado conservado en DTO/BD).
+        @Suppress("UNUSED_PARAMETER", "UNUSED_EXPRESSION")
+        val legacyMicrochip = microchipId to onMicrochipChange
 
         Spacer(modifier = Modifier.height(12.dp))
         DatePickerField(

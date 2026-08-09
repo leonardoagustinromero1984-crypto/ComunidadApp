@@ -265,7 +265,7 @@ fun M14IssueVerifiedCredentialScreen(
             OutlinedTextField(
                 value = profId,
                 onValueChange = { profId = it },
-                label = { Text("ID profesional M12 (opcional)") },
+                label = { Text("ID profesional veterinario (opcional)") },
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
@@ -367,7 +367,7 @@ fun M14PassportShareScreen(
                 Spacer(Modifier.height(8.dp))
             }
             Text(
-                "El enlace solo incluye el código público. Sin nombre de responsable, microchip completo ni datos personales.",
+                "El enlace solo incluye el código público. Sin nombre de responsable ni datos personales.",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(12.dp))

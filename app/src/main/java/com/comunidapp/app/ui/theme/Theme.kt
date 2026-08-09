@@ -11,50 +11,61 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
+/**
+ * Tema claro LeoVer — paleta pastel interna (decisión definitiva 2026-08-05).
+ *
+ * Predominio: BrandOrangeSoft (#FFA64D).
+ * Apoyo: BrandGreen (#49B749).
+ * BrandOrange / BrandGreenDark: solo acentos puntuales (tertiary / onSecondaryContainer).
+ * Logo, launcher y splash: no se alteran aquí.
+ */
 private val LightColorScheme = lightColorScheme(
-    primary = OrangePrimary,
-    onPrimary = White,
-    primaryContainer = OrangeContainer,
-    onPrimaryContainer = OrangePrimaryDark,
-    secondary = GreenPrimary,
-    onSecondary = White,
-    secondaryContainer = GreenContainer,
-    onSecondaryContainer = GreenPrimaryDark,
-    tertiary = GreenPrimaryLight,
-    onTertiary = GreenPrimaryDark,
-    tertiaryContainer = GreenContainer,
-    onTertiaryContainer = GreenPrimaryDark,
-    background = BackgroundLight,
-    onBackground = TextPrimary,
-    surface = SurfaceLight,
-    onSurface = TextPrimary,
-    surfaceVariant = GrayLight,
-    onSurfaceVariant = TextSecondary,
+    primary = BrandOrangeSoft,
+    onPrimary = BrandText,
+    primaryContainer = BrandOrangeContainer,
+    onPrimaryContainer = BrandText,
+    secondary = BrandGreen,
+    onSecondary = BrandText,
+    secondaryContainer = BrandGreenContainer,
+    onSecondaryContainer = BrandGreenDark,
+    tertiary = BrandOrange,
+    onTertiary = BrandText,
+    tertiaryContainer = BrandOrangeContainer,
+    onTertiaryContainer = BrandOrange,
+    background = BrandCream,
+    onBackground = BrandText,
+    surface = BrandWhite,
+    onSurface = BrandText,
+    surfaceVariant = BrandCream,
+    onSurfaceVariant = BrandTextSecondary,
+    outline = BrandGrayMedium,
     error = UrgentRed,
-    onError = White
+    onError = BrandWhite,
+    errorContainer = UrgentContainer,
+    onErrorContainer = UrgentRed
 )
 
 private val DarkColorScheme = darkColorScheme(
-    primary = OrangePrimaryLight,
-    onPrimary = TextPrimary,
-    primaryContainer = OrangePrimaryDark,
-    onPrimaryContainer = OrangeContainer,
-    secondary = GreenPrimaryLight,
-    onSecondary = TextPrimary,
-    secondaryContainer = GreenPrimaryDark,
-    onSecondaryContainer = GreenPrimaryLight,
-    tertiary = GreenPrimary,
-    onTertiary = White,
-    tertiaryContainer = GreenPrimaryDark,
-    onTertiaryContainer = GreenPrimaryLight,
+    primary = BrandOrangeSoft,
+    onPrimary = BrandText,
+    primaryContainer = BrandOrangeDeep,
+    onPrimaryContainer = BrandCream,
+    secondary = BrandGreen,
+    onSecondary = BrandText,
+    secondaryContainer = BrandGreenDark,
+    onSecondaryContainer = BrandGreenSoft,
+    tertiary = BrandOrange,
+    onTertiary = BrandText,
+    tertiaryContainer = BrandOrangeDeep,
+    onTertiaryContainer = BrandOrangeSoft,
     background = BackgroundDark,
-    onBackground = White,
+    onBackground = BrandWhite,
     surface = SurfaceDark,
-    onSurface = White,
-    surfaceVariant = GrayDark,
-    onSurfaceVariant = GrayMedium,
+    onSurface = BrandWhite,
+    surfaceVariant = BrandGrayDark,
+    onSurfaceVariant = BrandGrayMedium,
     error = UrgentRed,
-    onError = White
+    onError = BrandWhite
 )
 
 @Composable
@@ -68,8 +79,11 @@ fun ComunidappTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = colorScheme.primary.toArgb()
-            WindowCompat.getInsetsController(window, view).isAppearanceLightStatusBars = false
+            window.statusBarColor = BrandCream.toArgb()
+            window.navigationBarColor = BrandCream.toArgb()
+            val controller = WindowCompat.getInsetsController(window, view)
+            controller.isAppearanceLightStatusBars = true
+            controller.isAppearanceLightNavigationBars = true
         }
     }
 

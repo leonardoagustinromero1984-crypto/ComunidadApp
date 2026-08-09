@@ -2,7 +2,10 @@ package com.comunidapp.app.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
 import com.comunidapp.app.data.model.AdoptionPost
 import com.comunidapp.app.data.model.AdoptionStatus
 import com.comunidapp.app.data.model.Pet
@@ -75,15 +78,19 @@ class AdoptionFormViewModel(
                 }
                 return@launch
             }
-            val pets = petRepository.getPetsByOwner(userId)
-                .filter { it.status.equals("ACTIVE", ignoreCase = true) }
+            val pets = runCatching {
+                petRepository.getPetsByOwner(userId)
+                    .filter { it.status.equals("ACTIVE", ignoreCase = true) }
+            }.getOrElse { emptyList() }
             if (editingId == null) {
                 _state.update {
                     it.copy(
                         loading = false,
                         selectablePets = pets,
-                        selectedPetId = pets.firstOrNull()?.id,
-                        editable = true
+                        // No auto-select: formulario abre aunque no haya mascota elegida.
+                        selectedPetId = null,
+                        editable = true,
+                        errorMessage = null
                     )
                 }
                 return@launch
@@ -116,6 +123,7 @@ class AdoptionFormViewModel(
                     _state.update {
                         it.copy(
                             loading = false,
+                            selectablePets = pets,
                             errorMessage = M09AdoptionErrorMapper.userMessage(
                                 M09AdoptionErrorMapper.codeOf(error)
                             )
@@ -226,6 +234,19 @@ class AdoptionFormViewModel(
                     _events.tryEmit(msg)
                     submitting = false
                 }
+        }
+    }
+
+    companion object {
+        /**
+         * Required: default ViewModel factory cannot instantiate a Kotlin ctor with
+         * SavedStateHandle + defaulted repository params → InstantiationException (app crash).
+         */
+        fun factory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T {
+                return AdoptionFormViewModel(extras.createSavedStateHandle()) as T
+            }
         }
     }
 }

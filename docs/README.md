@@ -1,14 +1,15 @@
 # Documentación Leover
 
 Índice oficial de la documentación del repositorio.  
-**Fuente de orden de módulos:** [D01 — Módulos y Orden](01-producto/D01-Modulos-y-Orden.md).
+**Fuente de orden de módulos:** [D01 v1.2 — Módulos y Orden](01-producto/D01-Modulos-y-Orden-v1.2.md).
 
 ## Estructura oficial
 
 ```text
 docs/
-├── 00-maestro/        # Documento maestro / visión (cuando exista)
-├── 01-producto/       # Producto, mapa de módulos, releases
+├── 00-maestro/        # Documento maestro integral v1.1
+├── 00-startup/        # Inventario Mxx, saneamiento documental
+├── 01-producto/       # Producto, mapa de módulos (D01 v1.2), releases
 ├── 02-arquitectura/   # Arquitectura real, auditorías, cierres de etapa
 ├── 03-modulos/        # Especificaciones operativas por módulo (M00, M01…)
 ├── 04-calidad/        # Planes de lint, pruebas, CI
@@ -21,7 +22,8 @@ docs/
 | Carpeta | Propósito |
 |---------|-----------|
 | `00-maestro/` | Documento maestro integral y visión de plataforma. |
-| `01-producto/` | Decisiones de producto, catálogo de módulos, orden de desarrollo. |
+| `00-startup/` | Inventario real Mxx, saneamiento documental, gobierno post-Maestro v1.1. |
+| `01-producto/` | Decisiones de producto, catálogo de módulos (D01 v1.2), orden de desarrollo. |
 | `02-arquitectura/` | Cómo está construido el sistema hoy; auditorías y cierres. |
 | `03-modulos/` | Especs aprobadas por módulo (alcance, DoD, backlog). |
 | `04-calidad/` | Calidad, lint, pruebas, criterios de baseline. |
@@ -32,7 +34,12 @@ docs/
 
 | Documento | Ubicación |
 |-----------|-----------|
-| D01 Mapa de módulos | [01-producto/D01-Modulos-y-Orden.md](01-producto/D01-Modulos-y-Orden.md) |
+| Documento Maestro v1.1 | [00-maestro/LeoVer-Documento-Maestro-v1.1.md](00-maestro/LeoVer-Documento-Maestro-v1.1.md) |
+| D01 Mapa de módulos v1.2 | [01-producto/D01-Modulos-y-Orden-v1.2.md](01-producto/D01-Modulos-y-Orden-v1.2.md) |
+| Inventario real Mxx | [00-startup/LeoVer-Inventario-Real-Modulos-Mxx-v1.0.md](00-startup/LeoVer-Inventario-Real-Modulos-Mxx-v1.0.md) |
+| Auditoría documental y matriz de vigencia | [00-startup/LeoVer-Auditoria-Documental-y-Matriz-de-Vigencia-v1.0.md](00-startup/LeoVer-Auditoria-Documental-y-Matriz-de-Vigencia-v1.0.md) |
+| Saneamiento documental | [00-startup/LeoVer-Saneamiento-Documental-v1.1.md](00-startup/LeoVer-Saneamiento-Documental-v1.1.md) |
+| Cierre saneamiento documental | [00-startup/LeoVer-Cierre-Saneamiento-Documental-v1.0.md](00-startup/LeoVer-Cierre-Saneamiento-Documental-v1.0.md) |
 | M00 Fundación técnica | [03-modulos/M00-Fundacion-Tecnica.md](03-modulos/M00-Fundacion-Tecnica.md) |
 | M00 Etapa 2 (gobierno) | [03-modulos/M00-Etapa-2-Documentacion-y-Gobierno.md](03-modulos/M00-Etapa-2-Documentacion-y-Gobierno.md) |
 | M00 Etapa 4 (config/observabilidad) | [03-modulos/M00-Etapa-4-Configuracion-Observabilidad-y-Cierre.md](03-modulos/M00-Etapa-4-Configuracion-Observabilidad-y-Cierre.md) |
@@ -69,7 +76,7 @@ Permanecen en la raíz de `docs/` hasta un movimiento planificado. Ver [99-legac
 
 ## Regla anti-duplicados
 
-1. **Producto / orden:** solo `01-producto/` + Documento Maestro (cuando exista).
+1. **Producto / orden:** Documento Maestro v1.1 + **D01 v1.2** + inventario Mxx en `00-startup/`.
 2. **Arquitectura vigente:** solo `02-arquitectura/` + `adr/`.
 3. **Especificación de módulo:** un archivo en `03-modulos/` por módulo; no reinventar alcance en roadmaps sueltos.
 4. Si un doc de raíz contradice un ADR o una spec Mxx, **gana el ADR/spec** y el doc viejo se marca en `99-legacy`.

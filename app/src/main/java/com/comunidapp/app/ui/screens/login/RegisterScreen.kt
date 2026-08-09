@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -36,6 +37,7 @@ import com.comunidapp.app.ui.components.BrandLogo
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.PasswordTextField
 import com.comunidapp.app.viewmodel.RegisterViewModel
+import com.comunidapp.app.viewmodel.UsernameAvailabilityUi
 
 @Composable
 fun RegisterScreen(
@@ -64,6 +66,7 @@ fun RegisterScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .imePadding()
                 .padding(horizontal = 32.dp, vertical = 24.dp)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
@@ -71,30 +74,74 @@ fun RegisterScreen(
             BrandLogo(widthFraction = 0.65f, height = 100.dp)
             Spacer(modifier = Modifier.height(20.dp))
             OutlinedTextField(
-                value = uiState.name,
-                onValueChange = viewModel::onNameChange,
-                label = { Text("Nombre completo") },
+                value = uiState.firstName,
+                onValueChange = viewModel::onFirstNameChange,
+                label = { Text("Nombre") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 enabled = !uiState.isLoading,
                 isError = uiState.fieldErrors.containsKey("name"),
-                supportingText = {
-                    uiState.fieldErrors["name"]?.let { Text(it) }
-                }
+                supportingText = { uiState.fieldErrors["name"]?.let { Text(it) } }
             )
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = uiState.lastName,
+                onValueChange = viewModel::onLastNameChange,
+                label = { Text("Apellido") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !uiState.isLoading,
+                isError = uiState.fieldErrors.containsKey("name")
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "@",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(end = 4.dp)
+                )
+                OutlinedTextField(
+                    value = uiState.username.removePrefix("@"),
+                    onValueChange = { viewModel.onUsernameChange(it.removePrefix("@")) },
+                    label = { Text("Nombre de usuario") },
+                    supportingText = {
+                        val hint = when (uiState.usernameAvailability) {
+                            UsernameAvailabilityUi.IDLE ->
+                                "Será tu identificador público en LeoVer. Ej: veroobregon"
+                            UsernameAvailabilityUi.CHECKING -> "Comprobando disponibilidad…"
+                            UsernameAvailabilityUi.AVAILABLE -> "Nombre disponible."
+                            UsernameAvailabilityUi.TAKEN -> "Este nombre ya está en uso."
+                            UsernameAvailabilityUi.RESERVED -> "Este nombre está reservado."
+                            UsernameAvailabilityUi.INVALID ->
+                                uiState.fieldErrors["username"] ?: "Nombre inválido."
+                            UsernameAvailabilityUi.ERROR ->
+                                "No pudimos comprobar la disponibilidad. Intentá nuevamente."
+                        }
+                        Text(uiState.fieldErrors["username"] ?: hint)
+                    },
+                    modifier = Modifier.weight(1f),
+                    singleLine = true,
+                    enabled = !uiState.isLoading,
+                    isError = uiState.fieldErrors.containsKey("username") ||
+                        uiState.usernameAvailability == UsernameAvailabilityUi.TAKEN ||
+                        uiState.usernameAvailability == UsernameAvailabilityUi.RESERVED ||
+                        uiState.usernameAvailability == UsernameAvailabilityUi.INVALID
+                )
+            }
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
-                label = { Text("Email") },
+                label = { Text("Correo") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 enabled = !uiState.isLoading,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 isError = uiState.fieldErrors.containsKey("email"),
-                supportingText = {
-                    uiState.fieldErrors["email"]?.let { Text(it) }
-                }
+                supportingText = { uiState.fieldErrors["email"]?.let { Text(it) } }
             )
             Spacer(modifier = Modifier.height(12.dp))
             PasswordTextField(
@@ -128,10 +175,7 @@ fun RegisterScreen(
                     enabled = !uiState.isLoading,
                     modifier = Modifier.semantics { contentDescription = "Aceptar términos" }
                 )
-                Text(
-                    text = "Acepto los ",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text(text = "Acepto los ", style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = "Términos${LegalDocumentConfig.terms.draftLabel?.let { " ($it)" } ?: ""}",
                     style = MaterialTheme.typography.bodyMedium,
@@ -149,10 +193,7 @@ fun RegisterScreen(
                     enabled = !uiState.isLoading,
                     modifier = Modifier.semantics { contentDescription = "Aceptar privacidad" }
                 )
-                Text(
-                    text = "Acepto la ",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                Text(text = "Acepto la ", style = MaterialTheme.typography.bodyMedium)
                 Text(
                     text = "Privacidad${LegalDocumentConfig.privacy.draftLabel?.let { " ($it)" } ?: ""}",
                     style = MaterialTheme.typography.bodyMedium,
@@ -171,7 +212,7 @@ fun RegisterScreen(
             Button(
                 onClick = viewModel::register,
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading
+                enabled = uiState.canSubmit
             ) {
                 if (uiState.isLoading) {
                     CircularProgressIndicator(
@@ -179,7 +220,7 @@ fun RegisterScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text("Registrarse")
+                    Text("Crear cuenta")
                 }
             }
 

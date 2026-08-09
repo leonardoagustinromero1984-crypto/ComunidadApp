@@ -79,11 +79,7 @@ class M08Stage6StaticGuardsTest {
         ).forEach { code ->
             assertTrue("missing $code", mapper.contains(code))
         }
-        assertTrue(
-            mapper.contains(
-                "Ya existe una mascota activa registrada con ese microchip."
-            )
-        )
+        assertTrue(mapper.contains("PET_MICROCHIP_ACTIVE_CONFLICT"))
     }
 
     @Test

@@ -501,6 +501,7 @@ fun VeterinaryManagedAgendaScreen(
 fun VeterinaryAppointmentManagementScreen(
     appointmentId: String,
     onNavigateBack: () -> Unit,
+    onRegisterProfessionalCare: (clinicId: String, petId: String, appointmentId: String) -> Unit = { _, _, _ -> },
     viewModel: VeterinaryAppointmentManagementViewModel = viewModel(
         factory = VeterinaryAppointmentManagementViewModel.factory(appointmentId)
     )
@@ -575,6 +576,13 @@ fun VeterinaryAppointmentManagementScreen(
                                     Text("No asistió")
                                 }
                             }
+                            OutlinedButton(
+                                onClick = {
+                                    onRegisterProfessionalCare(appt.clinicId, appt.petId, appt.id)
+                                },
+                                enabled = !submitting,
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Registrar atención profesional") }
                             OutlinedButton(
                                 onClick = { viewModel.cancel(reason) },
                                 enabled = !submitting,

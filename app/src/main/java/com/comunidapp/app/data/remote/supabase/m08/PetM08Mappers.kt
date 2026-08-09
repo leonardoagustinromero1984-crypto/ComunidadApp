@@ -43,7 +43,7 @@ object PetM08Mappers {
         ageMonths = ageMonths,
         size = enumValueOrDefault(size, PetSize.MEDIUM),
         description = description,
-        vaccinations = vaccinations.mapNotNull { dto ->
+        vaccinations = (vaccinations ?: emptyList()).mapNotNull { dto ->
             val name = dto.name.trim()
             val date = dto.date.trim()
             if (name.isEmpty() && date.isEmpty()) null
@@ -66,7 +66,7 @@ object PetM08Mappers {
         breed = breed,
         personality = personality,
         locationText = locationText,
-        reminders = reminders.mapNotNull { dto ->
+        reminders = (reminders ?: emptyList()).mapNotNull { dto ->
             val title = dto.title.trim()
             val date = dto.date.trim()
             if (title.isEmpty() && date.isEmpty()) null

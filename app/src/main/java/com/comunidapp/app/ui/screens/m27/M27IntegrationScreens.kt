@@ -56,7 +56,7 @@ fun M27HubScreen(
                 M27HubUiState.Empty -> EmptyState(title = "Sin integraciones", message = "Registrá webhooks, OAuth o claves API para empezar.")
                 is M27HubUiState.Error -> ErrorState(message = s.message)
                 is M27HubUiState.Content -> {
-                    Text("LeoVer M27 · Operaciones simuladas; entrega externa no productiva.", color = MaterialTheme.colorScheme.primary)
+                    Text("Integraciones — operaciones simuladas; entrega externa no productiva.", color = MaterialTheme.colorScheme.primary)
                     Text("${s.webhookCount} webhooks · ${s.oauthCount} OAuth · ${s.keyCount} claves · ${s.appCount} apps · ${s.deliveryCount} entregas")
                     Button(onClick = onOpenApps, modifier = Modifier.fillMaxWidth()) { Text("Mis aplicaciones") }
                     OutlinedButton(onClick = onOpenWebhooks, modifier = Modifier.fillMaxWidth()) { Text("Webhooks") }

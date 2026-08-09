@@ -105,9 +105,9 @@ fun FosterPlacementManagementScreen(
                     Text("Mascota: ${p.petName ?: p.petId}")
                     Text("Hogar: ${p.fosterHomeId}")
                     Text("Cuidador temporal: ${p.fosterUserId}")
-                    Text("Responsable principal se conserva (PRINCIPAL).")
+                    Text("El responsable principal se conserva.")
                     p.temporaryResponsibilityId?.let {
-                        Text("Custodia temporal M08: $it")
+                        Text("Vínculo temporal activo")
                     }
                     Spacer(Modifier.height(8.dp))
                     OutlinedButton(

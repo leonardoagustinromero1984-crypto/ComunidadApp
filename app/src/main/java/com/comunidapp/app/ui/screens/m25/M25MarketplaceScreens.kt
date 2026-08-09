@@ -46,7 +46,7 @@ fun M25HubScreen(
                 M25HubUiState.Empty -> EmptyState(title = "Sin tiendas", message = "Todavía no hay tiendas disponibles.")
                 is M25HubUiState.Error -> ErrorState(message = s.message)
                 is M25HubUiState.Content -> {
-                    Text("LeoVer M25 · Catálogo local sin cobros.", color = MaterialTheme.colorScheme.primary)
+                    Text("Catálogo local sin cobros.", color = MaterialTheme.colorScheme.primary)
                     Text("${s.shopCount} tiendas disponibles")
                     Button(onClick = onOpenCatalog, modifier = Modifier.fillMaxWidth()) { Text("Explorar tiendas") }
                     OutlinedButton(onClick = onOpenCart, modifier = Modifier.fillMaxWidth()) { Text("Mi carrito") }

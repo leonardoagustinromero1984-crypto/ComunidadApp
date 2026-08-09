@@ -276,7 +276,8 @@ class M13Block3ReviewWorkflowTest {
         assertTrue(names.any { it == "049_m13_match_review_workflow.sql" })
         assertTrue(names.any { it.startsWith("050_") })
         assertTrue(names.any { it.startsWith("051_") })
-        assertTrue(names.any { it.startsWith("052_") }); assertFalse(names.any { it.startsWith("053_") })
+        assertTrue(names.any { it.startsWith("052_") })
+        assertTrue(names.any { it.startsWith("080_m28_") })
         (1..47).forEach { n ->
             assertTrue(names.any { it.startsWith("%03d_".format(n)) })
         }

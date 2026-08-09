@@ -47,7 +47,7 @@ fun M22HubScreen(onNavigateBack: () -> Unit, onOpenCatalog: () -> Unit, onOpenMa
                 M22HubUiState.Empty -> EmptyState(title = "Sin prestadores", message = "Todavía no hay prestadores disponibles.")
                 is M22HubUiState.Error -> ErrorState(message = s.message)
                 is M22HubUiState.Content -> {
-                    Text("LeoVer M22 · Catálogo local de servicios.", color = MaterialTheme.colorScheme.primary)
+                    Text("Catálogo local de servicios.", color = MaterialTheme.colorScheme.primary)
                     Text("${s.providerCount} prestadores disponibles")
                     Button(onClick = onOpenCatalog, modifier = Modifier.fillMaxWidth()) { Text("Explorar catálogo") }
                     OutlinedButton(onClick = onOpenManage, modifier = Modifier.fillMaxWidth()) { Text("Gestionar mis prestadores") }

@@ -24,8 +24,9 @@ class M13Migration049StaticGuardsTest {
             .filter { it.matches(Regex("^\\d{3}_.*\\.sql$")) }
             .sorted()
         val nums = names.map { it.substring(0, 3).toInt() }
-        assertEquals(52, nums.maxOrNull())
-        assertFalse(nums.contains(53))
+        assertTrue(nums.contains(49))
+        assertTrue(nums.contains(52))
+        assertTrue(nums.contains(80))
         (1..48).forEach { n ->
             assertTrue("falta migración ${n.toString().padStart(3, '0')}", nums.contains(n))
         }

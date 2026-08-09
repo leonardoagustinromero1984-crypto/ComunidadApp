@@ -397,7 +397,7 @@ fun VeterinaryClinicDraftScreen(
                 OutlinedTextField(
                     value = organizationId,
                     onValueChange = { organizationId = it },
-                    label = { Text("Organización M03") },
+                    label = { Text("Organización") },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

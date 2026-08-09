@@ -209,4 +209,40 @@ class PetDetailSmokeRegressionTest {
         assertNull(viewModel.petLoadError.value)
         assertFalse(viewModel.isPetLoading.value)
     }
+
+    @Test
+    fun openDetail_resolvesPrincipalDisplayName_notRawId() = runTest {
+        login()
+        val userRepo = FakeStage5UserRepository(
+            usersById = mapOf(
+                "user_1" to MockData.currentUser.copy(id = "user_1", name = "María González")
+            )
+        )
+        petRepo.accessResult = Result.success(stage5AccessContext(principalPersonId = "user_1"))
+        val viewModel = PetDetailViewModel(
+            savedStateHandle = SavedStateHandle(mapOf("petId" to "pet-1")),
+            authRepository = authRepo,
+            petRepository = petRepo,
+            platformRepository = MockPlatformRepository(),
+            userRepository = userRepo
+        )
+        advanceUntilIdle()
+
+        assertEquals("María González", viewModel.principalDisplayName.value)
+        assertFalse(viewModel.principalLoading.value)
+        assertTrue(userRepo.getUserCalls >= 1)
+        assertFalse(viewModel.principalDisplayName.value.orEmpty().contains("user_1"))
+    }
+
+    @Test
+    fun openDetail_canRestore_whenArchivedAndCapabilityPresent() = runTest {
+        login()
+        petRepo.pet = stage5Pet(status = "ARCHIVED")
+        petRepo.accessResult = Result.success(
+            stage5AccessContext(canRead = true).copy(canRestore = true)
+        )
+        val viewModel = vm()
+        advanceUntilIdle()
+        assertTrue(viewModel.canRestore.value)
+    }
 }

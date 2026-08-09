@@ -62,7 +62,7 @@ fun M21HubScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                "LeoVer M21 — reseñas transaccionales, verificaciones y apelaciones.",
+                "Reseñas transaccionales, verificaciones y apelaciones.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )

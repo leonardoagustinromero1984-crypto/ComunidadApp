@@ -89,6 +89,7 @@ class SupabaseAuthRepository(
         email: String,
         password: String,
         consent: ConsentMetadata,
+        username: String,
         accountType: AccountType
     ): Result<User> {
         if (name.isBlank()) {
@@ -96,6 +97,12 @@ class SupabaseAuthRepository(
                 AuthErrorMapper.toException(AuthErrorCode.UNKNOWN_AUTH_ERROR, "name required")
             )
         }
+        val normalizedUsername = com.comunidapp.app.domain.user.UsernameValidators.validate(username)
+            .getOrElse {
+                return Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.UNKNOWN_AUTH_ERROR, "username invalid")
+                )
+            }
         AuthValidators.validateEmail(email).getOrElse {
             return Result.failure(AuthErrorMapper.fromThrowableToException(it))
         }
@@ -122,6 +129,7 @@ class SupabaseAuthRepository(
                 this.password = password
                 data = buildJsonObject {
                     put("name", trimmedName)
+                    put("username", normalizedUsername.value)
                     put("terms_version", consent.termsVersion)
                     put("privacy_version", consent.privacyVersion)
                     put("consent_source", consent.source)
@@ -138,7 +146,10 @@ class SupabaseAuthRepository(
                 id = authUser.id,
                 name = trimmedName,
                 email = normalizedEmail,
-                accountType = effectiveType
+                accountType = effectiveType,
+                username = normalizedUsername.value,
+                displayName = trimmedName,
+                onboardingStatus = "COMPLETED"
             )
 
             if (supabase.auth.currentUserOrNull() != null) {

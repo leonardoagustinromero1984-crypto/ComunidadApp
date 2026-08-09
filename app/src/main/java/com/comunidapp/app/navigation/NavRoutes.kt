@@ -23,13 +23,22 @@ object NavRoutes {
     const val COMUNIDAD = "comunidad"
     const val MY_BUSINESS = "my_business"
     const val PUBLISH = "publish"
+    /** Creador social abierto desde Perfil (no es tab inferior; evita scrim/selección del FAB). */
+    const val PUBLISH_FROM_PROFILE = "publish_from_profile"
     const val PROFILE = "profile"
     const val ADOPTIONS = "adoptions"
     const val SHELTERS = "shelters"
     const val MY_PETS = "my_pets"
     const val LOST_FOUND = "lost_found"
     const val LOST_FOUND_MAP = "lost_found_map"
+    const val LOST_FOUND_DETAIL = "lost_found_detail/{postId}"
+    const val ARG_LOST_FOUND_POST_ID = "postId"
     const val PUBLISH_LOST_FOUND = "publish_lost_found"
+
+    fun lostFoundDetail(postId: String): String =
+        "lost_found_detail/${java.net.URLEncoder.encode(postId, Charsets.UTF_8.name())}"
+    /** Mismo formulario de perdido/encontrado, preseleccionado como ENCONTRADO. */
+    const val PUBLISH_FOUND_PET = "publish_found_pet"
 
     // M13 — Avistamientos y coincidencias (enriquece Lost/Found; Bloque 1 local)
     const val M13_SIGHTINGS = "m13/sightings"
@@ -62,6 +71,12 @@ object NavRoutes {
     const val ARG_CREDENTIAL_ID = "credentialId"
     const val ARG_PUBLIC_CODE = "publicCode"
     const val ARG_M14_REQUEST_ID = "requestId"
+
+    // M28 — Portal veterinario profesional (Pilot Minimum)
+    const val M28_PET_GRANTS = "m28/pets/{petId}/grants"
+    const val M28_PET_PROPOSALS = "m28/pets/{petId}/proposals"
+    const val M28_CLINIC_CARE = "m28/clinic/{clinicId}/care/{petId}?appointmentId={appointmentId}"
+    const val ARG_M28_APPOINTMENT_QUERY = "appointmentId"
 
     // M15 — Hogares de tránsito (Bloque 1 local)
     const val M15_HUB = "m15/hub"
@@ -312,6 +327,8 @@ object NavRoutes {
     const val EDIT_PET = "edit_pet/{petId}"
 
     const val PUBLISH_GENERAL = "publish_general"
+    const val PUBLISH_REEL = "publish_reel"
+    const val PUBLISH_STORY = "publish_story"
     const val PUBLISH_QUESTION = "publish_question"
     const val PUBLISH_PROMO = "publish_promo"
     const val PUBLISH_ADOPTION = "publish_adoption"
@@ -529,7 +546,10 @@ object NavRoutes {
         "shelter_reports/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
     fun serviceDetail(serviceId: String) =
         "service_detail/${java.net.URLEncoder.encode(serviceId, Charsets.UTF_8.name())}"
-    fun petDetail(petId: String) = "pet_detail/$petId"
+    fun petDetail(petId: String): String {
+        val encoded = java.net.URLEncoder.encode(petId.trim(), Charsets.UTF_8.name())
+        return "pet_detail/$encoded"
+    }
     fun petResponsibilities(petId: String) =
         "pet_responsibilities/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
     fun petAuthorizations(petId: String) =
@@ -543,7 +563,10 @@ object NavRoutes {
         "pet_status_history/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
     fun emailVerification(email: String) = "email_verification/$email"
     fun firstRunOnboarding(restart: Boolean = false) = "first_run_onboarding/$restart"
-    fun editPet(petId: String) = "edit_pet/$petId"
+    fun editPet(petId: String): String {
+        val encoded = java.net.URLEncoder.encode(petId.trim(), Charsets.UTF_8.name())
+        return "edit_pet/$encoded"
+    }
     fun userProfile(userId: String) =
         "user_profile/${java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())}"
     fun editOrganization(organizationId: String) =
@@ -613,6 +636,17 @@ object NavRoutes {
         "m14/passports/${java.net.URLEncoder.encode(passportId, Charsets.UTF_8.name())}/history"
     fun m14Public(publicCode: String) =
         "m14/public/${java.net.URLEncoder.encode(publicCode, Charsets.UTF_8.name())}"
+
+    fun m28PetGrants(petId: String) =
+        "m28/pets/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}/grants"
+
+    fun m28PetProposals(petId: String) =
+        "m28/pets/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}/proposals"
+
+    fun m28ClinicCare(clinicId: String, petId: String, appointmentId: String? = null) =
+        "m28/clinic/${java.net.URLEncoder.encode(clinicId, Charsets.UTF_8.name())}/care/" +
+            "${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}?appointmentId=" +
+            java.net.URLEncoder.encode(appointmentId.orEmpty(), Charsets.UTF_8.name())
 
     fun m15HomeDetail(homeId: String) =
         "m15/homes/${java.net.URLEncoder.encode(homeId, Charsets.UTF_8.name())}"

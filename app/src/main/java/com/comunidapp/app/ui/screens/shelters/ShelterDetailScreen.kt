@@ -100,7 +100,7 @@ fun ShelterDetailScreen(
                             onClick = { onM16ShelterClick(m16Id) },
                             modifier = Modifier.padding(top = 8.dp)
                         ) {
-                            Text("Ver perfil M16 vinculado")
+                            Text("Ver perfil de refugio vinculado")
                         }
                     }
                 }

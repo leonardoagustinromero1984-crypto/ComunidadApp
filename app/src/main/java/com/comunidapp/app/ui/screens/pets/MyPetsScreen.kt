@@ -121,13 +121,6 @@ private fun PetHealthCard(pet: Pet) {
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
-            pet.microchipId?.let {
-                Text(
-                    text = "Microchip: $it",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
             pet.lastVetVisit?.let {
                 Text(
                     text = "Última consulta: ${formatDisplayDate(it)}",

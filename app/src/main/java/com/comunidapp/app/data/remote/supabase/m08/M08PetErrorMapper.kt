@@ -107,7 +107,7 @@ object M08PetErrorMapper {
         "PET_NOT_ACTIVE" -> "La mascota no está activa."
         "PET_NAME_REQUIRED" -> "El nombre de la mascota es obligatorio."
         "PET_MICROCHIP_ACTIVE_CONFLICT" ->
-            "Ya existe una mascota activa registrada con ese microchip."
+            "Ya existe una mascota activa con esa identificación."
         "PET_ALREADY_DECEASED", "ALREADY_DECEASED" ->
             "La mascota ya está marcada como fallecida."
         "PET_ALREADY_ARCHIVED" -> "La mascota ya está archivada."

@@ -61,7 +61,7 @@ fun M26HubScreen(
                 M26HubUiState.Empty -> EmptyState(title = "Sin sugerencias", message = "Todavía no hay resultados de inteligencia asistida.")
                 is M26HubUiState.Error -> ErrorState(message = s.message)
                 is M26HubUiState.Content -> {
-                    Text("LeoVer M26 · Sugerencias estimativas; requieren revisión humana cuando corresponda.", color = MaterialTheme.colorScheme.primary)
+                    Text("Sugerencias estimativas; requieren revisión humana cuando corresponda.", color = MaterialTheme.colorScheme.primary)
                     Text("${s.matchCount} matches · ${s.duplicateCount} duplicados · ${s.recommendationCount} recomendaciones aptas · ${s.jobCount} ejecuciones")
                     Button(onClick = onOpenVisualMatching, modifier = Modifier.fillMaxWidth()) { Text("Matching visual") }
                     OutlinedButton(onClick = onOpenDuplicates, modifier = Modifier.fillMaxWidth()) { Text("Detección de duplicados") }
@@ -114,7 +114,7 @@ fun M26AssistanceScreen(onNavigateBack: () -> Unit, viewModel: M26AssistanceView
     val state by viewModel.uiState.collectAsState()
     Scaffold(topBar = { ComunidappTopBar(title = "Asistencia", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Stub de asistencia — no reemplaza moderación M04.", style = MaterialTheme.typography.bodyMedium)
+            Text("Asistencia orientativa — no reemplaza la moderación humana.", style = MaterialTheme.typography.bodyMedium)
             when (val s = state) {
                 M26AssistanceUiState.Loading -> LoadingState()
                 M26AssistanceUiState.Empty -> {
@@ -164,7 +164,7 @@ fun M26RecommendationsScreen(onNavigateBack: () -> Unit, viewModel: M26Recommend
 @Composable
 fun M26HistoryScreen(onNavigateBack: () -> Unit, viewModel: M26HistoryViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Historial M26", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(topBar = { ComunidappTopBar(title = "Historial de asistencia", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             Text("Resultados personales — no constituyen verdad garantizada.", style = MaterialTheme.typography.bodyMedium)
             when (val s = state) {
@@ -190,9 +190,9 @@ fun M26HistoryScreen(onNavigateBack: () -> Unit, viewModel: M26HistoryViewModel 
 @Composable
 fun M26ReviewQueueScreen(onNavigateBack: () -> Unit, viewModel: M26ReviewQueueViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Revisión humana M26", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(topBar = { ComunidappTopBar(title = "Revisión humana", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text("Cola de calidad IA — distinta de moderación M04.", style = MaterialTheme.typography.bodyMedium)
+            Text("Cola de calidad IA — distinta de la moderación de contenido.", style = MaterialTheme.typography.bodyMedium)
             when (val s = state) {
                 M26ReviewQueueUiState.Loading -> LoadingState()
                 M26ReviewQueueUiState.Empty -> EmptyState(title = "Sin pendientes", message = "No hay resultados en revisión o no tenés permiso.")

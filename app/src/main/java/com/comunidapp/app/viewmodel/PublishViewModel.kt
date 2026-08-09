@@ -88,6 +88,78 @@ class PublishViewModel(
         imageUri: Uri? = null
     ) = publishFeed(title, content, location, imageUri, PostType.PROMO)
 
+    fun publishReel(
+        description: String,
+        location: String,
+        videoUri: Uri?,
+        petId: String? = null
+    ) {
+        if (videoUri == null) {
+            _formState.update { it.copy(errorMessage = "Elegí un video para el Reel") }
+            return
+        }
+        if (description.isBlank()) {
+            _formState.update { it.copy(errorMessage = "Agregá una descripción corta") }
+            return
+        }
+        viewModelScope.launch {
+            _formState.update { PublishFormState(isLoading = true) }
+            resolveAuthor()
+                .onSuccess { author ->
+                    publishFeedPost(
+                        author = author,
+                        type = PostType.REEL,
+                        title = "Reel",
+                        content = description.trim(),
+                        locationText = location.trim().ifBlank { null },
+                        imageUri = videoUri,
+                        petId = petId?.takeIf { it.isNotBlank() },
+                        requireMedia = true,
+                        mimeType = "video/mp4",
+                        filename = "reel.mp4"
+                    )
+                }
+                .onFailure { error ->
+                    _formState.update { PublishFormState(errorMessage = error.message) }
+                }
+        }
+    }
+
+    fun publishStory(
+        text: String,
+        mediaUri: Uri?,
+        petId: String? = null,
+        isVideo: Boolean = false
+    ) {
+        if (mediaUri == null) {
+            _formState.update { it.copy(errorMessage = "Elegí una imagen o un video para la historia") }
+            return
+        }
+        viewModelScope.launch {
+            _formState.update { PublishFormState(isLoading = true) }
+            resolveAuthor()
+                .onSuccess { author ->
+                    val now = System.currentTimeMillis()
+                    publishFeedPost(
+                        author = author,
+                        type = PostType.STORY,
+                        title = "Historia",
+                        content = text.trim().ifBlank { "Historia" },
+                        locationText = null,
+                        imageUri = mediaUri,
+                        petId = petId?.takeIf { it.isNotBlank() },
+                        expiresAt = com.comunidapp.app.domain.social.StoryExpiration.expiresAtFrom(now),
+                        requireMedia = true,
+                        mimeType = if (isVideo) "video/mp4" else "image/jpeg",
+                        filename = if (isVideo) "story.mp4" else "story.jpg"
+                    )
+                }
+                .onFailure { error ->
+                    _formState.update { PublishFormState(errorMessage = error.message) }
+                }
+        }
+    }
+
     private fun publishFeed(
         title: String,
         content: String,
@@ -321,8 +393,17 @@ class PublishViewModel(
         title: String,
         content: String,
         locationText: String?,
-        imageUri: Uri?
+        imageUri: Uri?,
+        petId: String? = null,
+        expiresAt: Long? = null,
+        requireMedia: Boolean = false,
+        mimeType: String = "image/jpeg",
+        filename: String = "media.jpg"
     ) {
+        if (requireMedia && imageUri == null) {
+            _formState.update { PublishFormState(errorMessage = "El medio es obligatorio") }
+            return
+        }
         val now = System.currentTimeMillis()
         val post = FeedPost(
             id = "",
@@ -334,7 +415,9 @@ class PublishViewModel(
             content = content,
             locationText = locationText,
             createdAt = now,
-            updatedAt = now
+            updatedAt = now,
+            petId = petId,
+            expiresAt = expiresAt
         )
 
         feedRepository.addFeedPost(post)
@@ -346,7 +429,9 @@ class PublishViewModel(
                         FileAssetPurpose.POST_MEDIA,
                         author.id,
                         postId,
-                        FileResourceType.POST
+                        FileResourceType.POST,
+                        mimeType = mimeType,
+                        filename = filename
                     )) {
                         is AppResult.Success -> {
                             finalPost = finalPost.copy(imageUrl = upload.data.assetId)
@@ -366,9 +451,31 @@ class PublishViewModel(
             }
             .onFailure { error ->
                 _formState.update {
-                    PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                    PublishFormState(errorMessage = humanizePublishError(error))
                 }
             }
+    }
+
+    private fun humanizePublishError(error: Throwable): String {
+        val blob = buildString {
+            append(error.message.orEmpty())
+            generateSequence(error.cause) { it.cause }.forEach { append(' ').append(it.message.orEmpty()) }
+        }
+        val schemaGap = (blob.contains("schema cache", ignoreCase = true) ||
+            blob.contains("Could not find", ignoreCase = true)) &&
+            (blob.contains("expires_at", ignoreCase = true) || blob.contains("pet_id", ignoreCase = true))
+        return when {
+            schemaGap ->
+                "No pudimos publicar la historia. Revisá tu conexión e intentá nuevamente."
+            blob.contains("JWT", ignoreCase = true) ||
+                blob.contains("Bearer", ignoreCase = true) ||
+                blob.contains("apikey", ignoreCase = true) ->
+                "No pudimos publicar. Revisá tu sesión e intentá nuevamente."
+            blob.length > 180 ->
+                "No pudimos publicar. Revisá tu conexión e intentá nuevamente."
+            else -> error.message?.takeIf { it.isNotBlank() && it.length <= 180 }
+                ?: "No pudimos publicar. Revisá tu conexión e intentá nuevamente."
+        }
     }
 
     private suspend fun uploadMedia(
@@ -376,7 +483,9 @@ class PublishViewModel(
         purpose: FileAssetPurpose,
         actorUserId: String,
         resourceId: String,
-        resourceType: FileResourceType
+        resourceType: FileResourceType,
+        mimeType: String = "image/jpeg",
+        filename: String = "media.jpg"
     ): AppResult<PreparedFileUpload> =
         DataProvider.fileUploadCoordinator.startUpload(
             uriString = uri.toString(),
@@ -384,8 +493,8 @@ class PublishViewModel(
                 purpose = purpose,
                 owner = FileAssetOwner.User(actorUserId),
                 resourceRef = FileResourceRef(resourceType, resourceId),
-                originalFilename = "media.jpg",
-                declaredMimeType = "image/jpeg",
+                originalFilename = filename,
+                declaredMimeType = mimeType,
                 sizeBytes = 1L,
                 requestedVisibility = FileAssetVisibility.PUBLIC
             ),

@@ -102,6 +102,7 @@ fun LostFoundContent(
     onNavigateToM13Sightings: () -> Unit = {},
     onNavigateToCaseMatches: (String) -> Unit = {},
     onNavigateToM13NewSighting: (String?) -> Unit = {},
+    lockedType: LostFoundType? = null,
     viewModel: LostFoundViewModel = viewModel()
 ) {
     val posts by viewModel.posts.collectAsState()
@@ -111,6 +112,12 @@ fun LostFoundContent(
     var sightingPostId by remember { mutableStateOf<String?>(null) }
     var sightingNote by remember { mutableStateOf("") }
     var sightingLocation by remember { mutableStateOf("") }
+
+    LaunchedEffect(lockedType) {
+        if (lockedType != null) {
+            viewModel.onTypeFilterChange(lockedType)
+        }
+    }
 
     if (sightingPostId != null) {
         AlertDialog(
@@ -181,24 +188,26 @@ fun LostFoundContent(
                     .padding(vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FilterChip(
-                    selected = filters.type == LostFoundType.LOST,
-                    onClick = {
-                        viewModel.onTypeFilterChange(
-                            if (filters.type == LostFoundType.LOST) null else LostFoundType.LOST
-                        )
-                    },
-                    label = { Text("Perdidos") }
-                )
-                FilterChip(
-                    selected = filters.type == LostFoundType.FOUND,
-                    onClick = {
-                        viewModel.onTypeFilterChange(
-                            if (filters.type == LostFoundType.FOUND) null else LostFoundType.FOUND
-                        )
-                    },
-                    label = { Text("Encontrados") }
-                )
+                if (lockedType == null) {
+                    FilterChip(
+                        selected = filters.type == LostFoundType.LOST,
+                        onClick = {
+                            viewModel.onTypeFilterChange(
+                                if (filters.type == LostFoundType.LOST) null else LostFoundType.LOST
+                            )
+                        },
+                        label = { Text("Perdidos") }
+                    )
+                    FilterChip(
+                        selected = filters.type == LostFoundType.FOUND,
+                        onClick = {
+                            viewModel.onTypeFilterChange(
+                                if (filters.type == LostFoundType.FOUND) null else LostFoundType.FOUND
+                            )
+                        },
+                        label = { Text("Encontrados") }
+                    )
+                }
                 FilterChip(
                     selected = filters.status == LostFoundStatus.ACTIVE || filters.status == null,
                     onClick = { viewModel.onStatusFilterChange(LostFoundStatus.ACTIVE) },
@@ -231,7 +240,7 @@ fun LostFoundContent(
                 onClick = onNavigateToM13Sightings,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text("Avistamientos y coincidencias (M13)")
+                Text("Avistamientos y coincidencias")
             }
         }
         LazyColumn(
@@ -367,7 +376,7 @@ fun LostFoundCard(
                         OutlinedButton(onClick = report) { Text("Avistamiento rápido") }
                     }
                     onOpenM13StructuredSighting?.let { open ->
-                        OutlinedButton(onClick = open) { Text("Avistamiento M13") }
+                        OutlinedButton(onClick = open) { Text("Registrar avistamiento") }
                     }
                     onOpenM13Matches?.let { open ->
                         OutlinedButton(onClick = open) { Text("Coincidencias") }
@@ -391,70 +400,6 @@ fun LostFoundCard(
                         style = MaterialTheme.typography.bodySmall,
                         modifier = Modifier.padding(top = 4.dp)
                     )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-fun LostFoundMapScreen(
-    onNavigateBack: () -> Unit,
-    viewModel: LostFoundViewModel = viewModel()
-) {
-    val posts by viewModel.posts.collectAsState()
-    val context = LocalContext.current
-    val withCoords = posts.filter { it.latitude != null && it.longitude != null }
-
-    Scaffold(
-        topBar = {
-            ComunidappTopBar(
-                title = "Mapa de alertas",
-                showBackButton = true,
-                onBackClick = onNavigateBack
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .padding(16.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(220.dp)
-                    .background(MaterialTheme.colorScheme.surfaceVariant),
-                contentAlignment = Alignment.Center
-            ) {
-                Text(
-                    text = "${posts.size} alertas · ${withCoords.size} con GPS",
-                    style = MaterialTheme.typography.titleMedium
-                )
-            }
-            Text(
-                text = "Tocá una alerta para abrirla en el mapa (geo:)",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(vertical = 12.dp)
-            )
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(posts, key = { it.id }) { post ->
-                    Card(onClick = { openInMaps(context, post) }) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(
-                                text = "${post.petName ?: post.species.toDisplayName()} · ${post.location}"
-                            )
-                            if (post.latitude != null && post.longitude != null) {
-                                Text(
-                                    text = "${post.latitude}, ${post.longitude}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            }
-                        }
-                    }
                 }
             }
         }

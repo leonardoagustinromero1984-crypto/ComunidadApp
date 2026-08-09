@@ -72,7 +72,7 @@ fun M19SocialFeedScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Feed M19 — publicaciones, comentarios y reacciones sin PII.",
+                "Publicaciones, comentarios y reacciones sin PII.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )

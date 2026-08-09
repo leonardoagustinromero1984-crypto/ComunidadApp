@@ -12,7 +12,9 @@ enum class UsernameErrorCode {
     MUST_NOT_END_DOT,
     CONSECUTIVE_DOTS,
     RESERVED,
-    SPACES_NOT_ALLOWED
+    SPACES_NOT_ALLOWED,
+    LOOKS_LIKE_UUID,
+    LOOKS_TECHNICAL
 }
 
 class UsernameValidationException(
@@ -25,16 +27,34 @@ object UsernameValidators {
     const val MAX_LENGTH = 30
 
     private val ALLOWED = Regex("^[a-z0-9._]+$")
-
-    /** Lista inicial configurable; ampliación en etapas posteriores. */
-    val reservedWords: Set<String> = setOf(
-        "admin", "administrator", "moderador", "moderator", "soporte", "support",
-        "leover", "comunidapp", "root", "system", "null", "undefined",
-        "login", "logout", "register", "api", "help", "oficial", "official"
+    private val UUID_LIKE = Regex(
+        "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$"
     )
 
-    fun normalize(raw: String): String =
-        raw.trim().lowercase()
+    /**
+     * Lista reutilizable alineada con `reserved_usernames` (migración 079).
+     * No colocar reglas distintas en pantallas.
+     */
+    val reservedWords: Set<String> = setOf(
+        "admin", "administrator", "administrador",
+        "soporte", "support",
+        "seguridad", "security",
+        "leover", "oficial", "official",
+        "sistema", "system",
+        "moderacion", "moderation", "moderador", "moderator",
+        "root", "null", "undefined",
+        "api", "auth", "login", "logout", "register",
+        "user", "usuario", "sistemas",
+        "comunidapp", "www", "help"
+    )
+
+    fun normalize(raw: String): String {
+        var value = raw.trim().lowercase()
+        while (value.startsWith("@")) {
+            value = value.removePrefix("@").trim()
+        }
+        return value
+    }
 
     fun validate(raw: String): Result<Username> {
         if (raw.any { it.isWhitespace() }) {
@@ -48,6 +68,10 @@ object UsernameValidators {
                 return failure(UsernameErrorCode.TOO_SHORT, "too short")
             normalized.length > MAX_LENGTH ->
                 return failure(UsernameErrorCode.TOO_LONG, "too long")
+            UUID_LIKE.matches(normalized) ->
+                return failure(UsernameErrorCode.LOOKS_LIKE_UUID, "uuid-like")
+            normalized.all { it.isDigit() } ->
+                return failure(UsernameErrorCode.LOOKS_TECHNICAL, "digits-only")
             !normalized.first().isLetterOrDigit() ->
                 return failure(UsernameErrorCode.MUST_START_ALNUM, "must start alnum")
             normalized.endsWith('.') ->
@@ -70,6 +94,21 @@ object UsernameValidators {
         return if (username != null) ProfileSetupStatus.COMPLETED else ProfileSetupStatus.NOT_STARTED
     }
 
+    fun userMessage(code: UsernameErrorCode): String = when (code) {
+        UsernameErrorCode.EMPTY -> "Escribí un nombre de usuario."
+        UsernameErrorCode.TOO_SHORT -> "El nombre debe tener al menos $MIN_LENGTH caracteres."
+        UsernameErrorCode.TOO_LONG -> "El nombre no puede superar $MAX_LENGTH caracteres."
+        UsernameErrorCode.INVALID_CHARS ->
+            "Solo puede contener letras, números, punto y guion bajo."
+        UsernameErrorCode.MUST_START_ALNUM -> "Debe comenzar con letra o número."
+        UsernameErrorCode.MUST_NOT_END_DOT -> "No puede terminar con punto."
+        UsernameErrorCode.CONSECUTIVE_DOTS -> "No uses puntos consecutivos."
+        UsernameErrorCode.RESERVED -> "Este nombre está reservado."
+        UsernameErrorCode.SPACES_NOT_ALLOWED -> "Sin espacios."
+        UsernameErrorCode.LOOKS_LIKE_UUID -> "Elegí un nombre legible, no un identificador técnico."
+        UsernameErrorCode.LOOKS_TECHNICAL -> "Elegí un nombre legible."
+    }
+
     private fun failure(code: UsernameErrorCode, technical: String): Result<Nothing> =
         Result.failure(
             UsernameValidationException(
@@ -81,19 +120,6 @@ object UsernameValidators {
                 )
             )
         )
-
-    private fun userMessage(code: UsernameErrorCode): String = when (code) {
-        UsernameErrorCode.EMPTY -> "Ingresá un nombre de usuario."
-        UsernameErrorCode.TOO_SHORT -> "El usuario debe tener al menos $MIN_LENGTH caracteres."
-        UsernameErrorCode.TOO_LONG -> "El usuario no puede superar $MAX_LENGTH caracteres."
-        UsernameErrorCode.INVALID_CHARS ->
-            "Usá solo letras minúsculas, números, punto y guion bajo."
-        UsernameErrorCode.MUST_START_ALNUM -> "Debe comenzar con letra o número."
-        UsernameErrorCode.MUST_NOT_END_DOT -> "No puede terminar con punto."
-        UsernameErrorCode.CONSECUTIVE_DOTS -> "No uses puntos consecutivos."
-        UsernameErrorCode.RESERVED -> "Ese nombre de usuario no está disponible."
-        UsernameErrorCode.SPACES_NOT_ALLOWED -> "Sin espacios."
-    }
 }
 
 object AccountStatusRules {

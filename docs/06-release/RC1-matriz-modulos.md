@@ -1,5 +1,7 @@
 # RC1 — Matriz de módulos M00–M27
 
+> **Numeración oficial:** ver [`D01-Modulos-y-Orden-v1.2.md`](../01-producto/D01-Modulos-y-Orden-v1.2.md). **M10** = hogares de tránsito (persistencia), no geoservicios.
+
 | Módulo | Nombre | Estado | Migraciones | Tests | Validación remota | Smoke | Integración | Riesgos | Listo prueba manual |
 |--------|--------|--------|-------------|-------|-------------------|-------|-------------|---------|---------------------|
 | M00 | Fundación técnica | Cerrado | 001–012 | CI base | N/A | N/A | OK | Legacy debt | Sí |
@@ -12,7 +14,7 @@
 | M07 | Observabilidad | Cerrado | 029–034 | M07 stages | Staging | N/A | PARCIAL | metrics mock | Sí |
 | M08 | Mascotas | Cerrado | 003,035–036 | M08 regression | Staging | N/A | PARCIAL | domain Supabase-only | Sí |
 | M09 | Adopciones | Cerrado | 037–038 (+039 local) | Adoption tests | Staging | N/A | OK | SQL-001 | Sí |
-| M10 | Ubicación/foster base | Cerrado | 040–041 local | Foster tests | Parcial | N/A | PARCIAL | 039–052 gap | Sí (mock) |
+| M10 | Hogares tránsito (persistencia) | Cerrado | 040–041 local | Foster tests | Parcial | N/A | PARCIAL | 039–052 gap | Sí (mock) |
 | M11 | Refugios legacy | Cerrado | 042–045 local | M11 tests | Parcial | N/A | PARCIAL | dual M16 | Sí |
 | M12 | Veterinaria | Cerrado | 046–047 local | M12 tests | Parcial | N/A | OK | SQL-001 | Sí |
 | M13 | Avistamientos | Cerrado | 048–049 local | M13 tests | Parcial | N/A | OK | SQL-001 | Sí |

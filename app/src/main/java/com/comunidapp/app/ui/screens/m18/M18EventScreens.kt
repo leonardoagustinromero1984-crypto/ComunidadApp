@@ -77,7 +77,7 @@ fun M18EventsListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Directorio público M18 — cupos e inscripciones sin PII.",
+                "Directorio público de eventos — cupos e inscripciones sin PII.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -245,7 +245,7 @@ fun M18EventDetailScreen(
                                 Text("Cancelar inscripción")
                             }
                             OutlinedButton(onClick = { viewModel.scheduleReminder() }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Programar recordatorio (mock M06)")
+                                Text("Programar recordatorio")
                             }
                         }
                         M18EventParticipationUiState.Waitlisted -> {

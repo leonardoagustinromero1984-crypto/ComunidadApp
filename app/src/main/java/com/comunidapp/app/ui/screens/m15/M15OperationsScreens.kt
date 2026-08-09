@@ -45,7 +45,7 @@ fun M15OperationsScreen(
     Scaffold(
         topBar = {
             ComunidappTopBar(
-                title = "Operaciones M15",
+                title = "Operaciones de tránsito",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -109,7 +109,7 @@ fun M15OperationsScreen(
 private fun M15StatusCard(m06Status: String, remotePending: Boolean, hookCount: Int) {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Infraestructura M06", fontWeight = FontWeight.Bold)
+            Text("Infraestructura de notificaciones", fontWeight = FontWeight.Bold)
             Text("Estado: $m06Status")
             Text("Hooks preparados: $hookCount")
             if (remotePending) {
@@ -199,7 +199,7 @@ private fun M15MetricsTab(metrics: M15OperationalMetrics?) {
 private fun M15PrivacyTab() {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("Privacidad M15", fontWeight = FontWeight.Bold)
+            Text("Privacidad de tránsito", fontWeight = FontWeight.Bold)
             Text("Permitido en vistas públicas:")
             Text("· Alias/nombre público del hogar")
             Text("· Zona aproximada, especies, capacidad agregada, disponibilidad")
@@ -221,11 +221,11 @@ private fun M15SmokeTab() {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Smoke funcional remoto", fontWeight = FontWeight.Bold)
-            Text("M15 SMOKE FUNCIONAL REMOTO PENDIENTE EXTERNO")
+            Text("Smoke funcional remoto pendiente externo")
             Text("Checklist manual (no ejecutado desde Cursor):")
             listOf(
-                "Abrir hub M15",
-                "Consultar hogares M10",
+                "Abrir hub de tránsito",
+                "Consultar hogares de tránsito",
                 "Crear solicitud → aceptar/rechazar",
                 "Reservar → iniciar placement",
                 "Agregar evolución, gasto, ayuda",
@@ -233,7 +233,7 @@ private fun M15SmokeTab() {
                 "Verificar privacidad pública",
                 "Verificar eventos M06 o fallback",
                 "Verificar métricas agregadas",
-                "Confirmar sin duplicación M10/M15"
+                "Confirmar sin duplicación con hogares de acogida"
             ).forEachIndexed { i, step ->
                 Text("${i + 1}. $step", style = MaterialTheme.typography.bodySmall)
             }

@@ -106,10 +106,14 @@ enum class PostType {
     PROMO,
     ADOPTION,
     LOST_FOUND,
-    URGENT;
+    URGENT,
+    /** Video corto social (feed + tab Reels). */
+    REEL,
+    /** Contenido efímero (carrusel Historias); vigencia 24 h. */
+    STORY;
 
     companion object {
         fun fromString(value: String?): PostType =
-            entries.find { it.name == value } ?: GENERAL
+            entries.find { it.name.equals(value, ignoreCase = true) } ?: GENERAL
     }
 }

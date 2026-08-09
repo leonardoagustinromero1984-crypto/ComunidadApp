@@ -61,6 +61,7 @@ fun AdoptionsContent(
     onAdoptionClick: (String) -> Unit,
     onMyApplications: () -> Unit = {},
     onReceivedApplications: () -> Unit = {},
+    showPrivateActions: Boolean = true,
     topPadding: Dp = 0.dp,
     bottomPadding: Dp = 0.dp,
     viewModel: AdoptionsViewModel = viewModel()
@@ -74,18 +75,20 @@ fun AdoptionsContent(
             .padding(top = topPadding)
     ) {
         Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = onMyApplications,
-                    modifier = Modifier.weight(1f)
-                ) { Text("Mis postulaciones") }
-                OutlinedButton(
-                    onClick = onReceivedApplications,
-                    modifier = Modifier.weight(1f)
-                ) { Text("Recibidas") }
+            if (showPrivateActions) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    OutlinedButton(
+                        onClick = onMyApplications,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Mis postulaciones") }
+                    OutlinedButton(
+                        onClick = onReceivedApplications,
+                        modifier = Modifier.weight(1f)
+                    ) { Text("Recibidas") }
+                }
             }
             OutlinedTextField(
                 value = filters.location,

@@ -21,12 +21,15 @@ import java.time.LocalDate
 import java.time.ZoneOffset
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 
@@ -246,15 +249,45 @@ fun M14PublicPassportProjectionRow.toDomain(publicCode: String = this.publicCode
     )
 
 class SupabaseM14RemoteDataSource {
+    /**
+     * M14 RPCs return `jsonb` / `setof jsonb`, not composite table rows.
+     * `decodeSingle()`/`decodeList()` expect a JSON array of rows and fail on a
+     * bare jsonb object — that surfaced as M14_UNKNOWN ("Ocurrió un error…").
+     */
+    private val m14Json = Json {
+        ignoreUnknownKeys = true
+        coerceInputValues = true
+        isLenient = true
+    }
+
     private suspend inline fun <reified T : Any> rpc(
         name: String,
         params: JsonObject = buildJsonObject { }
-    ): T = supabase.postgrest.rpc(function = name, parameters = params).decodeSingle()
+    ): T {
+        val element = supabase.postgrest.rpc(function = name, parameters = params)
+            .decodeAs<JsonElement>()
+        return when (element) {
+            is JsonArray -> {
+                val first = element.firstOrNull()
+                    ?: error("M14_REPOSITORY_FAILURE: empty RPC array for $name")
+                m14Json.decodeFromJsonElement(first)
+            }
+            else -> m14Json.decodeFromJsonElement(element)
+        }
+    }
 
     private suspend inline fun <reified T : Any> rpcList(
         name: String,
         params: JsonObject = buildJsonObject { }
-    ): List<T> = supabase.postgrest.rpc(function = name, parameters = params).decodeList()
+    ): List<T> {
+        val element = supabase.postgrest.rpc(function = name, parameters = params)
+            .decodeAs<JsonElement>()
+        return when (element) {
+            is JsonArray -> element.map { m14Json.decodeFromJsonElement(it) }
+            JsonNull -> emptyList()
+            else -> listOf(m14Json.decodeFromJsonElement(element))
+        }
+    }
 
     suspend fun createPetPassport(params: JsonObject): M14PetPassportRow = rpc("m14_create_pet_passport", params)
     suspend fun getPetPassport(id: String): M14PetPassportRow = rpc("m14_get_pet_passport", idParam("p_passport_id", id))

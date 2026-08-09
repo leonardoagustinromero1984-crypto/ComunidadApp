@@ -9,10 +9,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -22,61 +22,70 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Group
-import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.PersonAdd
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.Phone
-import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Badge
-import androidx.compose.material3.BadgedBox
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material.icons.filled.PlayArrow
+import androidx.compose.material.icons.filled.PostAdd
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.R
+import com.comunidapp.app.data.model.FeedPost
+import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.User
 import com.comunidapp.app.domain.RolePermissions
-import com.comunidapp.app.ui.components.ComunidappTopBar
-import com.comunidapp.app.ui.components.EditTopBarAction
-import com.comunidapp.app.ui.components.FeedPostCard
 import com.comunidapp.app.ui.components.LoadingState
-import com.comunidapp.app.ui.components.PetCard
 import com.comunidapp.app.ui.components.PetImage
-import com.comunidapp.app.ui.components.ReputationSection
-import com.comunidapp.app.ui.components.defaultBadgesForScore
-import com.comunidapp.app.ui.components.toDisplayName
-import com.comunidapp.app.ui.theme.GreenPrimary
-import com.comunidapp.app.ui.theme.OrangePrimary
+import com.comunidapp.app.ui.components.leo.LeoEmptyState
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoSecondaryButton
+import com.comunidapp.app.ui.components.leo.LeoSocialPostCard
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandOrangeContainer
+import com.comunidapp.app.ui.theme.BrandOrangeSoft
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandWhite
+import com.comunidapp.app.ui.theme.ComunidappTheme
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.LeoPageTitle
+import com.comunidapp.app.ui.theme.MutedText
+import com.comunidapp.app.ui.theme.NeutralBorder
 import com.comunidapp.app.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
+private enum class ProfileContentTab { Posts, Reels, Tagged }
+
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToMyPets: () -> Unit = {},
     onNavigateToMyAdoptions: () -> Unit = {},
     onNavigateToMyApplications: () -> Unit = {},
+    onNavigateToReceivedApplications: () -> Unit = {},
     onNavigateToChat: () -> Unit = {},
     onNavigateToFriendRequests: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
@@ -94,791 +103,449 @@ fun ProfileScreen(
     onNavigateToAccountSecurity: () -> Unit = {},
     onNavigateToFirstRunTutorial: () -> Unit = {},
     onNavigateToMyOrganizations: () -> Unit = {},
+    onNavigateToPublish: () -> Unit = {},
     onFriendClick: (String) -> Unit = {},
     onPetClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    var menuOpen by remember { mutableStateOf(false) }
+    var contentTab by remember { mutableStateOf(ProfileContentTab.Posts) }
+    val snackbarHostState = remember { SnackbarHostState() }
+    val scope = rememberCoroutineScope()
 
     Scaffold(
-        topBar = {
-            ComunidappTopBar(
-                title = "Mi perfil",
-                actions = {
-                    if (uiState.user != null) {
-                        EditTopBarAction(onClick = onNavigateToEditProfile)
-                    }
-                }
-            )
-        }
+        containerColor = BrandCream,
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         when {
             uiState.isLoading -> LoadingState(Modifier.padding(padding))
             uiState.user == null -> {
                 Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding),
+                    modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "Iniciá sesión para ver tu perfil",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    LeoEmptyState(
+                        title = "Iniciá sesión para ver tu perfil",
+                        message = "Tu perfil social muestra publicaciones, mascotas y actividad.",
+                        icon = Icons.Default.Pets
                     )
                 }
             }
             else -> {
                 val user = uiState.user!!
                 val showPets = RolePermissions.canManagePets(user.accountType)
+                val postsWithImage = uiState.posts.filter {
+                    it.type != com.comunidapp.app.data.model.PostType.STORY &&
+                        it.type != com.comunidapp.app.data.model.PostType.REEL &&
+                        !it.imageUrl.isNullOrBlank()
+                }
+                val textPosts = uiState.posts.filter {
+                    it.type != com.comunidapp.app.data.model.PostType.STORY &&
+                        it.type != com.comunidapp.app.data.model.PostType.REEL &&
+                        it.imageUrl.isNullOrBlank()
+                }
+                val reelPosts = uiState.posts.filter {
+                    it.type == com.comunidapp.app.data.model.PostType.REEL
+                }
+
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        bottom = padding.calculateBottomPadding() + 16.dp
-                    ),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                        top = padding.calculateTopPadding(),
+                        bottom = padding.calculateBottomPadding() + LeoDimens.SpaceMd
+                    )
                 ) {
                     item {
-                        ProfileHeaderCard(
+                        SocialProfileHeader(
                             user = user,
-                            petsCount = uiState.pets.size,
                             postsCount = uiState.posts.size,
-                            friendsCount = uiState.friends.size,
-                            pendingRequestsCount = uiState.pendingFriendRequests,
-                            topPadding = padding.calculateTopPadding()
-                        )
-                    }
-
-                    item {
-                        FriendsSection(
-                            friends = uiState.friends,
-                            pendingCount = uiState.pendingFriendRequests,
-                            onSearchFriends = onNavigateToSearchFriends,
-                            onFriendClick = onFriendClick,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-                    }
-
-                    item {
-                        val badges = uiState.badges.ifEmpty {
-                            user.badges.ifEmpty { defaultBadgesForScore(user.reputationScore) }
-                        }
-                        ReputationSection(
-                            reputationScore = user.reputationScore,
-                            badges = badges,
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                            followersCount = uiState.friends.size,
+                            followingCount = uiState.friends.size,
+                            onEdit = onNavigateToEditProfile,
+                            onCreate = {
+                                menuOpen = false
+                                onNavigateToPublish()
+                            },
+                            onMenu = { menuOpen = true }
                         )
                     }
 
                     if (showPets) {
                         item {
-                            OutlinedButton(
-                                onClick = onNavigateToMyPets,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Icon(Icons.Default.Pets, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Text(" Mis mascotas", modifier = Modifier.padding(start = 6.dp))
-                            }
-                        }
-                        if (uiState.pets.isNotEmpty()) {
-                            item {
-                                SectionHeader(
-                                    title = "Mis mascotas",
-                                    modifier = Modifier.padding(horizontal = 16.dp)
-                                )
-                            }
-                            items(uiState.pets, key = { it.id }) { pet ->
-                                PetCard(
-                                    pet = pet,
-                                    onClick = { onPetClick(pet.id) },
-                                    modifier = Modifier.padding(horizontal = 16.dp)
-                                )
-                            }
-                        }
-                    }
-
-                    if (RolePermissions.canPublishAdoption(user.accountType)) {
-                        item {
-                            Button(
-                                onClick = onNavigateToMyAdoptions,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Mis adopciones publicadas")
-                            }
-                        }
-                    }
-
-                    item {
-                        OutlinedButton(
-                            onClick = onNavigateToMyApplications,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Mis postulaciones de adopción")
-                        }
-                    }
-
-                    item {
-                        OutlinedButton(
-                            onClick = onNavigateToMyOrganizations,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Mis organizaciones")
-                        }
-                    }
-
-                    item {
-                        OutlinedButton(
-                            onClick = onNavigateToChat,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Mensajes")
-                        }
-                    }
-
-                    item {
-                        BadgedBox(
-                            badge = {
-                                if (uiState.unreadNotifications > 0) {
-                                    Badge {
-                                        Text(uiState.unreadNotifications.toString())
-                                    }
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = onNavigateToNotifications,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Notificaciones")
-                            }
-                        }
-                    }
-
-                    if (uiState.canViewModeration) {
-                        item {
-                            OutlinedButton(
-                                onClick = onNavigateToModeration,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Moderación")
-                            }
-                        }
-                        item {
-                            OutlinedButton(
-                                onClick = onNavigateToCases,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Casos")
-                            }
-                        }
-                    }
-
-                    if (uiState.canReviewAppeals) {
-                        item {
-                            OutlinedButton(
-                                onClick = onNavigateToAppealsStaff,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Apelaciones")
-                            }
-                        }
-                    }
-
-                    item {
-                        OutlinedButton(
-                            onClick = onNavigateToMyAppeals,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Mis apelaciones")
-                        }
-                    }
-
-                    if (uiState.canReviewVerification) {
-                        item {
-                            OutlinedButton(
-                                onClick = onNavigateToVerification,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Verificación")
-                            }
-                        }
-                    }
-
-                    item {
-                        OutlinedButton(
-                            onClick = onNavigateToMySupport,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Soporte")
-                        }
-                    }
-
-                    if (uiState.canViewSupportStaff) {
-                        item {
-                            OutlinedButton(
-                                onClick = onNavigateToSupportStaff,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Soporte staff")
-                            }
-                        }
-                    }
-
-                    if (uiState.canViewAudit) {
-                        item {
-                            OutlinedButton(
-                                onClick = onNavigateToAudit,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Auditoría")
-                            }
-                        }
-                    }
-                    if (uiState.canViewObservability) {
-                        item {
-                            OutlinedButton(
-                                onClick = onNavigateToObservability,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Observabilidad operativa")
-                            }
-                        }
-                    }
-
-                    if (uiState.canViewPlatformAdmin) {
-                        item {
-                            OutlinedButton(
-                                onClick = onNavigateToPlatformAdmin,
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(horizontal = 16.dp),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Administración")
-                            }
-                        }
-                    }
-
-                    item {
-                        BadgedBox(
-                            badge = {
-                                if (uiState.pendingFriendRequests > 0) {
-                                    Badge {
-                                        Text(uiState.pendingFriendRequests.toString())
-                                    }
-                                }
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
-                            OutlinedButton(
-                                onClick = onNavigateToFriendRequests,
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(14.dp)
-                            ) {
-                                Text("Solicitudes de amistad")
-                            }
-                        }
-                    }
-
-                    item {
-                        SectionHeader(
-                            title = "Mis publicaciones",
-                            subtitle = if (uiState.posts.isEmpty()) "Aún no publicaste nada" else null,
-                            modifier = Modifier.padding(horizontal = 16.dp)
-                        )
-                    }
-                    if (uiState.posts.isEmpty()) {
-                        item {
-                            EmptyPostsCard(modifier = Modifier.padding(horizontal = 16.dp))
-                        }
-                    } else {
-                        items(uiState.posts, key = { it.id }) { post ->
-                            FeedPostCard(
-                                post = post,
-                                modifier = Modifier.padding(horizontal = 16.dp)
-                            )
-                        }
-                    }
-
-                    item {
-                        OutlinedButton(
-                            onClick = onNavigateToFirstRunTutorial,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Ver tutorial de inicio")
-                        }
-                    }
-
-                    item {
-                        OutlinedButton(
-                            onClick = onNavigateToAccountSecurity,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 4.dp),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Text("Seguridad de la cuenta")
-                        }
-                    }
-
-                    item {
-                        TextButton(
-                            onClick = viewModel::logout,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp, vertical = 8.dp)
-                        ) {
                             Text(
-                                text = stringResource(R.string.logout),
-                                color = MaterialTheme.colorScheme.error
+                                text = "Mis mascotas",
+                                style = LeoCardTitle,
+                                color = BrandText,
+                                modifier = Modifier.padding(
+                                    horizontal = LeoDimens.SpaceMd,
+                                    vertical = LeoDimens.SpaceSm
+                                )
                             )
+                        }
+                        item {
+                            if (uiState.pets.isEmpty()) {
+                                Text(
+                                    text = "Todavía no cargaste mascotas",
+                                    style = LeoCaption,
+                                    color = MutedText,
+                                    modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)
+                                )
+                            } else {
+                                LazyRow(
+                                    contentPadding = PaddingValues(horizontal = LeoDimens.SpaceMd),
+                                    horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
+                                ) {
+                                    items(uiState.pets, key = { it.id }) { pet ->
+                                        ProfilePetChip(pet = pet, onClick = { onPetClick(pet.id) })
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    item {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(LeoDimens.SpaceMd),
+                            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+                        ) {
+                            LeoFilterChip(
+                                label = "Publicaciones",
+                                selected = contentTab == ProfileContentTab.Posts,
+                                onClick = { contentTab = ProfileContentTab.Posts }
+                            )
+                            LeoFilterChip(
+                                label = "Reels",
+                                selected = contentTab == ProfileContentTab.Reels,
+                                onClick = { contentTab = ProfileContentTab.Reels }
+                            )
+                            LeoFilterChip(
+                                label = "Etiquetadas",
+                                selected = contentTab == ProfileContentTab.Tagged,
+                                onClick = { contentTab = ProfileContentTab.Tagged }
+                            )
+                        }
+                    }
+
+                    when (contentTab) {
+                        ProfileContentTab.Posts -> {
+                            if (uiState.posts.isEmpty()) {
+                                item {
+                                    LeoEmptyState(
+                                        title = "Todavía no hay publicaciones",
+                                        message = "Mostrá tu día a día con tus mascotas.",
+                                        actionLabel = "Crear tu primera publicación",
+                                        onAction = onNavigateToPublish,
+                                        icon = Icons.Default.PostAdd
+                                    )
+                                }
+                            } else {
+                                if (postsWithImage.isNotEmpty()) {
+                                    item {
+                                        ProfilePostsGrid(posts = postsWithImage)
+                                    }
+                                }
+                                items(textPosts, key = { it.id }) { post ->
+                                    LeoSocialPostCard(
+                                        post = post,
+                                        modifier = Modifier.padding(
+                                            horizontal = LeoDimens.SpaceMd,
+                                            vertical = LeoDimens.SpaceSm
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                        ProfileContentTab.Reels -> {
+                            item {
+                                if (reelPosts.isEmpty()) {
+                                    LeoEmptyState(
+                                        title = "Sin Reels todavía",
+                                        message = "Cuando publiques videos cortos, aparecerán aquí.",
+                                        actionLabel = "Crear",
+                                        onAction = onNavigateToPublish,
+                                        icon = Icons.Default.PlayArrow
+                                    )
+                                } else {
+                                    ProfilePostsGrid(
+                                        posts = reelPosts,
+                                        showPlay = true
+                                    )
+                                }
+                            }
+                        }
+                        ProfileContentTab.Tagged -> {
+                            item {
+                                LeoEmptyState(
+                                    title = "Sin etiquetas todavía",
+                                    message = "Cuando te etiqueten a vos o a tus mascotas, lo vas a ver aquí.",
+                                    icon = Icons.Default.Pets
+                                )
+                            }
                         }
                     }
                 }
             }
         }
     }
+
+    if (menuOpen) {
+        ProfileMenuSheet(
+            onDismiss = { menuOpen = false },
+            actions = ProfileMenuActions(
+                onMyPets = onNavigateToMyPets,
+                onMyApplications = onNavigateToMyApplications,
+                onReceivedApplications = onNavigateToReceivedApplications,
+                onMyOrganizations = onNavigateToMyOrganizations,
+                onMessages = onNavigateToChat,
+                onMyPosts = { contentTab = ProfileContentTab.Posts },
+                onMyReels = { contentTab = ProfileContentTab.Reels },
+                onMyStories = {
+                    scope.launch { snackbarHostState.showSnackbar("Historias próximamente") }
+                },
+                onSaved = {
+                    scope.launch { snackbarHostState.showSnackbar("Guardados próximamente") }
+                },
+                onDrafts = {
+                    scope.launch { snackbarHostState.showSnackbar("Borradores próximamente") }
+                },
+                onNotifications = onNavigateToNotifications,
+                onSettings = onNavigateToAccountSecurity,
+                onPrivacy = onNavigateToAccountSecurity,
+                onSupport = onNavigateToMySupport,
+                onLogout = viewModel::logout,
+                onModeration = onNavigateToModeration.takeIf { uiState.canViewModeration },
+                onCases = onNavigateToCases.takeIf { uiState.canViewModeration },
+                onAppealsStaff = onNavigateToAppealsStaff.takeIf { uiState.canReviewAppeals },
+                onVerification = onNavigateToVerification.takeIf { uiState.canReviewVerification },
+                onSupportStaff = onNavigateToSupportStaff.takeIf { uiState.canViewSupportStaff },
+                onAudit = onNavigateToAudit.takeIf { uiState.canViewAudit },
+                onObservability = onNavigateToObservability.takeIf { uiState.canViewObservability },
+                onPlatformAdmin = onNavigateToPlatformAdmin.takeIf { uiState.canViewPlatformAdmin },
+                onMyAppeals = onNavigateToMyAppeals,
+                onFriendRequests = onNavigateToFriendRequests,
+                onTutorial = onNavigateToFirstRunTutorial
+            )
+        )
+    }
 }
 
 @Composable
-private fun ProfileHeaderCard(
+private fun SocialProfileHeader(
     user: User,
-    petsCount: Int,
     postsCount: Int,
-    friendsCount: Int,
-    pendingRequestsCount: Int,
-    topPadding: androidx.compose.ui.unit.Dp
+    followersCount: Int,
+    followingCount: Int,
+    onEdit: () -> Unit,
+    onCreate: () -> Unit,
+    onMenu: () -> Unit
 ) {
-    Column(modifier = Modifier.fillMaxWidth()) {
-        Box(
+    Surface(color = BrandWhite) {
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(120.dp + topPadding)
-                .background(
-                    Brush.linearGradient(
-                        colors = listOf(OrangePrimary, GreenPrimary)
-                    )
-                )
-        )
-
-        Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp)
-                .offset(y = (-56).dp),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+                .padding(LeoDimens.SpaceMd)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp, vertical = 20.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(96.dp)
-                        .clip(CircleShape)
-                        .border(3.dp, Color.White, CircleShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                ) {
-                    PetImage(
-                        imageUrl = user.profileImageUrl,
-                        modifier = Modifier.fillMaxSize(),
-                        cornerRadius = 48.dp,
-                        contentDescription = user.name
-                    )
-                }
-
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Text(
-                    text = user.name,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                Surface(
-                    color = MaterialTheme.colorScheme.primaryContainer,
-                    shape = RoundedCornerShape(20.dp),
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Text(
-                        text = user.accountType.toDisplayName(),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 4.dp)
-                    )
-                }
-
-                val bio = user.bio?.takeIf { it.isNotBlank() }
-                Text(
-                    text = bio ?: "Completá tu biografía para que la comunidad te conozca mejor.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (bio != null) {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    } else {
-                        MaterialTheme.colorScheme.outline
-                    },
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(top = 10.dp)
-                )
-
-                if (user.locationText != null || user.phone != null) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp),
-                        horizontalArrangement = Arrangement.Center,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        user.locationText?.let { location ->
-                            ProfileInfoChip(
-                                icon = {
-                                    Icon(
-                                        Icons.Default.LocationOn,
-                                        contentDescription = null,
-                                        tint = GreenPrimary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                },
-                                text = location
-                            )
-                        }
-                        user.phone?.let { phone ->
-                            if (user.locationText != null) Spacer(modifier = Modifier.width(12.dp))
-                            ProfileInfoChip(
-                                icon = {
-                                    Icon(
-                                        Icons.Default.Phone,
-                                        contentDescription = null,
-                                        tint = OrangePrimary,
-                                        modifier = Modifier.size(16.dp)
-                                    )
-                                },
-                                text = phone
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(16.dp))
-
-                ProfileStatsRow(
-                    petsCount = petsCount,
-                    postsCount = postsCount,
-                    friendsCount = friendsCount,
-                    pendingRequestsCount = pendingRequestsCount
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height((-40).dp))
-    }
-}
-
-@Composable
-private fun ProfileInfoChip(
-    icon: @Composable () -> Unit,
-    text: String
-) {
-    Surface(
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
-        shape = RoundedCornerShape(12.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            icon()
-            Text(
-                text = text,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(start = 4.dp),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-    }
-}
-
-@Composable
-private fun ProfileStatsRow(
-    petsCount: Int,
-    postsCount: Int,
-    friendsCount: Int,
-    pendingRequestsCount: Int
-) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceEvenly
-    ) {
-        ProfileStat(value = petsCount.toString(), label = "Mascotas")
-        ProfileStatDivider()
-        ProfileStat(value = postsCount.toString(), label = "Publicaciones")
-        ProfileStatDivider()
-        ProfileStat(
-            value = friendsCount.toString(),
-            label = "Amigos",
-            badgeCount = pendingRequestsCount.takeIf { it > 0 }
-        )
-    }
-}
-
-@Composable
-private fun ProfileStatDivider() {
-    Box(
-        modifier = Modifier
-            .width(1.dp)
-            .height(36.dp)
-            .background(MaterialTheme.colorScheme.outlineVariant)
-    )
-}
-
-@Composable
-private fun ProfileStat(
-    value: String,
-    label: String,
-    badgeCount: Int? = null
-) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        if (badgeCount != null) {
-            BadgedBox(
-                badge = { Badge { Text(badgeCount.toString()) } }
-            ) {
-                Text(
-                    text = value,
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-        } else {
-            Text(
-                text = value,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.primary
-            )
-        }
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun FriendsSection(
-    friends: List<User>,
-    pendingCount: Int,
-    onSearchFriends: () -> Unit,
-    onFriendClick: (String) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(16.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        Icons.Default.Group,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
-                    )
-                    Text(
-                        text = "Mis amigos",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 8.dp)
-                    )
-                    if (pendingCount > 0) {
-                        Badge(modifier = Modifier.padding(start = 8.dp)) {
-                            Text("$pendingCount")
-                        }
-                    }
-                }
-                TextButton(onClick = onSearchFriends) {
-                    Icon(Icons.Default.Search, contentDescription = null, modifier = Modifier.size(16.dp))
-                    Text(" Buscar", modifier = Modifier.padding(start = 4.dp))
-                }
-            }
-
-            if (friends.isEmpty()) {
                 Text(
-                    text = "Todavía no tenés amigos. Buscá personas de la comunidad para conectar.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
+                    text = user.username?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: user.resolvedDisplayName,
+                    style = LeoCardTitle,
+                    color = BrandText
                 )
-            } else {
-                LazyRow(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    modifier = Modifier.padding(top = 12.dp)
-                ) {
-                    items(friends, key = { it.id }) { friend ->
-                        FriendAvatarItem(
-                            user = friend,
-                            onClick = { onFriendClick(friend.id) }
-                        )
-                    }
+                IconButton(onClick = onMenu) {
+                    Icon(Icons.Default.Menu, contentDescription = "Menú", tint = BrandText)
                 }
             }
-
-            Button(
-                onClick = onSearchFriends,
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(88.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, BrandOrangeContainer, CircleShape)
+                        .background(BrandCream)
+                ) {
+                    PetImage(
+                        imageUrl = user.profileImageUrl,
+                        modifier = Modifier.fillMaxSize(),
+                        cornerRadius = 44.dp,
+                        contentDescription = user.name
+                    )
+                }
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = LeoDimens.SpaceMd),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    ProfileStat(postsCount.toString(), "Publicaciones")
+                    ProfileStat(followersCount.toString(), "Seguidores")
+                    ProfileStat(followingCount.toString(), "Seguidos")
+                }
+            }
+            Text(
+                text = user.resolvedDisplayName,
+                style = LeoPageTitle,
+                color = BrandText,
+                modifier = Modifier.padding(top = LeoDimens.SpaceCompact)
+            )
+            user.bio?.takeIf { it.isNotBlank() }?.let {
+                Text(text = it, style = LeoCaption, color = BrandText, modifier = Modifier.padding(top = 4.dp))
+            }
+            user.locationText?.takeIf { it.isNotBlank() }?.let {
+                Text(text = it, style = LeoCaption, color = MutedText, modifier = Modifier.padding(top = 2.dp))
+            }
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 14.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = MaterialTheme.colorScheme.primary
-                )
+                    .padding(top = LeoDimens.SpaceCompact),
+                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
             ) {
-                Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(18.dp))
-                Text(" Buscar amigos", modifier = Modifier.padding(start = 6.dp))
+                LeoSecondaryButton(
+                    text = "Editar perfil",
+                    onClick = onEdit,
+                    modifier = Modifier.weight(1f)
+                )
+                LeoPrimaryButton(
+                    text = "Crear",
+                    onClick = onCreate,
+                    icon = Icons.Default.Add,
+                    modifier = Modifier.weight(1f)
+                )
             }
         }
     }
 }
 
 @Composable
-private fun FriendAvatarItem(
-    user: User,
-    onClick: () -> Unit
-) {
+private fun ProfileStat(value: String, label: String) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        Text(text = value, style = LeoCardTitle, color = BrandText)
+        Text(text = label, style = LeoCaption, color = MutedText)
+    }
+}
+
+@Composable
+private fun ProfilePetChip(pet: Pet, onClick: () -> Unit) {
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
         modifier = Modifier
-            .width(72.dp)
+            .width(76.dp)
             .clickable(onClick = onClick)
     ) {
         Box(
             modifier = Modifier
-                .size(56.dp)
+                .size(64.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.primaryContainer)
+                .border(2.dp, BrandOrangeSoft, CircleShape)
+                .background(BrandOrangeContainer)
         ) {
             PetImage(
-                imageUrl = user.profileImageUrl,
+                imageUrl = pet.photoUrl,
                 modifier = Modifier.fillMaxSize(),
-                cornerRadius = 28.dp,
-                contentDescription = user.name
+                cornerRadius = 32.dp,
+                contentDescription = pet.name
             )
         }
         Text(
-            text = user.name.split(" ").firstOrNull() ?: user.name,
-            style = MaterialTheme.typography.labelSmall,
+            text = pet.name,
+            style = LeoCaption,
+            color = BrandText,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.padding(top = 6.dp)
+            modifier = Modifier.padding(top = 4.dp)
+        )
+        Text(
+            text = pet.species.name.lowercase().replaceFirstChar { it.titlecase() },
+            style = LeoCaption,
+            color = MutedText,
+            maxLines = 1
         )
     }
 }
 
 @Composable
-private fun SectionHeader(
-    title: String,
-    subtitle: String? = null,
-    modifier: Modifier = Modifier
+private fun ProfilePostsGrid(
+    posts: List<FeedPost>,
+    showPlay: Boolean = false
 ) {
-    Column(modifier = modifier) {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold
-        )
-        subtitle?.let {
-            Text(
-                text = it,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 2.dp)
-            )
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
+        posts.chunked(3).forEach { row ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(1.dp)
+            ) {
+                row.forEach { post ->
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .aspectRatio(if (showPlay) 0.75f else 1f)
+                            .background(BrandCream),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        PetImage(
+                            imageUrl = post.imageUrl,
+                            modifier = Modifier.fillMaxSize(),
+                            contentDescription = post.title
+                        )
+                        if (showPlay) {
+                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = BrandWhite)
+                        }
+                    }
+                }
+                repeat(3 - row.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
         }
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, name = "SocialProfileEmptyPreview")
 @Composable
-private fun EmptyPostsCard(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f)
+private fun SocialProfileEmptyPreview() {
+    ComunidappTheme {
+        LeoEmptyState(
+            title = "Todavía no hay publicaciones",
+            message = "Mostrá tu día a día con tus mascotas.",
+            actionLabel = "Crear tu primera publicación",
+            onAction = {},
+            icon = Icons.Default.PostAdd
         )
-    ) {
-        Text(
-            text = "Compartí novedades, preguntas o avisos desde la pestaña Publicar.",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(16.dp)
+    }
+}
+
+@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, name = "SocialProfilePreview")
+@Composable
+private fun SocialProfilePreview() {
+    ComunidappTheme {
+        SocialProfileHeader(
+            user = User(
+                id = "1",
+                name = "Leonardo",
+                email = "a@b.c",
+                username = "leover",
+                bio = "Amante de los perros",
+                locationText = "Buenos Aires"
+            ),
+            postsCount = 12,
+            followersCount = 40,
+            followingCount = 33,
+            onEdit = {},
+            onCreate = {},
+            onMenu = {}
         )
     }
 }

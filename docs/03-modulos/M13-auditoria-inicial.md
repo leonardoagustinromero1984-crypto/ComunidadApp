@@ -4,7 +4,7 @@
 
 - `docs/03-modulos/M13-avistamientos-y-coincidencias.md`
 - `docs/02-arquitectura/ADR-013-M13-track-tecnico-avistamientos-coincidencias.md`
-- `docs/01-producto/D01-Modulos-y-Orden.md` (R3 — nombre de producto)
+- `docs/01-producto/D01-Modulos-y-Orden-v1.2.md` (R3 — numeración Mxx vigente)
 
 ## Nombre exacto
 

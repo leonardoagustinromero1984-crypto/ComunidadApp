@@ -21,7 +21,8 @@ object M14ErrorMapper {
         "PUBLIC_CODE_GENERATION_FAILED" -> "No pudimos generar el código público."
         "INVALID_PASSPORT_STATUS" -> "El estado del pasaporte no permite esta acción."
         "INVALID_TRANSITION" -> "Esa transición de estado no está permitida."
-        "UNAUTHORIZED" -> "No tenés autorización para esta acción."
+        "UNAUTHORIZED" ->
+            "No tenés permiso para editar el pasaporte de esta mascota."
         "INVALID_CREDENTIAL" -> "Revisá los datos de la credencial."
         "INVALID_CREDENTIAL_DATES" -> "Las fechas de la credencial no son coherentes."
         "INVALID_MEDIA_REFERENCE" -> "La referencia de media no es segura."
@@ -53,9 +54,11 @@ object M14ErrorMapper {
         "INFRASTRUCTURE_UNAVAILABLE" ->
             "La operación remota de pasaportes no está disponible en este momento."
         "CONFLICT" -> "Conflicto al guardar el pasaporte o la credencial."
-        "M14_REPOSITORY_FAILURE" -> "No pudimos completar la operación (M14)."
+        "M14_REPOSITORY_FAILURE" -> "No pudimos completar la operación del pasaporte."
         "INVALID_PASSPORT_INPUT" -> "Revisá los datos del pasaporte."
-        else -> "Ocurrió un error en el pasaporte (M14)."
+        "PASSPORT_CREATE_FAILED" ->
+            "No pudimos crear el pasaporte. Revisá tu conexión e intentá nuevamente."
+        else -> "No pudimos crear el pasaporte. Revisá tu conexión e intentá nuevamente."
     }
 
     private val knownCodes = listOf(
@@ -100,7 +103,8 @@ object M14ErrorMapper {
         "INFRASTRUCTURE_UNAVAILABLE",
         "CONFLICT",
         "M14_REPOSITORY_FAILURE",
-        "INVALID_PASSPORT_INPUT"
+        "INVALID_PASSPORT_INPUT",
+        "PASSPORT_CREATE_FAILED"
     )
 
     fun codeOf(error: Throwable): String {

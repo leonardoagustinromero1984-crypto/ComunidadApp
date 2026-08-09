@@ -23,6 +23,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -69,6 +70,289 @@ fun PublishUrgentScreen(
     onSubmit = viewModel::publishUrgent,
     viewModel = viewModel
 )
+
+@Composable
+fun PublishReelScreen(
+    onNavigateBack: () -> Unit,
+    onPublishSuccess: () -> Unit,
+    viewModel: PublishViewModel = viewModel()
+) {
+    var description by remember { mutableStateOf("") }
+    var location by remember { mutableStateOf("") }
+    var petId by remember { mutableStateOf("") }
+    var videoUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    val formState by viewModel.formState.collectAsState()
+
+    val pickVideoLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> videoUri = uri }
+
+    LaunchedEffect(formState.isSuccess) {
+        if (formState.isSuccess) {
+            viewModel.resetFormState()
+            onPublishSuccess()
+        }
+    }
+
+    PublishFormScaffold(
+        title = "Nuevo Reel",
+        onNavigateBack = onNavigateBack,
+        isLoading = formState.isLoading,
+        errorMessage = formState.errorMessage,
+        onSubmit = {
+            viewModel.publishReel(
+                description = description,
+                location = location,
+                videoUri = videoUri,
+                petId = petId.trim().ifBlank { null }
+            )
+        }
+    ) {
+        Text(
+            text = "Video obligatorio · se publica en Feed y en Reels.",
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        videoUri?.let {
+            Text(
+                text = "Video seleccionado",
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+        OutlinedButton(
+            onClick = {
+                pickVideoLauncher.launch(
+                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
+                )
+            },
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(if (videoUri == null) "Elegir video" else "Cambiar video")
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = { Text("Descripción") },
+            modifier = Modifier.fillMaxWidth(),
+            minLines = 3
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(
+            value = location,
+            onValueChange = { location = it },
+            label = { Text("Ubicación (opcional)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+        OutlinedTextField(
+            value = petId,
+            onValueChange = { petId = it },
+            label = { Text("ID de mascota (opcional)") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+    }
+}
+
+/**
+ * Flujo social directo de Historia (RC1.2).
+ * Origen típico: `HOME_STORY_PLUS` — al tocar `+` en Tu historia abre selector de medio,
+ * sin hub intermedio ni pantalla “Próximamente”.
+ */
+@Composable
+fun PublishStoryScreen(
+    onNavigateBack: () -> Unit,
+    onPublishSuccess: () -> Unit,
+    origin: String = "PUBLISH",
+    autoOpenPicker: Boolean = false,
+    viewModel: PublishViewModel = viewModel()
+) {
+    var text by remember { mutableStateOf("") }
+    var petId by remember { mutableStateOf("") }
+    var mediaUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var isVideo by remember { mutableStateOf(false) }
+    var pickerOpened by remember { mutableStateOf(false) }
+    var showDiscardConfirm by remember { mutableStateOf(false) }
+    val formState by viewModel.formState.collectAsState()
+
+    val pickMediaLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri == null) {
+            // Canceló galería: volver al origen (Inicio si HOME_STORY_PLUS).
+            if (mediaUri == null) onNavigateBack()
+        } else {
+            mediaUri = uri
+            isVideo = uri.toString().contains("video", ignoreCase = true)
+        }
+    }
+
+    fun openGallery() {
+        pickMediaLauncher.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
+        )
+    }
+
+    fun openCameraPreferred() {
+        // Photo Picker moderno: en muchos dispositivos incluye acceso a cámara sin permisos extra.
+        pickMediaLauncher.launch(
+            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+        )
+    }
+
+    fun requestClose() {
+        val dirty = mediaUri != null || text.isNotBlank()
+        if (dirty) {
+            showDiscardConfirm = true
+        } else {
+            onNavigateBack()
+        }
+    }
+
+    LaunchedEffect(autoOpenPicker) {
+        if (autoOpenPicker && !pickerOpened && mediaUri == null) {
+            pickerOpened = true
+            openGallery()
+        }
+    }
+
+    LaunchedEffect(formState.isSuccess) {
+        if (formState.isSuccess) {
+            viewModel.resetFormState()
+            onPublishSuccess()
+        }
+    }
+
+    androidx.activity.compose.BackHandler { requestClose() }
+
+    if (showDiscardConfirm) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showDiscardConfirm = false },
+            title = { Text("¿Descartar historia?") },
+            text = { Text("Se perderá el contenido que agregaste.") },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDiscardConfirm = false
+                        onNavigateBack()
+                    }
+                ) { Text("Descartar") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDiscardConfirm = false }) { Text("Seguir") }
+            }
+        )
+    }
+
+    Scaffold(
+        topBar = {
+            ComunidappTopBar(
+                title = "Tu historia",
+                showBackButton = true,
+                onBackClick = { requestClose() }
+            )
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp)
+        ) {
+            @Suppress("UNUSED_VARIABLE")
+            val trackedOrigin = origin
+            Text(
+                text = "Imagen o video · se publica 24 horas.",
+                style = MaterialTheme.typography.bodyMedium
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+
+            mediaUri?.let { uri ->
+                if (!isVideo) {
+                    PetImage(
+                        imageUrl = uri.toString(),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(220.dp),
+                        cornerRadius = 8.dp,
+                        contentDescription = "Vista previa historia"
+                    )
+                } else {
+                    Text("Video seleccionado", color = MaterialTheme.colorScheme.primary)
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                OutlinedButton(
+                    onClick = { openGallery() },
+                    modifier = Modifier.weight(1f)
+                ) { Text("Galería") }
+                OutlinedButton(
+                    onClick = { openCameraPreferred() },
+                    modifier = Modifier.weight(1f)
+                ) { Text("Cámara") }
+            }
+
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = { Text("Texto (opcional)") },
+                modifier = Modifier.fillMaxWidth(),
+                minLines = 2
+            )
+            Spacer(modifier = Modifier.height(12.dp))
+            OutlinedTextField(
+                value = petId,
+                onValueChange = { petId = it },
+                label = { Text("Mascota asociada (opcional)") },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true
+            )
+
+            formState.errorMessage?.let {
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(it, color = MaterialTheme.colorScheme.error)
+                Text(
+                    text = "Podés cambiar el medio o reintentar. No quedás atrapado.",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+            Button(
+                onClick = {
+                    viewModel.publishStory(
+                        text = text,
+                        mediaUri = mediaUri,
+                        petId = petId.trim().ifBlank { null },
+                        isVideo = isVideo
+                    )
+                },
+                enabled = !formState.isLoading && mediaUri != null,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (formState.isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp))
+                } else {
+                    Text("Tu historia")
+                }
+            }
+            TextButton(onClick = { requestClose() }, modifier = Modifier.fillMaxWidth()) {
+                Text("Cancelar")
+            }
+        }
+    }
+}
 
 @Composable
 fun PublishQuestionScreen(
@@ -277,9 +561,10 @@ fun PublishAdoptionScreen(
 fun PublishLostFoundScreen(
     onNavigateBack: () -> Unit,
     onPublishSuccess: () -> Unit,
+    initialType: LostFoundType = LostFoundType.LOST,
     viewModel: PublishViewModel = viewModel()
 ) {
-    var type by remember { mutableStateOf(LostFoundType.LOST) }
+    var type by remember { mutableStateOf(initialType) }
     var petName by remember { mutableStateOf("") }
     var species by remember { mutableStateOf(PetSpecies.DOG) }
     var location by remember { mutableStateOf("") }
@@ -680,5 +965,49 @@ fun PublishShelterScreen(
             modifier = Modifier.fillMaxWidth(),
             minLines = 3
         )
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "StoryMediaPickerEntryPreview")
+@Composable
+private fun StoryMediaPickerEntryPreview() {
+    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Tu historia", style = MaterialTheme.typography.titleMedium)
+        Text("Imagen o video · se publica 24 horas.")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("Galería") }
+            OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("Cámara") }
+        }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "StoryImagePreview")
+@Composable
+private fun StoryImagePreview() {
+    Column(Modifier.padding(16.dp)) {
+        Text("Vista previa imagen")
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Tu historia") }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "StoryVideoPreview")
+@Composable
+private fun StoryVideoPreview() {
+    Column(Modifier.padding(16.dp)) {
+        Text("Video seleccionado", color = MaterialTheme.colorScheme.primary)
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = {}, modifier = Modifier.fillMaxWidth()) { Text("Tu historia") }
+    }
+}
+
+@androidx.compose.ui.tooling.preview.Preview(showBackground = true, name = "StoryUploadErrorPreview")
+@Composable
+private fun StoryUploadErrorPreview() {
+    Column(Modifier.padding(16.dp)) {
+        Text("No pudimos publicar la historia", color = MaterialTheme.colorScheme.error)
+        Text("Podés cambiar el medio o reintentar. No quedás atrapado.")
+        Spacer(Modifier.height(8.dp))
+        TextButton(onClick = {}) { Text("Cancelar") }
     }
 }

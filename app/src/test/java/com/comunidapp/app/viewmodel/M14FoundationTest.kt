@@ -199,7 +199,7 @@ class M14FoundationTest {
             authority = MockM14AuthorityPolicy(isOrgVerifier = { it == "user_1" })
         ).resolveLocal(req.id, true, "SELF")
         assertEquals(
-            "VERIFICATION_NOT_ALLOWED",
+            "VERIFICATION_REVIEW_NOT_ALLOWED",
             M14ErrorMapper.codeOf(selfVerify.exceptionOrNull()!!)
         )
         verifications.resolveLocal(req.id, true, "ORG_OK").getOrThrow()
@@ -343,7 +343,8 @@ class M14FoundationTest {
         assertTrue(names.any { it.startsWith("049_") })
         assertTrue(names.any { it.startsWith("050_") })
         assertTrue(names.any { it.startsWith("051_") })
-        assertTrue(names.any { it.startsWith("052_") }); assertFalse(names.any { it.startsWith("053_") })
+        assertTrue(names.any { it.startsWith("052_") })
+        assertTrue(names.any { it.startsWith("080_m28_") })
     }
 }
 

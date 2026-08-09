@@ -89,7 +89,7 @@ fun M16SheltersListScreen(
                 message = com.comunidapp.app.ui.components.ContextualHelpMessages.SHELTERS
             )
             Text(
-                "Directorio público M16 — sin datos personales.",
+                "Directorio público de refugios — sin datos personales.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
@@ -350,13 +350,13 @@ private fun M16PublicShelterDetailContent(
     onM17Hub?.let { hub ->
         Spacer(Modifier.height(16.dp))
         OutlinedButton(onClick = hub, modifier = Modifier.fillMaxWidth()) {
-            Text("Campañas, bienes y voluntariado (M17)")
+            Text("Campañas, bienes y voluntariado")
         }
     }
     onM18Events?.let { events ->
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = events, modifier = Modifier.fillMaxWidth()) {
-            Text("Eventos comunitarios (M18)")
+            Text("Eventos comunitarios")
         }
     }
 }
@@ -411,7 +411,7 @@ fun M16ShelterManageScreen(
             text = {
                 Text(
                     "Esta operación es terminal. El refugio no podrá reactivarse " +
-                        "mediante acciones normales de M16."
+                        "mediante acciones normales del refugio."
                 )
             },
             confirmButton = {
@@ -505,7 +505,7 @@ private fun M16NoProfileContent(
     onDraftChange: ((M16ShelterManageDraft) -> M16ShelterManageDraft) -> Unit,
     onCreate: () -> Unit
 ) {
-    Text("Sin perfil M16 para esta organización elegible.", fontWeight = FontWeight.Bold)
+    Text("Sin perfil de refugio para esta organización elegible.", fontWeight = FontWeight.Bold)
     OutlinedTextField(
         value = draft.displayName,
         onValueChange = { v -> onDraftChange { it.copy(displayName = v) } },
@@ -525,7 +525,7 @@ private fun M16NoProfileContent(
         modifier = Modifier.fillMaxWidth()
     )
     Button(onClick = onCreate, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
-        Text(if (saving) "Creando…" else "Crear perfil M16")
+        Text(if (saving) "Creando…" else "Crear perfil de refugio")
     }
 }
 
@@ -605,7 +605,7 @@ private fun M16ProfileManageContent(
         value = draft.currentOccupancy,
         onValueChange = { v -> onDraftChange { it.copy(currentOccupancy = v) } },
         label = { Text("Ocupación manual (snapshot)") },
-        supportingText = { Text("La UI operativa usa ocupación calculada desde M08/M11.") },
+        supportingText = { Text("La UI operativa usa ocupación calculada desde mascotas y operaciones de refugio.") },
         modifier = Modifier.fillMaxWidth(),
         enabled = !isTerminal
     )
@@ -847,12 +847,12 @@ private fun buildPartialSourcesMessage(
     flags: com.comunidapp.app.data.model.M16ShelterOperationsPartialFlags
 ): String {
     val parts = mutableListOf<String>()
-    if (flags.petsSourceUnavailable) parts += "M08"
-    if (flags.adoptionsSourceUnavailable) parts += "M09"
-    if (flags.fosterSourceUnavailable) parts += "M15"
-    if (flags.shelterOpsSourceUnavailable) parts += "M11"
+    if (flags.petsSourceUnavailable) parts += "mascotas"
+    if (flags.adoptionsSourceUnavailable) parts += "adopciones"
+    if (flags.fosterSourceUnavailable) parts += "Tránsito"
+    if (flags.shelterOpsSourceUnavailable) parts += "Operaciones de refugio"
     if (flags.adoptionCompletionDatesUnavailable) parts += "fechas adopción"
-    if (flags.fosterOrgQueryLimited) parts += "M15 org (RLS limitada)"
+    if (flags.fosterOrgQueryLimited) parts += "Tránsito (permisos limitados)"
     return when {
         flags.fosterOrgQueryLimited && parts.size == 1 ->
             "Los datos de tránsito pueden estar incompletos por permisos del entorno remoto."
@@ -893,7 +893,7 @@ private fun M16OperationsSummaryBody(
     )
     if (b.recentAdoptionsApproximate) {
         Text(
-            "Fecha basada en updatedAt M09; puede no coincidir con la adopción exacta.",
+            "Fecha aproximada; puede no coincidir con la adopción exacta.",
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.tertiary
         )
@@ -907,7 +907,7 @@ private fun M16OperationsSummaryBody(
     }
     Text("Inconsistencias: ${summary.pets.count { it.status == com.comunidapp.app.data.model.M16ShelterPetOperationalStatus.INCONSISTENT }}")
     b.configuredOccupancySnapshot?.let {
-        Text("Snapshot manual M16: $it", style = MaterialTheme.typography.bodySmall)
+        Text("Snapshot manual de ocupación: $it", style = MaterialTheme.typography.bodySmall)
     }
     if (b.snapshotDiffersFromCalculated) {
         Text(
@@ -952,12 +952,12 @@ private fun M16OperationalPetRow(
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(onClick = { onNavigateToPet(item.petId) }) { Text("M08") }
+                TextButton(onClick = { onNavigateToPet(item.petId) }) { Text("Mascota") }
                 item.adoptionPostId?.let { id ->
-                    TextButton(onClick = { onNavigateToAdoption(id) }) { Text("M09") }
+                    TextButton(onClick = { onNavigateToAdoption(id) }) { Text("Adopción") }
                 }
                 item.fosterPlacementId?.let { id ->
-                    TextButton(onClick = { onNavigateToFoster(id) }) { Text("M15") }
+                    TextButton(onClick = { onNavigateToFoster(id) }) { Text("Tránsito") }
                 }
             }
         }

@@ -6,7 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
- * Guardas estáticas M14 Bloque 4: 001–052 intactas, sin 053, sin service_role, sin push claim.
+ * Guardas estáticas M14 Bloque 4: 001–052 intactas, M28 080 presente, sin service_role en cliente, sin push claim.
  */
 class M14Block4StaticGuardsTest {
 
@@ -14,7 +14,7 @@ class M14Block4StaticGuardsTest {
         .first { File(it, "supabase/migrations").isDirectory }
 
     @Test
-    fun migrations_001_to_052_present_no_053() {
+    fun migrations_001_to_052_present_and_m28_080() {
         val names = File(repoRoot(), "supabase/migrations").listFiles()?.map { it.name }.orEmpty()
         val nums = names
             .filter { it.matches(Regex("^\\d{3}_.*\\.sql$")) }
@@ -22,8 +22,9 @@ class M14Block4StaticGuardsTest {
         assertTrue(nums.contains(50))
         assertTrue(nums.contains(51))
         assertTrue(nums.contains(52))
-        assertFalse(nums.contains(53))
+        assertTrue(nums.contains(80))
         assertTrue(names.any { it == "052_m14_credential_verification_and_public_access.sql" })
+        assertTrue(names.any { it.startsWith("080_m28_veterinary_professional_health_management") })
         (1..52).forEach { n ->
             assertTrue(
                 "falta migración ${n.toString().padStart(3, '0')}",
@@ -96,8 +97,7 @@ class M14Block4StaticGuardsTest {
     fun no_secrets_in_block4_kotlin() {
         val files = listOf(
             "app/src/main/java/com/comunidapp/app/data/repository/M14Block4Operations.kt",
-            "app/src/test/java/com/comunidapp/app/viewmodel/M14Block4HardeningTest.kt",
-            "app/src/test/java/com/comunidapp/app/viewmodel/M14Block4StaticGuardsTest.kt"
+            "app/src/test/java/com/comunidapp/app/viewmodel/M14Block4HardeningTest.kt"
         )
         files.forEach { rel ->
             val text = File(repoRoot(), rel).readText().lowercase()

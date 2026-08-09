@@ -48,7 +48,7 @@ fun M17HubScreen(
     Scaffold(
         topBar = {
             ComunidappTopBar(
-                title = "Donaciones y voluntariado (M17)",
+                title = "Donaciones y voluntariado",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )

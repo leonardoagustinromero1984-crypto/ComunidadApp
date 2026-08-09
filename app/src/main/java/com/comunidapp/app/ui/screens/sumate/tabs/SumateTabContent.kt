@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.LocalHospital
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -32,8 +37,13 @@ import com.comunidapp.app.data.model.AdoptionEvent
 import com.comunidapp.app.data.model.DonationCampaign
 import com.comunidapp.app.data.model.FosterHomeListing
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.leo.LeoFeatureCard
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.ui.screens.shelters.ShelterListCard
+import com.comunidapp.app.ui.theme.BrandGreen
+import com.comunidapp.app.ui.theme.BrandGreenContainer
+import com.comunidapp.app.ui.theme.BrandOrangeContainer
+import com.comunidapp.app.ui.theme.BrandOrangeSoft
 import com.comunidapp.app.viewmodel.CommunityViewModel
 import com.comunidapp.app.viewmodel.SheltersViewModel
 
@@ -74,7 +84,7 @@ fun FosterHomesContent(
                     onClick = onOpenFosterHomes,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Abrir hogares de tránsito (M10)")
+                    Text("Abrir hogares de tránsito")
                 }
             }
             items(homes, key = { it.id }) { home ->
@@ -192,7 +202,7 @@ fun AdoptionEventsContent(
                     onClick = onM18Events,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Eventos comunitarios (M18)")
+                    Text("Eventos comunitarios")
                 }
             }
             items(events, key = { it.id }) { event ->
@@ -284,28 +294,34 @@ fun SheltersContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            androidx.compose.material3.OutlinedButton(
+            LeoFeatureCard(
+                title = "Refugios",
+                description = "Conocé organizaciones y animales que necesitan ayuda",
+                icon = Icons.Default.Home,
                 onClick = onM16Shelters,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Refugios (M16)")
-            }
+                containerColor = BrandGreenContainer,
+                iconTint = BrandGreen
+            )
         }
         item {
-            androidx.compose.material3.OutlinedButton(
+            LeoFeatureCard(
+                title = "Mis organizaciones",
+                description = "Administrá equipos, publicaciones y casos",
+                icon = Icons.Default.Groups,
                 onClick = onShelterOps,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Operación de refugios (M11)")
-            }
+                containerColor = BrandOrangeContainer,
+                iconTint = BrandOrangeSoft
+            )
         }
         item {
-            androidx.compose.material3.OutlinedButton(
+            LeoFeatureCard(
+                title = "Veterinarias",
+                description = "Encontrá atención cerca de tu ubicación",
+                icon = Icons.Default.LocalHospital,
                 onClick = onVeterinaryDirectory,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Directorio de veterinarias (M12)")
-            }
+                containerColor = BrandGreenContainer,
+                iconTint = BrandGreen
+            )
         }
         items(shelters, key = { it.id }) { shelter ->
             ShelterListCard(shelter = shelter, onClick = { onShelterClick(shelter.id) })
@@ -331,12 +347,14 @@ fun DonationsContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            androidx.compose.material3.OutlinedButton(
+            LeoFeatureCard(
+                title = "Campañas solidarias",
+                description = "Apoyá causas y donaciones de la comunidad",
+                icon = Icons.Default.VolunteerActivism,
                 onClick = onM17Campaigns,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Campañas solidarias (M17)")
-            }
+                containerColor = BrandOrangeContainer,
+                iconTint = BrandOrangeSoft
+            )
         }
         items(campaigns, key = { it.id }) { campaign ->
             DonationCampaignCard(campaign = campaign)

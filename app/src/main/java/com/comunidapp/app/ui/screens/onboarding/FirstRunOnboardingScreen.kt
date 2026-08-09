@@ -28,17 +28,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.R
 import com.comunidapp.app.domain.onboarding.OnboardingIntent
 import com.comunidapp.app.domain.onboarding.OnboardingIntentRoutes
 import com.comunidapp.app.domain.onboarding.OnboardingStep
 import com.comunidapp.app.ui.components.BrandLogo
 import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.viewmodel.FirstRunOnboardingNavEffect
 import com.comunidapp.app.viewmodel.FirstRunOnboardingViewModel
 
@@ -171,8 +175,15 @@ private fun WelcomeStep(viewModel: FirstRunOnboardingViewModel) {
             modifier = Modifier.semantics { heading() }
         )
         Text(
+            text = stringResource(R.string.brand_slogan),
+            style = MaterialTheme.typography.titleMedium,
+            color = BrandText,
+            textAlign = TextAlign.Center
+        )
+        Text(
             text = "Una identidad para cada mascota y una red para ayudarla durante toda su vida.",
-            style = MaterialTheme.typography.bodyLarge
+            style = MaterialTheme.typography.bodyLarge,
+            textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
         Button(

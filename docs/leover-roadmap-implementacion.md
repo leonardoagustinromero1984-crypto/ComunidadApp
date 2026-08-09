@@ -1,5 +1,7 @@
 # Leover — Roadmap de implementación
 
+> **HISTÓRICO / SUPERSEDIDO PARA PLANIFICACIÓN NUEVA.** Este roadmap corresponde a la etapa anterior al Documento Maestro v1.1 y a D01 v1.2. Se conserva intacto por trazabilidad. **Referencia vigente para planificación:** [`docs/01-producto/D01-Modulos-y-Orden-v1.2.md`](01-producto/D01-Modulos-y-Orden-v1.2.md).
+
 **Versión:** 1.0  
 **Fecha:** 8 de julio de 2026  
 **Fuente:** [Documento Funcional v1.0](leover-documento-funcional.md)  

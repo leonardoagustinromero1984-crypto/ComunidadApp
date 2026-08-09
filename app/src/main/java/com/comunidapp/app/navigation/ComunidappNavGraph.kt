@@ -113,6 +113,7 @@ import com.comunidapp.app.ui.screens.login.LoginScreen
 import com.comunidapp.app.ui.screens.login.RegisterScreen
 import com.comunidapp.app.ui.screens.legal.PrivacyDraftScreen
 import com.comunidapp.app.ui.screens.legal.TermsDraftScreen
+import com.comunidapp.app.ui.screens.lostfound.LostFoundDetailScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundMapScreen
 import com.comunidapp.app.ui.screens.lostfound.LostFoundScreen
 import com.comunidapp.app.ui.screens.m13.M13CaseMatchesScreen
@@ -125,6 +126,9 @@ import com.comunidapp.app.ui.screens.pets.AddPetScreen
 import com.comunidapp.app.ui.screens.pets.EditPetScreen
 import com.comunidapp.app.ui.screens.pets.MyPetsScreen
 import com.comunidapp.app.ui.screens.pets.PetAuthorizationsScreen
+import com.comunidapp.app.ui.screens.m28.M28ClinicCareScreen
+import com.comunidapp.app.ui.screens.m28.M28PassportProposalsScreen
+import com.comunidapp.app.ui.screens.m28.M28PetGrantsScreen
 import com.comunidapp.app.ui.screens.pets.PetDetailScreen
 import com.comunidapp.app.ui.screens.pets.PetResponsibilitiesScreen
 import com.comunidapp.app.ui.screens.pets.PetStatusHistoryScreen
@@ -162,6 +166,8 @@ import com.comunidapp.app.ui.screens.publish.PublishGeneralScreen
 import com.comunidapp.app.ui.screens.publish.PublishLostFoundScreen
 import com.comunidapp.app.ui.screens.publish.PublishPromoScreen
 import com.comunidapp.app.ui.screens.publish.PublishQuestionScreen
+import com.comunidapp.app.ui.screens.publish.PublishReelScreen
+import com.comunidapp.app.ui.screens.publish.PublishStoryScreen
 import com.comunidapp.app.ui.screens.publish.PublishUrgentScreen
 import com.comunidapp.app.ui.screens.publish.PublishDonationScreen
 import com.comunidapp.app.ui.screens.publish.PublishEventScreen
@@ -458,9 +464,18 @@ private fun MainScreen(accountType: AccountType) {
         }
     }
 
+    val overlayRoutes = setOf(
+        NavRoutes.PUBLISH_FROM_PROFILE,
+        NavRoutes.PUBLISH_GENERAL,
+        NavRoutes.PUBLISH_REEL,
+        NavRoutes.PUBLISH_STORY
+    )
+    val showBar = showBottomBar || currentRoute in overlayRoutes
+
     Scaffold(
+        contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         bottomBar = {
-            if (showBottomBar) {
+            if (showBar) {
                 ComunidappBottomBar(
                     navController = navController,
                     accountType = accountType
@@ -510,7 +525,18 @@ private fun NavGraphBuilder.mainAppRoutes(
             onAuthorClick = { userId ->
                 navController.navigate(NavRoutes.userProfile(userId))
             },
-            onNavigateToSearch = { navController.navigate(NavRoutes.SEARCH) }
+            onNavigateToSearch = { navController.navigate(NavRoutes.SEARCH) },
+            onNavigateToNotifications = { navController.navigate(NavRoutes.NOTIFICATIONS) },
+            onNavigateToMessages = { navController.navigate(NavRoutes.CHAT) },
+            onNavigateToPublish = { navController.navigate(NavRoutes.PUBLISH) },
+            onNavigateToCreateStory = {
+                navController.navigate(NavRoutes.PUBLISH_STORY) {
+                    launchSingleTop = true
+                }
+            },
+            onNavigateToSumate = { navController.navigate(NavRoutes.SUMATE) },
+            onNavigateToLostFound = { navController.navigate(NavRoutes.LOST_FOUND) },
+            onNavigateToComunidad = { navController.navigate(NavRoutes.COMUNIDAD) }
         )
     }
     composable(NavRoutes.SUMATE) {
@@ -533,13 +559,46 @@ private fun NavGraphBuilder.mainAppRoutes(
             onVeterinaryDirectory = { navController.navigate(NavRoutes.VETERINARY_DIRECTORY) },
             onM16Shelters = { navController.navigate(NavRoutes.M16_SHELTERS) },
             onM17Campaigns = { navController.navigate(NavRoutes.M17_HUB) },
-            onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) }
+            onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) },
+            onNavigateToPublish = { navController.navigate(NavRoutes.PUBLISH) },
+            onCreateAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
+            onCreateLost = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
+            onCreateFound = { navController.navigate(NavRoutes.PUBLISH_FOUND_PET) },
+            onCreateFoster = { navController.navigate(NavRoutes.PUBLISH_FOSTER) },
+            onCreateEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) }
         )
     }
     composable(NavRoutes.PUBLISH) {
         PublishScreen(
             accountType = accountType,
+            showBackButton = false,
+            onNavigateBack = { navController.popBackStack() },
             onNavigateToGeneral = { navController.navigate(NavRoutes.PUBLISH_GENERAL) },
+            onNavigateToReel = { navController.navigate(NavRoutes.PUBLISH_REEL) },
+            onNavigateToStory = { navController.navigate(NavRoutes.PUBLISH_STORY) },
+            onNavigateToQuestion = { navController.navigate(NavRoutes.PUBLISH_QUESTION) },
+            onNavigateToPromo = { navController.navigate(NavRoutes.PUBLISH_PROMO) },
+            onNavigateToAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
+            onNavigateToLostFound = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
+            onNavigateToUrgent = { navController.navigate(NavRoutes.PUBLISH_URGENT) },
+            onNavigateToFoster = { navController.navigate(NavRoutes.PUBLISH_FOSTER) },
+            onNavigateToEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) },
+            onNavigateToDonation = { navController.navigate(NavRoutes.PUBLISH_DONATION) },
+            onNavigateToShelter = { navController.navigate(NavRoutes.PUBLISH_SHELTER) }
+        )
+    }
+    composable(NavRoutes.PUBLISH_FROM_PROFILE) {
+        PublishScreen(
+            accountType = accountType,
+            showBackButton = true,
+            onNavigateBack = {
+                if (!navController.popBackStack(NavRoutes.PROFILE, inclusive = false)) {
+                    navController.popBackStack()
+                }
+            },
+            onNavigateToGeneral = { navController.navigate(NavRoutes.PUBLISH_GENERAL) },
+            onNavigateToReel = { navController.navigate(NavRoutes.PUBLISH_REEL) },
+            onNavigateToStory = { navController.navigate(NavRoutes.PUBLISH_STORY) },
             onNavigateToQuestion = { navController.navigate(NavRoutes.PUBLISH_QUESTION) },
             onNavigateToPromo = { navController.navigate(NavRoutes.PUBLISH_PROMO) },
             onNavigateToAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
@@ -577,6 +636,9 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateToMyApplications = {
                 navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS)
             },
+            onNavigateToReceivedApplications = {
+                navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
+            },
             onNavigateToChat = { navController.navigate(NavRoutes.CHAT) },
             onNavigateToFriendRequests = { navController.navigate(NavRoutes.FRIEND_REQUESTS) },
             onNavigateToNotifications = { navController.navigate(NavRoutes.NOTIFICATIONS) },
@@ -598,8 +660,20 @@ private fun NavGraphBuilder.mainAppRoutes(
                 }
             },
             onNavigateToMyOrganizations = { navController.navigate(NavRoutes.MY_ORGANIZATIONS) },
+            onNavigateToPublish = {
+                navController.navigate(NavRoutes.PUBLISH_FROM_PROFILE) {
+                    launchSingleTop = true
+                }
+            },
             onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
-            onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) }
+            onPetClick = { id ->
+                val petId = id.trim()
+                if (petId.isNotEmpty()) {
+                    navController.navigate(NavRoutes.petDetail(petId)) {
+                        launchSingleTop = true
+                    }
+                }
+            }
         )
     }
     composable(NavRoutes.ACCOUNT_SECURITY) {
@@ -862,7 +936,23 @@ private fun NavGraphBuilder.mainAppRoutes(
         )
     }
     composable(NavRoutes.LOST_FOUND_MAP) {
-        LostFoundMapScreen(onNavigateBack = { navController.popBackStack() })
+        LostFoundMapScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onOpenAlert = { id -> navController.navigate(NavRoutes.lostFoundDetail(id)) },
+            onReportLost = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
+            onReportFound = { navController.navigate(NavRoutes.PUBLISH_FOUND_PET) }
+        )
+    }
+    composable(
+        route = NavRoutes.LOST_FOUND_DETAIL,
+        arguments = listOf(navArgument(NavRoutes.ARG_LOST_FOUND_POST_ID) { type = NavType.StringType })
+    ) { entry ->
+        val raw = entry.arguments?.getString(NavRoutes.ARG_LOST_FOUND_POST_ID).orEmpty()
+        val postId = runCatching { java.net.URLDecoder.decode(raw, Charsets.UTF_8.name()) }.getOrDefault(raw)
+        LostFoundDetailScreen(
+            postId = postId,
+            onNavigateBack = { navController.popBackStack() }
+        )
     }
     composable(NavRoutes.LOST_FOUND) {
         LostFoundScreen(
@@ -2128,6 +2218,56 @@ private fun NavGraphBuilder.mainAppRoutes(
         )
         VeterinaryAppointmentManagementScreen(
             appointmentId = appointmentId,
+            onNavigateBack = { navController.popBackStack() },
+            onRegisterProfessionalCare = { clinicId, petId, apptId ->
+                navController.navigate(NavRoutes.m28ClinicCare(clinicId, petId, apptId))
+            }
+        )
+    }
+    composable(
+        route = NavRoutes.M28_PET_GRANTS,
+        arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
+    ) { entry ->
+        val petId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+            Charsets.UTF_8.name()
+        )
+        M28PetGrantsScreen(petId = petId, clinicIdForGrant = null, onNavigateBack = { navController.popBackStack() })
+    }
+    composable(
+        route = NavRoutes.M28_PET_PROPOSALS,
+        arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
+    ) { entry ->
+        val petId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+            Charsets.UTF_8.name()
+        )
+        M28PassportProposalsScreen(petId = petId, onNavigateBack = { navController.popBackStack() })
+    }
+    composable(
+        route = NavRoutes.M28_CLINIC_CARE,
+        arguments = listOf(
+            navArgument(NavRoutes.ARG_CLINIC_ID) { type = NavType.StringType },
+            navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType },
+            navArgument(NavRoutes.ARG_M28_APPOINTMENT_QUERY) {
+                type = NavType.StringType
+                defaultValue = ""
+            }
+        )
+    ) { entry ->
+        val clinicId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_CLINIC_ID).orEmpty(),
+            Charsets.UTF_8.name()
+        )
+        val petId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+            Charsets.UTF_8.name()
+        )
+        val appointmentId = entry.arguments?.getString(NavRoutes.ARG_M28_APPOINTMENT_QUERY).orEmpty().ifBlank { null }
+        M28ClinicCareScreen(
+            clinicId = clinicId,
+            petId = petId,
+            appointmentId = appointmentId,
             onNavigateBack = { navController.popBackStack() }
         )
     }
@@ -2144,7 +2284,11 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(
         route = NavRoutes.PET_DETAIL,
         arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
-    ) {
+    ) { backStackEntry ->
+        val rawPetId = backStackEntry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty()
+        val petId = runCatching {
+            java.net.URLDecoder.decode(rawPetId, Charsets.UTF_8.name())
+        }.getOrDefault(rawPetId)
         PetDetailScreen(
             onNavigateBack = { navController.popBackStack() },
             onNavigateToEdit = { id -> navController.navigate(NavRoutes.editPet(id)) },
@@ -2163,7 +2307,21 @@ private fun NavGraphBuilder.mainAppRoutes(
             },
             onNavigateToPassport = { id ->
                 navController.navigate(NavRoutes.m14PetPassport(id))
-            }
+            },
+            onNavigateToM28Grants = { id -> navController.navigate(NavRoutes.m28PetGrants(id)) },
+            onNavigateToM28Proposals = { id -> navController.navigate(NavRoutes.m28PetProposals(id)) },
+            viewModel = viewModel(
+                viewModelStoreOwner = backStackEntry,
+                key = "pet_detail_$petId",
+                factory = object : androidx.lifecycle.ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : androidx.lifecycle.ViewModel> create(modelClass: Class<T>): T {
+                        return com.comunidapp.app.viewmodel.PetDetailViewModel(
+                            androidx.lifecycle.SavedStateHandle(mapOf("petId" to petId))
+                        ) as T
+                    }
+                }
+            )
         )
     }
     composable(
@@ -2265,9 +2423,26 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.PUBLISH_GENERAL) {
         PublishGeneralScreen(
             onNavigateBack = { navController.popBackStack() },
+            onPublishSuccess = { popCreatorSuccess(navController) }
+        )
+    }
+    composable(NavRoutes.PUBLISH_REEL) {
+        PublishReelScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onPublishSuccess = { popCreatorSuccess(navController) }
+        )
+    }
+    composable(NavRoutes.PUBLISH_STORY) {
+        PublishStoryScreen(
+            origin = "HOME_STORY_PLUS",
+            autoOpenPicker = true,
+            onNavigateBack = {
+                if (!navController.popBackStack(NavRoutes.HOME, inclusive = false)) {
+                    navController.popBackStack()
+                }
+            },
             onPublishSuccess = {
-                navController.popBackStack()
-                navController.navigate(NavRoutes.HOME)
+                navController.popBackStack(NavRoutes.HOME, inclusive = false)
             }
         )
     }
@@ -2292,6 +2467,7 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.ADOPTION_FORM) {
         AdoptionFormScreen(
             onNavigateBack = { navController.popBackStack() },
+            onNavigateToCreatePet = { navController.navigate(NavRoutes.ADD_PET) },
             onSaved = { id ->
                 navController.popBackStack()
                 navController.navigate(NavRoutes.adoptionDetail(id))
@@ -2315,9 +2491,10 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.PUBLISH_ADOPTION) {
         AdoptionFormScreen(
             onNavigateBack = { navController.popBackStack() },
+            onNavigateToCreatePet = { navController.navigate(NavRoutes.ADD_PET) },
             onSaved = { id ->
-                navController.popBackStack()
-                navController.navigate(NavRoutes.SUMATE)
+                navController.popBackStack(NavRoutes.SUMATE, inclusive = false)
+                navController.navigate(NavRoutes.adoptionDetail(id))
             }
         )
     }
@@ -2334,17 +2511,25 @@ private fun NavGraphBuilder.mainAppRoutes(
         PublishLostFoundScreen(
             onNavigateBack = { navController.popBackStack() },
             onPublishSuccess = {
-                navController.popBackStack()
-                navController.navigate(NavRoutes.SUMATE)
-            }
+                navController.popBackStack(NavRoutes.SUMATE, inclusive = false)
+            },
+            initialType = com.comunidapp.app.data.model.LostFoundType.LOST
+        )
+    }
+    composable(NavRoutes.PUBLISH_FOUND_PET) {
+        PublishLostFoundScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onPublishSuccess = {
+                navController.popBackStack(NavRoutes.SUMATE, inclusive = false)
+            },
+            initialType = com.comunidapp.app.data.model.LostFoundType.FOUND
         )
     }
     composable(NavRoutes.PUBLISH_FOSTER) {
         PublishFosterScreen(
             onNavigateBack = { navController.popBackStack() },
             onPublishSuccess = {
-                navController.popBackStack()
-                navController.navigate(NavRoutes.SUMATE)
+                navController.popBackStack(NavRoutes.SUMATE, inclusive = false)
             }
         )
     }
@@ -2352,8 +2537,7 @@ private fun NavGraphBuilder.mainAppRoutes(
         PublishEventScreen(
             onNavigateBack = { navController.popBackStack() },
             onPublishSuccess = {
-                navController.popBackStack()
-                navController.navigate(NavRoutes.SUMATE)
+                navController.popBackStack(NavRoutes.SUMATE, inclusive = false)
             }
         )
     }
@@ -2658,5 +2842,18 @@ private fun NavGraphBuilder.mainAppRoutes(
                 factory = ChatThreadViewModel.factory(conversationId)
             )
         )
+    }
+}
+
+/** Tras publicar desde creador social: vuelve a Perfil si el origen fue Perfil; si no, a Inicio. */
+private fun popCreatorSuccess(navController: NavHostController) {
+    when {
+        navController.popBackStack(NavRoutes.PROFILE, inclusive = false) -> Unit
+        navController.popBackStack(NavRoutes.HOME, inclusive = false) -> Unit
+        else -> {
+            navController.navigate(NavRoutes.HOME) {
+                launchSingleTop = true
+            }
+        }
     }
 }

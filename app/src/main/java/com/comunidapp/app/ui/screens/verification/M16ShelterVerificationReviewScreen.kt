@@ -37,7 +37,7 @@ fun M16ShelterVerificationReviewScreen(
         if (uiState.phase == AdministrativeScreenPhase.AccessDenied) onNavigateBack()
     }
     AdministrativePhaseHost(
-        title = "Verificación refugio M16",
+        title = "Verificación de refugio",
         phase = uiState.phase,
         onNavigateBack = onNavigateBack,
         emptyTitle = "Sin solicitud",

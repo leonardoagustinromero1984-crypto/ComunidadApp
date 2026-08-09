@@ -30,12 +30,12 @@ M13 agrega encima:
 
 ## 2. Relación con el roadmap
 
-La numeración de producto y la numeración técnica no coinciden completamente:
+Según **D01 v1.2** y el inventario real Mxx (2026-08-09):
 
-- M12 técnico implementado: Veterinarias.
-- M12 producto del roadmap: Mascotas perdidas y encontradas.
-- La funcionalidad Lost/Found base ya existe parcialmente en legacy.
-- M13 técnico continúa con el producto **Avistamientos y coincidencias**, reutilizando ese legacy.
+- **M12** = Veterinarias (implementado en repo).
+- **Perdidos/encontrados** = capacidad legacy (`lost_found_*`) sin Mxx histórico dedicado.
+- **M13** = Avistamientos y coincidencias; enriquece el legacy Lost/Found.
+- No renumerar M12 ni crear un segundo módulo paralelo de mascotas perdidas.
 
 Esta decisión evita renumerar módulos ya cerrados y evita duplicar Lost/Found.
 

@@ -2,41 +2,73 @@ package com.comunidapp.app.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// LeoVer — naranja (Leo)
-val OrangePrimary = Color(0xFFFF8F00)
-val OrangePrimaryDark = Color(0xFFE65100)
-val OrangePrimaryLight = Color(0xFFFFB74D)
-val OrangeContainer = Color(0xFFFFF3E0)
+// ---------------------------------------------------------------------------
+// LeoVer identidad visual oficial v1.0 — tokens centrales (fuente única)
+// Fuente: docs/08-marca/D08-03-Sistema-de-Color-y-UI.md
+// ---------------------------------------------------------------------------
 
-// LeoVer — verde (Ver / naturaleza)
-val GreenPrimary = Color(0xFF43A047)
-val GreenPrimaryDark = Color(0xFF2E7D32)
-val GreenPrimaryLight = Color(0xFF81C784)
-val GreenContainer = Color(0xFFE8F5E9)
+val BrandOrange = Color(0xFFFF7A00)
+val BrandOrangeSoft = Color(0xFFFFA64D)
+val BrandGreen = Color(0xFF49B749)
+val BrandGreenDark = Color(0xFF247A3D)
+val BrandCream = Color(0xFFFFF6EA)
+val BrandText = Color(0xFF2F3A37)
+val BrandWhite = Color(0xFFFFFFFF)
 
-// Neutros
-val White = Color(0xFFFFFFFF)
-val BackgroundLight = Color(0xFFFFFBFE)
-val SurfaceLight = Color(0xFFFFFFFF)
-val GrayLight = Color(0xFFE0E0E0)
-val GrayMedium = Color(0xFF9E9E9E)
-val GrayDark = Color(0xFF424242)
-val TextPrimary = Color(0xFF212121)
-val TextSecondary = Color(0xFF757575)
+/** Contenedor cálido derivado de crema + naranja suave. */
+val BrandOrangeContainer = Color(0xFFFFE8CC)
 
-// Compat aliases (usados en componentes legacy)
-val OrangeAccent = OrangePrimary
-val CyanAccent = GreenPrimary
-val CyanContainer = GreenContainer
+/** Contenedor verde suave derivado de BrandGreen. */
+val BrandGreenContainer = Color(0xFFE3F5E3)
 
-// Estados
+/** Verde claro tonal derivado de BrandGreen (no es un verde arbitrario). */
+val BrandGreenSoft = Color(0xFF8FD18F)
+
+/** Naranja profundo tonal derivado de BrandOrange. */
+val BrandOrangeDeep = Color(0xFFE56E00)
+
+/** Texto secundario / muted derivado de BrandText. */
+val BrandTextSecondary = Color(0xFF5C6965)
+val MutedText = BrandTextSecondary
+
+/** Borde neutro cálido derivado de crema. */
+val NeutralBorder = Color(0xFFE8DFD2)
+
+val BrandGrayLight = Color(0xFFE0E0E0)
+val BrandGrayMedium = Color(0xFF9E9E9E)
+val BrandGrayDark = Color(0xFF424242)
+
+// Aliases de compatibilidad — UI interna usa naranja suave / verde principal
+val OrangePrimary = BrandOrangeSoft
+val OrangePrimaryDark = BrandOrange // acento puntual (no superficie grande)
+val OrangePrimaryLight = BrandOrangeSoft
+val OrangeContainer = BrandOrangeContainer
+val GreenPrimary = BrandGreen
+val GreenPrimaryDark = BrandGreenDark // reservado: contraste / positivo fuerte
+val GreenPrimaryLight = BrandGreenSoft
+val GreenContainer = BrandGreenContainer
+val White = BrandWhite
+val BackgroundLight = BrandCream
+val SurfaceLight = BrandWhite
+val GrayLight = BrandGrayLight
+val GrayMedium = BrandGrayMedium
+val GrayDark = BrandGrayDark
+val TextPrimary = BrandText
+val TextSecondary = BrandTextSecondary
+val OrangeAccent = BrandOrangeSoft
+val CyanAccent = BrandGreen
+val CyanContainer = BrandGreenContainer
+
+// Estados semánticos (no sustituir por naranja/verde de marca)
 val UrgentRed = Color(0xFFE53935)
 val UrgentContainer = Color(0xFFFFEBEE)
-val SuccessGreen = GreenPrimary
-val WarningOrange = OrangePrimaryDark
+val SuccessGreen = BrandGreen
+val WarningAmber = Color(0xFFED6C02)
+/** Alias legacy: ámbar semántico (no es BrandOrange). */
+val WarningOrange = WarningAmber
 
-// Dark theme
-val OrangePrimaryDarkTheme = OrangePrimaryLight
-val GreenPrimaryDarkTheme = GreenPrimaryLight
+// Dark theme (futuro)
+val OrangePrimaryDarkTheme = BrandOrangeSoft
+val GreenPrimaryDarkTheme = BrandGreen
 val BackgroundDark = Color(0xFF121212)
 val SurfaceDark = Color(0xFF1E1E1E)

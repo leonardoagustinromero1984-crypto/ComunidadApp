@@ -107,16 +107,26 @@ class PostSupabaseDataSource {
         pollingFlow { fetchPosts() }
 
     suspend fun addPost(post: com.comunidapp.app.data.model.FeedPost): Result<String> {
+        val row = if (post.id.isBlank()) {
+            post.toPostRow().copy(id = java.util.UUID.randomUUID().toString())
+        } else {
+            post.toPostRow()
+        }
         return try {
-            val row = if (post.id.isBlank()) {
-                post.toPostRow().copy(id = java.util.UUID.randomUUID().toString())
-            } else {
-                post.toPostRow()
-            }
             supabase.from(SupabaseTables.POSTS).insert(row)
             Result.success(row.id)
         } catch (e: Exception) {
-            Result.failure(e)
+            // Staging sin migración 078: reintentar sin pet_id / expires_at.
+            if (e.isMissingPostsSchemaColumn("expires_at") || e.isMissingPostsSchemaColumn("pet_id")) {
+                try {
+                    supabase.from(SupabaseTables.POSTS).insert(row.toLegacy())
+                    Result.success(row.id)
+                } catch (retry: Exception) {
+                    Result.failure(retry)
+                }
+            } else {
+                Result.failure(e)
+            }
         }
     }
 
@@ -127,7 +137,18 @@ class PostSupabaseDataSource {
             }
             Result.success(Unit)
         } catch (e: Exception) {
-            Result.failure(e)
+            if (e.isMissingPostsSchemaColumn("expires_at") || e.isMissingPostsSchemaColumn("pet_id")) {
+                try {
+                    supabase.from(SupabaseTables.POSTS).update(post.toPostRow().toLegacy()) {
+                        filter { eq("id", post.id) }
+                    }
+                    Result.success(Unit)
+                } catch (retry: Exception) {
+                    Result.failure(retry)
+                }
+            } else {
+                Result.failure(e)
+            }
         }
     }
 }

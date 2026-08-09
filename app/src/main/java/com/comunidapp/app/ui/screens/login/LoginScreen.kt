@@ -31,6 +31,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.R
 import com.comunidapp.app.ui.components.BrandLogo
 import com.comunidapp.app.ui.components.PasswordTextField
+import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.viewmodel.LoginViewModel
 
 @Composable
@@ -68,7 +69,7 @@ fun LoginScreen(
             Text(
                 text = stringResource(R.string.brand_tagline),
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.secondary,
+                color = BrandText,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(36.dp))
