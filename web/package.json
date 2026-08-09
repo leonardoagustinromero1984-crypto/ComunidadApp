@@ -6,7 +6,8 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "next build",
-    "cf:build": "next build && node scripts/prepare-opennext.mjs && opennextjs-cloudflare build --skipNextBuild",
+    "cf:build": "opennextjs-cloudflare build",
+    "cf:build:win": "next build && node scripts/prepare-opennext.mjs && opennextjs-cloudflare build --skipNextBuild",
     "start": "next start",
     "preview": "pnpm cf:build && opennextjs-cloudflare preview",
     "deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
@@ -18,7 +19,7 @@
   "dependencies": {
     "@supabase/ssr": "^0.6.1",
     "@supabase/supabase-js": "^2.49.4",
-    "next": "15.5.12",
+    "next": "15.5.23",
     "react": "19.1.0",
     "react-dom": "19.1.0"
   },
@@ -33,7 +34,7 @@
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^4.4.1",
     "eslint": "^9",
-    "eslint-config-next": "15.5.12",
+    "eslint-config-next": "15.5.23",
     "jsdom": "^26.1.0",
     "tailwindcss": "^4",
     "typescript": "^5",

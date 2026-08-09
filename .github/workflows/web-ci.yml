@@ -68,15 +68,8 @@ jobs:
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
           NEXT_PUBLIC_SUPABASE_ANON_KEY: example-anon-key
 
-      - name: Build
-        run: pnpm build
-        env:
-          NEXT_PUBLIC_APP_URL: https://leover.com.ar
-          NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co
-          NEXT_PUBLIC_SUPABASE_ANON_KEY: example-anon-key
-
       - name: OpenNext build
-        run: node scripts/prepare-opennext.mjs && pnpm exec opennextjs-cloudflare build --skipNextBuild
+        run: pnpm exec opennextjs-cloudflare build
         env:
           NEXT_PUBLIC_APP_URL: https://leover.com.ar
           NEXT_PUBLIC_SUPABASE_URL: https://example.supabase.co

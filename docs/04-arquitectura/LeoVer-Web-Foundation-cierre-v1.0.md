@@ -173,6 +173,52 @@ Tests: landing render, auth redirect helper, UI components.
 
 ---
 
+## 16. Deploy Cloudflare (2026-08-09)
+
+| Paso | Resultado |
+|------|-----------|
+| Repo `main` @ `4de0442` → fix pendiente push | En curso |
+| CI Linux | Web CI #1 ejecutado en push Foundation; pipeline corregido a `opennextjs-cloudflare build` completo |
+| Build Windows + mirror `.next` | **No válido en Workers** — error runtime `middleware-manifest.json` |
+| Build Linux (Docker/WSL/GHA) | **Requerido** para deploy productivo |
+| Worker `leover-web` desplegado | Sí — Custom Domain `leover.com.ar` |
+| Validación runtime remota | **FAIL 500** hasta redeploy con build Linux |
+| `wrangler whoami` | OK (OAuth) |
+
+### Variables Worker (públicas)
+
+| Variable | Valor |
+|----------|-------|
+| `NEXT_PUBLIC_APP_URL` | `https://leover.com.ar` |
+| `NEXT_PUBLIC_SUPABASE_URL` | Configurar en build/deploy (GitHub Secrets o `.env.production.local` local) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Idem — nunca commitear |
+
+Workflow deploy: `.github/workflows/web-deploy.yml` (manual `workflow_dispatch`).
+
+Secrets GitHub requeridos: `CLOUDFLARE_API_TOKEN`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+
+### Supabase Auth — configuración manual Dashboard
+
+Agregar **sin eliminar** callbacks Android existentes:
+
+- `https://leover.com.ar/acceso/callback`
+- Site URL recomendada: `https://leover.com.ar`
+
+### Limitación Windows
+
+Preview local y deploy desde Windows con `prepare-opennext.mjs` producen bundle inválido en Workers. Usar GitHub Actions `Web Deploy` o build en Linux.
+
+### Dominios
+
+| Dominio | Estado |
+|---------|--------|
+| `leover.com.ar` | Custom Domain conectado — **pendiente redeploy PASS** |
+| `www.leover.com.ar` | PENDIENTE redirect → canónico |
+| `leoverapp.com.ar` | PENDIENTE redirect |
+| `leoverapp.com` | PENDIENTE redirect |
+
+---
+
 ## 15. Referencias
 
 - `docs/04-arquitectura/LeoVer-Arquitectura-Web-v1.0.md`
