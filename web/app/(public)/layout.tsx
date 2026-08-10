@@ -16,9 +16,14 @@ export default function PublicLayout({
             <Link href="/" className="text-xl font-bold text-brand-orange">
               LeoVer
             </Link>
-            <Link href="/acceso">
-              <Button variant="secondary">Ingresar</Button>
-            </Link>
+            <nav className="flex items-center gap-3">
+              <Link href="/" className="text-sm font-semibold text-brand-text hover:text-brand-orange">
+                Inicio
+              </Link>
+              <Link href="/acceso">
+                <Button variant="secondary">Ingresar</Button>
+              </Link>
+            </nav>
           </div>
         </header>
       }

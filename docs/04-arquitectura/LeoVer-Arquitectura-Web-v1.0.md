@@ -1032,6 +1032,23 @@ Foundation se considerará completada cuando:
 
 ---
 
+## 51.1 Web pública compartible (slice 1 — 2026-08-10)
+
+Estado: **IMPLEMENTADA** en `web/` + migración `081_web_public_shareable_pages.sql`.
+
+| Ruta | Dominio | Contrato backend |
+|------|---------|------------------|
+| `/mascota/[publicCode]` | M14 Pasaporte | `get_public_pet(text)` → `m14_get_public_pet_passport` |
+| `/perdidos/[publicCode]` | lost_found + M13 zona | `get_public_lost_case(text)` |
+| `/encontrados/[publicCode]` | lost_found + M13 zona | `get_public_found_case(text)` |
+| `/adopciones/[publicCode]` | M09 adopciones | `get_public_adoption(text)` |
+
+Identificador público: `public_code` (`PUB-*`) en adopciones y casos perdidos/encontrados; mascota reutiliza `pet_passports.public_code` (M14).
+
+Sanitización en RPC SECURITY DEFINER (sin service role, sin SELECT * en React). Cierre: `LeoVer-Web-Publica-Compartible-cierre-v1.0.md`.
+
+---
+
 ## 52. Historial
 
 | Versión | Fecha | Cambios |
