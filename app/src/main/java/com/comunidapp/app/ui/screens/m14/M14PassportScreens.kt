@@ -120,6 +120,7 @@ fun M14PetPassportScreen(
     val passport by viewModel.passport.collectAsState()
     val pet by viewModel.pet.collectAsState()
     val message by viewModel.message.collectAsState()
+    val messageIsError by viewModel.messageIsError.collectAsState()
     val busy by viewModel.busy.collectAsState()
     Scaffold(
         topBar = {
@@ -240,11 +241,13 @@ fun M14PetPassportScreen(
                     onClick = { onHistory(p.id) },
                     modifier = Modifier.fillMaxWidth()
                 ) { Text("Historial") }
-                OutlinedButton(
-                    onClick = { viewModel.setPublicRedacted() },
-                    enabled = !busy,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Marcar vista pública redactada") }
+                if (p.visibility != M14Visibility.PUBLIC_REDACTED) {
+                    OutlinedButton(
+                        onClick = { viewModel.setPublicRedacted() },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text("Marcar vista pública redactada") }
+                }
                 p.publicCode?.let { code ->
                     OutlinedButton(
                         onClick = { onPublic(code) },
@@ -254,7 +257,14 @@ fun M14PetPassportScreen(
             }
             message?.let {
                 Spacer(Modifier.height(8.dp))
-                Text(it, color = MaterialTheme.colorScheme.primary)
+                Text(
+                    it,
+                    color = if (messageIsError) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        MaterialTheme.colorScheme.primary
+                    }
+                )
             }
         }
     }

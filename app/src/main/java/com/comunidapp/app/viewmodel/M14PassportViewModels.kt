@@ -79,6 +79,8 @@ class M14PetPassportViewModel(
     val pet: StateFlow<Pet?> = _pet.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
+    private val _messageIsError = MutableStateFlow(false)
+    val messageIsError: StateFlow<Boolean> = _messageIsError.asStateFlow()
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
 
@@ -158,9 +160,15 @@ class M14PetPassportViewModel(
         }
     }
 
-    fun activate() = runAction { id -> passportRepository.activatePassport(id) }
+    fun activate() = runPassportAction(
+        successMessage = "Pasaporte activado",
+        failureFallbackCode = "PASSPORT_ACTIVATE_FAILED"
+    ) { id -> passportRepository.activatePassport(id) }
 
-    fun setPublicRedacted() = runAction { id ->
+    fun setPublicRedacted() = runPassportAction(
+        successMessage = "Pasaporte visible en modo público resumido",
+        failureFallbackCode = "PASSPORT_UPDATE_FAILED"
+    ) { id ->
         passportRepository.updatePassport(
             id,
             UpdateM14PassportInput(visibility = M14Visibility.PUBLIC_REDACTED)
@@ -169,22 +177,59 @@ class M14PetPassportViewModel(
 
     fun clearMessage() {
         _message.value = null
+        _messageIsError.value = false
     }
 
-    private fun runAction(block: suspend (passportId: String) -> Result<*>) {
+    private fun runPassportAction(
+        successMessage: String,
+        failureFallbackCode: String,
+        block: suspend (passportId: String) -> Result<M14PetPassport>
+    ) {
         if (_busy.value) return
         val passportId = _passport.value?.id
         if (passportId.isNullOrBlank()) {
             _message.value = M14ErrorMapper.userMessage("PASSPORT_NOT_FOUND")
+            _messageIsError.value = true
             return
         }
         viewModelScope.launch {
             _busy.value = true
-            block(passportId).onFailure { e ->
-                _message.value = M14ErrorMapper.userMessage(M14ErrorMapper.codeOf(e))
+            _message.value = null
+            _messageIsError.value = false
+            try {
+                block(passportId)
+                    .onSuccess { updated ->
+                        _passport.value = updated
+                        _message.value = successMessage
+                        _messageIsError.value = false
+                    }
+                    .onFailure { e ->
+                        _message.value = M14ErrorMapper.userMessage(
+                            mapPassportActionError(M14ErrorMapper.codeOf(e), failureFallbackCode)
+                        )
+                        _messageIsError.value = true
+                    }
+            } catch (e: Exception) {
+                _message.value = M14ErrorMapper.userMessage(
+                    mapPassportActionError(M14ErrorMapper.codeOf(e), failureFallbackCode)
+                )
+                _messageIsError.value = true
+            } finally {
+                _busy.value = false
             }
-            _busy.value = false
         }
+    }
+
+    private fun mapPassportActionError(code: String, fallbackCode: String): String = when (code) {
+        "NOT_AUTHENTICATED",
+        "UNAUTHORIZED",
+        "PASSPORT_NOT_FOUND",
+        "INVALID_TRANSITION",
+        "INVALID_PASSPORT_STATUS",
+        "INVALID_PASSPORT_INPUT",
+        "PET_NOT_FOUND",
+        "PET_NOT_ELIGIBLE" -> code
+        else -> fallbackCode
     }
 
     companion object {

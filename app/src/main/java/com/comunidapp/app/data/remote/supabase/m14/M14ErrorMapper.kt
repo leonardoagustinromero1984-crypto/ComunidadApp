@@ -58,7 +58,11 @@ object M14ErrorMapper {
         "INVALID_PASSPORT_INPUT" -> "Revisá los datos del pasaporte."
         "PASSPORT_CREATE_FAILED" ->
             "No pudimos crear el pasaporte. Revisá tu conexión e intentá nuevamente."
-        else -> "No pudimos crear el pasaporte. Revisá tu conexión e intentá nuevamente."
+        "PASSPORT_UPDATE_FAILED" ->
+            "No pudimos actualizar el pasaporte. Revisá tu conexión e intentá nuevamente."
+        "PASSPORT_ACTIVATE_FAILED" ->
+            "No pudimos activar el pasaporte. Revisá tu conexión e intentá nuevamente."
+        else -> "No pudimos completar la operación del pasaporte. Revisá tu conexión e intentá nuevamente."
     }
 
     private val knownCodes = listOf(
@@ -104,7 +108,9 @@ object M14ErrorMapper {
         "CONFLICT",
         "M14_REPOSITORY_FAILURE",
         "INVALID_PASSPORT_INPUT",
-        "PASSPORT_CREATE_FAILED"
+        "PASSPORT_CREATE_FAILED",
+        "PASSPORT_UPDATE_FAILED",
+        "PASSPORT_ACTIVATE_FAILED"
     )
 
     fun codeOf(error: Throwable): String {

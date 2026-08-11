@@ -395,14 +395,15 @@ fun createM14PassportParams(input: com.comunidapp.app.data.model.CreateM14Passpo
 fun updateM14PassportParams(id: String, input: com.comunidapp.app.data.model.UpdateM14PassportInput): JsonObject =
     buildJsonObject {
         put("p_passport_id", id)
-        putNullable("p_display_name", input.displayName)
-        putNullable("p_breed_text", input.breedText)
-        putNullable("p_sex", input.sex?.name)
-        putNullable("p_birth_date", input.birthDateEpochMs?.let(::m14IsoDate))
-        putNullable("p_primary_color", input.primaryColor)
-        putNullable("p_distinctive_marks", input.distinctiveMarks)
-        putNullable("p_microchip_raw", input.microchipNumber)
-        putNullable("p_visibility", input.visibility?.name)
+        // Omit unset optional params — explicit JSON nulls break PostgREST typed args (e.g. date).
+        input.displayName?.let { put("p_display_name", it) }
+        input.breedText?.let { put("p_breed_text", it) }
+        input.sex?.let { put("p_sex", it.name) }
+        input.birthDateEpochMs?.let { put("p_birth_date", m14IsoDate(it)) }
+        input.primaryColor?.let { put("p_primary_color", it) }
+        input.distinctiveMarks?.let { put("p_distinctive_marks", it) }
+        input.microchipNumber?.let { put("p_microchip_raw", it) }
+        input.visibility?.let { put("p_visibility", it.name) }
     }
 
 fun createM14CredentialParams(input: com.comunidapp.app.data.model.CreateM14CredentialInput): JsonObject =

@@ -26,9 +26,9 @@ class M14ErrorMapperUxTest {
     }
 
     @Test
-    fun unknownCode_mapsToRecoverableCreateCopy() {
+    fun unknownCode_mapsToRecoverablePassportOperationCopy() {
         val msg = M14ErrorMapper.userMessage("M14_UNKNOWN")
-        assertTrue(msg.contains("No pudimos crear el pasaporte"))
+        assertTrue(msg.contains("operación del pasaporte") || msg.contains("operacion del pasaporte"))
     }
 
     @Test
@@ -38,7 +38,11 @@ class M14ErrorMapperUxTest {
         )
         assertEquals("M14_UNKNOWN", code)
         val msg = M14ErrorMapper.userMessage(code)
-        assertTrue(msg.contains("No pudimos crear el pasaporte"))
+        assertTrue(
+            msg.contains("operación del pasaporte") ||
+                msg.contains("operacion del pasaporte") ||
+                msg.contains("No pudimos crear el pasaporte")
+        )
     }
 
     @Test
