@@ -24,3 +24,4 @@ dependencyResolutionManagement {
 
 rootProject.name = "Comunidapp"
 include(":app")
+include(":shared")

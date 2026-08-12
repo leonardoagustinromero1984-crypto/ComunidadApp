@@ -42,6 +42,13 @@
             </intent-filter>
         </activity>
 
+        <!-- Isolated KMP POC host — does not replace production navigation -->
+        <activity
+            android:name=".poc.KmpPocActivity"
+            android:exported="true"
+            android:label="LeoVer KMP POC"
+            android:theme="@style/Theme.Comunidapp" />
+
         <service
             android:name=".notifications.LeoverFirebaseMessagingService"
             android:exported="false">
