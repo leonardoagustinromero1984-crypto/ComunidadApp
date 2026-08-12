@@ -1,33 +1,42 @@
 # LeoVer iOS host (KMP POC)
 
-This folder is a **placeholder** for the iOS application entry that will embed the
-`LeoVerShared` framework produced by `:shared`.
+Minimal SwiftUI shell that embeds shared Compose via `PocIosViewController()`.
 
-## Status on Windows CI / Cursor
-
-`IOS_RUNTIME_VALIDATION = PENDING_MAC_XCODE`
-
-Xcode is required to:
-1. Create an Xcode project / SwiftUI wrapper, or use Compose Multiplatform iOS template.
-2. Link the `shared` framework (`iosArm64` / `iosSimulatorArm64`).
-3. Host either `M22PocApp` (POC 1) or `M08PocApp` (POC 2) from a Compose UIViewController.
-4. Wire `IosImagePickerScaffold` → real PHPicker / document picker (`STRUCTURE_READY_PENDING_XCODE`).
-
-## POC 2 picker
+## Layout
 
 ```text
-IOS_PICKER_IMPLEMENTATION = STRUCTURE_READY_PENDING_XCODE
+iosApp/
+  iosApp.xcodeproj
+  iosApp/
+    iOSApp.swift
+    ContentView.swift   → LeoVerShared.PocIosViewController()
+    Info.plist
 ```
 
-Common code depends only on `ImagePicker` + `FileRef`. Android uses Photo Picker;
-iOS must map platform URLs to the same `FileRef` fields without leaking into common.
+## What Swift owns
 
-## Intended entry (conceptual)
+Only the UIKit/SwiftUI host. POC screens stay in `:shared` Compose:
 
-```swift
-// IOSApp.swift — to be created on macOS with Xcode
-import LeoVerShared
-// Host MainViewController { M08PocApp(repository, IosImagePickerScaffold(), ...) }
+- Launcher (M22 / M08)
+- M22 Catalog POC
+- M08 Media + Navigation + FileRef picker
+
+## Build (macOS / Xcode / CI)
+
+Xcode run-script phase (before Compile Sources):
+
+```bash
+cd "$SRCROOT/.."
+./gradlew :shared:embedAndSignAppleFrameworkForXcode --no-configuration-cache
 ```
 
-Do not treat this README as a compiled iOS binary.
+Requires `ENABLE_USER_SCRIPT_SANDBOXING = NO`.
+
+Bundle id: `com.comunidapp.leover.kmppoc`  
+Scheme/target: `LeoVerKmpPoc`
+
+## Status
+
+- Windows: cannot build/run iOS
+- Cloud gate: `.github/workflows/kmp-ios-validation.yml` (`workflow_dispatch`)
+- `IOS_PICKER_RUNTIME` in CI = `NOT_AUTOMATED` (system PHPicker sheet)
