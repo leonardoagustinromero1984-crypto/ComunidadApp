@@ -34,12 +34,16 @@ private enum class PocSelection {
  * Platform hosts supply [imagePicker]; Swift/UIKit stays a thin shell.
  */
 @Composable
-fun PocLauncherApp(imagePicker: ImagePicker) {
+fun PocLauncherApp(
+    imagePicker: ImagePicker,
+    onClose: (() -> Unit)? = null
+) {
     var selection by remember { mutableStateOf(PocSelection.Launcher) }
     when (selection) {
         PocSelection.Launcher -> PocLauncherScreen(
             onOpenM22 = { selection = PocSelection.M22 },
-            onOpenM08 = { selection = PocSelection.M08 }
+            onOpenM08 = { selection = PocSelection.M08 },
+            onClose = onClose
         )
         PocSelection.M22 -> M22PocApp(
             repository = M22PocGraph.repository(null),
@@ -56,7 +60,8 @@ fun PocLauncherApp(imagePicker: ImagePicker) {
 @Composable
 private fun PocLauncherScreen(
     onOpenM22: () -> Unit,
-    onOpenM08: () -> Unit
+    onOpenM08: () -> Unit,
+    onClose: (() -> Unit)? = null
 ) {
     Scaffold { padding ->
         Column(
@@ -87,6 +92,14 @@ private fun PocLauncherScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text("M08 Media POC")
+            }
+            if (onClose != null) {
+                Button(
+                    onClick = onClose,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Volver al Home compartido")
+                }
             }
         }
     }

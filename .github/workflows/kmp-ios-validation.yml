@@ -63,17 +63,21 @@ jobs:
           {
             echo "MACOS_VERSION=$(sw_vers -productVersion)"
             echo "XCODE_VERSION=$(xcodebuild -version | head -n 1 | awk '{print $2}')"
+            echo "JAVA_VERSION=$(java -version 2>&1 | head -n 1)"
+            echo "GRADLE_VERSION=$(./gradlew --version | awk '/Gradle/{print $2; exit}')"
+            echo "KOTLIN_VERSION=$(grep -E '^kotlin\s*=' gradle/libs.versions.toml | head -n1 | cut -d'\"' -f2)"
+            echo "BASE_COMMIT=${GITHUB_SHA}"
           } >> "$GITHUB_ENV"
 
       - name: List shared Gradle tasks (iOS discovery)
         run: |
-          ./gradlew :shared:tasks --all --no-configuration-cache | tee "$ARTIFACT_DIR/shared-tasks.txt"
+          ./gradlew :shared:tasks --all --no-configuration-cache --max-workers=1 | tee "$ARTIFACT_DIR/shared-tasks.txt"
 
       - name: Compile Kotlin/Native iOS (simulator + device)
         id: knative
         run: |
           set -euo pipefail
-          TASKS=$(./gradlew :shared:tasks --all --no-configuration-cache)
+          TASKS=$(./gradlew :shared:tasks --all --no-configuration-cache --max-workers=1)
 
           SIM_TASK=""
           DEVICE_TASK=""
@@ -97,12 +101,23 @@ jobs:
             exit 1
           fi
 
-          ./gradlew $SIM_TASK --no-configuration-cache
+          ./gradlew $SIM_TASK --no-configuration-cache --max-workers=1
+          echo "IOS_SIMULATOR_COMPILE=PASS" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
           echo "KOTLIN_IOS_SIMULATOR_COMPILE=PASS" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
+          echo "IOS_SIMULATOR_COMPILE=PASS" >> "$GITHUB_ENV"
           echo "KOTLIN_IOS_SIMULATOR_COMPILE=PASS" >> "$GITHUB_ENV"
 
+          if echo "$TASKS" | grep -qE '^linkDebugFrameworkIosSimulatorArm64\b'; then
+            ./gradlew :shared:linkDebugFrameworkIosSimulatorArm64 --no-configuration-cache --max-workers=1
+            echo "IOS_FRAMEWORK_LINK=PASS" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
+            echo "IOS_FRAMEWORK_LINK=PASS" >> "$GITHUB_ENV"
+          else
+            echo "IOS_FRAMEWORK_LINK=SKIPPED_NO_TASK" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
+            echo "IOS_FRAMEWORK_LINK=SKIPPED_NO_TASK" >> "$GITHUB_ENV"
+          fi
+
           if [ -n "$DEVICE_TASK" ]; then
-            ./gradlew $DEVICE_TASK --no-configuration-cache
+            ./gradlew $DEVICE_TASK --no-configuration-cache --max-workers=1
             echo "KOTLIN_IOS_DEVICE_COMPILE=PASS" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
             echo "KOTLIN_IOS_DEVICE_COMPILE=PASS" >> "$GITHUB_ENV"
           else
@@ -123,9 +138,9 @@ jobs:
         id: ios_tests
         run: |
           set -euo pipefail
-          TASKS=$(./gradlew :shared:tasks --all --no-configuration-cache)
+          TASKS=$(./gradlew :shared:tasks --all --no-configuration-cache --max-workers=1)
           if echo "$TASKS" | grep -qE '^iosSimulatorArm64Test\b'; then
-            ./gradlew :shared:iosSimulatorArm64Test --no-configuration-cache | tee "$ARTIFACT_DIR/ios-shared-tests.log"
+            ./gradlew :shared:iosSimulatorArm64Test --no-configuration-cache --max-workers=1 | tee "$ARTIFACT_DIR/ios-shared-tests.log"
             # Count from XML if present
             COUNT=0
             FAIL=0
@@ -143,11 +158,22 @@ jobs:
             fi
             echo "IOS_SHARED_TESTS=${COUNT}" >> "$GITHUB_ENV"
             echo "IOS_SHARED_TESTS_RESULT=${COUNT}/${COUNT} PASS" >> "$GITHUB_ENV"
+            echo "COMMON_TESTS=PASS" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
+            echo "COMMON_TESTS=PASS" >> "$GITHUB_ENV"
           else
             echo "IOS_SHARED_TESTS=0" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
             echo "IOS_SHARED_TESTS_RESULT=SKIPPED_NO_TASK" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
             echo "IOS_SHARED_TESTS=0" >> "$GITHUB_ENV"
             echo "IOS_SHARED_TESTS_RESULT=SKIPPED_NO_TASK" >> "$GITHUB_ENV"
+            # Fallback: host/common tests already proven on Windows; on macOS still try androidHostTest if present
+            if echo "$TASKS" | grep -qE '^testAndroidHostTest\b|^allTests\b'; then
+              ./gradlew :shared:testAndroidHostTest --no-configuration-cache --max-workers=1
+              echo "COMMON_TESTS=PASS" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
+              echo "COMMON_TESTS=PASS" >> "$GITHUB_ENV"
+            else
+              echo "COMMON_TESTS=SKIPPED_NO_TASK" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
+              echo "COMMON_TESTS=SKIPPED_NO_TASK" >> "$GITHUB_ENV"
+            fi
           fi
 
       - name: Validate commonMain platform isolation
@@ -199,6 +225,8 @@ jobs:
           echo "APP_PATH=$APP_PATH" >> "$GITHUB_ENV"
           echo "IOS_SIMULATOR_BUILD=PASS" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
           echo "IOS_SIMULATOR_BUILD=PASS" >> "$GITHUB_ENV"
+          echo "IOS_APP_BUILD=PASS" | tee -a "$ARTIFACT_DIR/gate-metrics.txt"
+          echo "IOS_APP_BUILD=PASS" >> "$GITHUB_ENV"
 
       - name: Boot iOS Simulator (dynamic iPhone)
         id: boot
@@ -289,26 +317,34 @@ jobs:
       - name: Job summary
         if: always()
         run: |
+          APP_BUILD_LINE="${IOS_SIMULATOR_BUILD:-FAIL}"
           {
             echo "## LeoVer KMP iOS Cloud Gate"
             echo ""
+            echo '```text'
+            echo "=== LEOVER KMP IOS CLOUD GATE ==="
+            echo ""
+            echo "BASE_COMMIT = ${BASE_COMMIT:-$GITHUB_SHA}"
+            echo ""
+            echo "MACOS_VERSION = ${MACOS_VERSION:-unknown}"
+            echo "XCODE_VERSION = ${XCODE_VERSION:-unknown}"
+            echo "JAVA_VERSION = ${JAVA_VERSION:-unknown}"
+            echo "GRADLE_VERSION = ${GRADLE_VERSION:-unknown}"
+            echo "KOTLIN_VERSION = ${KOTLIN_VERSION:-unknown}"
+            echo ""
+            echo "COMMON_TESTS = ${COMMON_TESTS:-UNKNOWN}"
+            echo "IOS_SIMULATOR_COMPILE = ${IOS_SIMULATOR_COMPILE:-${KOTLIN_IOS_SIMULATOR_COMPILE:-UNKNOWN}}"
+            echo "IOS_FRAMEWORK_LINK = ${IOS_FRAMEWORK_LINK:-UNKNOWN}"
+            echo "IOS_APP_BUILD = ${APP_BUILD_LINE}"
+            echo '```'
+            echo ""
             echo "| Metric | Value |"
             echo "|---|---|"
-            echo "| MACOS_VERSION | ${MACOS_VERSION:-unknown} |"
-            echo "| XCODE_VERSION | ${XCODE_VERSION:-unknown} |"
             echo "| IOS_SIMULATOR_DEVICE | ${IOS_SIMULATOR_DEVICE:-} |"
             echo "| IOS_SIMULATOR_RUNTIME | ${IOS_SIMULATOR_RUNTIME:-} |"
-            echo "| KOTLIN_IOS_SIMULATOR_COMPILE | ${KOTLIN_IOS_SIMULATOR_COMPILE:-} |"
-            echo "| KOTLIN_IOS_DEVICE_COMPILE | ${KOTLIN_IOS_DEVICE_COMPILE:-} |"
-            echo "| IOS_SHARED_TESTS_RESULT | ${IOS_SHARED_TESTS_RESULT:-} |"
-            echo "| IOS_SIMULATOR_BUILD | ${IOS_SIMULATOR_BUILD:-} |"
             echo "| IOS_APP_LAUNCH | ${IOS_APP_LAUNCH:-} |"
             echo "| IOS_IMMEDIATE_CRASH | ${IOS_IMMEDIATE_CRASH:-} |"
             echo "| COMPOSE_IOS_RUNTIME | ${COMPOSE_IOS_RUNTIME:-} |"
-            echo "| NAVIGATION_IOS_RUNTIME | ${NAVIGATION_IOS_RUNTIME:-NOT_AUTOMATED} |"
-            echo "| IOS_PICKER_RUNTIME | ${IOS_PICKER_RUNTIME:-NOT_AUTOMATED} |"
-            echo "| IOS_SUPABASE_RUNTIME | ${IOS_SUPABASE_RUNTIME:-SKIPPED_MISSING_SECRETS} |"
-            echo "| REMOTE_WRITE_PERFORMED | NO |"
             if [ -f "$ARTIFACT_DIR/gate-metrics.txt" ]; then
               echo ""
               echo "### Raw metrics"
