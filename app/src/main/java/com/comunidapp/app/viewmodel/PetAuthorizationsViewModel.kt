@@ -113,17 +113,19 @@ class PetAuthorizationsViewModel(
         }
     }
 
-    fun displayStatusOf(authorization: PetAuthorization): PetAuthorizationDisplayStatus =
-        when {
+    fun displayStatusOf(authorization: PetAuthorization): PetAuthorizationDisplayStatus {
+        val validTo = authorization.validToEpochMs
+        return when {
             authorization.status == PetLinkStatus.REVOKED -> PetAuthorizationDisplayStatus.REVOKED
             authorization.status == PetLinkStatus.ACTIVE &&
-                authorization.validToEpochMs != null &&
-                authorization.validToEpochMs <= nowEpochMs() ->
+                validTo != null &&
+                validTo <= nowEpochMs() ->
                 PetAuthorizationDisplayStatus.EXPIRED
             authorization.status == PetLinkStatus.EXPIRED -> PetAuthorizationDisplayStatus.EXPIRED
             authorization.status == PetLinkStatus.ACTIVE -> PetAuthorizationDisplayStatus.ACTIVE
             else -> PetAuthorizationDisplayStatus.INACTIVE
         }
+    }
 
     fun updateSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query) }

@@ -3,12 +3,7 @@ package com.comunidapp.app.domain.organization
 import com.comunidapp.app.core.result.AppError
 import com.comunidapp.app.core.result.AppErrorKind
 
-@JvmInline
-value class OrganizationId(val value: String) {
-    init {
-        require(value.isNotBlank()) { "organization id blank" }
-    }
-}
+// OrganizationId vive en :shared (commonMain) — mismo paquete, sin duplicar.
 
 @JvmInline
 value class OrganizationSlug private constructor(val value: String) {

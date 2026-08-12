@@ -32,5 +32,6 @@ value class PetTransferId(val value: String) {
     }
 }
 
-internal fun petFailure(code: String): Result<Nothing> =
+/** Visible para implementaciones Android (otro módulo) que reutilizan el código de error. */
+fun petFailure(code: String): Result<Nothing> =
     Result.failure(IllegalArgumentException(code))
