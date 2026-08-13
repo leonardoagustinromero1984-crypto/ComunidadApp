@@ -1,19 +1,17 @@
-# KMP-IOS — Backlog de plataforma
+# KMP-IOS — Backlog de plataforma (post KMP-3)
 
 ## Compartido terminado
 
-- Dominio pets M08 (models/rules/contracts)
-- OrganizationId
-- Onboarding models
-- M23 booking resilience messages
-- Lost/found + adoption status rules (canónicas KMP)
+- Dominio pets M08 + OrganizationId + onboarding models
+- M23 booking resilience + lost/found/adoption status rules
 - PlatformClock
-- POC M08/M22 Compose + Navigation MP
-- FileRef + ImagePicker contract
-- Shared Home fake + session stub
-- iosApp SwiftUI shell + CI workflow
+- POC M08/M22 Compose + Navigation MP + FileRef/ImagePicker
+- iosApp SwiftUI shell + CI workflow (arm64 simulator)
+- **KMP-3:** Session / Profile / Pets vertical (contratos + fakes + CMP UI)
+- PlatformPreferences + OnboardingIntentStore
+- AndroidSessionMapper (bridge sin tokens)
 
-## Android específico
+## Android específico (sigue)
 
 - DataProvider / Supabase productivo
 - Auth GoTrue completo + deep links
@@ -24,23 +22,21 @@
 - UI Compose productiva (~279 destinos)
 - WIP M09 decoding (fuera de KMP)
 
-## iOS específico pendiente
+## iOS — funciona hoy
 
-- APNs
-- Keychain / secure storage real
-- Photos/cámara productivos
-- Ubicación
-- Deep links universales
-- Apple Sign In
-- Background tasks
-- Auth productivo Supabase iOS
+- Home branding + estado sesión (stub) + badge SHARED_FAKE/SESSION_STUB
+- Perfil / lista mascotas / detalle (fake shared)
+- Host SwiftUI → LeoVerShared
+- Preferencias no sensibles (NSUserDefaults)
+
+## iOS pendiente
+
+- Auth productivo Supabase / GoTrue
+- Keychain / secure storage
+- APNs / Photos-cámara productivos / ubicación
+- Deep links / Apple Sign In / background tasks
 - TestFlight / certificados / App Store
 
-## UI pendiente de compartir
+## Siguiente bloque propuesto (no implementar aún)
 
-- Migración incremental pantallas Android → CMP
-- No abordar masivamente hasta gate iOS verde + decisión de producto
-
-## Integraciones Apple pendientes
-
-Ver lista iOS arriba — **no iniciar** en este bloque.
+**KMP-4:** Perdidos / Encontrados + Adopciones (vertical UI + contratos shared; sin SQL; respetar WIP M09).

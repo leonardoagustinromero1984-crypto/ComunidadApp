@@ -5,13 +5,15 @@ import com.comunidapp.app.domain.pets.PetId
 import com.comunidapp.app.domain.pets.PetLifecycleStatus
 import com.comunidapp.app.domain.pets.PetPrincipalHolder
 import com.comunidapp.shared.platform.PlatformClock
+import com.comunidapp.shared.session.SessionState
+import com.comunidapp.shared.session.SessionUser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 /**
- * Catálogo mínimo para demostrar consumo iOS/Android del dominio pets compartido.
- * FAKE — sin Supabase write; sin DataProvider.
+ * Catálogo mínimo KMP-2 (compat).
+ * Preferir [com.comunidapp.shared.pets.FakeSharedPetsRepository] + [com.comunidapp.shared.vertical.LeoVerSharedApp].
  */
 interface SharedPetHomeRepository {
     fun observePets(): Flow<SharedHomeLoadState>
@@ -68,16 +70,28 @@ class FakeSharedPetHomeRepository(
     }
 }
 
-/** Sesión simulada para shell iOS — no Auth productivo. */
+/** @deprecated Usar [SessionState] / [com.comunidapp.shared.session.FakeSessionRepository]. */
+@Deprecated("Use SessionState + FakeSessionRepository", ReplaceWith("SessionState"))
 data class SharedSessionState(
     val isAuthenticated: Boolean,
     val displayLabel: String
 )
 
+/** @deprecated Usar FakeSessionRepository. */
+@Deprecated("Use FakeSessionRepository")
 object SharedSessionStub {
     fun guest(): SharedSessionState =
         SharedSessionState(isAuthenticated = false, displayLabel = "Invitado (stub)")
 
     fun demoAuthenticated(): SharedSessionState =
         SharedSessionState(isAuthenticated = true, displayLabel = "demo-user (fake session)")
+
+    fun toSessionState(stub: SharedSessionState): SessionState =
+        if (stub.isAuthenticated) {
+            SessionState.Authenticated(
+                SessionUser(userId = "demo-user", displayName = stub.displayLabel)
+            )
+        } else {
+            SessionState.Unauthenticated
+        }
 }
