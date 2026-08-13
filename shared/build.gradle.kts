@@ -30,13 +30,23 @@ kotlin {
 
     // KT-86501: storage-kt iosSimulatorArm64 fails native compiler cache
     // (IrTypeAliasSymbolImpl already bound for kotlinx.datetime/Instant).
-    iosSimulatorArm64().binaries.framework {
+    // Apply to framework AND debug test binary (linkDebugTestIosSimulatorArm64).
+    val iosSimulator = iosSimulatorArm64()
+    iosSimulator.binaries.framework {
         baseName = "LeoVerShared"
         isStatic = true
         @Suppress("DEPRECATION")
         disableNativeCache(
             version = DisableCacheInKotlinVersion.`2_3_20`,
             reason = "Workaround for KT-86501 triggered while linking storage-kt on iosSimulatorArm64",
+            issueUrl = URI("https://youtrack.jetbrains.com/issue/KT-86501")
+        )
+    }
+    iosSimulator.binaries.getTest("debug").apply {
+        @Suppress("DEPRECATION")
+        disableNativeCache(
+            version = DisableCacheInKotlinVersion.`2_3_20`,
+            reason = "Workaround for KT-86501 triggered while linking storage-kt on iosSimulatorArm64 test binary",
             issueUrl = URI("https://youtrack.jetbrains.com/issue/KT-86501")
         )
     }
