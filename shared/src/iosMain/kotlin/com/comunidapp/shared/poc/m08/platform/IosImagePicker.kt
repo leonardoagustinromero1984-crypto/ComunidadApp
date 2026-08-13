@@ -33,7 +33,7 @@ class IosImagePicker : ImagePicker {
         val presenter = topViewController()
             ?: return@withContext ImagePickResult.Failure("NO_ROOT_VIEW_CONTROLLER")
 
-        suspendCancellableCoroutine { continuation ->
+        suspendCancellableCoroutine<ImagePickResult> { continuation ->
             lateinit var delegate: PHPickerViewControllerDelegateProtocol
             delegate = object : NSObject(), PHPickerViewControllerDelegateProtocol {
                 override fun picker(
