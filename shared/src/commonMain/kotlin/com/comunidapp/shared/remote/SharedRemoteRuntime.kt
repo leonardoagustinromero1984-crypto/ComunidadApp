@@ -1,7 +1,10 @@
 package com.comunidapp.shared.remote
 
+import com.comunidapp.shared.adoption.AdoptionApplicationRepository
 import com.comunidapp.shared.adoption.AdoptionRepository
+import com.comunidapp.shared.adoption.RemoteAdoptionApplicationRepository
 import com.comunidapp.shared.adoption.RemoteAdoptionRepository
+import com.comunidapp.shared.adoption.UnconfiguredAdoptionApplicationRepository
 import com.comunidapp.shared.adoption.UnconfiguredAdoptionRepository
 import com.comunidapp.shared.auth.AuthRepository
 import com.comunidapp.shared.auth.GatewayAuthRepository
@@ -24,10 +27,11 @@ import com.comunidapp.shared.media.createMediaHttpClient
 import com.comunidapp.shared.pets.RemoteSharedPetsRepository
 import com.comunidapp.shared.pets.SharedPetsRepository
 import com.comunidapp.shared.pets.UnconfiguredSharedPetsRepository
+import com.comunidapp.shared.platform.PlatformClock
 import com.comunidapp.shared.profile.RemoteUserProfileRepository
+import com.comunidapp.shared.profile.SupabaseProfileAvatarUploadGateway
 import com.comunidapp.shared.profile.UnconfiguredUserProfileRepository
 import com.comunidapp.shared.profile.UserProfileRepository
-import com.comunidapp.shared.platform.PlatformClock
 import com.comunidapp.shared.session.SessionState
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
@@ -37,9 +41,8 @@ import io.github.jan.supabase.postgrest.PropertyConversionMethod
 import io.github.jan.supabase.storage.Storage
 
 /**
- * Único runtime Kotlin-only: Auth + Postgrest + Storage + Keychain SessionManager.
- * Produce Auth / Profile / Pets / LostFound / Adoption / MediaRead — un solo SupabaseClient.
- * internal — no exportar SupabaseClient a ObjC/Swift.
+ * Único runtime Kotlin-only — un solo SupabaseClient.
+ * KMP-11/12/13: Adoption publish + applications + profile update/avatar.
  */
 internal class SharedRemoteRuntime private constructor(
     private val client: SupabaseClient?,
@@ -48,6 +51,7 @@ internal class SharedRemoteRuntime private constructor(
     val petsRepository: SharedPetsRepository,
     val lostFoundRepository: LostFoundRepository,
     val adoptionRepository: AdoptionRepository,
+    val adoptionApplicationRepository: AdoptionApplicationRepository,
     val mediaResolver: MediaResolver
 ) {
     companion object {
@@ -64,15 +68,32 @@ internal class SharedRemoteRuntime private constructor(
                     petsRepository = UnconfiguredSharedPetsRepository(),
                     lostFoundRepository = UnconfiguredLostFoundRepository(),
                     adoptionRepository = UnconfiguredAdoptionRepository(),
+                    adoptionApplicationRepository = UnconfiguredAdoptionApplicationRepository(),
                     mediaResolver = UnavailableMediaResolver()
                 )
             }
             val client = createClient(usable, storage)
             val authGateway = SupabaseAuthSessionGateway(client)
             val authRepository = GatewayAuthRepository(authGateway)
+            val mediaResolver: MediaResolver = CachingMediaResolver(
+                gateway = SupabaseM05MediaReadGateway(
+                    client = client,
+                    httpClient = createMediaHttpClient()
+                ),
+                clock = { PlatformClock.SYSTEM.nowEpochMs() },
+                checkAuthenticated = {
+                    authRepository.currentSession() is SessionState.Authenticated
+                }
+            )
             val profileRepository = RemoteUserProfileRepository(
                 gateway = SupabaseProfileRemoteGateway(client),
-                sessionRepository = authRepository
+                writeGateway = SupabaseProfileWriteRemoteGateway(client),
+                avatarUpload = SupabaseProfileAvatarUploadGateway(
+                    client = client,
+                    fileContentReader = createFileContentReader()
+                ),
+                sessionRepository = authRepository,
+                mediaResolver = mediaResolver
             )
             val petsRepository = RemoteSharedPetsRepository(
                 gateway = SupabasePetsRemoteGateway(client),
@@ -90,19 +111,14 @@ internal class SharedRemoteRuntime private constructor(
                 sessionRepository = authRepository,
                 mediaUploadGateway = mediaGateway
             )
+            val adoptionGateway = SupabaseAdoptionRemoteGateway(client)
             val adoptionRepository = RemoteAdoptionRepository(
-                gateway = SupabaseAdoptionRemoteGateway(client),
+                gateway = adoptionGateway,
                 sessionRepository = authRepository
             )
-            val mediaResolver: MediaResolver = CachingMediaResolver(
-                gateway = SupabaseM05MediaReadGateway(
-                    client = client,
-                    httpClient = createMediaHttpClient()
-                ),
-                clock = { PlatformClock.SYSTEM.nowEpochMs() },
-                checkAuthenticated = {
-                    authRepository.currentSession() is SessionState.Authenticated
-                }
+            val adoptionApplicationRepository = RemoteAdoptionApplicationRepository(
+                gateway = SupabaseAdoptionApplicationRemoteGateway(client),
+                sessionRepository = authRepository
             )
             return SharedRemoteRuntime(
                 client = client,
@@ -111,6 +127,7 @@ internal class SharedRemoteRuntime private constructor(
                 petsRepository = petsRepository,
                 lostFoundRepository = lostFoundRepository,
                 adoptionRepository = adoptionRepository,
+                adoptionApplicationRepository = adoptionApplicationRepository,
                 mediaResolver = mediaResolver
             )
         }

@@ -241,7 +241,9 @@ internal fun SharedAdoptionsListScreen(
     adoptionRepository: AdoptionRepository,
     mediaResolver: MediaResolver? = null,
     onBack: () -> Unit,
-    onOpenDetail: (AdoptionId) -> Unit
+    onOpenDetail: (AdoptionId) -> Unit,
+    onOpenPublish: () -> Unit = {},
+    onOpenMyApplications: () -> Unit = {}
 ) {
     val vm = remember(adoptionRepository) { AdoptionListViewModelShared(adoptionRepository) }
     DisposableEffect(vm) { onDispose { vm.clear() } }
@@ -257,6 +259,12 @@ internal fun SharedAdoptionsListScreen(
         ) {
             TextButton(onClick = onBack) { Text("← Volver") }
             Text("Adopciones", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Button(onClick = onOpenPublish, modifier = Modifier.fillMaxWidth()) {
+                Text("Publicar adopción")
+            }
+            OutlinedButton(onClick = onOpenMyApplications, modifier = Modifier.fillMaxWidth()) {
+                Text("Mis postulaciones")
+            }
             TextButton(onClick = { vm.refresh() }) { Text("Actualizar") }
             when (val s = state) {
                 VerticalLoadState.Loading -> VerticalCenterLoading()
@@ -317,7 +325,8 @@ internal fun SharedAdoptionDetailScreen(
     id: AdoptionId,
     adoptionRepository: AdoptionRepository,
     mediaResolver: MediaResolver? = null,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onApply: (title: String) -> Unit = {}
 ) {
     val vm = remember(id, adoptionRepository) {
         AdoptionDetailViewModelShared(id, adoptionRepository)
@@ -339,14 +348,22 @@ internal fun SharedAdoptionDetailScreen(
                 VerticalLoadState.Loading -> VerticalCenterLoading()
                 VerticalLoadState.Empty -> Text("Sin datos")
                 is VerticalLoadState.Error -> Text(s.message, color = MaterialTheme.colorScheme.error)
-                is VerticalLoadState.Content -> AdoptionDetailBody(s.data, mediaResolver)
+                is VerticalLoadState.Content -> AdoptionDetailBody(
+                    detail = s.data,
+                    mediaResolver = mediaResolver,
+                    onApply = { onApply(s.data.displayName) }
+                )
             }
         }
     }
 }
 
 @Composable
-private fun AdoptionDetailBody(detail: AdoptionDetail, mediaResolver: MediaResolver?) {
+private fun AdoptionDetailBody(
+    detail: AdoptionDetail,
+    mediaResolver: MediaResolver?,
+    onApply: () -> Unit
+) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         SharedRemoteImage(
             mediaRef = detail.mediaRef,
@@ -371,8 +388,8 @@ private fun AdoptionDetailBody(detail: AdoptionDetail, mediaResolver: MediaResol
         detail.publicCode?.let {
             Text("Código: $it", style = MaterialTheme.typography.labelMedium)
         }
-        OutlinedButton(onClick = { }, enabled = false, modifier = Modifier.fillMaxWidth()) {
-            Text("Postularme (próximamente)")
+        Button(onClick = onApply, modifier = Modifier.fillMaxWidth()) {
+            Text("Postularme")
         }
     }
 }

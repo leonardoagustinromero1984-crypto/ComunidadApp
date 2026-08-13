@@ -249,7 +249,16 @@ class M05MediaReadVerticalTest {
     }
 
     @Test
-    fun profile_path_only_partial_null() {
+    fun profile_path_only_legacy_storage_maps_avatar_ref() {
+        val ref = MediaRefParser.fromProfileFields(
+            avatarPath = "users/u1/avatar/photo.jpg",
+            profileImageUrl = null
+        )
+        assertIs<MediaRef.ProfileAvatarPath>(ref)
+    }
+
+    @Test
+    fun profile_bucket_name_prefix_still_null() {
         assertNull(
             MediaRefParser.fromProfileFields(
                 avatarPath = "profile-avatars/u1.png",

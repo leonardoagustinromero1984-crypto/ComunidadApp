@@ -68,6 +68,7 @@ internal class CachingMediaResolver(
         val result = when (ref) {
             is MediaRef.Asset -> gateway.resolveAsset(ref.assetId, now)
             is MediaRef.RemoteUrl -> gateway.resolveRemoteUrl(ref.url, now)
+            is MediaRef.ProfileAvatarPath -> gateway.resolveProfileAvatarPath(ref.path, now)
         }
         if (result is MediaResolveResult.Success) {
             mutex.withLock {
@@ -90,6 +91,20 @@ internal class CachingMediaResolver(
         inflight.clear()
     }
 
+    fun invalidate(ref: MediaRef) {
+        val key = cacheKey(ref)
+        cache.remove(key)
+        accessOrder.remove(key)
+    }
+
+    fun invalidateProfileAvatarPaths() {
+        val keys = cache.keys.filter { it.startsWith("avatar:") }
+        keys.forEach { cache.remove(it) }
+        accessOrder.removeAll { it.startsWith("avatar:") }
+    }
+
+    override fun invalidateProfileAvatars() = invalidateProfileAvatarPaths()
+
     internal fun cachedCountForTests(): Int = cache.size
 
     private fun touch(key: String) {
@@ -101,5 +116,6 @@ internal class CachingMediaResolver(
         when (ref) {
             is MediaRef.Asset -> "asset:${ref.assetId}"
             is MediaRef.RemoteUrl -> "url:${ref.url}"
+            is MediaRef.ProfileAvatarPath -> "avatar:${ref.path}"
         }
 }

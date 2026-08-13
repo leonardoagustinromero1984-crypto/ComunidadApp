@@ -89,6 +89,7 @@ interface AdoptionRepository {
     fun observeList(): Flow<VerticalLoadState<List<AdoptionSummary>>>
     fun observeDetail(id: AdoptionId): Flow<VerticalLoadState<AdoptionDetail>>
     suspend fun refresh()
+    suspend fun publish(draft: AdoptionPublishDraft): AdoptionPublishResult
 }
 
 class GetAdoptionsUseCase(private val repository: AdoptionRepository) {
@@ -139,6 +140,20 @@ class FakeAdoptionRepository(
 
     override suspend fun refresh() {
         refreshTick.update { it + 1 }
+    }
+
+    override suspend fun publish(draft: AdoptionPublishDraft): AdoptionPublishResult {
+        AdoptionPublishDraftValidator.validate(draft).exceptionOrNull()?.let {
+            return AdoptionPublishResult.ValidationError(ErrorSanitizer.sanitize(it))
+        }
+        if (fail) {
+            return AdoptionPublishResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("ADOPTION_UNAVAILABLE"))
+            )
+        }
+        val id = AdoptionId("fake-adopt-${draft.petId.value}")
+        refreshTick.update { it + 1 }
+        return AdoptionPublishResult.Success(id = id, published = draft.publishImmediately)
     }
 
     private suspend fun loadList(): VerticalLoadState<List<AdoptionSummary>> {

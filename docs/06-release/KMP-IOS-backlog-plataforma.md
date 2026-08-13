@@ -1,9 +1,11 @@
-# KMP-IOS — Backlog (post KMP-10)
+# KMP-IOS — Backlog (post KMP-11/12/13)
 
 ## Terminado
 
-- KMP-1…9 (+ 9.1/9.2 KT-86501)
-- **KMP-10:** M05 media READ shared + display CMP
+- KMP-1…10
+- **KMP-11:** Adoption publish REAL_REMOTE
+- **KMP-12:** Adoption application / interest REAL_REMOTE (candidate-side)
+- **KMP-13:** Profile edit mínimo + avatar read/write REAL_REMOTE
 
 ## iOS ahora
 
@@ -12,18 +14,21 @@ SESSION / PROFILE / PETS / LOST_FOUND / ADOPTIONS = REAL_REMOTE
 LOST/FOUND PUBLISH = REAL_REMOTE
 LOST/FOUND MEDIA WRITE = REAL_REMOTE
 LOST/FOUND MEDIA READ = REAL_REMOTE
-PETS MEDIA READ = REAL_REMOTE (avatar_file_asset_id / HTTPS)
-ADOPTION MEDIA READ = REAL_REMOTE (photo_url asset/HTTPS)
-PROFILE MEDIA READ = PARTIAL (avatar_path only)
+PETS / ADOPTION MEDIA READ = REAL_REMOTE
+ADOPTION PUBLISH = REAL_REMOTE (media write PARTIAL)
+ADOPTION APPLICATION = REAL_REMOTE
+PROFILE EDIT = REAL_REMOTE
+PROFILE MEDIA READ = REAL_REMOTE (legacy path firmado)
+PROFILE MEDIA WRITE = REAL_REMOTE (profile-avatars legacy)
 ```
 
 ## Pendiente
 
-- Profile avatar path → signed display (legacy firmador)
-- Adoption publish (KMP-11+)
-- Profile edit / pet create
+- Shelter-side application review (accept/reject/list received)
+- Adoption media write M05 dedicado (si backend lo exige distinto del pet snapshot)
 - Deep links / Apple Sign In / APNs
+- Pet create
 
 ## No iniciar
 
-M24, M28, SQL/schema, web, KMP-11 en este bloque
+M24, M28, SQL/schema, web, KMP-14 en este paquete

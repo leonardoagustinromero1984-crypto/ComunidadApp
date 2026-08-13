@@ -16,6 +16,15 @@ sealed interface MediaRef {
             require(url.isNotBlank()) { "MEDIA_REMOTE_URL_BLANK" }
         }
     }
+
+    /**
+     * Path en bucket privado `profile-avatars` (M02). No es URL ni assetId.
+     */
+    data class ProfileAvatarPath(val path: String) : MediaRef {
+        init {
+            require(path.isNotBlank()) { "MEDIA_AVATAR_PATH_BLANK" }
+        }
+    }
 }
 
 object MediaRefParser {
@@ -51,8 +60,8 @@ object MediaRefParser {
     }
 
     /**
-     * Profile: HTTPS en profileImageUrl → RemoteUrl.
-     * avatar_path (storage path) sin firmador shared → null (PARTIAL).
+     * Profile: HTTPS → RemoteUrl; UUID → Asset;
+     * path `users/.../avatar/...` o `.../avatars/...` → ProfileAvatarPath.
      */
     fun fromProfileFields(avatarPath: String?, profileImageUrl: String?): MediaRef? {
         val url = profileImageUrl?.trim()?.takeIf { it.isNotEmpty() }
@@ -61,7 +70,15 @@ object MediaRefParser {
         }
         val pathOrId = avatarPath?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         if (isLogicalAssetId(pathOrId)) return MediaRef.Asset(pathOrId)
+        if (isProfileAvatarStoragePath(pathOrId)) return MediaRef.ProfileAvatarPath(pathOrId)
         return null
+    }
+
+    fun isProfileAvatarStoragePath(path: String): Boolean {
+        val p = path.trim()
+        if (p.contains("..") || isHttpUrl(p) || isForbiddenDisplayReference(p)) return false
+        return p.startsWith("users/") &&
+            (p.contains("/avatar/") || p.contains("/avatars/"))
     }
 
     fun isForbiddenDisplayReference(value: String): Boolean {

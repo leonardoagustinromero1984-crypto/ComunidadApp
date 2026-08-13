@@ -23,6 +23,7 @@ import kotlin.time.Duration.Companion.seconds
 internal interface M05MediaReadGateway {
     suspend fun resolveAsset(assetId: String, nowEpochMs: Long): MediaResolveResult
     suspend fun resolveRemoteUrl(url: String, nowEpochMs: Long): MediaResolveResult
+    suspend fun resolveProfileAvatarPath(path: String, nowEpochMs: Long): MediaResolveResult
 }
 
 internal class SupabaseM05MediaReadGateway(
@@ -120,6 +121,31 @@ internal class SupabaseM05MediaReadGateway(
         }
     }
 
+    override suspend fun resolveProfileAvatarPath(path: String, nowEpochMs: Long): MediaResolveResult {
+        val raw = path.trim()
+        if (!MediaRefParser.isProfileAvatarStoragePath(raw)) {
+            return MediaResolveResult.InvalidReference
+        }
+        return try {
+            val temporaryUrl = client.storage.from(PROFILE_AVATAR_BUCKET)
+                .createSignedUrl(path = raw, expiresIn = PROFILE_AVATAR_TTL_SECONDS.seconds)
+            if (temporaryUrl.isBlank() || MediaRefParser.isForbiddenDisplayReference(temporaryUrl)) {
+                return MediaResolveResult.Unavailable
+            }
+            val bytes = httpClient.get(temporaryUrl).bodyAsBytes()
+            if (bytes.isEmpty()) return MediaResolveResult.NotFound
+            MediaResolveResult.Success(
+                MediaResource(
+                    bytes = bytes,
+                    cacheKey = "avatar:$raw",
+                    expiresAtEpochMs = nowEpochMs + PROFILE_AVATAR_TTL_SECONDS * 1000L
+                )
+            )
+        } catch (t: Throwable) {
+            mapReadThrowable(t)
+        }
+    }
+
     private suspend fun rpcObject(function: String, parameters: JsonObject): JsonObject? =
         client.postgrest.rpc(function = function, parameters = parameters).decodeAs<JsonObject>()
 
@@ -134,16 +160,22 @@ internal class SupabaseM05MediaReadGateway(
         const val PUBLIC_TTL_SECONDS = 300
         /** Alineado a fallback Android STANDARD_PRIVATE client default. */
         const val PRIVATE_TTL_SECONDS = 600
+        /** Alineado a ProfileAvatarStorageService default. */
+        const val PROFILE_AVATAR_TTL_SECONDS = 3600
+        const val PROFILE_AVATAR_BUCKET = "profile-avatars"
     }
 }
 
 internal class FakeM05MediaReadGateway(
     var assetResults: MutableMap<String, MediaResolveResult> = mutableMapOf(),
     var urlResults: MutableMap<String, MediaResolveResult> = mutableMapOf(),
+    var avatarResults: MutableMap<String, MediaResolveResult> = mutableMapOf(),
     var defaultAsset: MediaResolveResult = MediaResolveResult.NotFound,
     var defaultUrl: MediaResolveResult = MediaResolveResult.NotFound,
+    var defaultAvatar: MediaResolveResult = MediaResolveResult.NotFound,
     var assetCalls: Int = 0,
-    var urlCalls: Int = 0
+    var urlCalls: Int = 0,
+    var avatarCalls: Int = 0
 ) : M05MediaReadGateway {
     override suspend fun resolveAsset(assetId: String, nowEpochMs: Long): MediaResolveResult {
         assetCalls++
@@ -153,6 +185,11 @@ internal class FakeM05MediaReadGateway(
     override suspend fun resolveRemoteUrl(url: String, nowEpochMs: Long): MediaResolveResult {
         urlCalls++
         return urlResults[url] ?: defaultUrl
+    }
+
+    override suspend fun resolveProfileAvatarPath(path: String, nowEpochMs: Long): MediaResolveResult {
+        avatarCalls++
+        return avatarResults[path] ?: defaultAvatar
     }
 }
 

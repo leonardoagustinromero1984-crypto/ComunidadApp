@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.comunidapp.app.domain.pets.PetId
+import com.comunidapp.shared.adoption.AdoptionApplicationRepository
 import com.comunidapp.shared.adoption.AdoptionId
 import com.comunidapp.shared.adoption.AdoptionRepository
 import com.comunidapp.shared.auth.AuthRepository
@@ -54,6 +55,7 @@ import com.comunidapp.shared.ui.VerticalLoadState
 private sealed class SharedRoute {
     data object Home : SharedRoute()
     data object Profile : SharedRoute()
+    data object ProfileEdit : SharedRoute()
     data object Pets : SharedRoute()
     data class PetDetail(val petId: PetId) : SharedRoute()
     data object Alerts : SharedRoute()
@@ -62,7 +64,10 @@ private sealed class SharedRoute {
     data object LostFoundPublish : SharedRoute()
     data class LostFoundDetail(val id: LostFoundId, val backTo: SharedRoute) : SharedRoute()
     data object Adoptions : SharedRoute()
+    data object AdoptionPublish : SharedRoute()
     data class AdoptionDetail(val id: AdoptionId) : SharedRoute()
+    data class AdoptionApply(val id: AdoptionId, val title: String) : SharedRoute()
+    data object MyApplications : SharedRoute()
 }
 
 /**
@@ -76,6 +81,7 @@ fun LeoVerSharedApp(
     petsRepository: SharedPetsRepository,
     lostFoundRepository: LostFoundRepository,
     adoptionRepository: AdoptionRepository,
+    adoptionApplicationRepository: AdoptionApplicationRepository? = null,
     authRepository: AuthRepository? = sessionRepository as? AuthRepository,
     mediaResolver: MediaResolver? = null,
     imagePicker: ImagePicker? = null,
@@ -151,8 +157,42 @@ fun LeoVerSharedApp(
             sessionRepository = sessionRepository,
             profileRepository = profileRepository,
             mediaResolver = mediaResolver,
-            onBack = { route = SharedRoute.Home }
+            onBack = { route = SharedRoute.Home },
+            onEdit = { route = SharedRoute.ProfileEdit }
         )
+        SharedRoute.ProfileEdit -> {
+            val sessionUser = (session as? SessionState.Authenticated)?.user
+            if (sessionUser == null) {
+                route = SharedRoute.Home
+            } else {
+                var loaded by remember { mutableStateOf<UserProfileSummary?>(null) }
+                LaunchedEffect(sessionUser.userId, profileRepository) {
+                    profileRepository.observeMyProfile(sessionUser.userId).collect { st ->
+                        if (st is ProfileLoadState.Content) loaded = st.profile
+                    }
+                }
+                val profile = loaded
+                if (profile == null) {
+                    Scaffold { padding ->
+                        Column(
+                            Modifier.padding(padding).fillMaxSize(),
+                            verticalArrangement = Arrangement.Center,
+                            horizontalAlignment = Alignment.CenterHorizontally
+                        ) {
+                            CircularProgressIndicator()
+                        }
+                    }
+                } else {
+                    SharedProfileEditScreen(
+                        profile = profile,
+                        profileRepository = profileRepository,
+                        imagePicker = imagePicker,
+                        onBack = { route = SharedRoute.Profile },
+                        onSaved = { route = SharedRoute.Profile }
+                    )
+                }
+            }
+        }
         SharedRoute.Pets -> SharedPetsListScreen(
             sessionRepository = sessionRepository,
             petsRepository = petsRepository,
@@ -206,14 +246,57 @@ fun LeoVerSharedApp(
             adoptionRepository = adoptionRepository,
             mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Home },
-            onOpenDetail = { route = SharedRoute.AdoptionDetail(it) }
+            onOpenDetail = { route = SharedRoute.AdoptionDetail(it) },
+            onOpenPublish = { route = SharedRoute.AdoptionPublish },
+            onOpenMyApplications = {
+                if (adoptionApplicationRepository != null) {
+                    route = SharedRoute.MyApplications
+                }
+            }
+        )
+        SharedRoute.AdoptionPublish -> SharedAdoptionPublishScreen(
+            sessionRepository = sessionRepository,
+            petsRepository = petsRepository,
+            adoptionRepository = adoptionRepository,
+            onBack = { route = SharedRoute.Adoptions },
+            onPublished = { id -> route = SharedRoute.AdoptionDetail(id) }
         )
         is SharedRoute.AdoptionDetail -> SharedAdoptionDetailScreen(
             id = r.id,
             adoptionRepository = adoptionRepository,
             mediaResolver = mediaResolver,
-            onBack = { route = SharedRoute.Adoptions }
+            onBack = { route = SharedRoute.Adoptions },
+            onApply = { title ->
+                if (adoptionApplicationRepository != null) {
+                    route = SharedRoute.AdoptionApply(r.id, title)
+                }
+            }
         )
+        is SharedRoute.AdoptionApply -> {
+            val appRepo = adoptionApplicationRepository
+            if (appRepo == null) {
+                route = SharedRoute.AdoptionDetail(r.id)
+            } else {
+                SharedAdoptionApplyScreen(
+                    adoptionId = r.id,
+                    adoptionTitle = r.title,
+                    applicationRepository = appRepo,
+                    onBack = { route = SharedRoute.AdoptionDetail(r.id) },
+                    onSubmitted = { route = SharedRoute.MyApplications }
+                )
+            }
+        }
+        SharedRoute.MyApplications -> {
+            val appRepo = adoptionApplicationRepository
+            if (appRepo == null) {
+                route = SharedRoute.Adoptions
+            } else {
+                SharedMyApplicationsScreen(
+                    applicationRepository = appRepo,
+                    onBack = { route = SharedRoute.Adoptions }
+                )
+            }
+        }
     }
 }
 
@@ -303,7 +386,8 @@ private fun SharedProfileScreen(
     sessionRepository: SessionRepository,
     profileRepository: UserProfileRepository,
     mediaResolver: MediaResolver?,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEdit: () -> Unit
 ) {
     val vm = remember(sessionRepository, profileRepository) {
         ProfileViewModelShared(sessionRepository, profileRepository)
@@ -324,7 +408,12 @@ private fun SharedProfileScreen(
             when (val s = state) {
                 ProfileLoadState.Loading -> CenterLoading()
                 is ProfileLoadState.Error -> Text(s.message, color = MaterialTheme.colorScheme.error)
-                is ProfileLoadState.Content -> ProfileContent(s.profile, mediaResolver)
+                is ProfileLoadState.Content -> {
+                    ProfileContent(s.profile, mediaResolver)
+                    Button(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
+                        Text("Editar perfil")
+                    }
+                }
             }
         }
     }

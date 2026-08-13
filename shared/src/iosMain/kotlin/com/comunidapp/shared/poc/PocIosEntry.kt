@@ -14,10 +14,9 @@ import com.comunidapp.shared.vertical.LeoVerSharedApp
 import platform.UIKit.UIViewController
 
 /**
- * Host iOS KMP-10:
- * SESSION / PROFILE / PETS / LOST_FOUND / ADOPTIONS = REAL_REMOTE
- * LOST/FOUND PUBLISH + MEDIA WRITE/READ = REAL_REMOTE
- * (un solo SharedRemoteRuntime / SupabaseClient + Storage + MediaResolver).
+ * Host iOS KMP-11/12/13:
+ * Adoption publish + applications + profile edit/avatar.
+ * Un solo SharedRemoteRuntime / SupabaseClient.
  */
 fun PocIosViewController(): UIViewController =
     ComposeUIViewController {
@@ -43,6 +42,7 @@ fun PocIosViewController(): UIViewController =
                     petsRepository = runtime.petsRepository,
                     lostFoundRepository = runtime.lostFoundRepository,
                     adoptionRepository = runtime.adoptionRepository,
+                    adoptionApplicationRepository = runtime.adoptionApplicationRepository,
                     authRepository = runtime.authRepository,
                     mediaResolver = runtime.mediaResolver,
                     imagePicker = imagePicker,

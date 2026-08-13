@@ -41,6 +41,7 @@ data class MediaResource(
 interface MediaResolver {
     suspend fun resolve(ref: MediaRef): MediaResolveResult
     fun clearCache()
+    fun invalidateProfileAvatars() {}
 }
 
 class UnavailableMediaResolver : MediaResolver {
@@ -66,6 +67,7 @@ class FakeMediaResolver(
         val key = when (ref) {
             is MediaRef.Asset -> ref.assetId
             is MediaRef.RemoteUrl -> ref.url
+            is MediaRef.ProfileAvatarPath -> ref.path
         }
         return results[key] ?: defaultResult
     }
@@ -73,5 +75,9 @@ class FakeMediaResolver(
     override fun clearCache() {
         clearCount++
         results.clear()
+    }
+
+    override fun invalidateProfileAvatars() {
+        clearCount++
     }
 }

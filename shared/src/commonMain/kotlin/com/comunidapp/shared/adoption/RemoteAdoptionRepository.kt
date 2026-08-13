@@ -4,10 +4,14 @@ import com.comunidapp.shared.auth.AuthFailure
 import com.comunidapp.shared.auth.AuthFailureMessages
 import com.comunidapp.shared.domain.adoption.AdoptionStatusRules
 import com.comunidapp.shared.remote.AdoptionRemoteGateway
+import com.comunidapp.shared.remote.AdoptionWriteKind
 import com.comunidapp.shared.remote.RemoteAdoptionMapper
+import com.comunidapp.shared.remote.RemoteCreateAdoptionParams
+import com.comunidapp.shared.remote.classifyAdoptionWrite
 import com.comunidapp.shared.remote.mapAdoptionThrowable
 import com.comunidapp.shared.session.SessionRepository
 import com.comunidapp.shared.session.SessionState
+import com.comunidapp.shared.ui.ErrorSanitizer
 import com.comunidapp.shared.ui.VerticalLoadState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -18,8 +22,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 
 /**
- * Adopciones REAL_REMOTE — RPC M09 `m09_list_published_adoptions` / `m09_get_adoption`.
- * Visibilidad: backend + [AdoptionStatusRules.isPubliclyVisible].
+ * Adopciones REAL_REMOTE — list/detail + create publish M09.
  */
 internal class RemoteAdoptionRepository(
     private val gateway: AdoptionRemoteGateway,
@@ -66,6 +69,56 @@ internal class RemoteAdoptionRepository(
         refreshTick.update { it + 1 }
     }
 
+    override suspend fun publish(draft: AdoptionPublishDraft): AdoptionPublishResult {
+        AdoptionPublishDraftValidator.validate(draft).exceptionOrNull()?.let {
+            return AdoptionPublishResult.ValidationError(ErrorSanitizer.sanitize(it))
+        }
+        val session = sessionRepository.currentSession()
+        if (session !is SessionState.Authenticated) {
+            return AdoptionPublishResult.Unauthenticated("Tu sesión no está disponible.")
+        }
+        return gateway.create(
+            RemoteCreateAdoptionParams(
+                petId = draft.petId.value,
+                title = draft.title.trim(),
+                description = draft.description.trim(),
+                requirements = draft.requirements.trim(),
+                locationText = draft.approximateLocation.displayLabel().takeIf {
+                    it != "Zona no especificada"
+                }.orEmpty().ifBlank {
+                    listOfNotNull(
+                        draft.approximateLocation.locality.takeIf { it.isNotBlank() },
+                        draft.approximateLocation.region?.takeIf { it.isNotBlank() }
+                    ).joinToString(", ")
+                },
+                publish = draft.publishImmediately
+            )
+        ).fold(
+            onSuccess = { row ->
+                refreshTick.update { it + 1 }
+                AdoptionPublishResult.Success(
+                    id = AdoptionId(row.id),
+                    published = row.status.equals("PUBLISHED", ignoreCase = true)
+                )
+            },
+            onFailure = { t ->
+                val msg = mapAdoptionThrowable(t)
+                when (classifyAdoptionWrite(t)) {
+                    AdoptionWriteKind.UNAUTHENTICATED ->
+                        AdoptionPublishResult.Unauthenticated(msg)
+                    AdoptionWriteKind.FORBIDDEN ->
+                        AdoptionPublishResult.Forbidden(msg)
+                    AdoptionWriteKind.CONFLICT ->
+                        AdoptionPublishResult.Conflict(msg)
+                    AdoptionWriteKind.VALIDATION ->
+                        AdoptionPublishResult.ValidationError(msg)
+                    AdoptionWriteKind.BACKEND ->
+                        AdoptionPublishResult.BackendError(msg)
+                }
+            }
+        )
+    }
+
     private suspend fun loadList(): VerticalLoadState<List<AdoptionSummary>> {
         val session = sessionRepository.currentSession()
         if (session !is SessionState.Authenticated) {
@@ -98,4 +151,7 @@ internal class UnconfiguredAdoptionRepository : AdoptionRepository {
     }
 
     override suspend fun refresh() = Unit
+
+    override suspend fun publish(draft: AdoptionPublishDraft) =
+        AdoptionPublishResult.BackendError(AuthFailureMessages.message(AuthFailure.Unavailable))
 }

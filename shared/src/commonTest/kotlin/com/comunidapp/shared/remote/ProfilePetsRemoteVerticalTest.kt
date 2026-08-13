@@ -10,6 +10,7 @@ import com.comunidapp.shared.auth.usableOrNull
 import com.comunidapp.shared.pets.FakeSharedPetsRepository
 import com.comunidapp.shared.pets.RemoteSharedPetsRepository
 import com.comunidapp.shared.pets.UnconfiguredSharedPetsRepository
+import com.comunidapp.shared.profile.FakeProfileAvatarUploadGateway
 import com.comunidapp.shared.profile.FakeUserProfileRepository
 import com.comunidapp.shared.profile.ProfileLoadState
 import com.comunidapp.shared.profile.RemoteUserProfileRepository
@@ -37,6 +38,17 @@ class ProfilePetsRemoteVerticalTest {
             )
         )
 
+    private fun profileRepo(
+        gateway: FakeProfileRemoteGateway,
+        auth: GatewayAuthRepository = authRepo()
+    ) = RemoteUserProfileRepository(
+        gateway = gateway,
+        writeGateway = FakeProfileWriteRemoteGateway(),
+        avatarUpload = FakeProfileAvatarUploadGateway(),
+        sessionRepository = auth,
+        mediaResolver = null
+    )
+
     @Test
     fun profile_remote_loading_then_content() = runTest {
         val gw = FakeProfileRemoteGateway(
@@ -51,7 +63,7 @@ class ProfilePetsRemoteVerticalTest {
                 updatedAt = "2024-06-01T00:00:00Z"
             )
         )
-        val repo = RemoteUserProfileRepository(gw, authRepo())
+        val repo = profileRepo(gw)
         val state = repo.observeMyProfile("user-1")
             .filterNot { it is ProfileLoadState.Loading }
             .first()
@@ -65,7 +77,7 @@ class ProfilePetsRemoteVerticalTest {
     @Test
     fun profile_network_error() = runTest {
         val gw = FakeProfileRemoteGateway(error = IllegalStateException("NETWORK timeout"))
-        val repo = RemoteUserProfileRepository(gw, authRepo())
+        val repo = profileRepo(gw)
         val err = assertIs<ProfileLoadState.Error>(
             repo.observeMyProfile("user-1").filterNot { it is ProfileLoadState.Loading }.first()
         )
@@ -77,7 +89,7 @@ class ProfilePetsRemoteVerticalTest {
         val gw = FakeProfileRemoteGateway(
             row = RemoteUserProfileRow(id = "other", displayName = "X", name = "X")
         )
-        val repo = RemoteUserProfileRepository(gw, authRepo("user-1"))
+        val repo = profileRepo(gw, authRepo("user-1"))
         val err = assertIs<ProfileLoadState.Error>(
             repo.observeMyProfile("other").filterNot { it is ProfileLoadState.Loading }.first()
         )
@@ -87,7 +99,7 @@ class ProfilePetsRemoteVerticalTest {
     @Test
     fun profile_malformed_missing_row() = runTest {
         val gw = FakeProfileRemoteGateway(row = null)
-        val repo = RemoteUserProfileRepository(gw, authRepo())
+        val repo = profileRepo(gw)
         assertIs<ProfileLoadState.Error>(
             repo.observeMyProfile("user-1").filterNot { it is ProfileLoadState.Loading }.first()
         )
@@ -134,7 +146,7 @@ class ProfilePetsRemoteVerticalTest {
 
     @Test
     fun profile_data_mode_real_remote() {
-        val repo = RemoteUserProfileRepository(FakeProfileRemoteGateway(), authRepo())
+        val repo = profileRepo(FakeProfileRemoteGateway())
         assertEquals(com.comunidapp.shared.profile.ProfileDataMode.REAL_REMOTE, repo.dataMode)
     }
 
