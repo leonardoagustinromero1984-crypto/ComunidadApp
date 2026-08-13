@@ -1,42 +1,39 @@
-# KMP-IOS — Backlog de plataforma (post KMP-3)
+# KMP-IOS — Backlog de plataforma (post KMP-4)
 
 ## Compartido terminado
 
-- Dominio pets M08 + OrganizationId + onboarding models
-- M23 booking resilience + lost/found/adoption status rules
-- PlatformClock
-- POC M08/M22 Compose + Navigation MP + FileRef/ImagePicker
-- iosApp SwiftUI shell + CI workflow (arm64 simulator)
-- **KMP-3:** Session / Profile / Pets vertical (contratos + fakes + CMP UI)
-- PlatformPreferences + OnboardingIntentStore
-- AndroidSessionMapper (bridge sin tokens)
+- KMP-1 domain foundation + rules
+- KMP-2 iOS shell + CI
+- KMP-3 session / profile / pets vertical
+- **KMP-4:** lost/found + adoptions SAFE UI + fakes + drafts/validators
+- ApproximateLocation
+- Alertas hub CMP
 
 ## Android específico (sigue)
 
-- DataProvider / Supabase productivo
-- Auth GoTrue completo + deep links
-- FCM / notification channels
-- DataStore / Room
-- Cámara / intents / Manifest
-- PetAuthorizationBridge (M02)
-- UI Compose productiva (~279 destinos)
-- WIP M09 decoding (fuera de KMP)
+- DataProvider / Supabase productivo LF+Adoption
+- M09 decoding / public_code WIP (fuera de KMP)
+- Auth GoTrue / FCM / DataStore / Room
+- Applications / completion / map alerts
+- UI Compose productiva
 
 ## iOS — funciona hoy
 
-- Home branding + estado sesión (stub) + badge SHARED_FAKE/SESSION_STUB
-- Perfil / lista mascotas / detalle (fake shared)
-- Host SwiftUI → LeoVerShared
-- Preferencias no sensibles (NSUserDefaults)
+- Home + perfil + mascotas (fake/stub)
+- Alertas → perdidos / encontrados → detalle
+- Adopciones → detalle
+- Badge modos SHARED_FAKE / SESSION_STUB
 
 ## iOS pendiente
 
-- Auth productivo Supabase / GoTrue
-- Keychain / secure storage
-- APNs / Photos-cámara productivos / ubicación
-- Deep links / Apple Sign In / background tasks
-- TestFlight / certificados / App Store
+- Auth real / Keychain
+- REAL_REMOTE lists
+- Cámara / GPS / publicación
+- APNs / Sign in with Apple / background
+- Postulación adopción remota
 
-## Siguiente bloque propuesto (no implementar aún)
+## No iniciar aún
 
-**KMP-4:** Perdidos / Encontrados + Adopciones (vertical UI + contratos shared; sin SQL; respetar WIP M09).
+- M24 pagos
+- M28
+- Cambios SQL/schema

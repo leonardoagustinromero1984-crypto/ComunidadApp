@@ -6,15 +6,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
+import com.comunidapp.shared.adoption.FakeAdoptionRepository
+import com.comunidapp.shared.lostfound.FakeLostFoundRepository
 import com.comunidapp.shared.pets.FakeSharedPetsRepository
+import com.comunidapp.shared.poc.m08.platform.IosImagePicker
 import com.comunidapp.shared.profile.FakeUserProfileRepository
 import com.comunidapp.shared.session.FakeSessionRepository
-import com.comunidapp.shared.poc.m08.platform.IosImagePicker
 import com.comunidapp.shared.vertical.LeoVerSharedApp
 import platform.UIKit.UIViewController
 
 /**
- * Host iOS: vertical sesión/perfil/mascotas (SHARED_FAKE + SESSION_STUB).
+ * Host iOS: vertical KMP-3 + KMP-4 (SHARED_FAKE + SESSION_STUB).
  * POCs legacy quedan como herramientas de desarrollo.
  */
 fun PocIosViewController(): UIViewController =
@@ -25,6 +27,8 @@ fun PocIosViewController(): UIViewController =
             val sessionRepository = remember { FakeSessionRepository() }
             val profileRepository = remember { FakeUserProfileRepository() }
             val petsRepository = remember { FakeSharedPetsRepository() }
+            val lostFoundRepository = remember { FakeLostFoundRepository() }
+            val adoptionRepository = remember { FakeAdoptionRepository() }
 
             if (showLegacyPocs) {
                 PocLauncherApp(
@@ -36,6 +40,8 @@ fun PocIosViewController(): UIViewController =
                     sessionRepository = sessionRepository,
                     profileRepository = profileRepository,
                     petsRepository = petsRepository,
+                    lostFoundRepository = lostFoundRepository,
+                    adoptionRepository = adoptionRepository,
                     onOpenLegacyPocs = { showLegacyPocs = true }
                 )
             }

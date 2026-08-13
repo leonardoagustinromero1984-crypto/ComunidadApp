@@ -12,7 +12,11 @@ object ErrorSanitizer {
             raw.contains("NOT_FOUND", ignoreCase = true) -> "No encontramos ese contenido."
             raw.contains("SESSION", ignoreCase = true) ||
                 raw.contains("AUTH", ignoreCase = true) -> "Tu sesión no está disponible."
-            raw.startsWith("M23_") || raw.startsWith("PET_") || raw.startsWith("PROFILE_") ->
+            raw.startsWith("M23_") ||
+                raw.startsWith("PET_") ||
+                raw.startsWith("PROFILE_") ||
+                raw.startsWith("LOST_FOUND_") ||
+                raw.startsWith("ADOPTION_") ->
                 "No pudimos completar la operación. Intentá nuevamente."
             raw.isBlank() -> "Ocurrió un problema temporal. Intentá nuevamente."
             raw.length > 120 -> "Ocurrió un problema temporal. Intentá nuevamente."

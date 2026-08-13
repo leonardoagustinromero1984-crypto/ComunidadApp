@@ -1,6 +1,15 @@
 package com.comunidapp.shared.vertical
 
 import com.comunidapp.app.domain.pets.PetId
+import com.comunidapp.shared.adoption.AdoptionDetail
+import com.comunidapp.shared.adoption.AdoptionId
+import com.comunidapp.shared.adoption.AdoptionRepository
+import com.comunidapp.shared.adoption.AdoptionSummary
+import com.comunidapp.shared.lostfound.LostFoundDetail
+import com.comunidapp.shared.lostfound.LostFoundId
+import com.comunidapp.shared.lostfound.LostFoundListFilter
+import com.comunidapp.shared.lostfound.LostFoundRepository
+import com.comunidapp.shared.lostfound.LostFoundSummary
 import com.comunidapp.shared.pets.PetDetailView
 import com.comunidapp.shared.pets.PetSummary
 import com.comunidapp.shared.pets.SharedPetsRepository
@@ -100,8 +109,73 @@ class PetDetailViewModelShared(
     }
 }
 
+class LostFoundListViewModelShared(
+    private val repository: LostFoundRepository,
+    filter: LostFoundListFilter,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+) {
+    val state: StateFlow<VerticalLoadState<List<LostFoundSummary>>> =
+        repository.observeList(filter)
+            .stateIn(scope, SharingStarted.Eagerly, VerticalLoadState.Loading)
+
+    fun refresh() {
+        scope.launch { repository.refresh() }
+    }
+
+    fun clear() {
+        scope.cancel()
+    }
+}
+
+class LostFoundDetailViewModelShared(
+    id: LostFoundId,
+    repository: LostFoundRepository,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+) {
+    val state: StateFlow<VerticalLoadState<LostFoundDetail>> =
+        repository.observeDetail(id)
+            .stateIn(scope, SharingStarted.Eagerly, VerticalLoadState.Loading)
+
+    fun clear() {
+        scope.cancel()
+    }
+}
+
+class AdoptionListViewModelShared(
+    private val repository: AdoptionRepository,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+) {
+    val state: StateFlow<VerticalLoadState<List<AdoptionSummary>>> =
+        repository.observeList()
+            .stateIn(scope, SharingStarted.Eagerly, VerticalLoadState.Loading)
+
+    fun refresh() {
+        scope.launch { repository.refresh() }
+    }
+
+    fun clear() {
+        scope.cancel()
+    }
+}
+
+class AdoptionDetailViewModelShared(
+    id: AdoptionId,
+    repository: AdoptionRepository,
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+) {
+    val state: StateFlow<VerticalLoadState<AdoptionDetail>> =
+        repository.observeDetail(id)
+            .stateIn(scope, SharingStarted.Eagerly, VerticalLoadState.Loading)
+
+    fun clear() {
+        scope.cancel()
+    }
+}
+
 data class VerticalDataBadge(
     val sessionMode: String,
     val profileMode: String,
-    val petsMode: String
+    val petsMode: String,
+    val lostFoundMode: String = "—",
+    val adoptionMode: String = "—"
 )

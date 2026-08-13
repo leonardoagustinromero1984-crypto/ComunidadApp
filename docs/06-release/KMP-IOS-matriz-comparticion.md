@@ -1,46 +1,37 @@
-# KMP/iOS — Matriz de compartición (actualizada KMP-3)
+# KMP/iOS — Matriz de compartición (post KMP-4)
 
-## A. Shared (listo)
+## A. Shared
 
-| Área | Destino | Estado |
-| ---- | ------- | ------ |
-| Pets domain M08 | `shared/.../domain/pets` | SHARED |
-| OrganizationId / onboarding models / M23 resilience | shared | SHARED |
-| Lost/found + adoption **rules** | shared | SHARED |
-| PlatformClock | shared | SHARED |
-| SessionState / SessionRepository / fakes | `shared/.../session` | SHARED |
-| UserProfileSummary / repo / fake | `shared/.../profile` | SHARED |
-| PetSummary / PetDetailView / SharedPetsRepository | `shared/.../pets` | SHARED |
-| Vertical UI states + ErrorSanitizer | `shared/.../ui` | SHARED |
-| LeoVerSharedApp (CMP) | `shared/.../vertical` | SHARED |
-| OnboardingIntentStore + PlatformPreferences | shared + actuals | SHARED + ADAPTER |
-| POC M08/M22 | shared | SHARED (dev) |
+| Área | Estado |
+| ---- | ------ |
+| Pets domain + presentation KMP-3 | SHARED |
+| Session / profile | SHARED |
+| LF/Adoption **status rules** | SHARED (KMP-1) |
+| LF/Adoption **SAFE presentation** + fakes | SHARED (KMP-4) |
+| ApproximateLocation | SHARED |
+| Draft validators (sin publish remoto) | SHARED |
+| LeoVerSharedApp vertical | SHARED |
+| ErrorSanitizer / VerticalLoadState | SHARED |
 
 ## B. Adapter / parcial
 
 | Área | Estado |
 | ---- | ------ |
-| AndroidSessionMapper | ADAPTER (proyección; Auth real en :app) |
-| ImagePicker / FileRef | PARCIAL (POC) |
-| PlatformPreferences Android/iOS | ADAPTER (no sensibles) |
-| Secure storage / Keychain | AUSENTE — DEFERRED |
-| Supabase pets/profile productivo | ANDROID_ONLY — ADAPTER_REQUIRED futuro |
-| HTTP/Supabase KMP | PARCIAL (solo POC M22) |
+| AndroidSessionMapper | ADAPTER |
+| PlatformPreferences | ADAPTER |
+| Supabase LostFound/Adoption :app | ANDROID_ONLY — ADAPTER_REQUIRED futuro |
+| ImagePicker POC | PARCIAL |
 
-## C. Mantener específico / diferido
+## C. Específico / diferido
 
 | Área | Clasificación |
 | ---- | ------------- |
-| Auth GoTrue / deep links / SessionViewModel :app | ANDROID_ONLY |
-| DataProvider / Room / DataStore productivo | ANDROID_ONLY |
-| `PetAuthorizationBridge` | ANDROID_ONLY |
-| FCM / Manifest / cámara productiva | ANDROID_ONLY |
-| WIP M09 models/decoding / M29 docs | DEFERRED (fuera de KMP) |
-| Apple Sign In / APNs / ubicación / background | DEFERRED |
-| Web | Fuera de scope |
+| `LostFoundPost` / `AdoptionPost` / M09 decoding | ANDROID_ONLY + DEFERRED |
+| Alert map / GPS / APNs | DEFERRED |
+| Adoption applications / completion | ANDROID_ONLY |
+| Auth iOS / Keychain / REAL_REMOTE | DEFERRED |
+| M24 pagos / M28 / web | Fuera de scope |
 
-## D. READY_TO_MOVE (no este bloque)
+## D. Siguiente (no implementar)
 
-- Proyección perfil M02 → shared (parcialmente cubierto con Summary)
-- Cliente Supabase KMP auth limpio cuando riesgo bajo
-- Lost/found + adoption **UI vertical** → KMP-4
+KMP-5 propuesto: capa media/redacción real o auth iOS mínimo — decidir tras gate.

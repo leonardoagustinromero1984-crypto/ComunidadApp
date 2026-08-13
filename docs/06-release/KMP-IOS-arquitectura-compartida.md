@@ -1,38 +1,31 @@
-# KMP-IOS — Arquitectura compartida (post KMP-3)
+# KMP-IOS — Arquitectura compartida (post KMP-4)
 
 ```text
 app (Android)
   └─ implementation(project(":shared"))
        ├─ commonMain
-       │    ├─ dominio pets / onboarding / rules
+       │    ├─ domain pets / onboarding / LF+adoption rules
        │    ├─ session / profile / pets presentation
+       │    ├─ lostfound / adoption presentation (SAFE UI)
        │    ├─ LeoVerSharedApp (CMP vertical)
-       │    └─ POC M08/M22 (dev escape hatch)
+       │    └─ POC M08/M22 (dev)
        ├─ androidMain ← prefs, clock, ImagePicker, AndroidSessionMapper
        └─ iosMain     ← ComposeUIViewController, NSUserDefaults, PHPicker
 
 iosApp (SwiftUI shell)
-  └─ LeoVerShared.framework (static)
-       └─ PocIosViewController() → LeoVerSharedApp (SESSION_STUB + SHARED_FAKE)
+  └─ LeoVerShared.framework
+       └─ PocIosViewController() → LeoVerSharedApp
+            SESSION_STUB + SHARED_FAKE (perfil/pets/LF/adopciones)
 ```
 
 ## Principios
 
-1. Dominio puro en commonMain; no duplicar `PetAggregate`.
-2. Sin Android types en commonMain.
-3. Auth productivo permanece en `:app`; shared solo proyección / stub.
-4. iOS demuestra vertical real de UI→state→domain→repository **con datos fake/stub etiquetados**.
-5. Backend: sin SQL / sin cambios de schema; Supabase productivo Android intacto.
+1. Reglas canónicas KMP-1 reutilizadas; no duplicar.
+2. Modelos públicos SAFE separados de posts Android / M09.
+3. Sin Android/UIKit types en commonMain.
+4. Auth productivo en `:app`; iOS stub/fake etiquetado.
+5. Sin SQL / schema / RPC nuevos en este bloque.
 
-## Modos de datos
+## Navegación compartida
 
-| Modo | Uso |
-| ---- | --- |
-| `REAL_REMOTE` | Reservado / Android productivo |
-| `SESSION_STUB` | Sesión iOS / demos |
-| `SHARED_FAKE` | Perfil y mascotas iOS / tests |
-
-## Estado iOS
-
-Shell + vertical Home/Perfil/Mascotas/Detalle funcional contra shared.
-Gate cloud: ejecutar manualmente tras push KMP-3.
+Home → Perfil | Mascotas | Alertas (Perdidos/Encontrados) | Adopciones → detalles.
