@@ -15,9 +15,9 @@ import kotlinx.coroutines.withTimeout
 
 /**
  * Gateway REAL_REMOTE sobre supabase-kt Auth.
- * No loguea tokens ni headers.
+ * internal: no exportar SupabaseClient al framework ObjC.
  */
-class SupabaseAuthSessionGateway(
+internal class SupabaseAuthSessionGateway(
     private val client: SupabaseClient
 ) : AuthSessionGateway {
 
@@ -48,13 +48,7 @@ class SupabaseAuthSessionGateway(
 
     override suspend fun restoreSession(): SessionState {
         return try {
-            // autoLoadFromStorage + sessionManager ya cargan al iniciar Auth;
-            // forzar lectura del status actual.
-            client.auth.sessionStatus.value.toSessionState().also { state ->
-                if (state is SessionState.Unknown) {
-                    // Initializing should resolve; map Loading→Unknown already handled
-                }
-            }
+            client.auth.sessionStatus.value.toSessionState()
         } catch (t: Throwable) {
             SessionState.Error(ErrorSanitizer.sanitize(t))
         }
@@ -124,7 +118,10 @@ internal fun SessionStatus.toSessionState(): SessionState = when (this) {
     is SessionStatus.RefreshFailure -> SessionState.Expired
 }
 
-fun createAuthRepository(
+/**
+ * Factory usada solo desde Kotlin (PocIosEntry). No exportar a ObjC.
+ */
+internal fun createAuthRepository(
     config: SharedSupabaseConfig?,
     storage: SecureSessionStorage
 ): AuthRepository {

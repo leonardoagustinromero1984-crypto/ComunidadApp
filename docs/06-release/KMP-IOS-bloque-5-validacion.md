@@ -1,18 +1,40 @@
 # KMP-IOS — Bloque 5 validación
 
-**HEAD base:** `0a5108e`
-**Commit KMP-5:** (ver SHA post-push)
+**HEAD base KMP-5:** `b93faa9`
+**Gate #6 (cloud):** FAIL
+- `IOS_SIMULATOR_COMPILE` / `:shared:compileKotlinIosSimulatorArm64` = PASS
+- `IOS_FRAMEWORK_LINK` / `:shared:linkDebugFrameworkIosSimulatorArm64` = FAIL
+- Causa: `ClassCastException: IrExternalPackageFragmentImpl cannot be cast to IrClass` en ObjC export (`IrExportCheckerVisitor` / `createConstructorAdapter`) al exportar tipos que implementan/reciben APIs supabase-kt (`SessionManager`, `SupabaseClient`, `UserSession`) + interop Keychain público.
 
-## Windows
+## Fix KMP-5.1 (local)
 
 | Check | Resultado |
 | ----- | --------- |
 | `:shared:testAndroidHostTest` | PASS — **92** tests |
-| Suite auth nueva | 22 (`AuthSessionVerticalTest`) |
 | `compileLocalDebugKotlin` | BUILD SUCCESSFUL |
 | `compileKotlinIosSimulatorArm64` | BUILD SUCCESSFUL |
-| commonMain isolation | PASS |
-| APK / SQL / schema | NO |
+| Warnings `This cast can never succeed` en Keychain | **0** |
+| SESSION IOS | **REAL_REMOTE** (sin FakeSession en host) |
+| KMP-5 PASS cloud | **NO** hasta re-run gate |
+
+### Superficie ObjC reducida (`internal`)
+
+| Declaración | Motivo |
+| ----------- | ------ |
+| `SecureStorageSessionManager` | implementa `SessionManager` / usa `UserSession` |
+| `SupabaseAuthSessionGateway` | constructor/`createClient` → `SupabaseClient` |
+| `createAuthRepository` | factory Kotlin-only (PocIosEntry) |
+| `createSecureSessionStorage` (expect/actual) | factory plataforma |
+| `IosKeychainSecureSessionStorage` | interop Security/CF |
+| `IosSupabaseConfigReader` | reader Bundle Kotlin-only |
+| `AndroidSecureSessionStorage` | adapter Android shared |
+
+**Sigue exportable / entry Swift:** `PocIosViewController()`
+
+### Keychain
+
+Antes: casts NSString/NSData/NSMutableDictionary→CFDictionary / NSCopyingProtocol (warnings “cast can never succeed”).
+Después: CFString/CFData/CFDictionary nativos (`CFStringCreateWithCString`, `CFDataCreate`, `CFDictionaryCreate`). Sin NSUserDefaults.
 
 ## Modos iOS
 
@@ -21,17 +43,10 @@
 | Sesión / Auth | **REAL_REMOTE** |
 | Perfil / pets / LF / adopciones | SHARED_FAKE |
 
-Sin `SUPABASE_URL`/`SUPABASE_ANON_KEY` en Info.plist: sigue REAL_REMOTE vía `UnconfiguredAuthSessionRepository` (login → Unavailable). No se usa FakeSession en el host iOS.
-
-## Config local
-
-1. Copiar `iosApp/Config/Secrets.xcconfig.example` → `Secrets.xcconfig` (gitignored).
-2. Definir `SUPABASE_URL` / `SUPABASE_ANON_KEY` en build settings Xcode (o incluir xcconfig).
-3. Info.plist ya referencia `$(SUPABASE_URL)` / `$(SUPABASE_ANON_KEY)`.
-
 ## Gate
 
-Manual: GitHub → Actions → KMP iOS Validation → `main`.
+Re-ejecutar manualmente: GitHub → Actions → KMP iOS Validation → `main`.
+No marcar KMP-5 PASS hasta framework link cloud PASS.
 
 ## WIP
 

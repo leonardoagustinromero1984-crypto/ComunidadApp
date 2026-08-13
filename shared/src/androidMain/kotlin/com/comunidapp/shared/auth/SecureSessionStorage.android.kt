@@ -7,7 +7,7 @@ import android.content.SharedPreferences
  * Adapter Android para el módulo shared.
  * El Auth productivo de `:app` no se modifica (sigue en SupabaseAuthRepository).
  */
-actual fun createSecureSessionStorage(): SecureSessionStorage {
+internal actual fun createSecureSessionStorage(): SecureSessionStorage {
     val context = AndroidSecureSessionStorage.appContext
     return if (context != null) {
         AndroidSecureSessionStorage(context)
@@ -16,7 +16,7 @@ actual fun createSecureSessionStorage(): SecureSessionStorage {
     }
 }
 
-class AndroidSecureSessionStorage(
+internal class AndroidSecureSessionStorage(
     private val prefs: SharedPreferences
 ) : SecureSessionStorage {
 

@@ -6,8 +6,9 @@ import kotlinx.serialization.json.Json
 
 /**
  * SessionManager supabase-kt respaldado por [SecureSessionStorage] (Keychain en iOS).
+ * internal: no exportar SessionManager/UserSession al framework ObjC.
  */
-class SecureStorageSessionManager(
+internal class SecureStorageSessionManager(
     private val storage: SecureSessionStorage,
     private val storageKey: String = SESSION_KEY
 ) : SessionManager {

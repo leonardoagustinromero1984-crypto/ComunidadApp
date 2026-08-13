@@ -4,9 +4,9 @@ import platform.Foundation.NSBundle
 
 /**
  * Lee URL/anon desde Info.plist (inyectadas vía xcconfig / build settings).
- * No hardcodea secretos.
+ * internal: no exportar a ObjC/Swift.
  */
-object IosSupabaseConfigReader {
+internal object IosSupabaseConfigReader {
     fun read(): SharedSupabaseConfig? {
         val bundle = NSBundle.mainBundle
         val url = bundle.objectForInfoDictionaryKey("SUPABASE_URL") as? String

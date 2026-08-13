@@ -10,7 +10,10 @@ interface SecureSessionStorage {
     fun remove(key: String)
 }
 
-expect fun createSecureSessionStorage(): SecureSessionStorage
+/**
+ * Factory de plataforma — no exportar a ObjC (Swift no la llama).
+ */
+internal expect fun createSecureSessionStorage(): SecureSessionStorage
 
 /** Solo tests / memoria — no persistente. */
 class InMemorySecureSessionStorage : SecureSessionStorage {
