@@ -204,6 +204,8 @@ jobs:
           echo "IOS_XCODE_PROJECT=iosApp/iosApp.xcodeproj" >> "$GITHUB_ENV"
           echo "IOS_XCODE_SCHEME=${SCHEME}" >> "$GITHUB_ENV"
 
+          # Restrict to arm64: KMP declares iosSimulatorArm64 only (no iosX64).
+          # Avoids syncComposeResourcesForIos failing on "Unknown iOS simulator arch: x86_64".
           xcodebuild \
             -project iosApp/iosApp.xcodeproj \
             -scheme "$SCHEME" \
@@ -211,6 +213,8 @@ jobs:
             -sdk iphonesimulator \
             -destination 'generic/platform=iOS Simulator' \
             -derivedDataPath "$HOME/Library/Developer/Xcode/DerivedData/LeoVerKmpPoc" \
+            ARCHS=arm64 \
+            ONLY_ACTIVE_ARCH=YES \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGN_IDENTITY="" \
             CODE_SIGNING_REQUIRED=NO \
