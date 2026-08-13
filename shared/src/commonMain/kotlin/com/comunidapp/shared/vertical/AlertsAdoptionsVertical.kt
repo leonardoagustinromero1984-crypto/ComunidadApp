@@ -35,6 +35,8 @@ import com.comunidapp.shared.lostfound.LostFoundId
 import com.comunidapp.shared.lostfound.LostFoundListFilter
 import com.comunidapp.shared.lostfound.LostFoundRepository
 import com.comunidapp.shared.lostfound.LostFoundSummary
+import com.comunidapp.shared.media.MediaResolver
+import com.comunidapp.shared.media.SharedRemoteImage
 import com.comunidapp.shared.ui.VerticalLoadState
 
 @Composable
@@ -77,6 +79,7 @@ internal fun SharedLostFoundListScreen(
     title: String,
     filter: LostFoundListFilter,
     lostFoundRepository: LostFoundRepository,
+    mediaResolver: MediaResolver? = null,
     onBack: () -> Unit,
     onOpenDetail: (LostFoundId) -> Unit
 ) {
@@ -107,7 +110,7 @@ internal fun SharedLostFoundListScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(s.data, key = { it.id.value }) { item ->
-                            LostFoundRow(item) { onOpenDetail(item.id) }
+                            LostFoundRow(item, mediaResolver) { onOpenDetail(item.id) }
                         }
                     }
                 }
@@ -117,33 +120,48 @@ internal fun SharedLostFoundListScreen(
 }
 
 @Composable
-private fun LostFoundRow(item: LostFoundSummary, onClick: () -> Unit) {
+private fun LostFoundRow(
+    item: LostFoundSummary,
+    mediaResolver: MediaResolver?,
+    onClick: () -> Unit
+) {
     val typeLabel = when (item.type) {
         LostFoundCaseType.LOST -> "PERDIDO"
         LostFoundCaseType.FOUND -> "ENCONTRADO"
     }
     val title = item.displayName?.takeIf { it.isNotBlank() } ?: item.speciesLabel
-    Column(
+    Row(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text(title, fontWeight = FontWeight.SemiBold)
-            Text(typeLabel, style = MaterialTheme.typography.labelMedium)
+        SharedRemoteImage(
+            mediaRef = item.mediaRef,
+            mediaResolver = mediaResolver,
+            contentDescription = item.displayName?.let { "Foto de $it" },
+            size = 64.dp
+        )
+        Column(
+            Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(title, fontWeight = FontWeight.SemiBold)
+                Text(typeLabel, style = MaterialTheme.typography.labelMedium)
+            }
+            Text("${item.speciesLabel} · ${item.status.name}")
+            Text(
+                "Zona: ${item.approximateLocation.displayLabel()}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                item.reportedAtLabel,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
-        Text("${item.speciesLabel} · ${item.status.name}")
-        Text(
-            "Zona: ${item.approximateLocation.displayLabel()}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            "${item.reportedAtLabel} · ${if (item.hasPhoto) "Foto: sí" else "Foto: placeholder"}",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
@@ -151,6 +169,7 @@ private fun LostFoundRow(item: LostFoundSummary, onClick: () -> Unit) {
 internal fun SharedLostFoundDetailScreen(
     id: LostFoundId,
     lostFoundRepository: LostFoundRepository,
+    mediaResolver: MediaResolver? = null,
     onBack: () -> Unit
 ) {
     val vm = remember(id, lostFoundRepository) {
@@ -173,19 +192,26 @@ internal fun SharedLostFoundDetailScreen(
                 VerticalLoadState.Loading -> VerticalCenterLoading()
                 VerticalLoadState.Empty -> Text("Sin datos")
                 is VerticalLoadState.Error -> Text(s.message, color = MaterialTheme.colorScheme.error)
-                is VerticalLoadState.Content -> LostFoundDetailBody(s.data)
+                is VerticalLoadState.Content -> LostFoundDetailBody(s.data, mediaResolver)
             }
         }
     }
 }
 
 @Composable
-private fun LostFoundDetailBody(detail: LostFoundDetail) {
+private fun LostFoundDetailBody(detail: LostFoundDetail, mediaResolver: MediaResolver?) {
     val typeLabel = when (detail.type) {
         LostFoundCaseType.LOST -> "PERDIDO"
         LostFoundCaseType.FOUND -> "ENCONTRADO"
     }
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SharedRemoteImage(
+            mediaRef = detail.mediaRef,
+            mediaResolver = mediaResolver,
+            contentDescription = detail.displayName?.let { "Foto de $it" }
+                ?: "Foto del aviso",
+            size = 180.dp
+        )
         Text(typeLabel, style = MaterialTheme.typography.labelLarge, fontWeight = FontWeight.Bold)
         Text(
             detail.displayName?.takeIf { it.isNotBlank() } ?: detail.speciesLabel,
@@ -207,16 +233,13 @@ private fun LostFoundDetailBody(detail: LostFoundDetail) {
         detail.publisherDisplayName?.let {
             Text("Publicado por: $it", style = MaterialTheme.typography.bodySmall)
         }
-        Text(
-            if (detail.hasPhoto) "Foto: disponible" else "Foto: placeholder",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
 @Composable
 internal fun SharedAdoptionsListScreen(
     adoptionRepository: AdoptionRepository,
+    mediaResolver: MediaResolver? = null,
     onBack: () -> Unit,
     onOpenDetail: (AdoptionId) -> Unit
 ) {
@@ -245,7 +268,7 @@ internal fun SharedAdoptionsListScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(s.data, key = { it.id.value }) { item ->
-                            AdoptionRow(item) { onOpenDetail(item.id) }
+                            AdoptionRow(item, mediaResolver) { onOpenDetail(item.id) }
                         }
                     }
                 }
@@ -255,27 +278,37 @@ internal fun SharedAdoptionsListScreen(
 }
 
 @Composable
-private fun AdoptionRow(item: AdoptionSummary, onClick: () -> Unit) {
-    Column(
+private fun AdoptionRow(
+    item: AdoptionSummary,
+    mediaResolver: MediaResolver?,
+    onClick: () -> Unit
+) {
+    Row(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(item.displayName, fontWeight = FontWeight.SemiBold)
-        Text("${item.speciesLabel} · ${item.status.name}")
-        item.approximateAgeLabel?.let { Text("Edad: $it") }
-        item.sexLabel?.let { Text("Sexo: $it") }
-        Text(
-            "Zona: ${item.approximateLocation.displayLabel()}",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        SharedRemoteImage(
+            mediaRef = item.mediaRef,
+            mediaResolver = mediaResolver,
+            contentDescription = "Foto de ${item.displayName}",
+            size = 64.dp
         )
-        Text(
-            if (item.hasPhoto) "Foto: sí" else "Foto: placeholder",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
+        Column(
+            Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Text(item.displayName, fontWeight = FontWeight.SemiBold)
+            Text("${item.speciesLabel} · ${item.status.name}")
+            item.approximateAgeLabel?.let { Text("Edad: $it") }
+            item.sexLabel?.let { Text("Sexo: $it") }
+            Text(
+                "Zona: ${item.approximateLocation.displayLabel()}",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -283,6 +316,7 @@ private fun AdoptionRow(item: AdoptionSummary, onClick: () -> Unit) {
 internal fun SharedAdoptionDetailScreen(
     id: AdoptionId,
     adoptionRepository: AdoptionRepository,
+    mediaResolver: MediaResolver? = null,
     onBack: () -> Unit
 ) {
     val vm = remember(id, adoptionRepository) {
@@ -305,15 +339,21 @@ internal fun SharedAdoptionDetailScreen(
                 VerticalLoadState.Loading -> VerticalCenterLoading()
                 VerticalLoadState.Empty -> Text("Sin datos")
                 is VerticalLoadState.Error -> Text(s.message, color = MaterialTheme.colorScheme.error)
-                is VerticalLoadState.Content -> AdoptionDetailBody(s.data)
+                is VerticalLoadState.Content -> AdoptionDetailBody(s.data, mediaResolver)
             }
         }
     }
 }
 
 @Composable
-private fun AdoptionDetailBody(detail: AdoptionDetail) {
+private fun AdoptionDetailBody(detail: AdoptionDetail, mediaResolver: MediaResolver?) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SharedRemoteImage(
+            mediaRef = detail.mediaRef,
+            mediaResolver = mediaResolver,
+            contentDescription = "Foto de ${detail.displayName}",
+            size = 180.dp
+        )
         Text(detail.displayName, style = MaterialTheme.typography.headlineSmall)
         Text("Especie: ${detail.speciesLabel}")
         detail.breedText?.let { Text("Raza: $it") }
@@ -331,10 +371,6 @@ private fun AdoptionDetailBody(detail: AdoptionDetail) {
         detail.publicCode?.let {
             Text("Código: $it", style = MaterialTheme.typography.labelMedium)
         }
-        Text(
-            if (detail.hasPhoto) "Foto: disponible" else "Foto: placeholder",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
         OutlinedButton(onClick = { }, enabled = false, modifier = Modifier.fillMaxWidth()) {
             Text("Postularme (próximamente)")
         }

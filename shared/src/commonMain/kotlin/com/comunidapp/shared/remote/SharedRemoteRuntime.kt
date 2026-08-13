@@ -14,14 +14,21 @@ import com.comunidapp.shared.auth.usableOrNull
 import com.comunidapp.shared.lostfound.LostFoundRepository
 import com.comunidapp.shared.lostfound.RemoteLostFoundRepository
 import com.comunidapp.shared.lostfound.UnconfiguredLostFoundRepository
+import com.comunidapp.shared.media.CachingMediaResolver
+import com.comunidapp.shared.media.MediaResolver
+import com.comunidapp.shared.media.SupabaseM05MediaReadGateway
 import com.comunidapp.shared.media.SupabaseM05MediaUploadGateway
+import com.comunidapp.shared.media.UnavailableMediaResolver
 import com.comunidapp.shared.media.createFileContentReader
+import com.comunidapp.shared.media.createMediaHttpClient
 import com.comunidapp.shared.pets.RemoteSharedPetsRepository
 import com.comunidapp.shared.pets.SharedPetsRepository
 import com.comunidapp.shared.pets.UnconfiguredSharedPetsRepository
 import com.comunidapp.shared.profile.RemoteUserProfileRepository
 import com.comunidapp.shared.profile.UnconfiguredUserProfileRepository
 import com.comunidapp.shared.profile.UserProfileRepository
+import com.comunidapp.shared.platform.PlatformClock
+import com.comunidapp.shared.session.SessionState
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
@@ -31,7 +38,7 @@ import io.github.jan.supabase.storage.Storage
 
 /**
  * Único runtime Kotlin-only: Auth + Postgrest + Storage + Keychain SessionManager.
- * Produce Auth / Profile / Pets / LostFound / Adoption — un solo SupabaseClient.
+ * Produce Auth / Profile / Pets / LostFound / Adoption / MediaRead — un solo SupabaseClient.
  * internal — no exportar SupabaseClient a ObjC/Swift.
  */
 internal class SharedRemoteRuntime private constructor(
@@ -40,7 +47,8 @@ internal class SharedRemoteRuntime private constructor(
     val profileRepository: UserProfileRepository,
     val petsRepository: SharedPetsRepository,
     val lostFoundRepository: LostFoundRepository,
-    val adoptionRepository: AdoptionRepository
+    val adoptionRepository: AdoptionRepository,
+    val mediaResolver: MediaResolver
 ) {
     companion object {
         fun create(
@@ -55,7 +63,8 @@ internal class SharedRemoteRuntime private constructor(
                     profileRepository = UnconfiguredUserProfileRepository(),
                     petsRepository = UnconfiguredSharedPetsRepository(),
                     lostFoundRepository = UnconfiguredLostFoundRepository(),
-                    adoptionRepository = UnconfiguredAdoptionRepository()
+                    adoptionRepository = UnconfiguredAdoptionRepository(),
+                    mediaResolver = UnavailableMediaResolver()
                 )
             }
             val client = createClient(usable, storage)
@@ -85,13 +94,24 @@ internal class SharedRemoteRuntime private constructor(
                 gateway = SupabaseAdoptionRemoteGateway(client),
                 sessionRepository = authRepository
             )
+            val mediaResolver: MediaResolver = CachingMediaResolver(
+                gateway = SupabaseM05MediaReadGateway(
+                    client = client,
+                    httpClient = createMediaHttpClient()
+                ),
+                clock = { PlatformClock.SYSTEM.nowEpochMs() },
+                checkAuthenticated = {
+                    authRepository.currentSession() is SessionState.Authenticated
+                }
+            )
             return SharedRemoteRuntime(
                 client = client,
                 authRepository = authRepository,
                 profileRepository = profileRepository,
                 petsRepository = petsRepository,
                 lostFoundRepository = lostFoundRepository,
-                adoptionRepository = adoptionRepository
+                adoptionRepository = adoptionRepository,
+                mediaResolver = mediaResolver
             )
         }
 

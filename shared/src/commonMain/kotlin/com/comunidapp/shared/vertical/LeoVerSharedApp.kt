@@ -3,6 +3,7 @@ package com.comunidapp.shared.vertical
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -36,6 +37,8 @@ import com.comunidapp.shared.auth.AuthRepository
 import com.comunidapp.shared.lostfound.LostFoundId
 import com.comunidapp.shared.lostfound.LostFoundListFilter
 import com.comunidapp.shared.lostfound.LostFoundRepository
+import com.comunidapp.shared.media.MediaResolver
+import com.comunidapp.shared.media.SharedRemoteImage
 import com.comunidapp.shared.pets.PetDetailView
 import com.comunidapp.shared.pets.PetSummary
 import com.comunidapp.shared.pets.SharedPetsRepository
@@ -74,6 +77,7 @@ fun LeoVerSharedApp(
     lostFoundRepository: LostFoundRepository,
     adoptionRepository: AdoptionRepository,
     authRepository: AuthRepository? = sessionRepository as? AuthRepository,
+    mediaResolver: MediaResolver? = null,
     imagePicker: ImagePicker? = null,
     onOpenLegacyPocs: (() -> Unit)? = null
 ) {
@@ -92,6 +96,11 @@ fun LeoVerSharedApp(
 
     LaunchedEffect(authRepository) {
         authRepository?.restoreSession()
+    }
+    LaunchedEffect(session, mediaResolver) {
+        if (session !is SessionState.Authenticated) {
+            mediaResolver?.clearCache()
+        }
     }
 
     if (authRepository != null) {
@@ -141,17 +150,20 @@ fun LeoVerSharedApp(
         SharedRoute.Profile -> SharedProfileScreen(
             sessionRepository = sessionRepository,
             profileRepository = profileRepository,
+            mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Home }
         )
         SharedRoute.Pets -> SharedPetsListScreen(
             sessionRepository = sessionRepository,
             petsRepository = petsRepository,
+            mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Home },
             onOpenDetail = { route = SharedRoute.PetDetail(it) }
         )
         is SharedRoute.PetDetail -> SharedPetDetailScreen(
             petId = r.petId,
             petsRepository = petsRepository,
+            mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Pets }
         )
         SharedRoute.Alerts -> SharedAlertsHubScreen(
@@ -164,6 +176,7 @@ fun LeoVerSharedApp(
             title = "Mascotas perdidas",
             filter = LostFoundListFilter.LOST,
             lostFoundRepository = lostFoundRepository,
+            mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Alerts },
             onOpenDetail = { route = SharedRoute.LostFoundDetail(it, SharedRoute.LostList) }
         )
@@ -171,6 +184,7 @@ fun LeoVerSharedApp(
             title = "Animales encontrados",
             filter = LostFoundListFilter.FOUND,
             lostFoundRepository = lostFoundRepository,
+            mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Alerts },
             onOpenDetail = { route = SharedRoute.LostFoundDetail(it, SharedRoute.FoundList) }
         )
@@ -185,16 +199,19 @@ fun LeoVerSharedApp(
         is SharedRoute.LostFoundDetail -> SharedLostFoundDetailScreen(
             id = r.id,
             lostFoundRepository = lostFoundRepository,
+            mediaResolver = mediaResolver,
             onBack = { route = r.backTo }
         )
         SharedRoute.Adoptions -> SharedAdoptionsListScreen(
             adoptionRepository = adoptionRepository,
+            mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Home },
             onOpenDetail = { route = SharedRoute.AdoptionDetail(it) }
         )
         is SharedRoute.AdoptionDetail -> SharedAdoptionDetailScreen(
             id = r.id,
             adoptionRepository = adoptionRepository,
+            mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Adoptions }
         )
     }
@@ -285,6 +302,7 @@ private fun sessionLabel(state: SessionState): String = when (state) {
 private fun SharedProfileScreen(
     sessionRepository: SessionRepository,
     profileRepository: UserProfileRepository,
+    mediaResolver: MediaResolver?,
     onBack: () -> Unit
 ) {
     val vm = remember(sessionRepository, profileRepository) {
@@ -306,24 +324,33 @@ private fun SharedProfileScreen(
             when (val s = state) {
                 ProfileLoadState.Loading -> CenterLoading()
                 is ProfileLoadState.Error -> Text(s.message, color = MaterialTheme.colorScheme.error)
-                is ProfileLoadState.Content -> ProfileContent(s.profile)
+                is ProfileLoadState.Content -> ProfileContent(s.profile, mediaResolver)
             }
         }
     }
 }
 
 @Composable
-private fun ProfileContent(profile: UserProfileSummary) {
+private fun ProfileContent(profile: UserProfileSummary, mediaResolver: MediaResolver?) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SharedRemoteImage(
+            mediaRef = profile.mediaRef,
+            mediaResolver = mediaResolver,
+            contentDescription = "Avatar de ${profile.displayName}",
+            size = 96.dp
+        )
         Text(profile.displayName, style = MaterialTheme.typography.headlineSmall)
         profile.email?.let { Text(it) }
         profile.approximateLocation?.let {
             Text("Zona: $it", color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
-        Text(
-            if (profile.avatarRef != null) "Avatar: disponible" else "Avatar: placeholder",
-            style = MaterialTheme.typography.labelMedium
-        )
+        if (profile.mediaRef == null && profile.avatarRef != null) {
+            Text(
+                "Avatar: referencia no resoluble en shared",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }
 
@@ -331,6 +358,7 @@ private fun ProfileContent(profile: UserProfileSummary) {
 private fun SharedPetsListScreen(
     sessionRepository: SessionRepository,
     petsRepository: SharedPetsRepository,
+    mediaResolver: MediaResolver?,
     onBack: () -> Unit,
     onOpenDetail: (PetId) -> Unit
 ) {
@@ -361,7 +389,7 @@ private fun SharedPetsListScreen(
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         items(s.data, key = { it.id.value }) { pet ->
-                            PetRow(pet) { onOpenDetail(pet.id) }
+                            PetRow(pet, mediaResolver) { onOpenDetail(pet.id) }
                         }
                     }
                 }
@@ -371,21 +399,24 @@ private fun SharedPetsListScreen(
 }
 
 @Composable
-private fun PetRow(pet: PetSummary, onClick: () -> Unit) {
-    Column(
+private fun PetRow(pet: PetSummary, mediaResolver: MediaResolver?, onClick: () -> Unit) {
+    Row(
         Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        Text(pet.displayName, fontWeight = FontWeight.SemiBold)
-        Text("${pet.speciesLabel} · ${pet.status.name}")
-        Text(
-            if (pet.hasAvatar) "Foto: sí" else "Foto: placeholder",
-            style = MaterialTheme.typography.labelSmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+        SharedRemoteImage(
+            mediaRef = pet.mediaRef,
+            mediaResolver = mediaResolver,
+            contentDescription = "Foto de ${pet.displayName}",
+            size = 56.dp
         )
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(pet.displayName, fontWeight = FontWeight.SemiBold)
+            Text("${pet.speciesLabel} · ${pet.status.name}")
+        }
     }
 }
 
@@ -393,6 +424,7 @@ private fun PetRow(pet: PetSummary, onClick: () -> Unit) {
 private fun SharedPetDetailScreen(
     petId: PetId,
     petsRepository: SharedPetsRepository,
+    mediaResolver: MediaResolver?,
     onBack: () -> Unit
 ) {
     val vm = remember(petId, petsRepository) { PetDetailViewModelShared(petId, petsRepository) }
@@ -413,24 +445,26 @@ private fun SharedPetDetailScreen(
                 VerticalLoadState.Loading -> CenterLoading()
                 VerticalLoadState.Empty -> Text("Sin datos")
                 is VerticalLoadState.Error -> Text(s.message, color = MaterialTheme.colorScheme.error)
-                is VerticalLoadState.Content -> PetDetailBody(s.data)
+                is VerticalLoadState.Content -> PetDetailBody(s.data, mediaResolver)
             }
         }
     }
 }
 
 @Composable
-private fun PetDetailBody(detail: PetDetailView) {
+private fun PetDetailBody(detail: PetDetailView, mediaResolver: MediaResolver?) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        SharedRemoteImage(
+            mediaRef = detail.mediaRef,
+            mediaResolver = mediaResolver,
+            contentDescription = "Foto de ${detail.displayName}",
+            size = 160.dp
+        )
         Text(detail.displayName, style = MaterialTheme.typography.headlineSmall)
         Text("Especie: ${detail.speciesLabel}")
         detail.breedText?.let { Text("Raza: $it") }
         detail.sexLabel?.let { Text("Sexo: $it") }
         Text("Estado: ${detail.status.name}")
-        Text(
-            if (detail.hasAvatar) "Foto: disponible" else "Foto: placeholder",
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
         detail.passportHint?.let {
             Text(it, style = MaterialTheme.typography.bodySmall)
         }

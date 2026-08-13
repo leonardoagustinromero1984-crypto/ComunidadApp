@@ -12,6 +12,7 @@ import com.comunidapp.shared.location.ApproximateLocation
 import com.comunidapp.shared.lostfound.LostFoundDetail
 import com.comunidapp.shared.lostfound.LostFoundId
 import com.comunidapp.shared.lostfound.LostFoundSummary
+import com.comunidapp.shared.media.MediaRefParser
 import com.comunidapp.shared.pets.PetDetailView
 import com.comunidapp.shared.pets.PetSummary
 import com.comunidapp.shared.profile.UserProfileSummary
@@ -30,13 +31,15 @@ internal object RemoteProfileMapper {
             row.locationText?.trim().orEmpty()
         }.ifBlank { null }
 
+        val avatarRef = row.avatarPath?.takeIf { it.isNotBlank() }
+            ?: row.profileImageUrl?.takeIf { it.isNotBlank() }
         return UserProfileSummary(
             userId = row.id,
             displayName = display,
             email = email,
             approximateLocation = location,
-            avatarRef = row.avatarPath?.takeIf { it.isNotBlank() }
-                ?: row.profileImageUrl?.takeIf { it.isNotBlank() },
+            avatarRef = avatarRef,
+            mediaRef = MediaRefParser.fromProfileFields(row.avatarPath, row.profileImageUrl),
             createdAtEpochMs = parseIso8601ToEpochMs(row.createdAt),
             updatedAtEpochMs = parseIso8601ToEpochMs(row.updatedAt)
         )
@@ -44,17 +47,21 @@ internal object RemoteProfileMapper {
 }
 
 internal object RemotePetsMapper {
-    fun toSummary(row: RemoteAccessiblePetRow): PetSummary =
-        PetSummary(
+    fun toSummary(row: RemoteAccessiblePetRow): PetSummary {
+        val mediaRef = MediaRefParser.fromPetFields(row.avatarFileAssetId, row.photoUrl)
+        return PetSummary(
             id = PetId(row.id),
             displayName = row.name.ifBlank { "Mascota" },
             speciesLabel = row.species.ifBlank { "—" },
             status = mapStatus(row.status),
-            hasAvatar = hasAvatar(row.photoUrl, row.avatarFileAssetId)
+            hasAvatar = hasAvatar(row.photoUrl, row.avatarFileAssetId),
+            mediaRef = mediaRef
         )
+    }
 
-    fun toDetail(row: RemotePetRow): PetDetailView =
-        PetDetailView(
+    fun toDetail(row: RemotePetRow): PetDetailView {
+        val mediaRef = MediaRefParser.fromPetFields(row.avatarFileAssetId, row.photoUrl)
+        return PetDetailView(
             id = PetId(row.id),
             displayName = row.name.ifBlank { "Mascota" },
             speciesLabel = row.species.ifBlank { "—" },
@@ -63,8 +70,10 @@ internal object RemotePetsMapper {
             status = mapStatus(row.status),
             hasAvatar = hasAvatar(row.photoUrl, row.avatarFileAssetId),
             // Android PetDetail no carga M14 en el path productivo actual.
-            passportHint = null
+            passportHint = null,
+            mediaRef = mediaRef
         )
+    }
 
     fun accessibleToDetail(row: RemoteAccessiblePetRow): PetDetailView =
         toDetail(
@@ -102,6 +111,7 @@ internal object RemoteLostFoundMapper {
         val type = mapType(row.type) ?: return null
         val status = mapStatus(row.status) ?: return null
         if (row.id.isBlank()) return null
+        val mediaRef = MediaRefParser.fromPhotoField(row.photoUrl)
         return LostFoundSummary(
             id = LostFoundId(row.id),
             type = type,
@@ -111,7 +121,8 @@ internal object RemoteLostFoundMapper {
             approximateLocation = approximateFromLocationText(row.location),
             reportedAtLabel = formatReportedAtLabel(row.createdAt),
             publicCode = row.publicCode?.takeIf { it.isNotBlank() },
-            hasPhoto = !row.photoUrl.isNullOrBlank()
+            hasPhoto = !row.photoUrl.isNullOrBlank(),
+            mediaRef = mediaRef
         )
     }
 
@@ -119,6 +130,7 @@ internal object RemoteLostFoundMapper {
         val type = mapType(row.type) ?: return null
         val status = mapStatus(row.status) ?: return null
         if (row.id.isBlank()) return null
+        val mediaRef = MediaRefParser.fromPhotoField(row.photoUrl)
         return LostFoundDetail(
             id = LostFoundId(row.id),
             type = type,
@@ -132,7 +144,8 @@ internal object RemoteLostFoundMapper {
             reportedAtLabel = formatReportedAtLabel(row.createdAt),
             publicCode = row.publicCode?.takeIf { it.isNotBlank() },
             publisherDisplayName = row.authorName?.takeIf { it.isNotBlank() },
-            hasPhoto = !row.photoUrl.isNullOrBlank()
+            hasPhoto = !row.photoUrl.isNullOrBlank(),
+            mediaRef = mediaRef
         )
     }
 
@@ -163,6 +176,7 @@ internal object RemoteAdoptionMapper {
         val display = row.name.takeIf { it.isNotBlank() }
             ?: row.title?.takeIf { it.isNotBlank() }
             ?: return null
+        val mediaRef = MediaRefParser.fromPhotoField(row.photoUrl)
         return AdoptionSummary(
             id = AdoptionId(row.id),
             status = status,
@@ -174,7 +188,8 @@ internal object RemoteAdoptionMapper {
                 row.locationText?.takeIf { it.isNotBlank() } ?: row.location
             ),
             publicCode = row.publicCode?.takeIf { it.isNotBlank() },
-            hasPhoto = !row.photoUrl.isNullOrBlank()
+            hasPhoto = !row.photoUrl.isNullOrBlank(),
+            mediaRef = mediaRef
         )
     }
 
@@ -184,6 +199,7 @@ internal object RemoteAdoptionMapper {
         val display = row.name.takeIf { it.isNotBlank() }
             ?: row.title?.takeIf { it.isNotBlank() }
             ?: return null
+        val mediaRef = MediaRefParser.fromPhotoField(row.photoUrl)
         return AdoptionDetail(
             id = AdoptionId(row.id),
             status = status,
@@ -198,7 +214,8 @@ internal object RemoteAdoptionMapper {
             ),
             publisherDisplayName = row.publisherName?.takeIf { it.isNotBlank() },
             publicCode = row.publicCode?.takeIf { it.isNotBlank() },
-            hasPhoto = !row.photoUrl.isNullOrBlank()
+            hasPhoto = !row.photoUrl.isNullOrBlank(),
+            mediaRef = mediaRef
         )
     }
 

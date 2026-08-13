@@ -2,6 +2,7 @@ package com.comunidapp.shared.adoption
 
 import com.comunidapp.shared.domain.adoption.AdoptionListingStatus
 import com.comunidapp.shared.location.ApproximateLocation
+import com.comunidapp.shared.media.MediaRef
 import com.comunidapp.shared.ui.ErrorSanitizer
 import com.comunidapp.shared.ui.VerticalLoadState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -39,7 +40,8 @@ data class AdoptionSummary(
     val sexLabel: String?,
     val approximateLocation: ApproximateLocation,
     val publicCode: String?,
-    val hasPhoto: Boolean
+    val hasPhoto: Boolean,
+    val mediaRef: MediaRef? = null
 )
 
 data class AdoptionDetail(
@@ -54,7 +56,8 @@ data class AdoptionDetail(
     val approximateLocation: ApproximateLocation,
     val publisherDisplayName: String?,
     val publicCode: String?,
-    val hasPhoto: Boolean
+    val hasPhoto: Boolean,
+    val mediaRef: MediaRef? = null
 )
 
 data class AdoptionDraft(

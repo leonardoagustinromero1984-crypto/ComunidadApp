@@ -25,4 +25,8 @@ Un solo `SupabaseClient` con Auth + Postgrest + Storage.
 
 ## MEDIA READ
 
-`hasPhoto` desde `photo_url` no vacío. Resolución signed/public URL para Coil/Compose: **PARTIAL** (deferred).
+Ver `KMP-IOS-m05-media-read-shared.md` (KMP-10):
+
+`photo_url` → `MediaRef` → signed URL temporal → bytes → `SharedRemoteImage`.
+
+WRITE de este doc permanece la fuente de verdad del upload.

@@ -4,6 +4,7 @@ import com.comunidapp.app.domain.pets.PetAggregate
 import com.comunidapp.app.domain.pets.PetId
 import com.comunidapp.app.domain.pets.PetLifecycleStatus
 import com.comunidapp.app.domain.pets.PetPrincipalHolder
+import com.comunidapp.shared.media.MediaRef
 import com.comunidapp.shared.platform.PlatformClock
 import com.comunidapp.shared.ui.ErrorSanitizer
 import com.comunidapp.shared.ui.VerticalLoadState
@@ -24,7 +25,8 @@ data class PetSummary(
     val displayName: String,
     val speciesLabel: String,
     val status: PetLifecycleStatus,
-    val hasAvatar: Boolean
+    val hasAvatar: Boolean,
+    val mediaRef: MediaRef? = null
 )
 
 data class PetDetailView(
@@ -35,7 +37,8 @@ data class PetDetailView(
     val sexLabel: String?,
     val status: PetLifecycleStatus,
     val hasAvatar: Boolean,
-    val passportHint: String?
+    val passportHint: String?,
+    val mediaRef: MediaRef? = null
 )
 
 enum class PetsDataMode {
@@ -56,7 +59,8 @@ fun PetAggregate.toSummary(speciesLabel: String, hasAvatar: Boolean = media.avat
         displayName = displayName,
         speciesLabel = speciesLabel,
         status = status,
-        hasAvatar = hasAvatar
+        hasAvatar = hasAvatar,
+        mediaRef = media.avatar?.fileAssetId?.let { MediaRef.Asset(it) }
     )
 
 data class FakePetSeed(

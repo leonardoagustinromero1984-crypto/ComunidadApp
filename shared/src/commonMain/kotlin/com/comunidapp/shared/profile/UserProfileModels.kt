@@ -1,5 +1,7 @@
 package com.comunidapp.shared.profile
 
+import com.comunidapp.shared.media.MediaRef
+
 /**
  * Proyección pública/propia mínima — sin PII sensible.
  */
@@ -9,6 +11,7 @@ data class UserProfileSummary(
     val email: String? = null,
     val approximateLocation: String? = null,
     val avatarRef: String? = null,
+    val mediaRef: MediaRef? = null,
     val createdAtEpochMs: Long,
     val updatedAtEpochMs: Long
 ) {

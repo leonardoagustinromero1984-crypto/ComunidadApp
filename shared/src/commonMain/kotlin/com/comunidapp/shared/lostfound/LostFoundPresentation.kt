@@ -3,6 +3,7 @@ package com.comunidapp.shared.lostfound
 import com.comunidapp.shared.domain.lostfound.LostFoundCaseStatus
 import com.comunidapp.shared.domain.lostfound.LostFoundCaseType
 import com.comunidapp.shared.location.ApproximateLocation
+import com.comunidapp.shared.media.MediaRef
 import com.comunidapp.shared.ui.ErrorSanitizer
 import com.comunidapp.shared.ui.VerticalLoadState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -48,7 +49,8 @@ data class LostFoundSummary(
     val approximateLocation: ApproximateLocation,
     val reportedAtLabel: String,
     val publicCode: String?,
-    val hasPhoto: Boolean
+    val hasPhoto: Boolean,
+    val mediaRef: MediaRef? = null
 )
 
 data class LostFoundDetail(
@@ -64,7 +66,8 @@ data class LostFoundDetail(
     val reportedAtLabel: String,
     val publicCode: String?,
     val publisherDisplayName: String?,
-    val hasPhoto: Boolean
+    val hasPhoto: Boolean,
+    val mediaRef: MediaRef? = null
 )
 
 data class LostFoundDraft(
