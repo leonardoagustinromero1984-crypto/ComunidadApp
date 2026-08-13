@@ -7,6 +7,8 @@
 .externalNativeBuild/
 .cxx/
 local.properties
+iosApp/Config/Secrets.xcconfig
+iosApp/Config/Secrets.local.xcconfig
 
 # Entornos y secretos
 .env

@@ -19,6 +19,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +32,7 @@ import androidx.compose.ui.unit.dp
 import com.comunidapp.app.domain.pets.PetId
 import com.comunidapp.shared.adoption.AdoptionId
 import com.comunidapp.shared.adoption.AdoptionRepository
+import com.comunidapp.shared.auth.AuthRepository
 import com.comunidapp.shared.lostfound.LostFoundId
 import com.comunidapp.shared.lostfound.LostFoundListFilter
 import com.comunidapp.shared.lostfound.LostFoundRepository
@@ -40,6 +42,7 @@ import com.comunidapp.shared.pets.SharedPetsRepository
 import com.comunidapp.shared.profile.ProfileLoadState
 import com.comunidapp.shared.profile.UserProfileRepository
 import com.comunidapp.shared.profile.UserProfileSummary
+import com.comunidapp.shared.session.SessionDataMode
 import com.comunidapp.shared.session.SessionRepository
 import com.comunidapp.shared.session.SessionState
 import com.comunidapp.shared.ui.VerticalLoadState
@@ -59,8 +62,8 @@ private sealed class SharedRoute {
 
 /**
  * Shell vertical KMP:
- * Home → Perfil / Mascotas / Alertas / Adopciones → detalles.
- * Datos tipicamente SHARED_FAKE + SESSION_STUB en iOS.
+ * Login (REAL_REMOTE) → Home → Perfil / Mascotas / Alertas / Adopciones.
+ * Perfil/pets/LF/adopción pueden seguir SHARED_FAKE (KMP-5).
  */
 @Composable
 fun LeoVerSharedApp(
@@ -69,6 +72,7 @@ fun LeoVerSharedApp(
     petsRepository: SharedPetsRepository,
     lostFoundRepository: LostFoundRepository,
     adoptionRepository: AdoptionRepository,
+    authRepository: AuthRepository? = sessionRepository as? AuthRepository,
     onOpenLegacyPocs: (() -> Unit)? = null
 ) {
     var route by remember { mutableStateOf<SharedRoute>(SharedRoute.Home) }
@@ -79,6 +83,48 @@ fun LeoVerSharedApp(
         lostFoundMode = lostFoundRepository.dataMode.name,
         adoptionMode = adoptionRepository.dataMode.name
     )
+
+    val sessionVm = remember(sessionRepository) { SessionViewModelShared(sessionRepository) }
+    DisposableEffect(sessionVm) { onDispose { sessionVm.clear() } }
+    val session by sessionVm.state.collectAsState()
+
+    LaunchedEffect(authRepository) {
+        authRepository?.restoreSession()
+    }
+
+    if (authRepository != null) {
+        when (session) {
+            SessionState.Unknown -> {
+                Scaffold { padding ->
+                    Column(
+                        Modifier.padding(padding).fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        CircularProgressIndicator()
+                        Text("Restaurando sesión…", Modifier.padding(top = 12.dp))
+                    }
+                }
+                return
+            }
+            SessionState.Unauthenticated,
+            SessionState.Expired,
+            is SessionState.Error -> {
+                route = SharedRoute.Home
+                val hint = when (val s = session) {
+                    SessionState.Expired -> "Tu sesión expiró."
+                    is SessionState.Error -> s.message
+                    else -> null
+                }
+                SharedLoginScreen(
+                    authRepository = authRepository,
+                    sessionHint = hint
+                )
+                return
+            }
+            is SessionState.Authenticated -> Unit
+        }
+    }
 
     when (val r = route) {
         SharedRoute.Home -> SharedHomeVerticalScreen(
@@ -156,6 +202,11 @@ private fun SharedHomeVerticalScreen(
     val vm = remember(sessionRepository) { SessionViewModelShared(sessionRepository) }
     DisposableEffect(vm) { onDispose { vm.clear() } }
     val session by vm.state.collectAsState()
+    val authLabel = if (sessionRepository.dataMode == SessionDataMode.REAL_REMOTE) {
+        "Cerrar sesión"
+    } else {
+        "Cerrar sesión (local)"
+    }
 
     Scaffold { padding ->
         Column(
@@ -196,7 +247,7 @@ private fun SharedHomeVerticalScreen(
             }
             if (session is SessionState.Authenticated) {
                 OutlinedButton(onClick = { vm.signOut() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Cerrar sesión (local)")
+                    Text(authLabel)
                 }
             }
             if (onOpenLegacyPocs != null) {

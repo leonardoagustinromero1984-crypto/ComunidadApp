@@ -1,37 +1,31 @@
-# KMP/iOS — Matriz de compartición (post KMP-4)
+# KMP/iOS — Matriz de compartición (post KMP-5)
 
-## A. Shared
-
-| Área | Estado |
-| ---- | ------ |
-| Pets domain + presentation KMP-3 | SHARED |
-| Session / profile | SHARED |
-| LF/Adoption **status rules** | SHARED (KMP-1) |
-| LF/Adoption **SAFE presentation** + fakes | SHARED (KMP-4) |
-| ApproximateLocation | SHARED |
-| Draft validators (sin publish remoto) | SHARED |
-| LeoVerSharedApp vertical | SHARED |
-| ErrorSanitizer / VerticalLoadState | SHARED |
-
-## B. Adapter / parcial
+## Shared
 
 | Área | Estado |
 | ---- | ------ |
-| AndroidSessionMapper | ADAPTER |
-| PlatformPreferences | ADAPTER |
-| Supabase LostFound/Adoption :app | ANDROID_ONLY — ADAPTER_REQUIRED futuro |
-| ImagePicker POC | PARCIAL |
+| Session models / FakeSession (tests) | SHARED |
+| AuthRepository + gateway + login UI | SHARED |
+| Supabase Auth client factory (mínimo) | SHARED |
+| SecureSessionStorage contract | SHARED |
+| LF/Adoption/Pets presentation | SHARED |
+| Status rules KMP-1 | SHARED |
 
-## C. Específico / diferido
+## Adapter
+
+| Área | Estado |
+| ---- | ------ |
+| Keychain iOS | ADAPTER (iosMain) |
+| Secure prefs Android shared | ADAPTER |
+| IosSupabaseConfigReader | ADAPTER |
+| AndroidSessionMapper | ADAPTER (proyección) |
+
+## Android-only / diferido
 
 | Área | Clasificación |
 | ---- | ------------- |
-| `LostFoundPost` / `AdoptionPost` / M09 decoding | ANDROID_ONLY + DEFERRED |
-| Alert map / GPS / APNs | DEFERRED |
-| Adoption applications / completion | ANDROID_ONLY |
-| Auth iOS / Keychain / REAL_REMOTE | DEFERRED |
-| M24 pagos / M28 / web | Fuera de scope |
-
-## D. Siguiente (no implementar)
-
-KMP-5 propuesto: capa media/redacción real o auth iOS mínimo — decidir tras gate.
+| Auth fat :app (consent/OTP/FCM/delete) | ANDROID_ONLY |
+| Deep links iOS / Apple Sign In | DEFERRED |
+| Profile/pets/LF REAL_REMOTE data | DEFERRED |
+| M09 WIP | DEFERRED (no tocar) |
+| M24 / M28 | Fuera de scope |

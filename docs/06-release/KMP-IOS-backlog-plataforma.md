@@ -1,39 +1,26 @@
-# KMP-IOS — Backlog de plataforma (post KMP-4)
+# KMP-IOS — Backlog de plataforma (post KMP-5)
 
-## Compartido terminado
+## Terminado
 
-- KMP-1 domain foundation + rules
-- KMP-2 iOS shell + CI
-- KMP-3 session / profile / pets vertical
-- **KMP-4:** lost/found + adoptions SAFE UI + fakes + drafts/validators
-- ApproximateLocation
-- Alertas hub CMP
+- KMP-1…4 verticales + rules
+- **KMP-5:** Auth REAL_REMOTE iOS + Keychain + Login CMP + restore/refresh/signOut
+- FakeSession conservado para tests
 
-## Android específico (sigue)
+## iOS ahora
 
-- DataProvider / Supabase productivo LF+Adoption
-- M09 decoding / public_code WIP (fuera de KMP)
-- Auth GoTrue / FCM / DataStore / Room
-- Applications / completion / map alerts
-- UI Compose productiva
+- Login real (si hay URL/anon en Info.plist)
+- Sesión persistida en Keychain
+- Home gated por auth
+- Contenido perfil/pets/LF/adopciones aún SHARED_FAKE
 
-## iOS — funciona hoy
+## Pendiente
 
-- Home + perfil + mascotas (fake/stub)
-- Alertas → perdidos / encontrados → detalle
-- Adopciones → detalle
-- Badge modos SHARED_FAKE / SESSION_STUB
+- Inyectar secrets CI / xcconfig en máquina local
+- Deep links / email verify iOS
+- Apple Sign In / APNs / cámara / GPS
+- REAL_REMOTE perfil / mascotas / LF / adopciones
+- Auth fat parity (consent gates)
 
-## iOS pendiente
+## No iniciar
 
-- Auth real / Keychain
-- REAL_REMOTE lists
-- Cámara / GPS / publicación
-- APNs / Sign in with Apple / background
-- Postulación adopción remota
-
-## No iniciar aún
-
-- M24 pagos
-- M28
-- Cambios SQL/schema
+- M24 pagos, M28, SQL/schema, web

@@ -1,7 +1,7 @@
 # KMP-IOS — Bloque 4 validación
 
 **HEAD base:** `b84a8db`
-**Commit KMP-4:** (ver SHA post-push)
+**Commit KMP-4:** `0a5108eb07bff18c8060014f024e3301d21c8bf8`
 
 ## Windows
 
