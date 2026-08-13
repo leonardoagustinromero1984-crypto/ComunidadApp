@@ -1,31 +1,12 @@
-# KMP/iOS — Matriz de compartición (post KMP-5)
-
-## Shared
+# KMP/iOS — Matriz (post KMP-6)
 
 | Área | Estado |
 | ---- | ------ |
-| Session models / FakeSession (tests) | SHARED |
-| AuthRepository + gateway + login UI | SHARED |
-| Supabase Auth client factory (mínimo) | SHARED |
-| SecureSessionStorage contract | SHARED |
-| LF/Adoption/Pets presentation | SHARED |
-| Status rules KMP-1 | SHARED |
-
-## Adapter
-
-| Área | Estado |
-| ---- | ------ |
-| Keychain iOS | ADAPTER (iosMain) |
-| Secure prefs Android shared | ADAPTER |
-| IosSupabaseConfigReader | ADAPTER |
-| AndroidSessionMapper | ADAPTER (proyección) |
-
-## Android-only / diferido
-
-| Área | Clasificación |
-| ---- | ------------- |
-| Auth fat :app (consent/OTP/FCM/delete) | ANDROID_ONLY |
-| Deep links iOS / Apple Sign In | DEFERRED |
-| Profile/pets/LF REAL_REMOTE data | DEFERRED |
-| M09 WIP | DEFERRED (no tocar) |
-| M24 / M28 | Fuera de scope |
+| Session / Auth REAL_REMOTE | SHARED |
+| Profile READ REAL_REMOTE | SHARED |
+| Pets list/detail READ REAL_REMOTE | SHARED |
+| SharedRemoteRuntime (Auth+Postgrest) | SHARED internal |
+| LF / Adoption presentation + fake | SHARED (fake host) |
+| Signed media URLs / M14 passport UI | ANDROID_ONLY / DEFERRED |
+| Profile edit / pet write | DEFERRED |
+| M09 WIP | DEFERRED |

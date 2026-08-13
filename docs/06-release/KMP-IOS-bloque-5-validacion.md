@@ -1,53 +1,34 @@
 # KMP-IOS — Bloque 5 validación
 
 **HEAD base KMP-5:** `b93faa9`
-**Gate #6 (cloud):** FAIL
-- `IOS_SIMULATOR_COMPILE` / `:shared:compileKotlinIosSimulatorArm64` = PASS
-- `IOS_FRAMEWORK_LINK` / `:shared:linkDebugFrameworkIosSimulatorArm64` = FAIL
-- Causa: `ClassCastException: IrExternalPackageFragmentImpl cannot be cast to IrClass` en ObjC export (`IrExportCheckerVisitor` / `createConstructorAdapter`) al exportar tipos que implementan/reciben APIs supabase-kt (`SessionManager`, `SupabaseClient`, `UserSession`) + interop Keychain público.
+**KMP-5.1 fix SHA:** `005def3b1f545bdb4325c7581edda5d1775344b5`
 
-## Fix KMP-5.1 (local)
+## Gate cloud
+
+| Run | Resultado |
+| --- | --------- |
+| Gate #6 | FAIL — framework link ObjC export ClassCastException |
+| Gate #7 | **PASS** (macOS real) sobre SHA `005def3…` |
+
+**KMP-5 queda CLOSED GREEN** tras KMP-5.1 + Gate #7.
+
+## Fix KMP-5.1 (resumen)
 
 | Check | Resultado |
 | ----- | --------- |
-| `:shared:testAndroidHostTest` | PASS — **92** tests |
-| `compileLocalDebugKotlin` | BUILD SUCCESSFUL |
-| `compileKotlinIosSimulatorArm64` | BUILD SUCCESSFUL |
-| Warnings `This cast can never succeed` en Keychain | **0** |
-| SESSION IOS | **REAL_REMOTE** (sin FakeSession en host) |
-| KMP-5 PASS cloud | **NO** hasta re-run gate |
+| Tests shared (post-5.1) | 92 PASS |
+| Android / iOS simulator compile | PASS |
+| Keychain cast warnings | 0 |
+| SESSION IOS | REAL_REMOTE |
 
-### Superficie ObjC reducida (`internal`)
+### Superficie ObjC (`internal`)
 
-| Declaración | Motivo |
-| ----------- | ------ |
-| `SecureStorageSessionManager` | implementa `SessionManager` / usa `UserSession` |
-| `SupabaseAuthSessionGateway` | constructor/`createClient` → `SupabaseClient` |
-| `createAuthRepository` | factory Kotlin-only (PocIosEntry) |
-| `createSecureSessionStorage` (expect/actual) | factory plataforma |
-| `IosKeychainSecureSessionStorage` | interop Security/CF |
-| `IosSupabaseConfigReader` | reader Bundle Kotlin-only |
-| `AndroidSecureSessionStorage` | adapter Android shared |
+SecureStorageSessionManager, SupabaseAuthSessionGateway, createAuthRepository,
+createSecureSessionStorage, IosKeychainSecureSessionStorage, IosSupabaseConfigReader,
+AndroidSecureSessionStorage.
 
-**Sigue exportable / entry Swift:** `PocIosViewController()`
+Entry Swift: `PocIosViewController()`.
 
 ### Keychain
 
-Antes: casts NSString/NSData/NSMutableDictionary→CFDictionary / NSCopyingProtocol (warnings “cast can never succeed”).
-Después: CFString/CFData/CFDictionary nativos (`CFStringCreateWithCString`, `CFDataCreate`, `CFDictionaryCreate`). Sin NSUserDefaults.
-
-## Modos iOS
-
-| Capa | Modo |
-| ---- | ---- |
-| Sesión / Auth | **REAL_REMOTE** |
-| Perfil / pets / LF / adopciones | SHARED_FAKE |
-
-## Gate
-
-Re-ejecutar manualmente: GitHub → Actions → KMP iOS Validation → `main`.
-No marcar KMP-5 PASS hasta framework link cloud PASS.
-
-## WIP
-
-M09 / decoding / M29 preservados.
+CFString / CFData / CFDictionary nativos — sin NSUserDefaults para tokens.

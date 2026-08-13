@@ -1,26 +1,23 @@
-# KMP-IOS — Backlog de plataforma (post KMP-5)
+# KMP-IOS — Backlog (post KMP-6)
 
 ## Terminado
 
-- KMP-1…4 verticales + rules
-- **KMP-5:** Auth REAL_REMOTE iOS + Keychain + Login CMP + restore/refresh/signOut
-- FakeSession conservado para tests
+- KMP-1…5.1 (auth Keychain + export fix)
+- **KMP-6:** Profile + Pets REAL_REMOTE read vía `SharedRemoteRuntime`
 
 ## iOS ahora
 
-- Login real (si hay URL/anon en Info.plist)
-- Sesión persistida en Keychain
-- Home gated por auth
-- Contenido perfil/pets/LF/adopciones aún SHARED_FAKE
+SESSION / PROFILE / PETS = REAL_REMOTE
+LF / ADOPTIONS = SHARED_FAKE
 
 ## Pendiente
 
-- Inyectar secrets CI / xcconfig en máquina local
-- Deep links / email verify iOS
-- Apple Sign In / APNs / cámara / GPS
-- REAL_REMOTE perfil / mascotas / LF / adopciones
-- Auth fat parity (consent gates)
+- Lost/Found + Adoptions REAL_REMOTE (KMP-7 propuesto)
+- Signed avatar/pet image rendering
+- Passport M14 hint
+- Profile edit / pet create
+- Deep links / Apple Sign In / APNs
 
 ## No iniciar
 
-- M24 pagos, M28, SQL/schema, web
+M24, M28, SQL/schema, web

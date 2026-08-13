@@ -4,11 +4,9 @@ import com.comunidapp.shared.session.SessionState
 import com.comunidapp.shared.session.SessionUser
 import com.comunidapp.shared.ui.ErrorSanitizer
 import io.github.jan.supabase.SupabaseClient
-import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
-import io.github.jan.supabase.createSupabaseClient
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeout
@@ -73,25 +71,6 @@ internal class SupabaseAuthSessionGateway(
         }
     }
 
-    companion object {
-        fun createClient(
-            config: SharedSupabaseConfig,
-            storage: SecureSessionStorage
-        ): SupabaseClient {
-            require(config.isUsable) { "AUTH_UNAVAILABLE" }
-            return createSupabaseClient(
-                supabaseUrl = config.url.trim(),
-                supabaseKey = config.anonKey.trim()
-            ) {
-                install(Auth) {
-                    sessionManager = SecureStorageSessionManager(storage)
-                    autoLoadFromStorage = true
-                    autoSaveToStorage = true
-                    alwaysAutoRefresh = true
-                }
-            }
-        }
-    }
 }
 
 internal fun SessionStatus.toSessionState(): SessionState = when (this) {
@@ -119,13 +98,11 @@ internal fun SessionStatus.toSessionState(): SessionState = when (this) {
 }
 
 /**
- * Factory usada solo desde Kotlin (PocIosEntry). No exportar a ObjC.
+ * Factory legacy → delega en [com.comunidapp.shared.remote.SharedRemoteRuntime]
+ * para un solo cliente Auth+Postgrest.
  */
 internal fun createAuthRepository(
     config: SharedSupabaseConfig?,
     storage: SecureSessionStorage
-): AuthRepository {
-    val usable = config.usableOrNull() ?: return UnconfiguredAuthSessionRepository()
-    val client = SupabaseAuthSessionGateway.createClient(usable, storage)
-    return GatewayAuthRepository(SupabaseAuthSessionGateway(client))
-}
+): AuthRepository =
+    com.comunidapp.shared.remote.SharedRemoteRuntime.create(config, storage).authRepository
