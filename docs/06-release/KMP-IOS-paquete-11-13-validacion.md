@@ -1,8 +1,11 @@
 # KMP-IOS — Paquete 11–13 validación
 
 **HEAD base (KMP-10):** `81ac1bff31c7e2792098cbb4e1df690b740bdf00`
+**Commit paquete 11–13:** `128f691b93b93bc9fca46c17badd0425eab95b59`
 **Gate #14:** PASS
+**Gate #15:** PASS
 **KMP-10:** CLOSED GREEN
+**KMP-11/12/13:** CLOSED GREEN
 
 ## Alcance
 

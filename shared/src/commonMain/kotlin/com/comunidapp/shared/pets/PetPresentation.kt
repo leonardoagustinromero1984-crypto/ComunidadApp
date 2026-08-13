@@ -51,6 +51,7 @@ interface SharedPetsRepository {
     fun observeMyPets(userId: String): Flow<VerticalLoadState<List<PetSummary>>>
     fun observePetDetail(petId: PetId): Flow<VerticalLoadState<PetDetailView>>
     suspend fun refresh()
+    suspend fun create(draft: PetCreateDraft): PetCreateResult
 }
 
 fun PetAggregate.toSummary(speciesLabel: String, hasAvatar: Boolean = media.avatar != null): PetSummary =
@@ -107,6 +108,22 @@ class FakeSharedPetsRepository(
 
     override suspend fun refresh() {
         refreshTick.update { it + 1 }
+    }
+
+    override suspend fun create(draft: PetCreateDraft): PetCreateResult {
+        PetCreateDraftValidator.validate(draft).exceptionOrNull()?.let {
+            return PetCreateResult.ValidationError(ErrorSanitizer.sanitize(it))
+        }
+        if (fail) {
+            return PetCreateResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("PETS_UNAVAILABLE"))
+            )
+        }
+        val id = PetId("fake-pet-${draft.name.trim().lowercase().replace(' ', '-')}")
+        return PetCreateResult.Success(
+            id = id,
+            avatarAttached = draft.avatarFile != null
+        )
     }
 
     private suspend fun loadList(): VerticalLoadState<List<PetSummary>> {

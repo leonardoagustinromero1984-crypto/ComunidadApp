@@ -68,3 +68,21 @@ object M05LostFoundMediaRules {
         return base.substring(idx + 1).lowercase()
     }
 }
+
+/**
+ * Reglas M05 para PET_AVATAR (migración 024 + FilePurposeSpec Android).
+ * Mismos límites de tamaño/MIME que LOST_FOUND_MEDIA.
+ */
+object M05PetAvatarMediaRules {
+    const val PURPOSE = "PET_AVATAR"
+    const val RESOURCE_TYPE = "PET"
+    const val OWNER_KIND = "USER"
+    const val VISIBILITY = "PUBLIC"
+    const val MAX_BYTES = M05LostFoundMediaRules.MAX_BYTES
+    val ALLOWED_MIME = M05LostFoundMediaRules.ALLOWED_MIME
+
+    fun validate(content: FileContent): Result<Unit> = M05LostFoundMediaRules.validate(content)
+
+    fun sanitizeFilename(originalFilename: String): Result<String> =
+        M05LostFoundMediaRules.sanitizeFilename(originalFilename)
+}

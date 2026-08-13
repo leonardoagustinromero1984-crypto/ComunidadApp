@@ -243,7 +243,8 @@ internal fun SharedAdoptionsListScreen(
     onBack: () -> Unit,
     onOpenDetail: (AdoptionId) -> Unit,
     onOpenPublish: () -> Unit = {},
-    onOpenMyApplications: () -> Unit = {}
+    onOpenMyApplications: () -> Unit = {},
+    onOpenReceivedApplications: () -> Unit = {}
 ) {
     val vm = remember(adoptionRepository) { AdoptionListViewModelShared(adoptionRepository) }
     DisposableEffect(vm) { onDispose { vm.clear() } }
@@ -264,6 +265,9 @@ internal fun SharedAdoptionsListScreen(
             }
             OutlinedButton(onClick = onOpenMyApplications, modifier = Modifier.fillMaxWidth()) {
                 Text("Mis postulaciones")
+            }
+            OutlinedButton(onClick = onOpenReceivedApplications, modifier = Modifier.fillMaxWidth()) {
+                Text("Postulaciones recibidas")
             }
             TextButton(onClick = { vm.refresh() }) { Text("Actualizar") }
             when (val s = state) {

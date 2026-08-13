@@ -42,7 +42,7 @@ import io.github.jan.supabase.storage.Storage
 
 /**
  * Único runtime Kotlin-only — un solo SupabaseClient.
- * KMP-11/12/13: Adoption publish + applications + profile update/avatar.
+ * KMP-11…16: Adoption publish/applications/shelter review + profile + pet create.
  */
 internal class SharedRemoteRuntime private constructor(
     private val client: SupabaseClient?,
@@ -95,15 +95,17 @@ internal class SharedRemoteRuntime private constructor(
                 sessionRepository = authRepository,
                 mediaResolver = mediaResolver
             )
+            val m05UploadGateway = SupabaseM05MediaUploadGateway(
+                client = client,
+                fileContentReader = createFileContentReader()
+            )
             val petsRepository = RemoteSharedPetsRepository(
                 gateway = SupabasePetsRemoteGateway(client),
-                sessionRepository = authRepository
+                sessionRepository = authRepository,
+                mediaUploadGateway = m05UploadGateway
             )
             val mediaGateway = M05BackedLostFoundMediaUploadGateway(
-                m05 = SupabaseM05MediaUploadGateway(
-                    client = client,
-                    fileContentReader = createFileContentReader()
-                )
+                m05 = m05UploadGateway
             )
             val lostFoundRepository = RemoteLostFoundRepository(
                 gateway = SupabaseLostFoundRemoteGateway(client),

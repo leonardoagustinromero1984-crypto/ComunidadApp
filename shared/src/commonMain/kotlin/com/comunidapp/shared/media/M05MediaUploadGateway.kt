@@ -36,6 +36,7 @@ data class M05PreparedUpload(
  */
 internal interface M05MediaUploadGateway {
     suspend fun uploadLostFoundMedia(request: M05MediaUploadRequest): Result<String>
+    suspend fun uploadPetAvatar(petId: String, actorUserId: String, file: FileRef): Result<String>
 }
 
 internal class SupabaseM05MediaUploadGateway(
@@ -47,16 +48,64 @@ internal class SupabaseM05MediaUploadGateway(
         if (request.caseId.isBlank() || request.actorUserId.isBlank()) {
             return Result.failure(IllegalArgumentException("MEDIA_REQUEST_INVALID"))
         }
-        val content = fileContentReader.read(request.file).getOrElse { return Result.failure(it) }
-        M05LostFoundMediaRules.validate(content).getOrElse { return Result.failure(it) }
-        val safeName = M05LostFoundMediaRules.sanitizeFilename(content.name)
-            .getOrElse { return Result.failure(it) }
+        return uploadPipeline(
+            actorUserId = request.actorUserId,
+            resourceId = request.caseId,
+            file = request.file,
+            purpose = M05LostFoundMediaRules.PURPOSE,
+            ownerKind = M05LostFoundMediaRules.OWNER_KIND,
+            visibility = M05LostFoundMediaRules.VISIBILITY,
+            resourceType = M05LostFoundMediaRules.RESOURCE_TYPE,
+            validate = M05LostFoundMediaRules::validate,
+            sanitizeFilename = M05LostFoundMediaRules::sanitizeFilename
+        )
+    }
+
+    override suspend fun uploadPetAvatar(
+        petId: String,
+        actorUserId: String,
+        file: FileRef
+    ): Result<String> {
+        if (petId.isBlank() || actorUserId.isBlank()) {
+            return Result.failure(IllegalArgumentException("MEDIA_REQUEST_INVALID"))
+        }
+        return uploadPipeline(
+            actorUserId = actorUserId,
+            resourceId = petId,
+            file = file,
+            purpose = M05PetAvatarMediaRules.PURPOSE,
+            ownerKind = M05PetAvatarMediaRules.OWNER_KIND,
+            visibility = M05PetAvatarMediaRules.VISIBILITY,
+            resourceType = M05PetAvatarMediaRules.RESOURCE_TYPE,
+            validate = M05PetAvatarMediaRules::validate,
+            sanitizeFilename = M05PetAvatarMediaRules::sanitizeFilename
+        )
+    }
+
+    private suspend fun uploadPipeline(
+        actorUserId: String,
+        resourceId: String,
+        file: FileRef,
+        purpose: String,
+        ownerKind: String,
+        visibility: String,
+        resourceType: String,
+        validate: (FileContent) -> Result<Unit>,
+        sanitizeFilename: (String) -> Result<String>
+    ): Result<String> {
+        val content = fileContentReader.read(file).getOrElse { return Result.failure(it) }
+        validate(content).getOrElse { return Result.failure(it) }
+        val safeName = sanitizeFilename(content.name).getOrElse { return Result.failure(it) }
 
         var sessionId: String? = null
         return try {
             val prepared = createSession(
-                actorUserId = request.actorUserId,
-                caseId = request.caseId,
+                purpose = purpose,
+                ownerKind = ownerKind,
+                visibility = visibility,
+                resourceType = resourceType,
+                actorUserId = actorUserId,
+                resourceId = resourceId,
                 originalFilename = content.name,
                 safeFilename = safeName,
                 mimeType = content.mimeType.trim().lowercase(),
@@ -86,8 +135,12 @@ internal class SupabaseM05MediaUploadGateway(
     }
 
     private suspend fun createSession(
+        purpose: String,
+        ownerKind: String,
+        visibility: String,
+        resourceType: String,
         actorUserId: String,
-        caseId: String,
+        resourceId: String,
         originalFilename: String,
         safeFilename: String,
         mimeType: String,
@@ -96,13 +149,13 @@ internal class SupabaseM05MediaUploadGateway(
         val element = client.postgrest.rpc(
             function = "create_file_upload_session",
             parameters = buildJsonObject {
-                put("p_purpose", M05LostFoundMediaRules.PURPOSE)
-                put("p_owner_kind", M05LostFoundMediaRules.OWNER_KIND)
+                put("p_purpose", purpose)
+                put("p_owner_kind", ownerKind)
                 put("p_owner_user_id", actorUserId)
                 put("p_owner_organization_id", JsonNull)
-                put("p_visibility", M05LostFoundMediaRules.VISIBILITY)
-                put("p_resource_type", M05LostFoundMediaRules.RESOURCE_TYPE)
-                put("p_resource_id", caseId)
+                put("p_visibility", visibility)
+                put("p_resource_type", resourceType)
+                put("p_resource_id", resourceId)
                 put("p_original_filename", originalFilename)
                 put("p_declared_mime_type", mimeType)
                 put("p_size_bytes", sizeBytes)
@@ -209,11 +262,29 @@ internal class FakeM05MediaUploadGateway(
     var succeedWithAssetId: String? = "asset-test-1",
     var error: Throwable? = null,
     var calls: Int = 0,
-    var lastRequest: M05MediaUploadRequest? = null
+    var lastRequest: M05MediaUploadRequest? = null,
+    var lastPetId: String? = null,
+    var lastPetActorUserId: String? = null,
+    var lastPetFile: FileRef? = null
 ) : M05MediaUploadGateway {
     override suspend fun uploadLostFoundMedia(request: M05MediaUploadRequest): Result<String> {
         calls++
         lastRequest = request
+        error?.let { return Result.failure(it) }
+        val id = succeedWithAssetId
+            ?: return Result.failure(IllegalStateException("MEDIA_UPLOAD_FAILED"))
+        return Result.success(id)
+    }
+
+    override suspend fun uploadPetAvatar(
+        petId: String,
+        actorUserId: String,
+        file: FileRef
+    ): Result<String> {
+        calls++
+        lastPetId = petId
+        lastPetActorUserId = actorUserId
+        lastPetFile = file
         error?.let { return Result.failure(it) }
         val id = succeedWithAssetId
             ?: return Result.failure(IllegalStateException("MEDIA_UPLOAD_FAILED"))

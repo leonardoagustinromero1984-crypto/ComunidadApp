@@ -1,18 +1,15 @@
-# KMP/iOS — Matriz (post KMP-11/12/13)
+# KMP/iOS — Matriz (post KMP-14/15/16)
 
 | Área | Estado |
 | ---- | ------ |
 | Session / Auth REAL_REMOTE | SHARED |
-| Profile / Pets / LF / Adoption READ | SHARED |
-| Lost/Found PUBLISH REAL_REMOTE | SHARED |
-| Lost/Found MEDIA WRITE (M05) REAL_REMOTE | SHARED |
-| Lost/Found MEDIA READ (M05) REAL_REMOTE | SHARED |
-| Pets / Adoption MEDIA READ | SHARED |
-| Profile avatar READ | SHARED (path `users/.../avatar/...`) |
-| Profile EDIT + avatar WRITE | SHARED |
-| Adoption PUBLISH | SHARED (media write PARTIAL) |
+| Profile READ/EDIT + avatar | SHARED |
+| Pets READ | SHARED |
+| Pet CREATE + PET_AVATAR | SHARED |
+| Lost/Found PUBLISH + MEDIA R/W | SHARED |
+| Adoption READ/PUBLISH | SHARED |
 | Adoption APPLICATION (candidate) | SHARED |
-| Shelter application review | DEFERRED |
-| FileRef + ImagePicker + FileContentReader | SHARED |
+| Adoption SHELTER REVIEW | SHARED |
+| Adoption MEDIA WRITE | NOT_APPLICABLE (pet snapshot) |
 | SharedRemoteImage + MediaResolver | SHARED |
 | M09 WIP Android decoding | WIP local (no commit) |

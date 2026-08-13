@@ -39,6 +39,15 @@ enum class AdoptionApplicationStatus {
 
         fun canWithdraw(status: AdoptionApplicationStatus): Boolean =
             status == SUBMITTED || status == UNDER_REVIEW
+
+        fun canMarkUnderReview(status: AdoptionApplicationStatus): Boolean =
+            status == SUBMITTED
+
+        fun canAccept(status: AdoptionApplicationStatus): Boolean =
+            status == SUBMITTED || status == UNDER_REVIEW
+
+        fun canReject(status: AdoptionApplicationStatus): Boolean =
+            status == SUBMITTED || status == UNDER_REVIEW
     }
 }
 
@@ -50,6 +59,37 @@ data class AdoptionApplicationSummary(
     val petName: String,
     val submittedAtLabel: String,
     val messagePreview: String
+)
+
+/**
+ * Vista privada para el publicador/manager autorizado.
+ * No reutilizar en listados públicos de adopción.
+ */
+data class AdoptionApplicationReviewSummary(
+    val id: AdoptionApplicationId,
+    val adoptionId: AdoptionId,
+    val status: AdoptionApplicationStatus,
+    val adoptionTitle: String,
+    val petName: String,
+    val submittedAtLabel: String,
+    val applicantDisplayName: String,
+    val messagePreview: String
+)
+
+data class AdoptionApplicationReviewDetail(
+    val id: AdoptionApplicationId,
+    val adoptionId: AdoptionId,
+    val status: AdoptionApplicationStatus,
+    val adoptionTitle: String,
+    val petName: String,
+    val submittedAtLabel: String,
+    val applicantDisplayName: String,
+    val message: String,
+    val housingType: String?,
+    val hasOtherPets: Boolean?,
+    val previousExperience: String?,
+    val contactPhone: String?,
+    val rejectionReason: String?
 )
 
 data class AdoptionApplicationDraft(
@@ -90,6 +130,11 @@ interface AdoptionApplicationRepository {
     suspend fun submit(draft: AdoptionApplicationDraft): AdoptionApplicationResult
     suspend fun withdraw(id: AdoptionApplicationId): AdoptionApplicationResult
     suspend fun listMine(): Result<List<AdoptionApplicationSummary>>
+    suspend fun listReceived(statusFilter: String? = null): Result<List<AdoptionApplicationReviewSummary>>
+    suspend fun getForReview(id: AdoptionApplicationId): Result<AdoptionApplicationReviewDetail>
+    suspend fun markUnderReview(id: AdoptionApplicationId): AdoptionApplicationResult
+    suspend fun accept(id: AdoptionApplicationId): AdoptionApplicationResult
+    suspend fun reject(id: AdoptionApplicationId, reason: String? = null): AdoptionApplicationResult
 }
 
 class UnconfiguredAdoptionApplicationRepository : AdoptionApplicationRepository {
@@ -100,4 +145,14 @@ class UnconfiguredAdoptionApplicationRepository : AdoptionApplicationRepository 
         AdoptionApplicationResult.BackendError("Servicio no configurado.")
     override suspend fun listMine(): Result<List<AdoptionApplicationSummary>> =
         Result.failure(IllegalStateException("UNAVAILABLE"))
+    override suspend fun listReceived(statusFilter: String?): Result<List<AdoptionApplicationReviewSummary>> =
+        Result.failure(IllegalStateException("UNAVAILABLE"))
+    override suspend fun getForReview(id: AdoptionApplicationId): Result<AdoptionApplicationReviewDetail> =
+        Result.failure(IllegalStateException("UNAVAILABLE"))
+    override suspend fun markUnderReview(id: AdoptionApplicationId) =
+        AdoptionApplicationResult.BackendError("Servicio no configurado.")
+    override suspend fun accept(id: AdoptionApplicationId) =
+        AdoptionApplicationResult.BackendError("Servicio no configurado.")
+    override suspend fun reject(id: AdoptionApplicationId, reason: String?) =
+        AdoptionApplicationResult.BackendError("Servicio no configurado.")
 }

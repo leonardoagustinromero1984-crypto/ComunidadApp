@@ -31,6 +31,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.comunidapp.app.domain.pets.PetId
+import com.comunidapp.shared.adoption.AdoptionApplicationId
 import com.comunidapp.shared.adoption.AdoptionApplicationRepository
 import com.comunidapp.shared.adoption.AdoptionId
 import com.comunidapp.shared.adoption.AdoptionRepository
@@ -68,6 +69,9 @@ private sealed class SharedRoute {
     data class AdoptionDetail(val id: AdoptionId) : SharedRoute()
     data class AdoptionApply(val id: AdoptionId, val title: String) : SharedRoute()
     data object MyApplications : SharedRoute()
+    data object ReceivedApplications : SharedRoute()
+    data class ApplicationReviewDetail(val id: AdoptionApplicationId) : SharedRoute()
+    data object PetCreate : SharedRoute()
 }
 
 /**
@@ -198,7 +202,14 @@ fun LeoVerSharedApp(
             petsRepository = petsRepository,
             mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Home },
-            onOpenDetail = { route = SharedRoute.PetDetail(it) }
+            onOpenDetail = { route = SharedRoute.PetDetail(it) },
+            onOpenCreate = { route = SharedRoute.PetCreate }
+        )
+        SharedRoute.PetCreate -> SharedPetCreateScreen(
+            petsRepository = petsRepository,
+            imagePicker = imagePicker,
+            onBack = { route = SharedRoute.Pets },
+            onCreated = { id -> route = SharedRoute.PetDetail(id) }
         )
         is SharedRoute.PetDetail -> SharedPetDetailScreen(
             petId = r.petId,
@@ -252,6 +263,11 @@ fun LeoVerSharedApp(
                 if (adoptionApplicationRepository != null) {
                     route = SharedRoute.MyApplications
                 }
+            },
+            onOpenReceivedApplications = {
+                if (adoptionApplicationRepository != null) {
+                    route = SharedRoute.ReceivedApplications
+                }
             }
         )
         SharedRoute.AdoptionPublish -> SharedAdoptionPublishScreen(
@@ -294,6 +310,30 @@ fun LeoVerSharedApp(
                 SharedMyApplicationsScreen(
                     applicationRepository = appRepo,
                     onBack = { route = SharedRoute.Adoptions }
+                )
+            }
+        }
+        SharedRoute.ReceivedApplications -> {
+            val appRepo = adoptionApplicationRepository
+            if (appRepo == null) {
+                route = SharedRoute.Adoptions
+            } else {
+                SharedReceivedApplicationsScreen(
+                    applicationRepository = appRepo,
+                    onBack = { route = SharedRoute.Adoptions },
+                    onOpenDetail = { route = SharedRoute.ApplicationReviewDetail(it) }
+                )
+            }
+        }
+        is SharedRoute.ApplicationReviewDetail -> {
+            val appRepo = adoptionApplicationRepository
+            if (appRepo == null) {
+                route = SharedRoute.Adoptions
+            } else {
+                SharedApplicationReviewDetailScreen(
+                    applicationId = r.id,
+                    applicationRepository = appRepo,
+                    onBack = { route = SharedRoute.ReceivedApplications }
                 )
             }
         }
@@ -449,7 +489,8 @@ private fun SharedPetsListScreen(
     petsRepository: SharedPetsRepository,
     mediaResolver: MediaResolver?,
     onBack: () -> Unit,
-    onOpenDetail: (PetId) -> Unit
+    onOpenDetail: (PetId) -> Unit,
+    onOpenCreate: () -> Unit = {}
 ) {
     val vm = remember(sessionRepository, petsRepository) {
         PetListViewModelShared(sessionRepository, petsRepository)
@@ -467,6 +508,9 @@ private fun SharedPetsListScreen(
         ) {
             TextButton(onClick = onBack) { Text("← Volver") }
             Text("Mis mascotas", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            Button(onClick = onOpenCreate, modifier = Modifier.fillMaxWidth()) {
+                Text("Agregar mascota")
+            }
             TextButton(onClick = { vm.refresh() }) { Text("Actualizar") }
             when (val s = state) {
                 VerticalLoadState.Loading -> CenterLoading()

@@ -153,6 +153,11 @@ internal interface AdoptionApplicationRemoteGateway {
     suspend fun submit(params: RemoteSubmitApplicationParams): Result<RemoteAdoptionApplicationRow>
     suspend fun withdraw(applicationId: String): Result<RemoteAdoptionApplicationRow>
     suspend fun listMine(): Result<List<RemoteAdoptionApplicationRow>>
+    suspend fun listReceived(status: String?): Result<List<RemoteAdoptionApplicationRow>>
+    suspend fun getApplication(id: String): Result<RemoteAdoptionApplicationRow>
+    suspend fun markUnderReview(id: String): Result<RemoteAdoptionApplicationRow>
+    suspend fun accept(id: String): Result<RemoteAdoptionApplicationRow>
+    suspend fun reject(id: String, reason: String?): Result<RemoteAdoptionApplicationRow>
 }
 
 internal class SupabaseAdoptionApplicationRemoteGateway(
@@ -205,13 +210,87 @@ internal class SupabaseAdoptionApplicationRemoteGateway(
         } catch (t: Throwable) {
             Result.failure(t)
         }
+
+    override suspend fun listReceived(status: String?): Result<List<RemoteAdoptionApplicationRow>> =
+        try {
+            Result.success(
+                client.postgrest.rpc(
+                    function = "m09_list_received_applications",
+                    parameters = buildJsonObject {
+                        status?.let { put("p_status", it) } ?: put("p_status", JsonNull)
+                    }
+                ).decodeList()
+            )
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+
+    override suspend fun getApplication(id: String): Result<RemoteAdoptionApplicationRow> =
+        try {
+            val rows = client.postgrest.rpc(
+                function = "m09_get_application",
+                parameters = buildJsonObject { put("p_application_id", id) }
+            ).decodeList<RemoteAdoptionApplicationRow>()
+            val row = rows.firstOrNull()
+                ?: return Result.failure(IllegalStateException("APPLICATION_NOT_FOUND"))
+            Result.success(row)
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+
+    override suspend fun markUnderReview(id: String): Result<RemoteAdoptionApplicationRow> =
+        try {
+            val rows = client.postgrest.rpc(
+                function = "m09_mark_application_under_review",
+                parameters = buildJsonObject { put("p_application_id", id) }
+            ).decodeList<RemoteAdoptionApplicationRow>()
+            val row = rows.firstOrNull()
+                ?: return Result.failure(IllegalStateException("APPLICATION_MARK_EMPTY"))
+            Result.success(row)
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+
+    override suspend fun accept(id: String): Result<RemoteAdoptionApplicationRow> =
+        try {
+            val rows = client.postgrest.rpc(
+                function = "m09_accept_application",
+                parameters = buildJsonObject { put("p_application_id", id) }
+            ).decodeList<RemoteAdoptionApplicationRow>()
+            val row = rows.firstOrNull()
+                ?: return Result.failure(IllegalStateException("APPLICATION_ACCEPT_EMPTY"))
+            Result.success(row)
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+
+    override suspend fun reject(id: String, reason: String?): Result<RemoteAdoptionApplicationRow> =
+        try {
+            val rows = client.postgrest.rpc(
+                function = "m09_reject_application",
+                parameters = buildJsonObject {
+                    put("p_application_id", id)
+                    reason?.let { put("p_rejection_reason", it) }
+                        ?: put("p_rejection_reason", JsonNull)
+                }
+            ).decodeList<RemoteAdoptionApplicationRow>()
+            val row = rows.firstOrNull()
+                ?: return Result.failure(IllegalStateException("APPLICATION_REJECT_EMPTY"))
+            Result.success(row)
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
 }
 
 internal class FakeAdoptionApplicationRemoteGateway(
     var mine: List<RemoteAdoptionApplicationRow> = emptyList(),
+    var received: List<RemoteAdoptionApplicationRow> = emptyList(),
     var submitError: Throwable? = null,
     var withdrawError: Throwable? = null,
     var listError: Throwable? = null,
+    var receivedError: Throwable? = null,
+    var getError: Throwable? = null,
+    var reviewError: Throwable? = null,
     var submitCalls: Int = 0,
     var lastSubmit: RemoteSubmitApplicationParams? = null
 ) : AdoptionApplicationRemoteGateway {
@@ -238,12 +317,84 @@ internal class FakeAdoptionApplicationRemoteGateway(
             ?: return Result.failure(IllegalStateException("APPLICATION_NOT_FOUND"))
         val updated = existing.copy(status = "WITHDRAWN")
         mine = mine.map { if (it.id == applicationId) updated else it }
+        received = received.map { if (it.id == applicationId) updated else it }
         return Result.success(updated)
     }
 
     override suspend fun listMine(): Result<List<RemoteAdoptionApplicationRow>> {
         listError?.let { return Result.failure(it) }
         return Result.success(mine)
+    }
+
+    override suspend fun listReceived(status: String?): Result<List<RemoteAdoptionApplicationRow>> {
+        receivedError?.let { return Result.failure(it) }
+        val filtered = if (status.isNullOrBlank()) received
+        else received.filter { it.status.equals(status, ignoreCase = true) }
+        return Result.success(filtered)
+    }
+
+    override suspend fun getApplication(id: String): Result<RemoteAdoptionApplicationRow> {
+        getError?.let { return Result.failure(it) }
+        val row = received.firstOrNull { it.id == id }
+            ?: mine.firstOrNull { it.id == id }
+            ?: return Result.failure(IllegalStateException("APPLICATION_NOT_FOUND"))
+        return Result.success(row)
+    }
+
+    override suspend fun markUnderReview(id: String): Result<RemoteAdoptionApplicationRow> {
+        reviewError?.let { return Result.failure(it) }
+        return transition(id, "UNDER_REVIEW") { current ->
+            when (current) {
+                "UNDER_REVIEW" -> current
+                "SUBMITTED" -> "UNDER_REVIEW"
+                else -> null
+            }
+        }
+    }
+
+    override suspend fun accept(id: String): Result<RemoteAdoptionApplicationRow> {
+        reviewError?.let { return Result.failure(it) }
+        return transition(id, "ACCEPTED") { current ->
+            when (current) {
+                "ACCEPTED" -> current
+                "SUBMITTED", "UNDER_REVIEW" -> "ACCEPTED"
+                else -> null
+            }
+        }
+    }
+
+    override suspend fun reject(id: String, reason: String?): Result<RemoteAdoptionApplicationRow> {
+        reviewError?.let { return Result.failure(it) }
+        return transition(id, "REJECTED", reason) { current ->
+            when (current) {
+                "REJECTED" -> current
+                "SUBMITTED", "UNDER_REVIEW" -> "REJECTED"
+                else -> null
+            }
+        }
+    }
+
+    private fun transition(
+        id: String,
+        fallbackStatus: String,
+        rejectionReason: String? = null,
+        nextStatus: (String) -> String?
+    ): Result<RemoteAdoptionApplicationRow> {
+        val existing = received.firstOrNull { it.id == id }
+            ?: mine.firstOrNull { it.id == id }
+            ?: return Result.failure(IllegalStateException("APPLICATION_NOT_FOUND"))
+        val target = nextStatus(existing.status)
+            ?: return Result.failure(IllegalStateException("APPLICATION_INVALID_TRANSITION"))
+        val updated = existing.copy(
+            status = target.ifBlank { fallbackStatus },
+            rejectionReason = rejectionReason ?: existing.rejectionReason
+        )
+        received = received.map { if (it.id == id) updated else it }
+        mine = mine.map { if (it.id == id) updated else it }
+        if (received.none { it.id == id }) {
+            received = received + updated
+        }
+        return Result.success(updated)
     }
 }
 
@@ -263,6 +414,12 @@ internal fun mapAdoptionThrowable(t: Throwable): String {
             "Ya tenés una solicitud activa para esta adopción."
         "APPLICATION_MESSAGE" in code ->
             "El mensaje de postulación no es válido."
+        "APPLICATION_FORBIDDEN" in code ->
+            "No tenés permiso para esta acción."
+        "APPLICATION_INVALID_TRANSITION" in code ->
+            "Esa transición de estado no está permitida."
+        "APPLICATION_NOT_FOUND" in code ->
+            "No encontramos ese contenido."
         "401" in raw || "jwt" in raw || "not authenticated" in raw || "session" in raw ||
             "not_authenticated" in raw ->
             "Tu sesión no está disponible."
@@ -282,11 +439,13 @@ internal fun classifyAdoptionWrite(t: Throwable): AdoptionWriteKind {
     val raw = code.lowercase()
     return when {
         "401" in raw || "not_authenticated" in raw || "jwt" in raw -> AdoptionWriteKind.UNAUTHENTICATED
-        "403" in raw || "forbidden" in raw || "rls" in raw -> AdoptionWriteKind.FORBIDDEN
+        "APPLICATION_FORBIDDEN" in code || "403" in raw || "forbidden" in raw || "rls" in raw ->
+            AdoptionWriteKind.FORBIDDEN
         "ADOPTION_ALREADY_EXISTS" in code || "APPLICATION_ALREADY_EXISTS" in code ->
             AdoptionWriteKind.CONFLICT
         "ADOPTION_TITLE_REQUIRED" in code || "ADOPTION_DESCRIPTION_REQUIRED" in code ||
-            "ADOPTION_PET_REQUIRED" in code || "APPLICATION_MESSAGE" in code ->
+            "ADOPTION_PET_REQUIRED" in code || "APPLICATION_MESSAGE" in code ||
+            "APPLICATION_INVALID_TRANSITION" in code ->
             AdoptionWriteKind.VALIDATION
         else -> AdoptionWriteKind.BACKEND
     }
