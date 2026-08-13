@@ -41,7 +41,8 @@ import com.comunidapp.shared.ui.VerticalLoadState
 internal fun SharedAlertsHubScreen(
     onBack: () -> Unit,
     onOpenLost: () -> Unit,
-    onOpenFound: () -> Unit
+    onOpenFound: () -> Unit,
+    onOpenPublish: () -> Unit = {}
 ) {
     Scaffold { padding ->
         Column(
@@ -58,6 +59,9 @@ internal fun SharedAlertsHubScreen(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            Button(onClick = onOpenPublish, modifier = Modifier.fillMaxWidth()) {
+                Text("Publicar alerta")
+            }
             Button(onClick = onOpenLost, modifier = Modifier.fillMaxWidth()) {
                 Text("Mascotas perdidas")
             }

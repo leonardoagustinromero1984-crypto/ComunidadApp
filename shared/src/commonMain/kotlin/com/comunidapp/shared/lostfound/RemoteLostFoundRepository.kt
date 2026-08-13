@@ -3,11 +3,16 @@ package com.comunidapp.shared.lostfound
 import com.comunidapp.shared.auth.AuthFailure
 import com.comunidapp.shared.auth.AuthFailureMessages
 import com.comunidapp.shared.domain.lostfound.LostFoundCaseType
+import com.comunidapp.shared.remote.LostFoundInsertCommand
+import com.comunidapp.shared.remote.LostFoundMediaUploadGateway
 import com.comunidapp.shared.remote.LostFoundRemoteGateway
+import com.comunidapp.shared.remote.LostFoundWriteGateway
+import com.comunidapp.shared.remote.PartialLostFoundMediaUploadGateway
 import com.comunidapp.shared.remote.RemoteLostFoundMapper
 import com.comunidapp.shared.remote.mapLostFoundThrowable
 import com.comunidapp.shared.session.SessionRepository
 import com.comunidapp.shared.session.SessionState
+import com.comunidapp.shared.ui.ErrorSanitizer
 import com.comunidapp.shared.ui.VerticalLoadState
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -18,12 +23,14 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 
 /**
- * Lost/Found REAL_REMOTE — PostgREST `lost_found_posts`.
- * Autorización: sesión autenticada + RLS. UI SAFE sin coords/PII.
+ * Lost/Found REAL_REMOTE — read `lost_found_posts` + write insert (KMP-8).
+ * Media M05: PARTIAL (no fingir upload).
  */
 internal class RemoteLostFoundRepository(
     private val gateway: LostFoundRemoteGateway,
-    private val sessionRepository: SessionRepository
+    private val writeGateway: LostFoundWriteGateway,
+    private val sessionRepository: SessionRepository,
+    private val mediaUploadGateway: LostFoundMediaUploadGateway = PartialLostFoundMediaUploadGateway()
 ) : LostFoundRepository {
     override val dataMode: LostFoundDataMode = LostFoundDataMode.REAL_REMOTE
 
@@ -66,6 +73,54 @@ internal class RemoteLostFoundRepository(
         refreshTick.update { it + 1 }
     }
 
+    override suspend fun publish(request: LostFoundPublishRequest): LostFoundPublishResult {
+        LostFoundDraftValidator.validate(request.draft).exceptionOrNull()?.let {
+            return LostFoundPublishResult.ValidationError(ErrorSanitizer.sanitize(it))
+        }
+        val session = sessionRepository.currentSession()
+        if (session !is SessionState.Authenticated) {
+            return LostFoundPublishResult.Unauthenticated("Tu sesión no está disponible.")
+        }
+        val user = session.user
+        val draft = request.draft
+        val command = LostFoundInsertCommand(
+            authorId = user.userId,
+            authorName = LostFoundPublishMapper.authorName(user),
+            type = LostFoundPublishMapper.typeWire(draft.type),
+            petName = draft.displayName?.trim()?.takeIf { it.isNotBlank() },
+            species = LostFoundPublishMapper.speciesWire(draft.speciesLabel),
+            location = LostFoundPublishMapper.locationText(draft),
+            description = draft.description.trim(),
+            contactInfo = LostFoundPublishMapper.resolveContactInfo(draft, user),
+            status = LostFoundPublishMapper.initialStatus().name,
+            photoUrl = null
+        )
+        val insertResult = writeGateway.insert(command)
+        val newId = insertResult.getOrElse { return mapPublishThrowable(it) }
+
+        var mediaAttached = false
+        var mediaDeferred = false
+        val media = request.media
+        if (media != null) {
+            val upload = mediaUploadGateway.uploadForCase(newId, media.platformIdentifier)
+            if (upload.isSuccess) {
+                mediaAttached = true
+            } else {
+                // Publicación textual ya OK — no fingir media; no abortar insert.
+                mediaDeferred = true
+            }
+        }
+
+        val publicCode = writeGateway.fetchPublicCode(newId).getOrNull()
+        refreshTick.update { it + 1 }
+        return LostFoundPublishResult.Success(
+            id = LostFoundId(newId),
+            publicCode = publicCode,
+            mediaAttached = mediaAttached,
+            mediaDeferred = mediaDeferred
+        )
+    }
+
     private suspend fun loadList(filter: LostFoundListFilter): VerticalLoadState<List<LostFoundSummary>> {
         val session = sessionRepository.currentSession()
         if (session !is SessionState.Authenticated) {
@@ -104,4 +159,7 @@ internal class UnconfiguredLostFoundRepository : LostFoundRepository {
     }
 
     override suspend fun refresh() = Unit
+
+    override suspend fun publish(request: LostFoundPublishRequest): LostFoundPublishResult =
+        LostFoundPublishResult.BackendError(AuthFailureMessages.message(AuthFailure.Unavailable))
 }

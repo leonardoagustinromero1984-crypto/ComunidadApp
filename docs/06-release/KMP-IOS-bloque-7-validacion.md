@@ -2,7 +2,11 @@
 
 **HEAD base:** `296ec88238f3c37907336fc7d98362b850e2689e`
 
-**Commit KMP-7:** (ver SHA post-push)
+**KMP-7 SHA:** `a65d05b088330da59e5e1a390ca367b1ee4fb4f3`
+
+**GitHub Actions Gate #9:** PASS (macOS real)
+
+**KMP-7 = CLOSED GREEN**
 
 ## Windows
 
@@ -33,6 +37,6 @@ Sin config: Unconfigured* siguen etiquetados REAL_REMOTE → Unavailable.
 `SharedRemoteRuntime`, gateways, DTOs, remote repos = `internal`.
 Entry Swift: `PocIosViewController()`.
 
-## Gate siguiente
+## Sucesor
 
-Manual: KMP iOS Validation → `main` (READY_TO_RUN_IOS_CLOUD_GATE).
+KMP-8: publish Lost/Found REAL_REMOTE (media PARTIAL).

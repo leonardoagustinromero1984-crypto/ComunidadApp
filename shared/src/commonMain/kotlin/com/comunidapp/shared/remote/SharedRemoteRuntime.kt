@@ -68,7 +68,9 @@ internal class SharedRemoteRuntime private constructor(
             )
             val lostFoundRepository = RemoteLostFoundRepository(
                 gateway = SupabaseLostFoundRemoteGateway(client),
-                sessionRepository = authRepository
+                writeGateway = SupabaseLostFoundWriteGateway(client),
+                sessionRepository = authRepository,
+                mediaUploadGateway = PartialLostFoundMediaUploadGateway()
             )
             val adoptionRepository = RemoteAdoptionRepository(
                 gateway = SupabaseAdoptionRemoteGateway(client),

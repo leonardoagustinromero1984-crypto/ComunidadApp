@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 /**
  * Id opaco de listado/detalle público — no es UUID de DB ni ownerId.
@@ -70,7 +72,13 @@ data class LostFoundDraft(
     val displayName: String?,
     val speciesLabel: String,
     val description: String,
-    val approximateLocation: ApproximateLocation
+    val approximateLocation: ApproximateLocation,
+    /**
+     * Nota de contacto opcional → wire `contact_info` (DB NOT NULL).
+     * Nunca se lee en modelos SAFE de listado/detalle.
+     * Si null, el publisher deriva texto seguro desde la sesión.
+     */
+    val contactNote: String? = null
 )
 
 object LostFoundDraftValidator {
@@ -93,6 +101,12 @@ interface LostFoundRepository {
     fun observeList(filter: LostFoundListFilter): Flow<VerticalLoadState<List<LostFoundSummary>>>
     fun observeDetail(id: LostFoundId): Flow<VerticalLoadState<LostFoundDetail>>
     suspend fun refresh()
+
+    /**
+     * Publicación REAL_REMOTE / fake de test.
+     * [media] es FileRef opcional — KMP-8 no finge upload M05.
+     */
+    suspend fun publish(request: LostFoundPublishRequest): LostFoundPublishResult
 }
 
 class GetLostFoundCasesUseCase(private val repository: LostFoundRepository) {
@@ -109,13 +123,17 @@ data class FakeLostFoundSeed(
 )
 
 class FakeLostFoundRepository(
-    private val seeds: List<FakeLostFoundSeed> = defaultSeeds(),
+    seeds: List<FakeLostFoundSeed> = defaultSeeds(),
     private val fail: Boolean = false,
-    private val delayMs: Long = 0L
+    private val delayMs: Long = 0L,
+    private val publishFail: Boolean = false
 ) : LostFoundRepository {
     override val dataMode: LostFoundDataMode = LostFoundDataMode.SHARED_FAKE
 
+    private val seedState = MutableStateFlow(seeds)
     private val refreshTick = MutableStateFlow(0)
+    var publishCalls: Int = 0
+        private set
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeList(filter: LostFoundListFilter): Flow<VerticalLoadState<List<LostFoundSummary>>> =
@@ -133,7 +151,7 @@ class FakeLostFoundRepository(
             emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_NOT_FOUND"))))
             return@flow
         }
-        val seed = seeds.firstOrNull { it.summary.id == id }
+        val seed = seedState.value.firstOrNull { it.summary.id == id }
         if (seed == null) {
             emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_NOT_FOUND"))))
             return@flow
@@ -145,12 +163,64 @@ class FakeLostFoundRepository(
         refreshTick.update { it + 1 }
     }
 
+    @OptIn(ExperimentalUuidApi::class)
+    override suspend fun publish(request: LostFoundPublishRequest): LostFoundPublishResult {
+        publishCalls++
+        LostFoundDraftValidator.validate(request.draft).exceptionOrNull()?.let {
+            return LostFoundPublishResult.ValidationError(
+                ErrorSanitizer.sanitize(it)
+            )
+        }
+        if (publishFail) {
+            return LostFoundPublishResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_UNAVAILABLE"))
+            )
+        }
+        val id = LostFoundId("fake-${Uuid.random()}")
+        val draft = request.draft
+        val summary = LostFoundSummary(
+            id = id,
+            type = draft.type,
+            status = LostFoundCaseStatus.ACTIVE,
+            displayName = draft.displayName?.takeIf { it.isNotBlank() },
+            speciesLabel = draft.speciesLabel,
+            approximateLocation = draft.approximateLocation,
+            reportedAtLabel = "ahora",
+            publicCode = "LV-FAKE",
+            hasPhoto = false
+        )
+        val detail = LostFoundDetail(
+            id = id,
+            type = draft.type,
+            status = LostFoundCaseStatus.ACTIVE,
+            displayName = summary.displayName,
+            speciesLabel = draft.speciesLabel,
+            breedText = null,
+            sexLabel = null,
+            description = draft.description.trim(),
+            approximateLocation = draft.approximateLocation,
+            reportedAtLabel = "ahora",
+            publicCode = "LV-FAKE",
+            publisherDisplayName = "Demo",
+            hasPhoto = false
+        )
+        seedState.update { it + FakeLostFoundSeed(summary, detail) }
+        refreshTick.update { it + 1 }
+        val mediaDeferred = request.media != null
+        return LostFoundPublishResult.Success(
+            id = id,
+            publicCode = "LV-FAKE",
+            mediaAttached = false,
+            mediaDeferred = mediaDeferred
+        )
+    }
+
     private suspend fun loadList(filter: LostFoundListFilter): VerticalLoadState<List<LostFoundSummary>> {
         if (delayMs > 0L) delay(delayMs)
         if (fail) {
             return VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_UNAVAILABLE")))
         }
-        val filtered = seeds.map { it.summary }.filter { summary ->
+        val filtered = seedState.value.map { it.summary }.filter { summary ->
             when (filter) {
                 LostFoundListFilter.ALL -> true
                 LostFoundListFilter.LOST -> summary.type == LostFoundCaseType.LOST

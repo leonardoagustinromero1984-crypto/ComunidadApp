@@ -17,3 +17,5 @@ internal actual fun parseIso8601ToEpochMs(iso: String?): Long {
         0L
     }
 }
+
+internal actual fun currentIso8601Now(): String = Instant.now().toString()

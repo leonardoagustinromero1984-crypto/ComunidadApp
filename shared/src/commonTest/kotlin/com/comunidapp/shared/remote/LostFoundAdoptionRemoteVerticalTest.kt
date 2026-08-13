@@ -120,7 +120,7 @@ class LostFoundAdoptionRemoteVerticalTest {
 
     @Test
     fun lf_remote_loading_then_empty() = runTest {
-        val repo = RemoteLostFoundRepository(FakeLostFoundRemoteGateway(list = emptyList()), authRepo())
+        val repo = RemoteLostFoundRepository(FakeLostFoundRemoteGateway(list = emptyList()), FakeLostFoundWriteGateway(), authRepo())
         assertIs<VerticalLoadState.Empty>(
             repo.observeList(LostFoundListFilter.ALL)
                 .filterNot { it is VerticalLoadState.Loading }
@@ -131,7 +131,7 @@ class LostFoundAdoptionRemoteVerticalTest {
     @Test
     fun lf_remote_loading_then_content() = runTest {
         val gw = FakeLostFoundRemoteGateway(list = listOf(lostRow(), lostRow(id = "lf-2", type = "FOUND", petName = null)))
-        val repo = RemoteLostFoundRepository(gw, authRepo())
+        val repo = RemoteLostFoundRepository(gw, FakeLostFoundWriteGateway(), authRepo())
         val content = assertIs<VerticalLoadState.Content<*>>(
             repo.observeList(LostFoundListFilter.ALL)
                 .filterNot { it is VerticalLoadState.Loading }
@@ -150,7 +150,7 @@ class LostFoundAdoptionRemoteVerticalTest {
                 lostRow(id = "2", type = "FOUND", petName = null)
             )
         )
-        val repo = RemoteLostFoundRepository(gw, authRepo())
+        val repo = RemoteLostFoundRepository(gw, FakeLostFoundWriteGateway(), authRepo())
         val content = assertIs<VerticalLoadState.Content<*>>(
             repo.observeList(LostFoundListFilter.ALL).filterNot { it is VerticalLoadState.Loading }.first()
         )
@@ -166,7 +166,7 @@ class LostFoundAdoptionRemoteVerticalTest {
                 lostRow(id = "2", type = "FOUND", petName = null)
             )
         )
-        val repo = RemoteLostFoundRepository(gw, authRepo())
+        val repo = RemoteLostFoundRepository(gw, FakeLostFoundWriteGateway(), authRepo())
         val content = assertIs<VerticalLoadState.Content<*>>(
             repo.observeList(LostFoundListFilter.LOST).filterNot { it is VerticalLoadState.Loading }.first()
         )
@@ -184,7 +184,7 @@ class LostFoundAdoptionRemoteVerticalTest {
                 lostRow(id = "2", type = "FOUND", petName = null)
             )
         )
-        val repo = RemoteLostFoundRepository(gw, authRepo())
+        val repo = RemoteLostFoundRepository(gw, FakeLostFoundWriteGateway(), authRepo())
         val content = assertIs<VerticalLoadState.Content<*>>(
             repo.observeList(LostFoundListFilter.FOUND).filterNot { it is VerticalLoadState.Loading }.first()
         )
@@ -196,7 +196,7 @@ class LostFoundAdoptionRemoteVerticalTest {
     @Test
     fun lf_lost_detail() = runTest {
         val gw = FakeLostFoundRemoteGateway(detail = lostRow(id = "lf-1", type = "LOST"))
-        val repo = RemoteLostFoundRepository(gw, authRepo())
+        val repo = RemoteLostFoundRepository(gw, FakeLostFoundWriteGateway(), authRepo())
         val content = assertIs<VerticalLoadState.Content<*>>(
             repo.observeDetail(LostFoundId("lf-1")).filterNot { it is VerticalLoadState.Loading }.first()
         )
@@ -210,7 +210,7 @@ class LostFoundAdoptionRemoteVerticalTest {
         val gw = FakeLostFoundRemoteGateway(
             detail = lostRow(id = "lf-2", type = "FOUND", petName = null, species = "CAT")
         )
-        val repo = RemoteLostFoundRepository(gw, authRepo())
+        val repo = RemoteLostFoundRepository(gw, FakeLostFoundWriteGateway(), authRepo())
         val content = assertIs<VerticalLoadState.Content<*>>(
             repo.observeDetail(LostFoundId("lf-2")).filterNot { it is VerticalLoadState.Loading }.first()
         )
@@ -222,7 +222,7 @@ class LostFoundAdoptionRemoteVerticalTest {
 
     @Test
     fun lf_not_found() = runTest {
-        val repo = RemoteLostFoundRepository(FakeLostFoundRemoteGateway(), authRepo())
+        val repo = RemoteLostFoundRepository(FakeLostFoundRemoteGateway(), FakeLostFoundWriteGateway(), authRepo())
         assertIs<VerticalLoadState.Error>(
             repo.observeDetail(LostFoundId("missing")).filterNot { it is VerticalLoadState.Loading }.first()
         )
@@ -231,7 +231,7 @@ class LostFoundAdoptionRemoteVerticalTest {
     @Test
     fun lf_network_error_sanitized() = runTest {
         val gw = FakeLostFoundRemoteGateway(listError = IllegalStateException("NETWORK timeout"))
-        val repo = RemoteLostFoundRepository(gw, authRepo())
+        val repo = RemoteLostFoundRepository(gw, FakeLostFoundWriteGateway(), authRepo())
         val err = assertIs<VerticalLoadState.Error>(
             repo.observeList(LostFoundListFilter.ALL).filterNot { it is VerticalLoadState.Loading }.first()
         )
@@ -244,7 +244,7 @@ class LostFoundAdoptionRemoteVerticalTest {
         val gw = FakeLostFoundRemoteGateway(
             listError = IllegalStateException("401 JWT eyJhbGciOi denied")
         )
-        val repo = RemoteLostFoundRepository(gw, authRepo())
+        val repo = RemoteLostFoundRepository(gw, FakeLostFoundWriteGateway(), authRepo())
         val err = assertIs<VerticalLoadState.Error>(
             repo.observeList(LostFoundListFilter.ALL).filterNot { it is VerticalLoadState.Loading }.first()
         )
@@ -326,7 +326,7 @@ class LostFoundAdoptionRemoteVerticalTest {
     @Test
     fun lf_refresh() = runTest {
         val gw = FakeLostFoundRemoteGateway(list = listOf(lostRow()))
-        val repo = RemoteLostFoundRepository(gw, authRepo())
+        val repo = RemoteLostFoundRepository(gw, FakeLostFoundWriteGateway(), authRepo())
         repo.observeList(LostFoundListFilter.ALL).filterNot { it is VerticalLoadState.Loading }.first()
         assertEquals(1, gw.listCalls)
         repo.refresh()
@@ -338,7 +338,7 @@ class LostFoundAdoptionRemoteVerticalTest {
     fun lf_data_mode_real_remote() {
         assertEquals(
             com.comunidapp.shared.lostfound.LostFoundDataMode.REAL_REMOTE,
-            RemoteLostFoundRepository(FakeLostFoundRemoteGateway(), authRepo()).dataMode
+            RemoteLostFoundRepository(FakeLostFoundRemoteGateway(), FakeLostFoundWriteGateway(), authRepo()).dataMode
         )
         assertEquals(
             com.comunidapp.shared.lostfound.LostFoundDataMode.REAL_REMOTE,

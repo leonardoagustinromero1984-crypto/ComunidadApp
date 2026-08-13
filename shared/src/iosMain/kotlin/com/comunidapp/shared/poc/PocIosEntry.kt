@@ -14,8 +14,9 @@ import com.comunidapp.shared.vertical.LeoVerSharedApp
 import platform.UIKit.UIViewController
 
 /**
- * Host iOS KMP-7:
+ * Host iOS KMP-8:
  * SESSION / PROFILE / PETS / LOST_FOUND / ADOPTIONS = REAL_REMOTE
+ * LOST/FOUND PUBLISH = REAL_REMOTE (media PARTIAL)
  * (un solo SharedRemoteRuntime / SupabaseClient).
  */
 fun PocIosViewController(): UIViewController =
@@ -43,6 +44,7 @@ fun PocIosViewController(): UIViewController =
                     lostFoundRepository = runtime.lostFoundRepository,
                     adoptionRepository = runtime.adoptionRepository,
                     authRepository = runtime.authRepository,
+                    imagePicker = imagePicker,
                     onOpenLegacyPocs = { showLegacyPocs = true }
                 )
             }

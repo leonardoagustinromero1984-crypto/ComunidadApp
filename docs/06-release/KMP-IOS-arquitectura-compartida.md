@@ -1,4 +1,4 @@
-# KMP-IOS — Arquitectura compartida (post KMP-7)
+# KMP-IOS — Arquitectura compartida (post KMP-8)
 
 ```text
 iosApp SwiftUI
@@ -6,13 +6,15 @@ iosApp SwiftUI
        └─ SharedRemoteRuntime (internal)
             Auth + Postgrest + Keychain
             → Session / Profile / Pets / LostFound / Adoption REAL_REMOTE
+            → LostFound publish REAL_REMOTE (media PARTIAL)
+            + IosImagePicker (PHPicker) opcional
 ```
 
 ## Principios
 
-1. Un solo SupabaseClient para auth + lecturas.
-2. Repos/DTOs/gateways `internal` — no export ObjC.
-3. Backend/RLS autoriza; cliente no finge ownership.
-4. Fakes solo tests; host no hace fallback fake.
-5. Sin SQL/schema en este bloque.
-6. Modelos UI SAFE: sin coords exactas ni PII de contacto.
+1. Un solo SupabaseClient.
+2. Gateways/DTOs/runtime `internal`.
+3. Backend/RLS autoriza writes (`author_id = auth.uid()`).
+4. UI SAFE: sin coords/PII; `contact_info` no vuelve a modelos de lectura.
+5. Fakes solo tests; host sin fallback fake.
+6. Media M05 no fingida si no está en shared.

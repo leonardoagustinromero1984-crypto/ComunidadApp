@@ -10,3 +10,8 @@ internal actual fun parseIso8601ToEpochMs(iso: String?): Long {
     val date: NSDate = formatter.dateFromString(iso.trim()) ?: return 0L
     return (date.timeIntervalSince1970 * 1000.0).toLong()
 }
+
+internal actual fun currentIso8601Now(): String {
+    val formatter = NSISO8601DateFormatter()
+    return formatter.stringFromDate(NSDate())
+}

@@ -39,6 +39,7 @@ import com.comunidapp.shared.lostfound.LostFoundRepository
 import com.comunidapp.shared.pets.PetDetailView
 import com.comunidapp.shared.pets.PetSummary
 import com.comunidapp.shared.pets.SharedPetsRepository
+import com.comunidapp.shared.poc.m08.platform.ImagePicker
 import com.comunidapp.shared.profile.ProfileLoadState
 import com.comunidapp.shared.profile.UserProfileRepository
 import com.comunidapp.shared.profile.UserProfileSummary
@@ -55,6 +56,7 @@ private sealed class SharedRoute {
     data object Alerts : SharedRoute()
     data object LostList : SharedRoute()
     data object FoundList : SharedRoute()
+    data object LostFoundPublish : SharedRoute()
     data class LostFoundDetail(val id: LostFoundId, val backTo: SharedRoute) : SharedRoute()
     data object Adoptions : SharedRoute()
     data class AdoptionDetail(val id: AdoptionId) : SharedRoute()
@@ -62,8 +64,7 @@ private sealed class SharedRoute {
 
 /**
  * Shell vertical KMP:
- * Login (REAL_REMOTE) → Home → Perfil / Mascotas / Alertas / Adopciones.
- * Perfil/pets/LF/adopción pueden seguir SHARED_FAKE (KMP-5).
+ * Login (REAL_REMOTE) → Home → Perfil / Mascotas / Alertas (read + publish) / Adopciones.
  */
 @Composable
 fun LeoVerSharedApp(
@@ -73,6 +74,7 @@ fun LeoVerSharedApp(
     lostFoundRepository: LostFoundRepository,
     adoptionRepository: AdoptionRepository,
     authRepository: AuthRepository? = sessionRepository as? AuthRepository,
+    imagePicker: ImagePicker? = null,
     onOpenLegacyPocs: (() -> Unit)? = null
 ) {
     var route by remember { mutableStateOf<SharedRoute>(SharedRoute.Home) }
@@ -155,7 +157,8 @@ fun LeoVerSharedApp(
         SharedRoute.Alerts -> SharedAlertsHubScreen(
             onBack = { route = SharedRoute.Home },
             onOpenLost = { route = SharedRoute.LostList },
-            onOpenFound = { route = SharedRoute.FoundList }
+            onOpenFound = { route = SharedRoute.FoundList },
+            onOpenPublish = { route = SharedRoute.LostFoundPublish }
         )
         SharedRoute.LostList -> SharedLostFoundListScreen(
             title = "Mascotas perdidas",
@@ -170,6 +173,14 @@ fun LeoVerSharedApp(
             lostFoundRepository = lostFoundRepository,
             onBack = { route = SharedRoute.Alerts },
             onOpenDetail = { route = SharedRoute.LostFoundDetail(it, SharedRoute.FoundList) }
+        )
+        SharedRoute.LostFoundPublish -> SharedLostFoundPublishScreen(
+            lostFoundRepository = lostFoundRepository,
+            imagePicker = imagePicker,
+            onBack = { route = SharedRoute.Alerts },
+            onPublished = { id ->
+                route = SharedRoute.LostFoundDetail(id, SharedRoute.Alerts)
+            }
         )
         is SharedRoute.LostFoundDetail -> SharedLostFoundDetailScreen(
             id = r.id,
