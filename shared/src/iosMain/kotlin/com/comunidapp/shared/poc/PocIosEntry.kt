@@ -14,10 +14,10 @@ import com.comunidapp.shared.vertical.LeoVerSharedApp
 import platform.UIKit.UIViewController
 
 /**
- * Host iOS KMP-8:
+ * Host iOS KMP-9:
  * SESSION / PROFILE / PETS / LOST_FOUND / ADOPTIONS = REAL_REMOTE
- * LOST/FOUND PUBLISH = REAL_REMOTE (media PARTIAL)
- * (un solo SharedRemoteRuntime / SupabaseClient).
+ * LOST/FOUND PUBLISH + MEDIA WRITE = REAL_REMOTE
+ * (un solo SharedRemoteRuntime / SupabaseClient + Storage).
  */
 fun PocIosViewController(): UIViewController =
     ComposeUIViewController {

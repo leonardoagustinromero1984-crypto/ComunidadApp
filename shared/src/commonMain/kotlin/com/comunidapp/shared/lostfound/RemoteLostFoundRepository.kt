@@ -102,11 +102,22 @@ internal class RemoteLostFoundRepository(
         var mediaDeferred = false
         val media = request.media
         if (media != null) {
-            val upload = mediaUploadGateway.uploadForCase(newId, media.platformIdentifier)
-            if (upload.isSuccess) {
-                mediaAttached = true
+            val upload = mediaUploadGateway.uploadForCase(
+                caseId = newId,
+                actorUserId = user.userId,
+                file = media
+            )
+            val assetId = upload.getOrNull()
+            if (assetId != null) {
+                val photoUpdate = writeGateway.updatePhotoUrl(newId, assetId)
+                if (photoUpdate.isSuccess) {
+                    mediaAttached = true
+                } else {
+                    // Upload OK pero update falló — alerta existe; no fingir media ni rollback.
+                    mediaDeferred = true
+                }
             } else {
-                // Publicación textual ya OK — no fingir media; no abortar insert.
+                // Semántica Android: insert OK + media fail → post queda sin foto.
                 mediaDeferred = true
             }
         }

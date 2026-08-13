@@ -1,25 +1,23 @@
-# KMP-IOS — Backlog (post KMP-8)
+# KMP-IOS — Backlog (post KMP-9)
 
 ## Terminado
 
-- KMP-1…5.1 (auth Keychain + export fix)
-- **KMP-6:** Profile + Pets REAL_REMOTE read
-- **KMP-7:** Lost/Found + Adoptions REAL_REMOTE read
-- **KMP-8:** Lost/Found publish REAL_REMOTE (media PARTIAL)
+- KMP-1…8
+- **KMP-9:** M05 media shared + Lost/Found photo upload REAL_REMOTE
 
 ## iOS ahora
 
 ```text
 SESSION / PROFILE / PETS / LOST_FOUND / ADOPTIONS = REAL_REMOTE
 LOST/FOUND PUBLISH = REAL_REMOTE
-MEDIA WRITE = PARTIAL
+LOST/FOUND MEDIA WRITE = REAL_REMOTE
+MEDIA READ RENDERING = PARTIAL
 ```
 
 ## Pendiente
 
-- M05 media upload port a shared (media REAL_REMOTE)
-- Signed image rendering
-- Adoption publish (KMP-9+)
+- Signed/public URL rendering for photos
+- Adoption publish (KMP-10+)
 - Profile edit / pet create
 - Deep links / Apple Sign In / APNs
 

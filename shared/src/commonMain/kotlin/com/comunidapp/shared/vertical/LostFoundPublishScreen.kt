@@ -65,7 +65,7 @@ internal fun SharedLostFoundPublishScreen(
             TextButton(onClick = onBack) { Text("← Volver") }
             Text("Publicar alerta", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
             Text(
-                "Zona aproximada. La foto es opcional en LeoVer iOS (media parcial).",
+                "Zona aproximada. Podés adjuntar una foto (jpeg/png/webp, máx. 8 MB).",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -156,7 +156,7 @@ internal fun SharedLostFoundPublishScreen(
                     ui.publicCode?.let { Text("Código: $it") }
                     if (ui.mediaDeferred) {
                         Text(
-                            "La foto no se adjuntó aún (media parcial).",
+                            "La alerta fue publicada, pero no pudimos subir la foto.",
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }

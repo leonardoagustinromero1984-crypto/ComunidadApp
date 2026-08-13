@@ -8,8 +8,8 @@ import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
 /**
- * Insert productivo Android: `lost_found_posts` (sin RPC).
- * Media M05 no vive aquí — KMP-8 MEDIA_WRITE = PARTIAL.
+ * Insert/update productivo Android: `lost_found_posts` (sin RPC create).
+ * Media: M05 vía [LostFoundMediaUploadGateway].
  */
 @Serializable
 internal data class LostFoundInsertRow(
@@ -41,9 +41,16 @@ internal data class LostFoundInsertCommand(
     val photoUrl: String? = null
 )
 
+@Serializable
+internal data class LostFoundPhotoUpdateRow(
+    @SerialName("photo_url") val photoUrl: String,
+    @SerialName("updated_at") val updatedAt: String
+)
+
 internal interface LostFoundWriteGateway {
     suspend fun insert(command: LostFoundInsertCommand): Result<String>
     suspend fun fetchPublicCode(id: String): Result<String?>
+    suspend fun updatePhotoUrl(id: String, assetId: String): Result<Unit>
 }
 
 internal class SupabaseLostFoundWriteGateway(
@@ -89,6 +96,22 @@ internal class SupabaseLostFoundWriteGateway(
             Result.failure(t)
         }
     }
+
+    override suspend fun updatePhotoUrl(id: String, assetId: String): Result<Unit> {
+        return try {
+            client.from("lost_found_posts").update(
+                LostFoundPhotoUpdateRow(
+                    photoUrl = assetId,
+                    updatedAt = currentIso8601Now()
+                )
+            ) {
+                filter { eq("id", id) }
+            }
+            Result.success(Unit)
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+    }
 }
 
 internal class FakeLostFoundWriteGateway(
@@ -96,6 +119,8 @@ internal class FakeLostFoundWriteGateway(
     var inserted: MutableList<LostFoundInsertRow> = mutableListOf(),
     var publicCodes: MutableMap<String, String?> = mutableMapOf(),
     var insertCalls: Int = 0,
+    var photoUpdates: MutableList<Pair<String, String>> = mutableListOf(),
+    var photoUpdateError: Throwable? = null,
     var forcedId: String? = null
 ) : LostFoundWriteGateway {
     @OptIn(ExperimentalUuidApi::class)
@@ -124,14 +149,28 @@ internal class FakeLostFoundWriteGateway(
 
     override suspend fun fetchPublicCode(id: String): Result<String?> =
         Result.success(publicCodes[id])
+
+    override suspend fun updatePhotoUrl(id: String, assetId: String): Result<Unit> {
+        photoUpdateError?.let { return Result.failure(it) }
+        photoUpdates += id to assetId
+        val idx = inserted.indexOfFirst { it.id == id }
+        if (idx >= 0) {
+            inserted[idx] = inserted[idx].copy(photoUrl = assetId)
+        }
+        return Result.success(Unit)
+    }
 }
 
 /**
- * Upload M05 no portado a shared — nunca reporta éxito falso.
+ * Adapter Lost/Found → M05. REAL_REMOTE cuando el gateway M05 está cableado.
  */
 internal interface LostFoundMediaUploadGateway {
     val writeMode: LostFoundMediaWriteCapability
-    suspend fun uploadForCase(caseId: String, platformIdentifier: String): Result<String>
+    suspend fun uploadForCase(
+        caseId: String,
+        actorUserId: String,
+        file: com.comunidapp.shared.poc.m08.model.FileRef
+    ): Result<String>
 }
 
 internal enum class LostFoundMediaWriteCapability {
@@ -140,21 +179,51 @@ internal enum class LostFoundMediaWriteCapability {
     UNAVAILABLE
 }
 
+internal class M05BackedLostFoundMediaUploadGateway(
+    private val m05: com.comunidapp.shared.media.M05MediaUploadGateway
+) : LostFoundMediaUploadGateway {
+    override val writeMode: LostFoundMediaWriteCapability =
+        LostFoundMediaWriteCapability.REAL_REMOTE
+
+    override suspend fun uploadForCase(
+        caseId: String,
+        actorUserId: String,
+        file: com.comunidapp.shared.poc.m08.model.FileRef
+    ): Result<String> =
+        m05.uploadLostFoundMedia(
+            com.comunidapp.shared.media.M05MediaUploadRequest(
+                caseId = caseId,
+                actorUserId = actorUserId,
+                file = file
+            )
+        )
+}
+
 internal class PartialLostFoundMediaUploadGateway : LostFoundMediaUploadGateway {
     override val writeMode: LostFoundMediaWriteCapability = LostFoundMediaWriteCapability.PARTIAL
-    override suspend fun uploadForCase(caseId: String, platformIdentifier: String): Result<String> =
-        Result.failure(IllegalStateException("MEDIA_UPLOAD_PARTIAL_M05_NOT_IN_SHARED"))
+    override suspend fun uploadForCase(
+        caseId: String,
+        actorUserId: String,
+        file: com.comunidapp.shared.poc.m08.model.FileRef
+    ): Result<String> =
+        Result.failure(IllegalStateException("MEDIA_UPLOAD_UNAVAILABLE"))
 }
 
 internal class FakeLostFoundMediaUploadGateway(
     var succeedWithAssetId: String? = null,
-    var error: Throwable? = IllegalStateException("MEDIA_UPLOAD_PARTIAL_M05_NOT_IN_SHARED")
+    var error: Throwable? = IllegalStateException("MEDIA_UPLOAD_FAILED"),
+    var calls: Int = 0
 ) : LostFoundMediaUploadGateway {
     override val writeMode: LostFoundMediaWriteCapability =
         if (succeedWithAssetId != null) LostFoundMediaWriteCapability.REAL_REMOTE
         else LostFoundMediaWriteCapability.PARTIAL
 
-    override suspend fun uploadForCase(caseId: String, platformIdentifier: String): Result<String> {
+    override suspend fun uploadForCase(
+        caseId: String,
+        actorUserId: String,
+        file: com.comunidapp.shared.poc.m08.model.FileRef
+    ): Result<String> {
+        calls++
         succeedWithAssetId?.let { return Result.success(it) }
         return Result.failure(error ?: IllegalStateException("MEDIA_UPLOAD_FAILED"))
     }

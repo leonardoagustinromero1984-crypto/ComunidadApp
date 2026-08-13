@@ -14,6 +14,8 @@ import com.comunidapp.shared.auth.usableOrNull
 import com.comunidapp.shared.lostfound.LostFoundRepository
 import com.comunidapp.shared.lostfound.RemoteLostFoundRepository
 import com.comunidapp.shared.lostfound.UnconfiguredLostFoundRepository
+import com.comunidapp.shared.media.SupabaseM05MediaUploadGateway
+import com.comunidapp.shared.media.createFileContentReader
 import com.comunidapp.shared.pets.RemoteSharedPetsRepository
 import com.comunidapp.shared.pets.SharedPetsRepository
 import com.comunidapp.shared.pets.UnconfiguredSharedPetsRepository
@@ -25,9 +27,10 @@ import io.github.jan.supabase.auth.Auth
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.PropertyConversionMethod
+import io.github.jan.supabase.storage.Storage
 
 /**
- * Único runtime Kotlin-only: Auth + Postgrest + Keychain SessionManager.
+ * Único runtime Kotlin-only: Auth + Postgrest + Storage + Keychain SessionManager.
  * Produce Auth / Profile / Pets / LostFound / Adoption — un solo SupabaseClient.
  * internal — no exportar SupabaseClient a ObjC/Swift.
  */
@@ -66,11 +69,17 @@ internal class SharedRemoteRuntime private constructor(
                 gateway = SupabasePetsRemoteGateway(client),
                 sessionRepository = authRepository
             )
+            val mediaGateway = M05BackedLostFoundMediaUploadGateway(
+                m05 = SupabaseM05MediaUploadGateway(
+                    client = client,
+                    fileContentReader = createFileContentReader()
+                )
+            )
             val lostFoundRepository = RemoteLostFoundRepository(
                 gateway = SupabaseLostFoundRemoteGateway(client),
                 writeGateway = SupabaseLostFoundWriteGateway(client),
                 sessionRepository = authRepository,
-                mediaUploadGateway = PartialLostFoundMediaUploadGateway()
+                mediaUploadGateway = mediaGateway
             )
             val adoptionRepository = RemoteAdoptionRepository(
                 gateway = SupabaseAdoptionRemoteGateway(client),
@@ -103,6 +112,7 @@ internal class SharedRemoteRuntime private constructor(
                 install(Postgrest) {
                     propertyConversionMethod = PropertyConversionMethod.SERIAL_NAME
                 }
+                install(Storage)
             }
         }
     }

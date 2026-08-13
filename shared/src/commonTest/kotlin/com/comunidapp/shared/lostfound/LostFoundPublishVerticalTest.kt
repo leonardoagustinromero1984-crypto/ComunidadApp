@@ -218,28 +218,33 @@ class LostFoundPublishVerticalTest {
     }
 
     @Test
-    fun publish_with_file_ref_media_partial() = runTest {
+    fun publish_with_file_ref_media_success() = runTest {
         val write = FakeLostFoundWriteGateway(forcedId = "m1")
-        val media = FakeLostFoundMediaUploadGateway(succeedWithAssetId = null)
+        val media = FakeLostFoundMediaUploadGateway(succeedWithAssetId = "asset-99")
         val file = FileRef("foto.jpg", "image/jpeg", 1024, "file://tmp/foto.jpg")
         val result = remoteRepo(write = write, media = media)
             .publish(LostFoundPublishRequest(validLostDraft(), media = file))
         val ok = assertIs<LostFoundPublishResult.Success>(result)
-        assertFalse(ok.mediaAttached)
-        assertTrue(ok.mediaDeferred)
+        assertTrue(ok.mediaAttached)
+        assertFalse(ok.mediaDeferred)
+        assertEquals(listOf("m1" to "asset-99"), write.photoUpdates)
     }
 
     @Test
     fun media_upload_failure_does_not_block_text() = runTest {
         val write = FakeLostFoundWriteGateway(forcedId = "m2")
         val media = FakeLostFoundMediaUploadGateway(
+            succeedWithAssetId = null,
             error = IllegalStateException("upload storage failed")
         )
         val file = FileRef("foto.jpg", "image/jpeg", 1024, "id-1")
         val result = remoteRepo(write = write, media = media)
             .publish(LostFoundPublishRequest(validLostDraft(), media = file))
-        assertIs<LostFoundPublishResult.Success>(result)
+        val ok = assertIs<LostFoundPublishResult.Success>(result)
+        assertFalse(ok.mediaAttached)
+        assertTrue(ok.mediaDeferred)
         assertEquals(1, write.insertCalls)
+        assertTrue(write.photoUpdates.isEmpty())
     }
 
     @Test

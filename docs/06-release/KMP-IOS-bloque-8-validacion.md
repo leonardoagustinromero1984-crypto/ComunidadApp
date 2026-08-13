@@ -2,36 +2,21 @@
 
 **HEAD base:** `a65d05b088330da59e5e1a390ca367b1ee4fb4f3`
 
-**Commit KMP-8:** (ver SHA post-push)
+**KMP-8 SHA:** `9072c86d4ddebbd56c9126d75fc31a7d7fb9b4a1`
+
+**GitHub Actions Gate #10:** PASS (macOS real)
+
+**KMP-8 = CLOSED GREEN**
 
 ## Windows
 
 | Check | Resultado |
 | ----- | --------- |
-| `:shared:testAndroidHostTest` | PASS — **180** tests (153 base + 27 nuevos) |
+| `:shared:testAndroidHostTest` | PASS — **180** tests |
 | `compileLocalDebugKotlin` | BUILD SUCCESSFUL |
 | `compileKotlinIosSimulatorArm64` | BUILD SUCCESSFUL |
-| commonMain isolation | PASS |
-| SQL / schema / APK / lint / JaCoCo | NO |
+| MEDIA WRITE (al cierre KMP-8) | PARTIAL |
 
-## Data modes iOS host
+## Sucesor
 
-| Capa | Modo |
-| ---- | ---- |
-| SESSION | REAL_REMOTE |
-| PROFILE | REAL_REMOTE |
-| PETS | REAL_REMOTE |
-| LOST_FOUND | REAL_REMOTE |
-| ADOPTIONS | REAL_REMOTE |
-| LOST/FOUND PUBLISH | REAL_REMOTE |
-| MEDIA WRITE | PARTIAL |
-
-Fake* host = NO. Un solo SupabaseClient.
-
-## ObjC
-
-Write gateways / DTOs / runtime = `internal`. Entry: `PocIosViewController()`.
-
-## Gate siguiente
-
-READY_TO_RUN_IOS_CLOUD_GATE
+KMP-9 porta M05 a `:shared` → MEDIA WRITE REAL_REMOTE.

@@ -1,20 +1,19 @@
-# KMP-IOS — Arquitectura compartida (post KMP-8)
+# KMP-IOS — Arquitectura compartida (post KMP-9)
 
 ```text
 iosApp SwiftUI
   └─ PocIosViewController()
        └─ SharedRemoteRuntime (internal)
-            Auth + Postgrest + Keychain
+            Auth + Postgrest + Storage + Keychain
             → Session / Profile / Pets / LostFound / Adoption REAL_REMOTE
-            → LostFound publish REAL_REMOTE (media PARTIAL)
-            + IosImagePicker (PHPicker) opcional
+            → LostFound publish + M05 media WRITE REAL_REMOTE
+            + IosImagePicker (PHPicker) → FileRef durable temp
 ```
 
 ## Principios
 
 1. Un solo SupabaseClient.
-2. Gateways/DTOs/runtime `internal`.
-3. Backend/RLS autoriza writes (`author_id = auth.uid()`).
-4. UI SAFE: sin coords/PII; `contact_info` no vuelve a modelos de lectura.
-5. Fakes solo tests; host sin fallback fake.
-6. Media M05 no fingida si no está en shared.
+2. Gateways/DTOs/runtime/Storage `internal`.
+3. M05 contratos existentes (sin SQL/schema).
+4. Media fail no borra alerta publicada.
+5. Fakes solo tests.

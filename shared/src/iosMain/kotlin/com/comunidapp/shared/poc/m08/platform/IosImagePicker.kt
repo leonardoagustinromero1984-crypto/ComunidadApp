@@ -10,7 +10,9 @@ import platform.Foundation.NSError
 import platform.Foundation.NSFileManager
 import platform.Foundation.NSFileSize
 import platform.Foundation.NSNumber
+import platform.Foundation.NSTemporaryDirectory
 import platform.Foundation.NSURL
+import platform.Foundation.NSUUID
 import platform.PhotosUI.PHPickerConfiguration
 import platform.PhotosUI.PHPickerFilter
 import platform.PhotosUI.PHPickerResult
@@ -110,7 +112,12 @@ private fun loadFileRef(
             return@loadFileRepresentationForTypeIdentifier
         }
         val name = url.lastPathComponent?.takeIf { it.isNotBlank() } ?: "ios-image.jpg"
-        val size = fileSizeBytes(url)
+        val durable = copyToTemp(url, name)
+        if (durable == null) {
+            onDone(ImagePickResult.Failure("MEDIA_FILE_UNAVAILABLE"))
+            return@loadFileRepresentationForTypeIdentifier
+        }
+        val size = fileSizeBytes(durable)
         if (size <= 0L) {
             onDone(ImagePickResult.Failure("SIZE_INVALID"))
             return@loadFileRepresentationForTypeIdentifier
@@ -121,11 +128,23 @@ private fun loadFileRef(
                     name = name,
                     mimeType = mimeFromPath(name),
                     sizeBytes = size,
-                    platformIdentifier = url.absoluteString ?: name
+                    platformIdentifier = durable.absoluteString ?: name
                 )
             )
         )
     }
+}
+
+@OptIn(ExperimentalForeignApi::class)
+private fun copyToTemp(source: NSURL, name: String): NSURL? {
+    val fm = NSFileManager.defaultManager
+    val dir = NSTemporaryDirectory() + "leover-media/"
+    fm.createDirectoryAtPath(dir, withIntermediateDirectories = true, attributes = null, error = null)
+    val destPath = dir + NSUUID().UUIDString + "-" + name
+    val dest = NSURL.fileURLWithPath(destPath)
+    fm.removeItemAtURL(dest, null)
+    val ok = fm.copyItemAtURL(source, dest, null)
+    return if (ok) dest else null
 }
 
 @OptIn(ExperimentalForeignApi::class)
