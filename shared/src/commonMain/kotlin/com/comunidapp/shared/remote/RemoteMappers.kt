@@ -2,6 +2,16 @@ package com.comunidapp.shared.remote
 
 import com.comunidapp.app.domain.pets.PetId
 import com.comunidapp.app.domain.pets.PetLifecycleStatus
+import com.comunidapp.shared.adoption.AdoptionDetail
+import com.comunidapp.shared.adoption.AdoptionId
+import com.comunidapp.shared.adoption.AdoptionSummary
+import com.comunidapp.shared.domain.adoption.AdoptionListingStatus
+import com.comunidapp.shared.domain.lostfound.LostFoundCaseStatus
+import com.comunidapp.shared.domain.lostfound.LostFoundCaseType
+import com.comunidapp.shared.location.ApproximateLocation
+import com.comunidapp.shared.lostfound.LostFoundDetail
+import com.comunidapp.shared.lostfound.LostFoundId
+import com.comunidapp.shared.lostfound.LostFoundSummary
 import com.comunidapp.shared.pets.PetDetailView
 import com.comunidapp.shared.pets.PetSummary
 import com.comunidapp.shared.profile.UserProfileSummary
@@ -80,4 +90,175 @@ internal object RemotePetsMapper {
             "ARCHIVED" -> PetLifecycleStatus.ARCHIVED
             else -> PetLifecycleStatus.ACTIVE
         }
+}
+
+/**
+ * Lost/Found SAFE mapper.
+ * No coords, contact_info, author_id ni UUID visible en campos de display.
+ * Estados/tipos desconocidos → null (no forzar ACTIVE/LOST).
+ */
+internal object RemoteLostFoundMapper {
+    fun toSummary(row: RemoteLostFoundRow): LostFoundSummary? {
+        val type = mapType(row.type) ?: return null
+        val status = mapStatus(row.status) ?: return null
+        if (row.id.isBlank()) return null
+        return LostFoundSummary(
+            id = LostFoundId(row.id),
+            type = type,
+            status = status,
+            displayName = row.petName?.takeIf { it.isNotBlank() },
+            speciesLabel = RemoteLabelMapper.speciesLabel(row.species),
+            approximateLocation = approximateFromLocationText(row.location),
+            reportedAtLabel = formatReportedAtLabel(row.createdAt),
+            publicCode = row.publicCode?.takeIf { it.isNotBlank() },
+            hasPhoto = !row.photoUrl.isNullOrBlank()
+        )
+    }
+
+    fun toDetail(row: RemoteLostFoundRow): LostFoundDetail? {
+        val type = mapType(row.type) ?: return null
+        val status = mapStatus(row.status) ?: return null
+        if (row.id.isBlank()) return null
+        return LostFoundDetail(
+            id = LostFoundId(row.id),
+            type = type,
+            status = status,
+            displayName = row.petName?.takeIf { it.isNotBlank() },
+            speciesLabel = RemoteLabelMapper.speciesLabel(row.species),
+            breedText = null,
+            sexLabel = null,
+            description = row.description.trim().ifBlank { "Sin descripción." },
+            approximateLocation = approximateFromLocationText(row.location),
+            reportedAtLabel = formatReportedAtLabel(row.createdAt),
+            publicCode = row.publicCode?.takeIf { it.isNotBlank() },
+            publisherDisplayName = row.authorName?.takeIf { it.isNotBlank() },
+            hasPhoto = !row.photoUrl.isNullOrBlank()
+        )
+    }
+
+    fun mapType(raw: String): LostFoundCaseType? =
+        when (raw.trim().uppercase()) {
+            "LOST" -> LostFoundCaseType.LOST
+            "FOUND" -> LostFoundCaseType.FOUND
+            else -> null
+        }
+
+    fun mapStatus(raw: String): LostFoundCaseStatus? =
+        when (raw.trim().uppercase()) {
+            "ACTIVE" -> LostFoundCaseStatus.ACTIVE
+            "RESOLVED" -> LostFoundCaseStatus.RESOLVED
+            "CLOSED" -> LostFoundCaseStatus.CLOSED
+            else -> null
+        }
+}
+
+/**
+ * Adoption SAFE mapper (M09 publication row).
+ * No publisher_id / organizationId / pet_id / coords / requirements clínicos.
+ */
+internal object RemoteAdoptionMapper {
+    fun toSummary(row: RemoteAdoptionPublicationRow): AdoptionSummary? {
+        val status = mapStatus(row.status) ?: return null
+        if (row.id.isBlank()) return null
+        val display = row.name.takeIf { it.isNotBlank() }
+            ?: row.title?.takeIf { it.isNotBlank() }
+            ?: return null
+        return AdoptionSummary(
+            id = AdoptionId(row.id),
+            status = status,
+            displayName = display,
+            speciesLabel = RemoteLabelMapper.speciesLabel(row.species),
+            approximateAgeLabel = RemoteLabelMapper.ageLabel(row.ageYears, row.ageMonths),
+            sexLabel = RemoteLabelMapper.sexLabel(row.sex),
+            approximateLocation = approximateFromLocationText(
+                row.locationText?.takeIf { it.isNotBlank() } ?: row.location
+            ),
+            publicCode = row.publicCode?.takeIf { it.isNotBlank() },
+            hasPhoto = !row.photoUrl.isNullOrBlank()
+        )
+    }
+
+    fun toDetail(row: RemoteAdoptionPublicationRow): AdoptionDetail? {
+        val status = mapStatus(row.status) ?: return null
+        if (row.id.isBlank()) return null
+        val display = row.name.takeIf { it.isNotBlank() }
+            ?: row.title?.takeIf { it.isNotBlank() }
+            ?: return null
+        return AdoptionDetail(
+            id = AdoptionId(row.id),
+            status = status,
+            displayName = display,
+            speciesLabel = RemoteLabelMapper.speciesLabel(row.species),
+            breedText = null,
+            approximateAgeLabel = RemoteLabelMapper.ageLabel(row.ageYears, row.ageMonths),
+            sexLabel = RemoteLabelMapper.sexLabel(row.sex),
+            description = row.description.trim().ifBlank { "Sin descripción." },
+            approximateLocation = approximateFromLocationText(
+                row.locationText?.takeIf { it.isNotBlank() } ?: row.location
+            ),
+            publisherDisplayName = row.publisherName?.takeIf { it.isNotBlank() },
+            publicCode = row.publicCode?.takeIf { it.isNotBlank() },
+            hasPhoto = !row.photoUrl.isNullOrBlank()
+        )
+    }
+
+    fun mapStatus(raw: String): AdoptionListingStatus? =
+        when (raw.trim().uppercase()) {
+            "DRAFT" -> AdoptionListingStatus.DRAFT
+            "PUBLISHED", "AVAILABLE" -> AdoptionListingStatus.PUBLISHED
+            "ADOPTED" -> AdoptionListingStatus.ADOPTED
+            "CLOSED" -> AdoptionListingStatus.CLOSED
+            // PAUSED / IN_PROCESS / desconocidos: no forzar a PUBLISHED
+            else -> null
+        }
+}
+
+internal object RemoteLabelMapper {
+    fun speciesLabel(raw: String): String =
+        when (raw.trim().uppercase()) {
+            "DOG", "PERRO" -> "Perro"
+            "CAT", "GATO" -> "Gato"
+            "OTHER", "OTRO", "" -> "Otro"
+            else -> raw.trim().ifBlank { "Otro" }
+        }
+
+    fun sexLabel(raw: String): String? =
+        when (raw.trim().uppercase()) {
+            "MALE", "MACHO" -> "Macho"
+            "FEMALE", "HEMBRA" -> "Hembra"
+            "UNKNOWN", "DESCONOCIDO", "" -> null
+            else -> raw.trim().takeIf { it.isNotBlank() }
+        }
+
+    fun ageLabel(years: Int, months: Int): String? {
+        if (years <= 0 && months <= 0) return null
+        return when {
+            years <= 0 -> if (months == 1) "1 mes" else "$months meses"
+            months <= 0 -> if (years == 1) "1 año" else "$years años"
+            else -> {
+                val y = if (years == 1) "1 año" else "$years años"
+                val m = if (months == 1) "1 mes" else "$months meses"
+                "$y $m"
+            }
+        }
+    }
+}
+
+/** Solo texto de zona → ApproximateLocation. Nunca lat/lng. */
+internal fun approximateFromLocationText(location: String): ApproximateLocation {
+    val locality = location.trim().ifBlank { "Zona no especificada" }
+    return ApproximateLocation(locality = locality)
+}
+
+/** Fecha reportada legible sin exponer epoch ni ISO crudo. */
+internal fun formatReportedAtLabel(iso: String?): String {
+    if (iso.isNullOrBlank()) return "—"
+    val datePart = iso.trim().take(10)
+    if (datePart.length == 10 && datePart[4] == '-' && datePart[7] == '-') {
+        val y = datePart.substring(0, 4)
+        val m = datePart.substring(5, 7)
+        val d = datePart.substring(8, 10)
+        return "$d/$m/$y"
+    }
+    return "—"
 }

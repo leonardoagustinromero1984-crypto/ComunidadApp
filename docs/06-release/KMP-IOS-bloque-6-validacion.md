@@ -1,7 +1,12 @@
 # KMP-IOS — Bloque 6 validación
 
 **HEAD base:** `005def3`
-**Commit KMP-6:** (ver SHA post-push)
+
+**KMP-6 SHA:** `296ec88238f3c37907336fc7d98362b850e2689e`
+
+**GitHub Actions Gate #8:** PASS (macOS real)
+
+**KMP-6 = CLOSED GREEN**
 
 ## Windows
 
@@ -13,7 +18,7 @@
 | commonMain isolation | PASS |
 | SQL / schema / APK | NO |
 
-## Data modes iOS host
+## Data modes iOS host (al cierre KMP-6)
 
 | Capa | Modo |
 | ---- | ---- |
@@ -34,4 +39,8 @@ Entry Swift: `PocIosViewController()`.
 
 ## Gate
 
-Manual: KMP iOS Validation → `main`.
+GitHub Actions KMP iOS Validation **#8** → PASS REAL macOS.
+
+## Sucesor
+
+KMP-7 conecta LOST_FOUND + ADOPTIONS a REAL_REMOTE (ver `KMP-IOS-bloque-7-validacion.md`).

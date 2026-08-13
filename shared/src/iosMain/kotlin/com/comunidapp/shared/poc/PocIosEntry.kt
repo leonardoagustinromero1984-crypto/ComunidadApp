@@ -6,19 +6,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.window.ComposeUIViewController
-import com.comunidapp.shared.adoption.FakeAdoptionRepository
 import com.comunidapp.shared.auth.IosSupabaseConfigReader
 import com.comunidapp.shared.auth.createSecureSessionStorage
-import com.comunidapp.shared.lostfound.FakeLostFoundRepository
 import com.comunidapp.shared.poc.m08.platform.IosImagePicker
 import com.comunidapp.shared.remote.SharedRemoteRuntime
 import com.comunidapp.shared.vertical.LeoVerSharedApp
 import platform.UIKit.UIViewController
 
 /**
- * Host iOS KMP-6:
- * SESSION / PROFILE / PETS = REAL_REMOTE (un solo SharedRemoteRuntime).
- * LOST_FOUND / ADOPTIONS = SHARED_FAKE.
+ * Host iOS KMP-7:
+ * SESSION / PROFILE / PETS / LOST_FOUND / ADOPTIONS = REAL_REMOTE
+ * (un solo SharedRemoteRuntime / SupabaseClient).
  */
 fun PocIosViewController(): UIViewController =
     ComposeUIViewController {
@@ -31,8 +29,6 @@ fun PocIosViewController(): UIViewController =
                     storage = createSecureSessionStorage()
                 )
             }
-            val lostFoundRepository = remember { FakeLostFoundRepository() }
-            val adoptionRepository = remember { FakeAdoptionRepository() }
 
             if (showLegacyPocs) {
                 PocLauncherApp(
@@ -44,8 +40,8 @@ fun PocIosViewController(): UIViewController =
                     sessionRepository = runtime.authRepository,
                     profileRepository = runtime.profileRepository,
                     petsRepository = runtime.petsRepository,
-                    lostFoundRepository = lostFoundRepository,
-                    adoptionRepository = adoptionRepository,
+                    lostFoundRepository = runtime.lostFoundRepository,
+                    adoptionRepository = runtime.adoptionRepository,
                     authRepository = runtime.authRepository,
                     onOpenLegacyPocs = { showLegacyPocs = true }
                 )

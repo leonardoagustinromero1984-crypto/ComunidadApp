@@ -323,6 +323,14 @@ class ProfilePetsRemoteVerticalTest {
             com.comunidapp.shared.pets.PetsDataMode.REAL_REMOTE,
             runtime.petsRepository.dataMode
         )
+        assertEquals(
+            com.comunidapp.shared.lostfound.LostFoundDataMode.REAL_REMOTE,
+            runtime.lostFoundRepository.dataMode
+        )
+        assertEquals(
+            com.comunidapp.shared.adoption.AdoptionDataMode.REAL_REMOTE,
+            runtime.adoptionRepository.dataMode
+        )
         assertIs<UnconfiguredAuthSessionRepository>(runtime.authRepository)
     }
 

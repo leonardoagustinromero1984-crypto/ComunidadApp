@@ -28,6 +28,8 @@ Un solo cliente / sesión / Keychain. Sin auth paralelo.
 - `passportHint`: null (M14 no en path Android detail actual)
 - Media: `hasAvatar` booleano — rendering URL PARCIAL
 
-## Host iOS
+## Host iOS (histórico KMP-6)
 
-`PocIosViewController` → `SharedRemoteRuntime.create(...)` + Fake LF/Adoption.
+En KMP-6: `PocIosViewController` → `SharedRemoteRuntime.create(...)` + Fake LF/Adoption.
+
+**KMP-7:** LF/Adoption también desde el mismo runtime (ver `KMP-IOS-lost-found-adoption-real-remote.md`).

@@ -1,5 +1,8 @@
 package com.comunidapp.shared.remote
 
+import com.comunidapp.shared.adoption.AdoptionRepository
+import com.comunidapp.shared.adoption.RemoteAdoptionRepository
+import com.comunidapp.shared.adoption.UnconfiguredAdoptionRepository
 import com.comunidapp.shared.auth.AuthRepository
 import com.comunidapp.shared.auth.GatewayAuthRepository
 import com.comunidapp.shared.auth.SecureSessionStorage
@@ -8,6 +11,9 @@ import com.comunidapp.shared.auth.SharedSupabaseConfig
 import com.comunidapp.shared.auth.SupabaseAuthSessionGateway
 import com.comunidapp.shared.auth.UnconfiguredAuthSessionRepository
 import com.comunidapp.shared.auth.usableOrNull
+import com.comunidapp.shared.lostfound.LostFoundRepository
+import com.comunidapp.shared.lostfound.RemoteLostFoundRepository
+import com.comunidapp.shared.lostfound.UnconfiguredLostFoundRepository
 import com.comunidapp.shared.pets.RemoteSharedPetsRepository
 import com.comunidapp.shared.pets.SharedPetsRepository
 import com.comunidapp.shared.pets.UnconfiguredSharedPetsRepository
@@ -22,13 +28,16 @@ import io.github.jan.supabase.postgrest.PropertyConversionMethod
 
 /**
  * Único runtime Kotlin-only: Auth + Postgrest + Keychain SessionManager.
+ * Produce Auth / Profile / Pets / LostFound / Adoption — un solo SupabaseClient.
  * internal — no exportar SupabaseClient a ObjC/Swift.
  */
 internal class SharedRemoteRuntime private constructor(
     private val client: SupabaseClient?,
     val authRepository: AuthRepository,
     val profileRepository: UserProfileRepository,
-    val petsRepository: SharedPetsRepository
+    val petsRepository: SharedPetsRepository,
+    val lostFoundRepository: LostFoundRepository,
+    val adoptionRepository: AdoptionRepository
 ) {
     companion object {
         fun create(
@@ -41,7 +50,9 @@ internal class SharedRemoteRuntime private constructor(
                     client = null,
                     authRepository = UnconfiguredAuthSessionRepository(),
                     profileRepository = UnconfiguredUserProfileRepository(),
-                    petsRepository = UnconfiguredSharedPetsRepository()
+                    petsRepository = UnconfiguredSharedPetsRepository(),
+                    lostFoundRepository = UnconfiguredLostFoundRepository(),
+                    adoptionRepository = UnconfiguredAdoptionRepository()
                 )
             }
             val client = createClient(usable, storage)
@@ -55,11 +66,21 @@ internal class SharedRemoteRuntime private constructor(
                 gateway = SupabasePetsRemoteGateway(client),
                 sessionRepository = authRepository
             )
+            val lostFoundRepository = RemoteLostFoundRepository(
+                gateway = SupabaseLostFoundRemoteGateway(client),
+                sessionRepository = authRepository
+            )
+            val adoptionRepository = RemoteAdoptionRepository(
+                gateway = SupabaseAdoptionRemoteGateway(client),
+                sessionRepository = authRepository
+            )
             return SharedRemoteRuntime(
                 client = client,
                 authRepository = authRepository,
                 profileRepository = profileRepository,
-                petsRepository = petsRepository
+                petsRepository = petsRepository,
+                lostFoundRepository = lostFoundRepository,
+                adoptionRepository = adoptionRepository
             )
         }
 
