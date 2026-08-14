@@ -2,7 +2,9 @@ package com.comunidapp.shared.lostfound
 
 import com.comunidapp.shared.auth.AuthFailure
 import com.comunidapp.shared.auth.AuthFailureMessages
+import com.comunidapp.shared.domain.lostfound.LostFoundCaseStatus
 import com.comunidapp.shared.domain.lostfound.LostFoundCaseType
+import com.comunidapp.shared.domain.lostfound.LostFoundStatusRules
 import com.comunidapp.shared.remote.LostFoundInsertCommand
 import com.comunidapp.shared.remote.LostFoundMediaUploadGateway
 import com.comunidapp.shared.remote.LostFoundRemoteGateway
@@ -23,8 +25,8 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.update
 
 /**
- * Lost/Found REAL_REMOTE — read `lost_found_posts` + write insert (KMP-8).
- * Media M05: PARTIAL (no fingir upload).
+ * Lost/Found REAL_REMOTE — read `lost_found_posts` + write insert/status (KMP-8/22).
+ * Media M05: PARTIAL cuando no hay upload gateway.
  */
 internal class RemoteLostFoundRepository(
     private val gateway: LostFoundRemoteGateway,
@@ -45,29 +47,35 @@ internal class RemoteLostFoundRepository(
             }
         }
 
-    override fun observeDetail(id: LostFoundId): Flow<VerticalLoadState<LostFoundDetail>> = flow {
-        emit(VerticalLoadState.Loading)
-        val session = sessionRepository.currentSession()
-        if (session !is SessionState.Authenticated) {
-            emit(VerticalLoadState.Error("Tu sesión no está disponible."))
-            return@flow
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun observeDetail(id: LostFoundId): Flow<VerticalLoadState<LostFoundDetail>> =
+        refreshTick.asStateFlow().flatMapLatest {
+            flow {
+                emit(VerticalLoadState.Loading)
+                val session = sessionRepository.currentSession()
+                if (session !is SessionState.Authenticated) {
+                    emit(VerticalLoadState.Error("Tu sesión no está disponible."))
+                    return@flow
+                }
+                gateway.fetchById(id.value).fold(
+                    onSuccess = { row ->
+                        if (row == null) {
+                            emit(VerticalLoadState.Error("No encontramos ese contenido."))
+                            return@fold
+                        }
+                        val detail = RemoteLostFoundMapper.toDetail(row)
+                        if (detail == null) {
+                            emit(VerticalLoadState.Error("No encontramos ese contenido."))
+                        } else {
+                            val canManage = !row.authorId.isNullOrBlank() &&
+                                row.authorId == session.user.userId
+                            emit(VerticalLoadState.Content(detail.copy(viewerCanManage = canManage)))
+                        }
+                    },
+                    onFailure = { emit(VerticalLoadState.Error(mapLostFoundThrowable(it))) }
+                )
+            }
         }
-        gateway.fetchById(id.value).fold(
-            onSuccess = { row ->
-                if (row == null) {
-                    emit(VerticalLoadState.Error("No encontramos ese contenido."))
-                    return@fold
-                }
-                val detail = RemoteLostFoundMapper.toDetail(row)
-                if (detail == null) {
-                    emit(VerticalLoadState.Error("No encontramos ese contenido."))
-                } else {
-                    emit(VerticalLoadState.Content(detail))
-                }
-            },
-            onFailure = { emit(VerticalLoadState.Error(mapLostFoundThrowable(it))) }
-        )
-    }
 
     override suspend fun refresh() {
         refreshTick.update { it + 1 }
@@ -113,11 +121,9 @@ internal class RemoteLostFoundRepository(
                 if (photoUpdate.isSuccess) {
                     mediaAttached = true
                 } else {
-                    // Upload OK pero update falló — alerta existe; no fingir media ni rollback.
                     mediaDeferred = true
                 }
             } else {
-                // Semántica Android: insert OK + media fail → post queda sin foto.
                 mediaDeferred = true
             }
         }
@@ -130,6 +136,57 @@ internal class RemoteLostFoundRepository(
             mediaAttached = mediaAttached,
             mediaDeferred = mediaDeferred
         )
+    }
+
+    override suspend fun markResolved(id: LostFoundId): LostFoundManageResult {
+        val session = sessionRepository.currentSession()
+        if (session !is SessionState.Authenticated) {
+            return LostFoundManageResult.Unauthenticated("Tu sesión no está disponible.")
+        }
+        val row = gateway.fetchById(id.value).getOrElse {
+            return mapManageThrowable(it)
+        } ?: return LostFoundManageResult.BackendError("No encontramos ese contenido.")
+
+        if (row.authorId.isNullOrBlank() || row.authorId != session.user.userId) {
+            return LostFoundManageResult.Forbidden("No tenés permiso para esta acción.")
+        }
+        val status = RemoteLostFoundMapper.mapStatus(row.status)
+            ?: return LostFoundManageResult.Conflict("No se puede resolver este caso.")
+        if (!LostFoundStatusRules.canResolve(status)) {
+            return LostFoundManageResult.Conflict("No se puede resolver este caso.")
+        }
+
+        writeGateway.updateStatus(id.value, LostFoundCaseStatus.RESOLVED.name).getOrElse {
+            return mapManageThrowable(it)
+        }
+        refreshTick.update { it + 1 }
+        return LostFoundManageResult.Success
+    }
+
+    override suspend fun updateOwnerContent(
+        id: LostFoundId,
+        description: String?,
+        location: String?
+    ): LostFoundManageResult {
+        val session = sessionRepository.currentSession()
+        if (session !is SessionState.Authenticated) {
+            return LostFoundManageResult.Unauthenticated("Tu sesión no está disponible.")
+        }
+        val row = gateway.fetchById(id.value).getOrElse {
+            return mapManageThrowable(it)
+        } ?: return LostFoundManageResult.BackendError("No encontramos ese contenido.")
+
+        if (row.authorId.isNullOrBlank() || row.authorId != session.user.userId) {
+            return LostFoundManageResult.Forbidden("No tenés permiso para esta acción.")
+        }
+
+        writeGateway.updateOwnerFields(
+            id = id.value,
+            description = description?.trim()?.takeIf { it.isNotEmpty() },
+            location = location?.trim()?.takeIf { it.isNotEmpty() }
+        ).getOrElse { return mapManageThrowable(it) }
+        refreshTick.update { it + 1 }
+        return LostFoundManageResult.Success
     }
 
     private suspend fun loadList(filter: LostFoundListFilter): VerticalLoadState<List<LostFoundSummary>> {
@@ -153,6 +210,20 @@ internal class RemoteLostFoundRepository(
             onFailure = { VerticalLoadState.Error(mapLostFoundThrowable(it)) }
         )
     }
+
+    private fun mapManageThrowable(t: Throwable): LostFoundManageResult {
+        val msg = mapLostFoundThrowable(t)
+        val raw = t.message.orEmpty().lowercase()
+        return when {
+            "401" in raw || "jwt" in raw || "not authenticated" in raw ->
+                LostFoundManageResult.Unauthenticated(msg)
+            "403" in raw || "forbidden" in raw || "rls" in raw || "permission" in raw ->
+                LostFoundManageResult.Forbidden(msg)
+            "invalid_transition" in raw || "conflict" in raw ->
+                LostFoundManageResult.Conflict(msg)
+            else -> LostFoundManageResult.BackendError(msg)
+        }
+    }
 }
 
 internal class UnconfiguredLostFoundRepository : LostFoundRepository {
@@ -173,4 +244,14 @@ internal class UnconfiguredLostFoundRepository : LostFoundRepository {
 
     override suspend fun publish(request: LostFoundPublishRequest): LostFoundPublishResult =
         LostFoundPublishResult.BackendError(AuthFailureMessages.message(AuthFailure.Unavailable))
+
+    override suspend fun markResolved(id: LostFoundId): LostFoundManageResult =
+        LostFoundManageResult.BackendError(AuthFailureMessages.message(AuthFailure.Unavailable))
+
+    override suspend fun updateOwnerContent(
+        id: LostFoundId,
+        description: String?,
+        location: String?
+    ): LostFoundManageResult =
+        LostFoundManageResult.BackendError(AuthFailureMessages.message(AuthFailure.Unavailable))
 }

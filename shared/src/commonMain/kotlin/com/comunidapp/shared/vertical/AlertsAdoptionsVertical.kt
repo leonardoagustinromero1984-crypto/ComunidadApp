@@ -20,7 +20,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
@@ -33,11 +36,13 @@ import com.comunidapp.shared.domain.lostfound.LostFoundCaseType
 import com.comunidapp.shared.lostfound.LostFoundDetail
 import com.comunidapp.shared.lostfound.LostFoundId
 import com.comunidapp.shared.lostfound.LostFoundListFilter
+import com.comunidapp.shared.lostfound.LostFoundManageResult
 import com.comunidapp.shared.lostfound.LostFoundRepository
 import com.comunidapp.shared.lostfound.LostFoundSummary
 import com.comunidapp.shared.media.MediaResolver
 import com.comunidapp.shared.media.SharedRemoteImage
 import com.comunidapp.shared.ui.VerticalLoadState
+import kotlinx.coroutines.launch
 
 @Composable
 internal fun SharedAlertsHubScreen(
@@ -177,6 +182,11 @@ internal fun SharedLostFoundDetailScreen(
     }
     DisposableEffect(vm) { onDispose { vm.clear() } }
     val state by vm.state.collectAsState()
+    var confirmResolve by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var manageError by remember { mutableStateOf<String?>(null) }
+    var manageInfo by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     Scaffold { padding ->
         Column(
@@ -192,7 +202,59 @@ internal fun SharedLostFoundDetailScreen(
                 VerticalLoadState.Loading -> VerticalCenterLoading()
                 VerticalLoadState.Empty -> Text("Sin datos")
                 is VerticalLoadState.Error -> Text(s.message, color = MaterialTheme.colorScheme.error)
-                is VerticalLoadState.Content -> LostFoundDetailBody(s.data, mediaResolver)
+                is VerticalLoadState.Content -> {
+                    LostFoundDetailBody(s.data, mediaResolver)
+                    manageError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    manageInfo?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                    if (
+                        s.data.viewerCanManage &&
+                        s.data.status == com.comunidapp.shared.domain.lostfound.LostFoundCaseStatus.ACTIVE
+                    ) {
+                        if (!confirmResolve) {
+                            Button(
+                                onClick = { confirmResolve = true },
+                                enabled = !busy,
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Marcar como resuelto") }
+                        } else {
+                            Text("¿Confirmás marcar este caso como resuelto?")
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        if (busy) return@Button
+                                        busy = true
+                                        manageError = null
+                                        scope.launch {
+                                            when (
+                                                val result = lostFoundRepository.markResolved(id)
+                                            ) {
+                                                LostFoundManageResult.Success -> {
+                                                    manageInfo = "Caso marcado como resuelto."
+                                                    confirmResolve = false
+                                                    vm.refresh()
+                                                }
+                                                is LostFoundManageResult.Forbidden ->
+                                                    manageError = result.message
+                                                is LostFoundManageResult.Unauthenticated ->
+                                                    manageError = result.message
+                                                is LostFoundManageResult.Conflict ->
+                                                    manageError = result.message
+                                                is LostFoundManageResult.BackendError ->
+                                                    manageError = result.message
+                                            }
+                                            busy = false
+                                        }
+                                    },
+                                    enabled = !busy
+                                ) { Text(if (busy) "Guardando…" else "Confirmar") }
+                                OutlinedButton(
+                                    onClick = { confirmResolve = false },
+                                    enabled = !busy
+                                ) { Text("Cancelar") }
+                            }
+                        }
+                    }
+                }
             }
         }
     }

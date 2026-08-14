@@ -32,6 +32,9 @@ import com.comunidapp.shared.profile.RemoteUserProfileRepository
 import com.comunidapp.shared.profile.SupabaseProfileAvatarUploadGateway
 import com.comunidapp.shared.profile.UnconfiguredUserProfileRepository
 import com.comunidapp.shared.profile.UserProfileRepository
+import com.comunidapp.shared.publiccontent.PublicContentRepository
+import com.comunidapp.shared.publiccontent.RemotePublicContentRepository
+import com.comunidapp.shared.publiccontent.UnconfiguredPublicContentRepository
 import com.comunidapp.shared.push.PushInstallationRepository
 import com.comunidapp.shared.push.RemotePushInstallationRepository
 import com.comunidapp.shared.push.SupabasePushInstallationGateway
@@ -46,7 +49,7 @@ import io.github.jan.supabase.storage.Storage
 
 /**
  * Único runtime Kotlin-only — un solo SupabaseClient.
- * KMP-11…16: Adoption publish/applications/shelter review + profile + pet create.
+ * KMP-11…16 + KMP-20 public content + KMP-21 pet edit + KMP-22 LF manage.
  */
 internal class SharedRemoteRuntime private constructor(
     private val client: SupabaseClient?,
@@ -56,6 +59,7 @@ internal class SharedRemoteRuntime private constructor(
     val lostFoundRepository: LostFoundRepository,
     val adoptionRepository: AdoptionRepository,
     val adoptionApplicationRepository: AdoptionApplicationRepository,
+    val publicContentRepository: PublicContentRepository,
     val mediaResolver: MediaResolver,
     val pushInstallationRepository: PushInstallationRepository
 ) {
@@ -74,6 +78,7 @@ internal class SharedRemoteRuntime private constructor(
                     lostFoundRepository = UnconfiguredLostFoundRepository(),
                     adoptionRepository = UnconfiguredAdoptionRepository(),
                     adoptionApplicationRepository = UnconfiguredAdoptionApplicationRepository(),
+                    publicContentRepository = UnconfiguredPublicContentRepository(),
                     mediaResolver = UnavailableMediaResolver(),
                     pushInstallationRepository = UnconfiguredPushInstallationRepository()
                 )
@@ -128,6 +133,9 @@ internal class SharedRemoteRuntime private constructor(
                 gateway = SupabaseAdoptionApplicationRemoteGateway(client),
                 sessionRepository = authRepository
             )
+            val publicContentRepository = RemotePublicContentRepository(
+                gateway = SupabasePublicContentRemoteGateway(client)
+            )
             val pushInstallationRepository = RemotePushInstallationRepository(
                 gateway = SupabasePushInstallationGateway(client),
                 sessionRepository = authRepository
@@ -140,6 +148,7 @@ internal class SharedRemoteRuntime private constructor(
                 lostFoundRepository = lostFoundRepository,
                 adoptionRepository = adoptionRepository,
                 adoptionApplicationRepository = adoptionApplicationRepository,
+                publicContentRepository = publicContentRepository,
                 mediaResolver = mediaResolver,
                 pushInstallationRepository = pushInstallationRepository
             )

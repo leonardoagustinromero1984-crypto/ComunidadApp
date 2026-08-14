@@ -173,12 +173,16 @@ class LostFoundListViewModelShared(
 
 class LostFoundDetailViewModelShared(
     id: LostFoundId,
-    repository: LostFoundRepository,
+    private val repository: LostFoundRepository,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) {
     val state: StateFlow<VerticalLoadState<LostFoundDetail>> =
         repository.observeDetail(id)
             .stateIn(scope, SharingStarted.Eagerly, VerticalLoadState.Loading)
+
+    fun refresh() {
+        scope.launch { repository.refresh() }
+    }
 
     fun clear() {
         scope.cancel()

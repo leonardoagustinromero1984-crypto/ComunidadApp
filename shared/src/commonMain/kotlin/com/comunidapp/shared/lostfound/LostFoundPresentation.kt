@@ -67,7 +67,9 @@ data class LostFoundDetail(
     val publicCode: String?,
     val publisherDisplayName: String?,
     val hasPhoto: Boolean,
-    val mediaRef: MediaRef? = null
+    val mediaRef: MediaRef? = null,
+    /** Owner puede gestionar (resolver) — sin exponer authorId. */
+    val viewerCanManage: Boolean = false
 )
 
 data class LostFoundDraft(
@@ -110,6 +112,16 @@ interface LostFoundRepository {
      * [media] es FileRef opcional — KMP-8 no finge upload M05.
      */
     suspend fun publish(request: LostFoundPublishRequest): LostFoundPublishResult
+
+    /** Marca caso ACTIVE → RESOLVED (solo owner). */
+    suspend fun markResolved(id: LostFoundId): LostFoundManageResult
+
+    /** Edición mínima owner de description/location. */
+    suspend fun updateOwnerContent(
+        id: LostFoundId,
+        description: String?,
+        location: String?
+    ): LostFoundManageResult
 }
 
 class GetLostFoundCasesUseCase(private val repository: LostFoundRepository) {
@@ -129,13 +141,16 @@ class FakeLostFoundRepository(
     seeds: List<FakeLostFoundSeed> = defaultSeeds(),
     private val fail: Boolean = false,
     private val delayMs: Long = 0L,
-    private val publishFail: Boolean = false
+    private val publishFail: Boolean = false,
+    private val manageAsOwner: Boolean = true
 ) : LostFoundRepository {
     override val dataMode: LostFoundDataMode = LostFoundDataMode.SHARED_FAKE
 
     private val seedState = MutableStateFlow(seeds)
     private val refreshTick = MutableStateFlow(0)
     var publishCalls: Int = 0
+        private set
+    var markResolvedCalls: Int = 0
         private set
 
     @OptIn(ExperimentalCoroutinesApi::class)
@@ -147,20 +162,28 @@ class FakeLostFoundRepository(
             }
         }
 
-    override fun observeDetail(id: LostFoundId): Flow<VerticalLoadState<LostFoundDetail>> = flow {
-        emit(VerticalLoadState.Loading)
-        if (delayMs > 0L) delay(delayMs)
-        if (fail) {
-            emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_NOT_FOUND"))))
-            return@flow
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun observeDetail(id: LostFoundId): Flow<VerticalLoadState<LostFoundDetail>> =
+        refreshTick.asStateFlow().flatMapLatest {
+            flow {
+                emit(VerticalLoadState.Loading)
+                if (delayMs > 0L) delay(delayMs)
+                if (fail) {
+                    emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_NOT_FOUND"))))
+                    return@flow
+                }
+                val seed = seedState.value.firstOrNull { it.summary.id == id }
+                if (seed == null) {
+                    emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_NOT_FOUND"))))
+                    return@flow
+                }
+                emit(
+                    VerticalLoadState.Content(
+                        seed.detail.copy(viewerCanManage = manageAsOwner)
+                    )
+                )
+            }
         }
-        val seed = seedState.value.firstOrNull { it.summary.id == id }
-        if (seed == null) {
-            emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_NOT_FOUND"))))
-            return@flow
-        }
-        emit(VerticalLoadState.Content(seed.detail))
-    }
 
     override suspend fun refresh() {
         refreshTick.update { it + 1 }
@@ -205,7 +228,8 @@ class FakeLostFoundRepository(
             reportedAtLabel = "ahora",
             publicCode = "LV-FAKE",
             publisherDisplayName = "Demo",
-            hasPhoto = false
+            hasPhoto = false,
+            viewerCanManage = manageAsOwner
         )
         seedState.update { it + FakeLostFoundSeed(summary, detail) }
         refreshTick.update { it + 1 }
@@ -216,6 +240,69 @@ class FakeLostFoundRepository(
             mediaAttached = false,
             mediaDeferred = mediaDeferred
         )
+    }
+
+    override suspend fun markResolved(id: LostFoundId): LostFoundManageResult {
+        markResolvedCalls++
+        if (fail) {
+            return LostFoundManageResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_UNAVAILABLE"))
+            )
+        }
+        if (!manageAsOwner) {
+            return LostFoundManageResult.Forbidden("No tenés permiso para esta acción.")
+        }
+        val seed = seedState.value.firstOrNull { it.summary.id == id }
+            ?: return LostFoundManageResult.BackendError("No encontramos ese contenido.")
+        if (!com.comunidapp.shared.domain.lostfound.LostFoundStatusRules.canResolve(seed.detail.status)) {
+            return LostFoundManageResult.Conflict("No se puede resolver este caso.")
+        }
+        seedState.update { list ->
+            list.map {
+                if (it.summary.id != id) it
+                else FakeLostFoundSeed(
+                    summary = it.summary.copy(status = LostFoundCaseStatus.RESOLVED),
+                    detail = it.detail.copy(
+                        status = LostFoundCaseStatus.RESOLVED,
+                        viewerCanManage = manageAsOwner
+                    )
+                )
+            }
+        }
+        refreshTick.update { it + 1 }
+        return LostFoundManageResult.Success
+    }
+
+    override suspend fun updateOwnerContent(
+        id: LostFoundId,
+        description: String?,
+        location: String?
+    ): LostFoundManageResult {
+        if (!manageAsOwner) {
+            return LostFoundManageResult.Forbidden("No tenés permiso para esta acción.")
+        }
+        val seed = seedState.value.firstOrNull { it.summary.id == id }
+            ?: return LostFoundManageResult.BackendError("No encontramos ese contenido.")
+        seedState.update { list ->
+            list.map {
+                if (it.summary.id != id) it
+                else {
+                    val loc = location?.let { ApproximateLocation(it) }
+                        ?: it.detail.approximateLocation
+                    FakeLostFoundSeed(
+                        summary = it.summary.copy(approximateLocation = loc),
+                        detail = it.detail.copy(
+                            description = description?.trim()?.takeIf { d -> d.isNotEmpty() }
+                                ?: it.detail.description,
+                            approximateLocation = loc,
+                            viewerCanManage = manageAsOwner
+                        )
+                    )
+                }
+            }
+        }
+        refreshTick.update { it + 1 }
+        return LostFoundManageResult.Success
     }
 
     private suspend fun loadList(filter: LostFoundListFilter): VerticalLoadState<List<LostFoundSummary>> {

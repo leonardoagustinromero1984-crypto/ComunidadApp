@@ -71,6 +71,7 @@ fun PocIosViewController(): UIViewController =
                     lostFoundRepository = runtime.lostFoundRepository,
                     adoptionRepository = runtime.adoptionRepository,
                     adoptionApplicationRepository = runtime.adoptionApplicationRepository,
+                    publicContentRepository = runtime.publicContentRepository,
                     authRepository = runtime.authRepository,
                     mediaResolver = runtime.mediaResolver,
                     imagePicker = imagePicker,

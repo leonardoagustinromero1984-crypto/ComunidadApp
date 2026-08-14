@@ -35,6 +35,11 @@ internal data class RemoteAccessiblePetRow(
     val sex: String = "",
     val breed: String? = null,
     val status: String = "ACTIVE",
+    val size: String = "",
+    val description: String = "",
+    @SerialName("age_years") val ageYears: Int = 0,
+    @SerialName("age_months") val ageMonths: Int = 0,
+    val color: String? = null,
     @SerialName("avatar_file_asset_id") val avatarFileAssetId: String? = null,
     @SerialName("owner_id") val ownerId: String? = null
 )
@@ -48,6 +53,11 @@ internal data class RemotePetRow(
     val sex: String = "",
     val breed: String? = null,
     val status: String = "ACTIVE",
+    val size: String = "",
+    val description: String = "",
+    @SerialName("age_years") val ageYears: Int = 0,
+    @SerialName("age_months") val ageMonths: Int = 0,
+    val color: String? = null,
     @SerialName("avatar_file_asset_id") val avatarFileAssetId: String? = null,
     @SerialName("owner_id") val ownerId: String? = null
 )

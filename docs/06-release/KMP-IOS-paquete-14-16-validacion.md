@@ -3,7 +3,7 @@
 **HEAD base (KMP-11/12/13):** `128f691b93b93bc9fca46c17badd0425eab95b59`
 **HEAD cierre (KMP-14/15/16):** `22115b1`
 **Gate #15:** PASS
-**Gate #16:** PENDING
+**Gate #16:** PASS (`22115b1284c6834da17f168a3826d5559465f68d`)
 **KMP-11/12/13:** CLOSED GREEN
 
 ## Alcance

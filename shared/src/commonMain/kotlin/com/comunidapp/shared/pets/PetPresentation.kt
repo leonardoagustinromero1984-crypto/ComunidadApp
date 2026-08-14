@@ -38,7 +38,12 @@ data class PetDetailView(
     val status: PetLifecycleStatus,
     val hasAvatar: Boolean,
     val passportHint: String?,
-    val mediaRef: MediaRef? = null
+    val mediaRef: MediaRef? = null,
+    val description: String? = null,
+    val sizeLabel: String? = null,
+    val ageYears: Int? = null,
+    val ageMonths: Int? = null,
+    val color: String? = null
 )
 
 enum class PetsDataMode {
@@ -52,6 +57,7 @@ interface SharedPetsRepository {
     fun observePetDetail(petId: PetId): Flow<VerticalLoadState<PetDetailView>>
     suspend fun refresh()
     suspend fun create(draft: PetCreateDraft): PetCreateResult
+    suspend fun update(petId: PetId, draft: PetEditDraft): PetEditResult
 }
 
 fun PetAggregate.toSummary(speciesLabel: String, hasAvatar: Boolean = media.avatar != null): PetSummary =
@@ -91,20 +97,24 @@ class FakeSharedPetsRepository(
             }
         }
 
-    override fun observePetDetail(petId: PetId): Flow<VerticalLoadState<PetDetailView>> = flow {
-        emit(VerticalLoadState.Loading)
-        if (delayMs > 0L) delay(delayMs)
-        if (fail) {
-            emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("PET_NOT_FOUND"))))
-            return@flow
+    @OptIn(ExperimentalCoroutinesApi::class)
+    override fun observePetDetail(petId: PetId): Flow<VerticalLoadState<PetDetailView>> =
+        refreshTick.asStateFlow().flatMapLatest {
+            flow {
+                emit(VerticalLoadState.Loading)
+                if (delayMs > 0L) delay(delayMs)
+                if (fail) {
+                    emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("PET_NOT_FOUND"))))
+                    return@flow
+                }
+                val seed = seeds.firstOrNull { it.aggregate.id == petId }
+                if (seed == null) {
+                    emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("PET_NOT_FOUND"))))
+                    return@flow
+                }
+                emit(VerticalLoadState.Content(seed.toDetail()))
+            }
         }
-        val seed = seeds.firstOrNull { it.aggregate.id == petId }
-        if (seed == null) {
-            emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("PET_NOT_FOUND"))))
-            return@flow
-        }
-        emit(VerticalLoadState.Content(seed.toDetail()))
-    }
 
     override suspend fun refresh() {
         refreshTick.update { it + 1 }
@@ -122,6 +132,25 @@ class FakeSharedPetsRepository(
         val id = PetId("fake-pet-${draft.name.trim().lowercase().replace(' ', '-')}")
         return PetCreateResult.Success(
             id = id,
+            avatarAttached = draft.avatarFile != null
+        )
+    }
+
+    override suspend fun update(petId: PetId, draft: PetEditDraft): PetEditResult {
+        PetEditDraftValidator.validate(draft).exceptionOrNull()?.let {
+            return PetEditResult.ValidationError(ErrorSanitizer.sanitize(it))
+        }
+        if (fail) {
+            return PetEditResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("PETS_UNAVAILABLE"))
+            )
+        }
+        if (seeds.none { it.aggregate.id == petId }) {
+            return PetEditResult.BackendError("No encontramos ese contenido.")
+        }
+        refreshTick.update { it + 1 }
+        return PetEditResult.Success(
+            id = petId,
             avatarAttached = draft.avatarFile != null
         )
     }
@@ -148,7 +177,8 @@ class FakeSharedPetsRepository(
             sexLabel = sexLabel,
             status = aggregate.status,
             hasAvatar = aggregate.media.avatar != null,
-            passportHint = passportHint
+            passportHint = passportHint,
+            mediaRef = aggregate.media.avatar?.fileAssetId?.let { MediaRef.Asset(it) }
         )
 
     companion object {

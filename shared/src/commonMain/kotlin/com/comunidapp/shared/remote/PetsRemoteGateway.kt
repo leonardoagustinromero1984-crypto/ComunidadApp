@@ -16,10 +16,25 @@ internal data class RemoteCreatePetParams(
     val description: String
 )
 
+internal data class RemoteUpdatePetProfileParams(
+    val petId: String,
+    val name: String,
+    val species: String,
+    val breed: String?,
+    val sex: String,
+    val size: String,
+    val description: String,
+    val ageYears: Int,
+    val ageMonths: Int,
+    val color: String?,
+    val microchipId: String? = null
+)
+
 internal interface PetsRemoteGateway {
     suspend fun listAccessibleActivePets(): Result<List<RemoteAccessiblePetRow>>
     suspend fun fetchPetById(petId: String): Result<RemotePetRow?>
     suspend fun createPetWithPrincipal(params: RemoteCreatePetParams): Result<RemotePetRow>
+    suspend fun updatePetProfile(params: RemoteUpdatePetProfileParams): Result<RemotePetRow>
     suspend fun setPetAvatarAsset(petId: String, assetId: String): Result<RemotePetRow>
 }
 
@@ -76,6 +91,32 @@ internal class SupabasePetsRemoteGateway(
         Result.failure(t)
     }
 
+    override suspend fun updatePetProfile(
+        params: RemoteUpdatePetProfileParams
+    ): Result<RemotePetRow> = try {
+        val rows = client.postgrest.rpc(
+            function = "m08_update_pet_profile",
+            parameters = buildJsonObject {
+                put("p_pet_id", params.petId)
+                put("p_name", params.name)
+                put("p_species", params.species)
+                if (params.breed != null) put("p_breed", params.breed) else put("p_breed", JsonNull)
+                put("p_sex", params.sex)
+                put("p_size", params.size)
+                put("p_description", params.description)
+                put("p_age_years", params.ageYears)
+                put("p_age_months", params.ageMonths)
+                if (params.color != null) put("p_color", params.color) else put("p_color", JsonNull)
+                put("p_microchip_id", JsonNull)
+            }
+        ).decodeList<RemotePetRow>()
+        val row = rows.firstOrNull()
+            ?: return Result.failure(IllegalStateException("PET_UPDATE_EMPTY"))
+        Result.success(row)
+    } catch (t: Throwable) {
+        Result.failure(t)
+    }
+
     override suspend fun setPetAvatarAsset(
         petId: String,
         assetId: String
@@ -101,11 +142,14 @@ internal class FakePetsRemoteGateway(
     var listError: Throwable? = null,
     var detailError: Throwable? = null,
     var createError: Throwable? = null,
+    var updateError: Throwable? = null,
     var setAvatarError: Throwable? = null,
     var listCalls: Int = 0,
     var createCalls: Int = 0,
+    var updateCalls: Int = 0,
     var setAvatarCalls: Int = 0,
     var lastCreate: RemoteCreatePetParams? = null,
+    var lastUpdate: RemoteUpdatePetProfileParams? = null,
     var lastAvatarPetId: String? = null,
     var lastAvatarAssetId: String? = null,
     var created: RemotePetRow? = null
@@ -120,19 +164,7 @@ internal class FakePetsRemoteGateway(
         detailError?.let { return Result.failure(it) }
         val row = detail?.takeIf { it.id == petId }
             ?: created?.takeIf { it.id == petId }
-            ?: list.firstOrNull { it.id == petId }?.let {
-                RemotePetRow(
-                    id = it.id,
-                    name = it.name,
-                    photoUrl = it.photoUrl,
-                    species = it.species,
-                    sex = it.sex,
-                    breed = it.breed,
-                    status = it.status,
-                    avatarFileAssetId = it.avatarFileAssetId,
-                    ownerId = it.ownerId
-                )
-            }
+            ?: list.firstOrNull { it.id == petId }?.let { accessibleToPetRow(it) }
         return Result.success(row)
     }
 
@@ -147,6 +179,8 @@ internal class FakePetsRemoteGateway(
             name = params.name,
             species = params.species,
             sex = params.sex,
+            size = params.size,
+            description = params.description,
             status = "ACTIVE"
         )
         created = row
@@ -158,10 +192,58 @@ internal class FakePetsRemoteGateway(
             sex = row.sex,
             breed = row.breed,
             status = row.status,
+            size = row.size,
+            description = row.description,
+            ageYears = row.ageYears,
+            ageMonths = row.ageMonths,
+            color = row.color,
             avatarFileAssetId = row.avatarFileAssetId,
             ownerId = row.ownerId
         )
         return Result.success(row)
+    }
+
+    override suspend fun updatePetProfile(
+        params: RemoteUpdatePetProfileParams
+    ): Result<RemotePetRow> {
+        updateCalls++
+        lastUpdate = params
+        updateError?.let { return Result.failure(it) }
+        val existing = created?.takeIf { it.id == params.petId }
+            ?: detail?.takeIf { it.id == params.petId }
+            ?: list.firstOrNull { it.id == params.petId }?.let { accessibleToPetRow(it) }
+            ?: return Result.failure(IllegalStateException("PET_NOT_FOUND"))
+        val updated = existing.copy(
+            name = params.name,
+            species = params.species,
+            breed = params.breed,
+            sex = params.sex,
+            size = params.size,
+            description = params.description,
+            ageYears = params.ageYears,
+            ageMonths = params.ageMonths,
+            color = params.color
+        )
+        created = updated
+        detail = if (detail?.id == params.petId) updated else detail
+        list = list.map {
+            if (it.id == params.petId) {
+                it.copy(
+                    name = updated.name,
+                    species = updated.species,
+                    breed = updated.breed,
+                    sex = updated.sex,
+                    size = updated.size,
+                    description = updated.description,
+                    ageYears = updated.ageYears,
+                    ageMonths = updated.ageMonths,
+                    color = updated.color,
+                    avatarFileAssetId = updated.avatarFileAssetId,
+                    status = updated.status
+                )
+            } else it
+        }
+        return Result.success(updated)
     }
 
     override suspend fun setPetAvatarAsset(
@@ -174,19 +256,7 @@ internal class FakePetsRemoteGateway(
         setAvatarError?.let { return Result.failure(it) }
         val existing = created?.takeIf { it.id == petId }
             ?: detail?.takeIf { it.id == petId }
-            ?: list.firstOrNull { it.id == petId }?.let {
-                RemotePetRow(
-                    id = it.id,
-                    name = it.name,
-                    photoUrl = it.photoUrl,
-                    species = it.species,
-                    sex = it.sex,
-                    breed = it.breed,
-                    status = it.status,
-                    avatarFileAssetId = it.avatarFileAssetId,
-                    ownerId = it.ownerId
-                )
-            }
+            ?: list.firstOrNull { it.id == petId }?.let { accessibleToPetRow(it) }
             ?: return Result.failure(IllegalStateException("PET_NOT_FOUND"))
         val updated = existing.copy(avatarFileAssetId = assetId)
         created = updated
@@ -196,6 +266,23 @@ internal class FakePetsRemoteGateway(
         }
         return Result.success(updated)
     }
+
+    private fun accessibleToPetRow(it: RemoteAccessiblePetRow) = RemotePetRow(
+        id = it.id,
+        name = it.name,
+        photoUrl = it.photoUrl,
+        species = it.species,
+        sex = it.sex,
+        breed = it.breed,
+        status = it.status,
+        size = it.size,
+        description = it.description,
+        ageYears = it.ageYears,
+        ageMonths = it.ageMonths,
+        color = it.color,
+        avatarFileAssetId = it.avatarFileAssetId,
+        ownerId = it.ownerId
+    )
 }
 
 internal fun mapPetsThrowable(t: Throwable): String {

@@ -85,6 +85,7 @@ object MediaRefParser {
         val normalized = value.trim().lowercase()
         return normalized.startsWith("content://") ||
             normalized.startsWith("data:") ||
-            normalized.startsWith("base64:")
+            normalized.startsWith("base64:") ||
+            normalized.startsWith("storage:")
     }
 }

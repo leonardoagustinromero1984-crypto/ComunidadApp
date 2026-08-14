@@ -40,7 +40,6 @@ import com.comunidapp.shared.auth.AuthRepository
 import com.comunidapp.shared.deeplink.DeepLinkNavigationController
 import com.comunidapp.shared.deeplink.DeepLinkPendingStore
 import com.comunidapp.shared.deeplink.DeepLinkTarget
-import com.comunidapp.shared.deeplink.SharedDeepLinkLandingScreen
 import com.comunidapp.shared.lostfound.LostFoundId
 import com.comunidapp.shared.lostfound.LostFoundListFilter
 import com.comunidapp.shared.lostfound.LostFoundRepository
@@ -53,6 +52,10 @@ import com.comunidapp.shared.poc.m08.platform.ImagePicker
 import com.comunidapp.shared.profile.ProfileLoadState
 import com.comunidapp.shared.profile.UserProfileRepository
 import com.comunidapp.shared.profile.UserProfileSummary
+import com.comunidapp.shared.publiccontent.PublicContentRepository
+import com.comunidapp.shared.publiccontent.SharedPublicContentScreen
+import com.comunidapp.shared.publiccontent.UnconfiguredPublicContentRepository
+import com.comunidapp.shared.publiccontent.isPublicContentTarget
 import com.comunidapp.shared.push.PushInstallationRepository
 import com.comunidapp.shared.push.PushRegistrationCoordinator
 import com.comunidapp.shared.session.SessionDataMode
@@ -66,6 +69,7 @@ private sealed class SharedRoute {
     data object ProfileEdit : SharedRoute()
     data object Pets : SharedRoute()
     data class PetDetail(val petId: PetId) : SharedRoute()
+    data class PetEdit(val petId: PetId) : SharedRoute()
     data object Alerts : SharedRoute()
     data object LostList : SharedRoute()
     data object FoundList : SharedRoute()
@@ -94,6 +98,7 @@ fun LeoVerSharedApp(
     lostFoundRepository: LostFoundRepository,
     adoptionRepository: AdoptionRepository,
     adoptionApplicationRepository: AdoptionApplicationRepository? = null,
+    publicContentRepository: PublicContentRepository = UnconfiguredPublicContentRepository(),
     authRepository: AuthRepository? = sessionRepository as? AuthRepository,
     mediaResolver: MediaResolver? = null,
     imagePicker: ImagePicker? = null,
@@ -150,7 +155,11 @@ fun LeoVerSharedApp(
             session is SessionState.Unauthenticated ||
             session is SessionState.Expired
         ) {
-            // Keep pending for post-login; do not clear.
+            val pending = controller.peek() ?: DeepLinkPendingStore.peek()
+            if (pending != null && pending.isPublicContentTarget()) {
+                val target = controller.consume() ?: DeepLinkPendingStore.consume()
+                if (target != null) applyDeepLink(target)
+            }
         }
     }
 
@@ -172,20 +181,27 @@ fun LeoVerSharedApp(
             SessionState.Unauthenticated,
             SessionState.Expired,
             is SessionState.Error -> {
-                if (route !is SharedRoute.DeepLinkLanding) {
-                    route = SharedRoute.Home
+                val current = route
+                val onPublicLanding = current is SharedRoute.DeepLinkLanding &&
+                    current.target.isPublicContentTarget()
+                if (onPublicLanding) {
+                    // Allow public content without login; auth-required routes still need login.
+                } else {
+                    if (route !is SharedRoute.DeepLinkLanding) {
+                        route = SharedRoute.Home
+                    }
+                    val hint = when (val s = session) {
+                        SessionState.Expired -> "Tu sesión expiró."
+                        is SessionState.Error -> s.message
+                        else -> null
+                    }
+                    SharedLoginScreen(
+                        authRepository = authRepository,
+                        sessionHint = hint,
+                        appleSignInController = appleSignInController
+                    )
+                    return
                 }
-                val hint = when (val s = session) {
-                    SessionState.Expired -> "Tu sesión expiró."
-                    is SessionState.Error -> s.message
-                    else -> null
-                }
-                SharedLoginScreen(
-                    authRepository = authRepository,
-                    sessionHint = hint,
-                    appleSignInController = appleSignInController
-                )
-                return
             }
             is SessionState.Authenticated -> Unit
         }
@@ -260,7 +276,15 @@ fun LeoVerSharedApp(
             petId = r.petId,
             petsRepository = petsRepository,
             mediaResolver = mediaResolver,
-            onBack = { route = SharedRoute.Pets }
+            onBack = { route = SharedRoute.Pets },
+            onEdit = { route = SharedRoute.PetEdit(r.petId) }
+        )
+        is SharedRoute.PetEdit -> SharedPetEditScreen(
+            petId = r.petId,
+            petsRepository = petsRepository,
+            imagePicker = imagePicker,
+            onBack = { route = SharedRoute.PetDetail(r.petId) },
+            onSaved = { route = SharedRoute.PetDetail(r.petId) }
         )
         SharedRoute.Alerts -> SharedAlertsHubScreen(
             onBack = { route = SharedRoute.Home },
@@ -382,8 +406,10 @@ fun LeoVerSharedApp(
                 )
             }
         }
-        is SharedRoute.DeepLinkLanding -> SharedDeepLinkLandingScreen(
+        is SharedRoute.DeepLinkLanding -> SharedPublicContentScreen(
             target = r.target,
+            repository = publicContentRepository,
+            mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Home },
             onOpenAdoptions = { route = SharedRoute.Adoptions },
             onOpenLost = { route = SharedRoute.LostList },
@@ -636,7 +662,8 @@ private fun SharedPetDetailScreen(
     petId: PetId,
     petsRepository: SharedPetsRepository,
     mediaResolver: MediaResolver?,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEdit: () -> Unit = {}
 ) {
     val vm = remember(petId, petsRepository) { PetDetailViewModelShared(petId, petsRepository) }
     DisposableEffect(vm) { onDispose { vm.clear() } }
@@ -656,7 +683,12 @@ private fun SharedPetDetailScreen(
                 VerticalLoadState.Loading -> CenterLoading()
                 VerticalLoadState.Empty -> Text("Sin datos")
                 is VerticalLoadState.Error -> Text(s.message, color = MaterialTheme.colorScheme.error)
-                is VerticalLoadState.Content -> PetDetailBody(s.data, mediaResolver)
+                is VerticalLoadState.Content -> {
+                    PetDetailBody(s.data, mediaResolver)
+                    Button(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
+                        Text("Editar")
+                    }
+                }
             }
         }
     }
@@ -675,6 +707,14 @@ private fun PetDetailBody(detail: PetDetailView, mediaResolver: MediaResolver?) 
         Text("Especie: ${detail.speciesLabel}")
         detail.breedText?.let { Text("Raza: $it") }
         detail.sexLabel?.let { Text("Sexo: $it") }
+        detail.sizeLabel?.let { Text("Tamaño: $it") }
+        detail.color?.let { Text("Color: $it") }
+        if (detail.ageYears != null || detail.ageMonths != null) {
+            val y = detail.ageYears ?: 0
+            val m = detail.ageMonths ?: 0
+            Text("Edad: ${y}a ${m}m")
+        }
+        detail.description?.let { Text(it) }
         Text("Estado: ${detail.status.name}")
         detail.passportHint?.let {
             Text(it, style = MaterialTheme.typography.bodySmall)

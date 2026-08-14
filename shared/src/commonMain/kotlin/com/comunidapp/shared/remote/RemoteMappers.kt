@@ -71,7 +71,12 @@ internal object RemotePetsMapper {
             hasAvatar = hasAvatar(row.photoUrl, row.avatarFileAssetId),
             // Android PetDetail no carga M14 en el path productivo actual.
             passportHint = null,
-            mediaRef = mediaRef
+            mediaRef = mediaRef,
+            description = row.description.takeIf { it.isNotBlank() },
+            sizeLabel = row.size.takeIf { it.isNotBlank() },
+            ageYears = row.ageYears.takeIf { it > 0 },
+            ageMonths = row.ageMonths.takeIf { it > 0 },
+            color = row.color?.takeIf { it.isNotBlank() }
         )
     }
 
@@ -85,6 +90,11 @@ internal object RemotePetsMapper {
                 sex = row.sex,
                 breed = row.breed,
                 status = row.status,
+                size = row.size,
+                description = row.description,
+                ageYears = row.ageYears,
+                ageMonths = row.ageMonths,
+                color = row.color,
                 avatarFileAssetId = row.avatarFileAssetId,
                 ownerId = row.ownerId
             )
@@ -145,7 +155,8 @@ internal object RemoteLostFoundMapper {
             publicCode = row.publicCode?.takeIf { it.isNotBlank() },
             publisherDisplayName = row.authorName?.takeIf { it.isNotBlank() },
             hasPhoto = !row.photoUrl.isNullOrBlank(),
-            mediaRef = mediaRef
+            mediaRef = mediaRef,
+            viewerCanManage = false
         )
     }
 

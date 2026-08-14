@@ -47,10 +47,29 @@ internal data class LostFoundPhotoUpdateRow(
     @SerialName("updated_at") val updatedAt: String
 )
 
+@Serializable
+internal data class LostFoundStatusUpdateRow(
+    val status: String,
+    @SerialName("updated_at") val updatedAt: String
+)
+
+@Serializable
+internal data class LostFoundOwnerFieldsUpdateRow(
+    val description: String? = null,
+    val location: String? = null,
+    @SerialName("updated_at") val updatedAt: String
+)
+
 internal interface LostFoundWriteGateway {
     suspend fun insert(command: LostFoundInsertCommand): Result<String>
     suspend fun fetchPublicCode(id: String): Result<String?>
     suspend fun updatePhotoUrl(id: String, assetId: String): Result<Unit>
+    suspend fun updateStatus(id: String, status: String): Result<Unit>
+    suspend fun updateOwnerFields(
+        id: String,
+        description: String?,
+        location: String?
+    ): Result<Unit>
 }
 
 internal class SupabaseLostFoundWriteGateway(
@@ -112,6 +131,43 @@ internal class SupabaseLostFoundWriteGateway(
             Result.failure(t)
         }
     }
+
+    override suspend fun updateStatus(id: String, status: String): Result<Unit> {
+        return try {
+            client.from("lost_found_posts").update(
+                LostFoundStatusUpdateRow(
+                    status = status,
+                    updatedAt = currentIso8601Now()
+                )
+            ) {
+                filter { eq("id", id) }
+            }
+            Result.success(Unit)
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+    }
+
+    override suspend fun updateOwnerFields(
+        id: String,
+        description: String?,
+        location: String?
+    ): Result<Unit> {
+        return try {
+            client.from("lost_found_posts").update(
+                LostFoundOwnerFieldsUpdateRow(
+                    description = description,
+                    location = location,
+                    updatedAt = currentIso8601Now()
+                )
+            ) {
+                filter { eq("id", id) }
+            }
+            Result.success(Unit)
+        } catch (t: Throwable) {
+            Result.failure(t)
+        }
+    }
 }
 
 internal class FakeLostFoundWriteGateway(
@@ -121,6 +177,10 @@ internal class FakeLostFoundWriteGateway(
     var insertCalls: Int = 0,
     var photoUpdates: MutableList<Pair<String, String>> = mutableListOf(),
     var photoUpdateError: Throwable? = null,
+    var statusUpdates: MutableList<Pair<String, String>> = mutableListOf(),
+    var statusUpdateError: Throwable? = null,
+    var ownerFieldUpdates: MutableList<Triple<String, String?, String?>> = mutableListOf(),
+    var ownerFieldsError: Throwable? = null,
     var forcedId: String? = null
 ) : LostFoundWriteGateway {
     @OptIn(ExperimentalUuidApi::class)
@@ -156,6 +216,34 @@ internal class FakeLostFoundWriteGateway(
         val idx = inserted.indexOfFirst { it.id == id }
         if (idx >= 0) {
             inserted[idx] = inserted[idx].copy(photoUrl = assetId)
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun updateStatus(id: String, status: String): Result<Unit> {
+        statusUpdateError?.let { return Result.failure(it) }
+        statusUpdates += id to status
+        val idx = inserted.indexOfFirst { it.id == id }
+        if (idx >= 0) {
+            inserted[idx] = inserted[idx].copy(status = status)
+        }
+        return Result.success(Unit)
+    }
+
+    override suspend fun updateOwnerFields(
+        id: String,
+        description: String?,
+        location: String?
+    ): Result<Unit> {
+        ownerFieldsError?.let { return Result.failure(it) }
+        ownerFieldUpdates += Triple(id, description, location)
+        val idx = inserted.indexOfFirst { it.id == id }
+        if (idx >= 0) {
+            val cur = inserted[idx]
+            inserted[idx] = cur.copy(
+                description = description ?: cur.description,
+                location = location ?: cur.location
+            )
         }
         return Result.success(Unit)
     }

@@ -38,10 +38,14 @@ import com.comunidapp.shared.adoption.AdoptionApplicationReviewSummary
 import com.comunidapp.shared.adoption.AdoptionApplicationStatus
 import com.comunidapp.shared.pets.PetCreateDraft
 import com.comunidapp.shared.pets.PetCreateResult
+import com.comunidapp.shared.pets.PetEditDraft
+import com.comunidapp.shared.pets.PetEditResult
 import com.comunidapp.shared.pets.SharedPetsRepository
 import com.comunidapp.shared.poc.m08.model.FileRef
 import com.comunidapp.shared.poc.m08.model.ImagePickResult
 import com.comunidapp.shared.poc.m08.platform.ImagePicker
+import com.comunidapp.shared.ui.VerticalLoadState
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 @Composable
@@ -348,6 +352,200 @@ internal fun SharedPetCreateScreen(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(if (busy) "Creando…" else "Crear mascota")
+            }
+        }
+    }
+}
+
+@Composable
+internal fun SharedPetEditScreen(
+    petId: PetId,
+    petsRepository: SharedPetsRepository,
+    imagePicker: ImagePicker?,
+    onBack: () -> Unit,
+    onSaved: () -> Unit
+) {
+    var name by remember { mutableStateOf("") }
+    var species by remember { mutableStateOf("Perro") }
+    var breed by remember { mutableStateOf("") }
+    var sex by remember { mutableStateOf("UNKNOWN") }
+    var size by remember { mutableStateOf("UNKNOWN") }
+    var description by remember { mutableStateOf("") }
+    var ageYears by remember { mutableStateOf("0") }
+    var ageMonths by remember { mutableStateOf("0") }
+    var color by remember { mutableStateOf("") }
+    var avatar by remember { mutableStateOf<FileRef?>(null) }
+    var loaded by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    var info by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(petId, petsRepository) {
+        val state = petsRepository.observePetDetail(petId).first { it !is VerticalLoadState.Loading }
+        if (state is VerticalLoadState.Content) {
+            val d = state.data
+            name = d.displayName
+            species = d.speciesLabel
+            breed = d.breedText.orEmpty()
+            sex = d.sexLabel?.uppercase() ?: "UNKNOWN"
+            size = d.sizeLabel?.uppercase() ?: "UNKNOWN"
+            description = d.description.orEmpty()
+            ageYears = (d.ageYears ?: 0).toString()
+            ageMonths = (d.ageMonths ?: 0).toString()
+            color = d.color.orEmpty()
+            loaded = true
+        } else if (state is VerticalLoadState.Error) {
+            error = state.message
+            loaded = true
+        } else {
+            loaded = true
+        }
+    }
+
+    fun speciesCode(label: String): String = when (label.trim().lowercase()) {
+        "perro", "dog" -> "DOG"
+        "gato", "cat" -> "CAT"
+        else -> label.trim().ifBlank { "UNKNOWN" }.uppercase()
+    }
+
+    Scaffold { padding ->
+        Column(
+            Modifier
+                .padding(padding)
+                .padding(16.dp)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            TextButton(onClick = onBack) { Text("← Volver") }
+            Text("Editar mascota", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+            if (!loaded) {
+                CircularProgressIndicator()
+            } else {
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Nombre") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = species,
+                    onValueChange = { species = it },
+                    label = { Text("Especie") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = breed,
+                    onValueChange = { breed = it },
+                    label = { Text("Raza (opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = sex,
+                    onValueChange = { sex = it },
+                    label = { Text("Sexo (MALE/FEMALE/UNKNOWN)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = size,
+                    onValueChange = { size = it },
+                    label = { Text("Tamaño (SMALL/MEDIUM/LARGE/UNKNOWN)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = ageYears,
+                    onValueChange = { ageYears = it.filter { ch -> ch.isDigit() }.take(2) },
+                    label = { Text("Años") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = ageMonths,
+                    onValueChange = { ageMonths = it.filter { ch -> ch.isDigit() }.take(2) },
+                    label = { Text("Meses (0-11)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = color,
+                    onValueChange = { color = it },
+                    label = { Text("Color (opcional)") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
+                )
+                OutlinedTextField(
+                    value = description,
+                    onValueChange = { description = it },
+                    label = { Text("Descripción (opcional)") },
+                    modifier = Modifier.fillMaxWidth().height(100.dp)
+                )
+                if (imagePicker != null) {
+                    OutlinedButton(
+                        onClick = {
+                            scope.launch {
+                                when (val pick = imagePicker.pickImage()) {
+                                    is ImagePickResult.Success -> {
+                                        avatar = pick.file
+                                        info = "Foto seleccionada."
+                                    }
+                                    ImagePickResult.Cancelled -> Unit
+                                    is ImagePickResult.Failure -> error = pick.message
+                                }
+                            }
+                        },
+                        enabled = !busy,
+                        modifier = Modifier.fillMaxWidth()
+                    ) { Text(if (avatar == null) "Cambiar foto (opcional)" else "Foto lista") }
+                }
+                error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                info?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                Button(
+                    onClick = {
+                        if (busy) return@Button
+                        busy = true
+                        error = null
+                        info = null
+                        scope.launch {
+                            val result = petsRepository.update(
+                                petId,
+                                PetEditDraft(
+                                    name = name,
+                                    species = speciesCode(species),
+                                    breed = breed.trim().takeIf { it.isNotEmpty() },
+                                    sex = sex.trim().ifBlank { "UNKNOWN" }.uppercase(),
+                                    size = size.trim().ifBlank { "UNKNOWN" }.uppercase(),
+                                    description = description,
+                                    ageYears = ageYears.toIntOrNull() ?: 0,
+                                    ageMonths = ageMonths.toIntOrNull() ?: 0,
+                                    color = color.trim().takeIf { it.isNotEmpty() },
+                                    avatarFile = avatar
+                                )
+                            )
+                            busy = false
+                            when (result) {
+                                is PetEditResult.Success -> onSaved()
+                                is PetEditResult.PartialSuccess -> {
+                                    info = result.mediaMessage
+                                    onSaved()
+                                }
+                                is PetEditResult.ValidationError -> error = result.message
+                                is PetEditResult.Unauthenticated -> error = result.message
+                                is PetEditResult.Forbidden -> error = result.message
+                                is PetEditResult.BackendError -> error = result.message
+                            }
+                        }
+                    },
+                    enabled = !busy,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(if (busy) "Guardando…" else "Guardar cambios")
+                }
             }
         }
     }
