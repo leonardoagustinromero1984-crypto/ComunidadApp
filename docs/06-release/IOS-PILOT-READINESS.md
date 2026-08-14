@@ -1,15 +1,19 @@
 # IOS-PILOT — Readiness report
 
-**Base code:** `043a72c` + IOS-PILOT-1 hardening commit
+**Base code:** `043a72c` + IOS-PILOT-1 hardening `f7ce081`
+
 **Gate #19:** PASS (`82a33f3`) — KMP-23/24/25 CLOSED GREEN
-**Gate #20:** PENDING (`043a72c`) hasta evidencia cloud
+
+**Gate #20:** PASS (`043a72c693c54885e017e63fda24203ee5759ab2`) — KMP-26/27 CLOSED GREEN
+
+**IOS PILOT HARDENING SHA:** `f7ce081df3e60adba044ce460de8b99bef4a236f`
 
 ## Verdict layers
 
 | Layer | Status |
 | ----- | ------ |
 | APP CODE READY | **YES** (KMP-1…27 + pilot hardening) |
-| CLOUD GATE READY | Gate #20 PENDING / run after this commit |
+| CLOUD GATE READY | Gate #20 PASS; migration-guard CI fixed (no fixed ceiling 052) |
 | REAL DEVICE VALIDATION | **PENDING** (matrix NOT_RUN) |
 | EXTERNAL CONFIG | **PENDING** |
 

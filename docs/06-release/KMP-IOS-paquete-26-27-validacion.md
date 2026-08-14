@@ -4,7 +4,7 @@
 **Padre funcional KMP-23/24/25:** `1ca09b1fb1228bb8bc9d3959dab449ec4a5b3b19`
 **Gate #18:** PASS (`05a3a2a`) — KMP-20/21/22 CLOSED GREEN
 **Gate #19:** PASS (`82a33f31627846634bd32e3c7ebaf68bef1d7c80`) — KMP-23/24/25 CLOSED GREEN
-**Gate #20:** PENDING (sobre `043a72c…`; no inventar PASS/FAIL)
+**Gate #20:** PASS (`043a72c693c54885e017e63fda24203ee5759ab2`) — KMP-26/27 CLOSED GREEN
 **HEAD cierre (KMP-26/27):** `043a72c693c54885e017e63fda24203ee5759ab2`
 
 ## Alcance

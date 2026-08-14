@@ -35,8 +35,14 @@ resolve_python() {
 
 PYTHON="$(resolve_python || true)"
 
-echo "== Migration numbering 001–052 =="
+echo "== Migration numbering (contiguous 001–N, no fixed ceiling) =="
+# Intent: detect duplicates, gaps, and invalid prefixes. Highest is derived from
+# the repository (currently 081); do NOT hardcode a historical ceiling like 052.
 nums=$(ls "$MIG" | grep -E '^[0-9]{3}_' | sed 's/_.*//' | sort)
+if [[ -z "${nums}" ]]; then
+  echo "No migrations found under $MIG"
+  FAIL=1
+fi
 dupes=$(echo "$nums" | uniq -d || true)
 if [[ -n "${dupes}" ]]; then
   echo "Duplicate migration numbers: $dupes"
@@ -53,12 +59,17 @@ for n in $nums; do
   expected=$((expected + 1))
 done
 highest=$(echo "$nums" | tail -n1)
+count=$(echo "$nums" | grep -c . || true)
+echo "Migration files: $count"
 echo "Highest migration: $highest"
-if [[ "$highest" != "052" ]]; then
-  echo "Expected highest migration 052, got $highest"
+if [[ -z "$highest" ]]; then
+  echo "Could not determine highest migration"
+  FAIL=1
+elif ! [[ "$highest" =~ ^[0-9]{3}$ ]]; then
+  echo "Invalid highest migration format: $highest"
   FAIL=1
 fi
-echo "- Migrations: highest=$highest" >> "$SUMMARY"
+echo "- Migrations: count=$count highest=$highest (contiguous from 001; no fixed ceiling)" >> "$SUMMARY"
 
 echo "== Prior migrations 001â€“019 intact (git base when available) =="
 if git -C "$ROOT" rev-parse --is-inside-work-tree >/dev/null 2>&1; then

@@ -11,4 +11,4 @@
 | M09 WIP | local no commit |
 | M24 Pagos | POSPUESTO / NO |
 | Gate #19 | PASS (`82a33f3`) |
-| Gate #20 | PENDING (`043a72c`) |
+| Gate #20 | PASS (`043a72c`) — KMP-26/27 CLOSED GREEN |

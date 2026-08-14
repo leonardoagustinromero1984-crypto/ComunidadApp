@@ -5,7 +5,7 @@
 **Gate #17:** PASS (`d1d04cb2dfbb002c4960e6001196ba4e370b63a9`) — KMP-17/18/19 CLOSED GREEN
 **Gate #18:** PASS (`05a3a2a2bb904053b6c9a13903ad5ff69fac713a`) — KMP-20/21/22 CLOSED GREEN
 **Gate #19:** PASS (`82a33f31627846634bd32e3c7ebaf68bef1d7c80`) — docs Gate #18 package CLOSED
-**Gate #20:** PENDING (sobre `043a72c…`)
+**Gate #20:** PASS (`043a72c693c54885e017e63fda24203ee5759ab2`)
 **KMP-20/21/22:** CLOSED GREEN
 
 ## Alcance
