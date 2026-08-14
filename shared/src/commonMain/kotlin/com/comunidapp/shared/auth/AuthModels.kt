@@ -18,6 +18,8 @@ sealed class AuthFailure {
     data object Network : AuthFailure()
     data object SessionExpired : AuthFailure()
     data object Unavailable : AuthFailure()
+    data object Cancelled : AuthFailure()
+    data object ConfigurationRequired : AuthFailure()
     data class Unknown(val message: String) : AuthFailure()
 }
 
@@ -37,6 +39,9 @@ object AuthFailureMessages {
         AuthFailure.Network -> "Problema de conexión. Intentá nuevamente."
         AuthFailure.SessionExpired -> "Tu sesión expiró. Volvé a iniciar sesión."
         AuthFailure.Unavailable -> "La autenticación no está disponible en este momento."
+        AuthFailure.Cancelled -> "Inicio de sesión cancelado."
+        AuthFailure.ConfigurationRequired ->
+            "Sign in with Apple requiere configuración del backend y capability del dispositivo."
         is AuthFailure.Unknown -> failure.message.ifBlank {
             "No pudimos iniciar sesión. Intentá nuevamente."
         }
@@ -48,6 +53,7 @@ object AuthErrorMapper {
         val raw = error.message.orEmpty()
         val lower = raw.lowercase()
         return when {
+            "cancel" in lower -> AuthFailure.Cancelled
             "invalid login" in lower ||
                 "invalid_credentials" in lower ||
                 "invalid credentials" in lower ||
@@ -63,8 +69,12 @@ object AuthErrorMapper {
                 AuthFailure.SessionExpired
             "configuration" in lower ||
                 "not configured" in lower ||
+                "provider is not enabled" in lower ||
                 "unavailable" in lower ||
-                "AUTH_UNAVAILABLE" in raw -> AuthFailure.Unavailable
+                "AUTH_UNAVAILABLE" in raw -> AuthFailure.ConfigurationRequired.takeIf {
+                    "apple" in lower || "configuration" in lower || "not configured" in lower ||
+                        "provider is not enabled" in lower
+                } ?: AuthFailure.Unavailable
             else -> AuthFailure.Unknown(
                 com.comunidapp.shared.ui.ErrorSanitizer.sanitize(error)
             )

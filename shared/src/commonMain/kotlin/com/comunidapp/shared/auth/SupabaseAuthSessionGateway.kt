@@ -5,7 +5,9 @@ import com.comunidapp.shared.session.SessionUser
 import com.comunidapp.shared.ui.ErrorSanitizer
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.Apple
 import io.github.jan.supabase.auth.providers.builtin.Email
+import io.github.jan.supabase.auth.providers.builtin.IDToken
 import io.github.jan.supabase.auth.status.SessionStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
@@ -41,6 +43,42 @@ internal class SupabaseAuthSessionGateway(
             }
         } catch (t: Throwable) {
             AuthResult.Failure(AuthErrorMapper.fromThrowable(t))
+        }
+    }
+
+    override suspend fun signInWithAppleIdToken(idToken: String, rawNonce: String?): AuthResult {
+        if (idToken.isBlank()) {
+            return AuthResult.Failure(AuthFailure.InvalidCredentials)
+        }
+        return try {
+            withTimeout(30_000L) {
+                client.auth.signInWith(IDToken) {
+                    this.idToken = idToken
+                    provider = Apple
+                    nonce = rawNonce
+                }
+            }
+            val user = client.auth.currentUserOrNull()
+            if (user == null) {
+                AuthResult.Failure(AuthFailure.InvalidCredentials)
+            } else {
+                AuthResult.Success
+            }
+        } catch (t: Throwable) {
+            val mapped = AuthErrorMapper.fromThrowable(t)
+            // Backend apple enabled=false → ConfigurationRequired
+            if (mapped is AuthFailure.Unavailable || mapped is AuthFailure.Unknown) {
+                val lower = t.message.orEmpty().lowercase()
+                if (
+                    "apple" in lower ||
+                    "provider" in lower ||
+                    "not enabled" in lower ||
+                    "configuration" in lower
+                ) {
+                    return AuthResult.Failure(AuthFailure.ConfigurationRequired)
+                }
+            }
+            AuthResult.Failure(mapped)
         }
     }
 

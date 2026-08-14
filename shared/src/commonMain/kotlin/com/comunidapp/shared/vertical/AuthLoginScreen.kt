@@ -1,17 +1,18 @@
 package com.comunidapp.shared.vertical
 
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -29,14 +30,21 @@ import androidx.compose.ui.unit.dp
 import com.comunidapp.shared.auth.AuthRepository
 import com.comunidapp.shared.auth.LoginUiState
 import com.comunidapp.shared.auth.LoginViewModelShared
+import com.comunidapp.shared.auth.isAppleSignInAvailable
 import com.comunidapp.shared.session.SessionDataMode
 
 @Composable
 internal fun SharedLoginScreen(
     authRepository: AuthRepository,
-    sessionHint: String?
+    sessionHint: String?,
+    appleSignInController: com.comunidapp.shared.auth.AppleSignInController? = null
 ) {
-    val vm = remember(authRepository) { LoginViewModelShared(authRepository) }
+    val vm = remember(authRepository, appleSignInController) {
+        LoginViewModelShared(
+            authRepository = authRepository,
+            appleSignInController = appleSignInController?.takeIf { isAppleSignInAvailable() }
+        )
+    }
     DisposableEffect(vm) { onDispose { vm.clear() } }
     val ui by vm.uiState.collectAsState()
 
@@ -116,6 +124,15 @@ internal fun SharedLoginScreen(
                 enabled = ui !is LoginUiState.Loading && email.isNotBlank() && password.isNotEmpty()
             ) {
                 Text("Iniciar sesión")
+            }
+            if (vm.appleSignInVisible) {
+                OutlinedButton(
+                    onClick = { vm.signInWithApple() },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = ui !is LoginUiState.Loading
+                ) {
+                    Text("Continuar con Apple")
+                }
             }
         }
     }

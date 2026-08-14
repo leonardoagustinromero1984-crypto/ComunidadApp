@@ -1,7 +1,9 @@
 # KMP-IOS — Paquete 14–16 validación
 
 **HEAD base (KMP-11/12/13):** `128f691b93b93bc9fca46c17badd0425eab95b59`
+**HEAD cierre (KMP-14/15/16):** `22115b1`
 **Gate #15:** PASS
+**Gate #16:** PENDING
 **KMP-11/12/13:** CLOSED GREEN
 
 ## Alcance

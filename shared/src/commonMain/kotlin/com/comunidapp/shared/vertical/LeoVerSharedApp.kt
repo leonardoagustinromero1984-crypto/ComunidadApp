@@ -35,7 +35,12 @@ import com.comunidapp.shared.adoption.AdoptionApplicationId
 import com.comunidapp.shared.adoption.AdoptionApplicationRepository
 import com.comunidapp.shared.adoption.AdoptionId
 import com.comunidapp.shared.adoption.AdoptionRepository
+import com.comunidapp.shared.auth.AppleSignInController
 import com.comunidapp.shared.auth.AuthRepository
+import com.comunidapp.shared.deeplink.DeepLinkNavigationController
+import com.comunidapp.shared.deeplink.DeepLinkPendingStore
+import com.comunidapp.shared.deeplink.DeepLinkTarget
+import com.comunidapp.shared.deeplink.SharedDeepLinkLandingScreen
 import com.comunidapp.shared.lostfound.LostFoundId
 import com.comunidapp.shared.lostfound.LostFoundListFilter
 import com.comunidapp.shared.lostfound.LostFoundRepository
@@ -48,6 +53,8 @@ import com.comunidapp.shared.poc.m08.platform.ImagePicker
 import com.comunidapp.shared.profile.ProfileLoadState
 import com.comunidapp.shared.profile.UserProfileRepository
 import com.comunidapp.shared.profile.UserProfileSummary
+import com.comunidapp.shared.push.PushInstallationRepository
+import com.comunidapp.shared.push.PushRegistrationCoordinator
 import com.comunidapp.shared.session.SessionDataMode
 import com.comunidapp.shared.session.SessionRepository
 import com.comunidapp.shared.session.SessionState
@@ -72,6 +79,7 @@ private sealed class SharedRoute {
     data object ReceivedApplications : SharedRoute()
     data class ApplicationReviewDetail(val id: AdoptionApplicationId) : SharedRoute()
     data object PetCreate : SharedRoute()
+    data class DeepLinkLanding(val target: DeepLinkTarget) : SharedRoute()
 }
 
 /**
@@ -89,9 +97,16 @@ fun LeoVerSharedApp(
     authRepository: AuthRepository? = sessionRepository as? AuthRepository,
     mediaResolver: MediaResolver? = null,
     imagePicker: ImagePicker? = null,
+    deepLinkController: DeepLinkNavigationController? = null,
+    pushInstallationRepository: PushInstallationRepository? = null,
+    pushRegistrationCoordinator: PushRegistrationCoordinator? = null,
+    appleSignInController: AppleSignInController? = null,
     onOpenLegacyPocs: (() -> Unit)? = null
 ) {
     var route by remember { mutableStateOf<SharedRoute>(SharedRoute.Home) }
+    val controller = remember(deepLinkController) {
+        deepLinkController ?: DeepLinkNavigationController()
+    }
     val badge = VerticalDataBadge(
         sessionMode = sessionRepository.dataMode.name,
         profileMode = profileRepository.dataMode.name,
@@ -100,7 +115,9 @@ fun LeoVerSharedApp(
         adoptionMode = adoptionRepository.dataMode.name
     )
 
-    val sessionVm = remember(sessionRepository) { SessionViewModelShared(sessionRepository) }
+    val sessionVm = remember(sessionRepository, pushInstallationRepository) {
+        SessionViewModelShared(sessionRepository, pushInstallationRepository)
+    }
     DisposableEffect(sessionVm) { onDispose { sessionVm.clear() } }
     val session by sessionVm.state.collectAsState()
 
@@ -110,6 +127,30 @@ fun LeoVerSharedApp(
     LaunchedEffect(session, mediaResolver) {
         if (session !is SessionState.Authenticated) {
             mediaResolver?.clearCache()
+        }
+    }
+
+    fun applyDeepLink(target: DeepLinkTarget) {
+        when (target) {
+            DeepLinkTarget.SafeHome -> route = SharedRoute.Home
+            is DeepLinkTarget.Unsupported -> route = SharedRoute.DeepLinkLanding(target)
+            else -> route = SharedRoute.DeepLinkLanding(target)
+        }
+    }
+
+    LaunchedEffect(session, controller) {
+        if (session is SessionState.Authenticated) {
+            val fromStore = DeepLinkPendingStore.consume()
+            val fromController = controller.consume()
+            val target = fromController ?: fromStore
+            if (target != null) {
+                applyDeepLink(target)
+            }
+        } else if (
+            session is SessionState.Unauthenticated ||
+            session is SessionState.Expired
+        ) {
+            // Keep pending for post-login; do not clear.
         }
     }
 
@@ -131,7 +172,9 @@ fun LeoVerSharedApp(
             SessionState.Unauthenticated,
             SessionState.Expired,
             is SessionState.Error -> {
-                route = SharedRoute.Home
+                if (route !is SharedRoute.DeepLinkLanding) {
+                    route = SharedRoute.Home
+                }
                 val hint = when (val s = session) {
                     SessionState.Expired -> "Tu sesión expiró."
                     is SessionState.Error -> s.message
@@ -139,7 +182,8 @@ fun LeoVerSharedApp(
                 }
                 SharedLoginScreen(
                     authRepository = authRepository,
-                    sessionHint = hint
+                    sessionHint = hint,
+                    appleSignInController = appleSignInController
                 )
                 return
             }
@@ -151,6 +195,7 @@ fun LeoVerSharedApp(
         SharedRoute.Home -> SharedHomeVerticalScreen(
             sessionRepository = sessionRepository,
             badge = badge,
+            pushRegistrationCoordinator = pushRegistrationCoordinator,
             onOpenProfile = { route = SharedRoute.Profile },
             onOpenPets = { route = SharedRoute.Pets },
             onOpenAlerts = { route = SharedRoute.Alerts },
@@ -337,6 +382,15 @@ fun LeoVerSharedApp(
                 )
             }
         }
+        is SharedRoute.DeepLinkLanding -> SharedDeepLinkLandingScreen(
+            target = r.target,
+            onBack = { route = SharedRoute.Home },
+            onOpenAdoptions = { route = SharedRoute.Adoptions },
+            onOpenLost = { route = SharedRoute.LostList },
+            onOpenFound = { route = SharedRoute.FoundList },
+            onOpenPetsHub = { route = SharedRoute.Pets },
+            onOpenHome = { route = SharedRoute.Home }
+        )
     }
 }
 
@@ -344,6 +398,7 @@ fun LeoVerSharedApp(
 private fun SharedHomeVerticalScreen(
     sessionRepository: SessionRepository,
     badge: VerticalDataBadge,
+    pushRegistrationCoordinator: PushRegistrationCoordinator?,
     onOpenProfile: () -> Unit,
     onOpenPets: () -> Unit,
     onOpenAlerts: () -> Unit,
@@ -353,6 +408,7 @@ private fun SharedHomeVerticalScreen(
     val vm = remember(sessionRepository) { SessionViewModelShared(sessionRepository) }
     DisposableEffect(vm) { onDispose { vm.clear() } }
     val session by vm.state.collectAsState()
+    var pushStatus by remember { mutableStateOf<String?>(null) }
     val authLabel = if (sessionRepository.dataMode == SessionDataMode.REAL_REMOTE) {
         "Cerrar sesión"
     } else {
@@ -395,6 +451,28 @@ private fun SharedHomeVerticalScreen(
             }
             Button(onClick = onOpenAdoptions, modifier = Modifier.fillMaxWidth()) {
                 Text("Adopciones")
+            }
+            if (
+                session is SessionState.Authenticated &&
+                pushRegistrationCoordinator != null
+            ) {
+                OutlinedButton(
+                    onClick = {
+                        vm.requestPush(pushRegistrationCoordinator) { msg ->
+                            pushStatus = msg
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Activar notificaciones")
+                }
+                pushStatus?.let {
+                    Text(
+                        it,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             if (session is SessionState.Authenticated) {
                 OutlinedButton(onClick = { vm.signOut() }, modifier = Modifier.fillMaxWidth()) {

@@ -14,6 +14,7 @@ interface AuthSessionGateway {
     fun observeSession(): Flow<SessionState>
     suspend fun currentSession(): SessionState
     suspend fun signIn(email: String, password: String): AuthResult
+    suspend fun signInWithAppleIdToken(idToken: String, rawNonce: String?): AuthResult
     suspend fun restoreSession(): SessionState
     suspend fun refreshSession(): AuthResult
     suspend fun signOut()
@@ -27,8 +28,11 @@ class FakeAuthSessionGateway(
 ) : AuthSessionGateway {
     private val state = MutableStateFlow(initial)
     var failSignInWith: AuthFailure? = null
+    var failAppleSignInWith: AuthFailure? = null
     var failRefreshWith: AuthFailure? = null
     var restoreTo: SessionState? = null
+    var lastAppleIdToken: String? = null
+    var lastAppleNonce: String? = null
 
     override fun observeSession(): Flow<SessionState> = state.asStateFlow()
 
@@ -46,6 +50,25 @@ class FakeAuthSessionGateway(
                 userId = "user-${email.hashCode().toUInt()}",
                 email = email.trim().lowercase(),
                 displayName = email.substringBefore("@")
+            )
+        )
+        return AuthResult.Success
+    }
+
+    override suspend fun signInWithAppleIdToken(idToken: String, rawNonce: String?): AuthResult {
+        lastAppleIdToken = idToken
+        lastAppleNonce = rawNonce
+        failAppleSignInWith?.let {
+            return AuthResult.Failure(it)
+        }
+        if (idToken.isBlank()) {
+            return AuthResult.Failure(AuthFailure.InvalidCredentials)
+        }
+        state.value = SessionState.Authenticated(
+            SessionUser(
+                userId = "apple-user-${idToken.hashCode().toUInt()}",
+                email = null,
+                displayName = "Apple"
             )
         )
         return AuthResult.Success
@@ -110,6 +133,13 @@ class GatewayAuthRepository(
         return gateway.signIn(email, request.password)
     }
 
+    override suspend fun signInWithAppleIdToken(idToken: String, rawNonce: String?): AuthResult {
+        if (idToken.isBlank()) {
+            return AuthResult.Failure(AuthFailure.InvalidCredentials)
+        }
+        return gateway.signInWithAppleIdToken(idToken, rawNonce)
+    }
+
     override suspend fun restoreSession(): SessionState = gateway.restoreSession()
 
     override suspend fun refreshSession(): AuthResult = gateway.refreshSession()
@@ -133,6 +163,9 @@ class UnconfiguredAuthSessionRepository : AuthRepository {
 
     override suspend fun signInWithEmailPassword(request: SignInRequest): AuthResult =
         AuthResult.Failure(AuthFailure.Unavailable)
+
+    override suspend fun signInWithAppleIdToken(idToken: String, rawNonce: String?): AuthResult =
+        AuthResult.Failure(AuthFailure.ConfigurationRequired)
 
     override suspend fun restoreSession(): SessionState {
         state.value = SessionState.Unauthenticated

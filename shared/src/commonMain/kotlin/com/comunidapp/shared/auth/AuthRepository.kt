@@ -8,6 +8,7 @@ import com.comunidapp.shared.session.SessionState
  */
 interface AuthRepository : SessionRepository {
     suspend fun signInWithEmailPassword(request: SignInRequest): AuthResult
+    suspend fun signInWithAppleIdToken(idToken: String, rawNonce: String?): AuthResult
     suspend fun restoreSession(): SessionState
     suspend fun refreshSession(): AuthResult
 }

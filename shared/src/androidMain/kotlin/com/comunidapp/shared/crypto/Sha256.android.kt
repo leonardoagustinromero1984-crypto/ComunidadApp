@@ -1,0 +1,8 @@
+package com.comunidapp.shared.crypto
+
+import java.security.MessageDigest
+
+actual fun sha256Hex(data: ByteArray): String {
+    val digest = MessageDigest.getInstance("SHA-256").digest(data)
+    return bytesToHex(digest)
+}

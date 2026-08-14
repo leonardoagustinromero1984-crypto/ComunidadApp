@@ -32,6 +32,10 @@ import com.comunidapp.shared.profile.RemoteUserProfileRepository
 import com.comunidapp.shared.profile.SupabaseProfileAvatarUploadGateway
 import com.comunidapp.shared.profile.UnconfiguredUserProfileRepository
 import com.comunidapp.shared.profile.UserProfileRepository
+import com.comunidapp.shared.push.PushInstallationRepository
+import com.comunidapp.shared.push.RemotePushInstallationRepository
+import com.comunidapp.shared.push.SupabasePushInstallationGateway
+import com.comunidapp.shared.push.UnconfiguredPushInstallationRepository
 import com.comunidapp.shared.session.SessionState
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
@@ -52,7 +56,8 @@ internal class SharedRemoteRuntime private constructor(
     val lostFoundRepository: LostFoundRepository,
     val adoptionRepository: AdoptionRepository,
     val adoptionApplicationRepository: AdoptionApplicationRepository,
-    val mediaResolver: MediaResolver
+    val mediaResolver: MediaResolver,
+    val pushInstallationRepository: PushInstallationRepository
 ) {
     companion object {
         fun create(
@@ -69,7 +74,8 @@ internal class SharedRemoteRuntime private constructor(
                     lostFoundRepository = UnconfiguredLostFoundRepository(),
                     adoptionRepository = UnconfiguredAdoptionRepository(),
                     adoptionApplicationRepository = UnconfiguredAdoptionApplicationRepository(),
-                    mediaResolver = UnavailableMediaResolver()
+                    mediaResolver = UnavailableMediaResolver(),
+                    pushInstallationRepository = UnconfiguredPushInstallationRepository()
                 )
             }
             val client = createClient(usable, storage)
@@ -122,6 +128,10 @@ internal class SharedRemoteRuntime private constructor(
                 gateway = SupabaseAdoptionApplicationRemoteGateway(client),
                 sessionRepository = authRepository
             )
+            val pushInstallationRepository = RemotePushInstallationRepository(
+                gateway = SupabasePushInstallationGateway(client),
+                sessionRepository = authRepository
+            )
             return SharedRemoteRuntime(
                 client = client,
                 authRepository = authRepository,
@@ -130,7 +140,8 @@ internal class SharedRemoteRuntime private constructor(
                 lostFoundRepository = lostFoundRepository,
                 adoptionRepository = adoptionRepository,
                 adoptionApplicationRepository = adoptionApplicationRepository,
-                mediaResolver = mediaResolver
+                mediaResolver = mediaResolver,
+                pushInstallationRepository = pushInstallationRepository
             )
         }
 

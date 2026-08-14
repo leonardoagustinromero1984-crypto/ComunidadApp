@@ -33,13 +33,57 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalCoroutinesApi::class)
 class SessionViewModelShared(
     private val sessionRepository: SessionRepository,
+    private val pushInstallationRepository: com.comunidapp.shared.push.PushInstallationRepository? = null,
+    private val installationIdProvider: () -> String = {
+        "ios-install-${sessionRepository.hashCode().toUInt()}"
+    },
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) {
     val state: StateFlow<SessionState> = sessionRepository.observeSession()
         .stateIn(scope, SharingStarted.Eagerly, SessionState.Unknown)
 
     fun signOut() {
-        scope.launch { sessionRepository.signOut() }
+        scope.launch {
+            val installId = installationIdProvider()
+            pushInstallationRepository?.revokeCurrent(installId)
+            sessionRepository.signOut()
+        }
+    }
+
+    fun requestPush(
+        coordinator: com.comunidapp.shared.push.PushRegistrationCoordinator,
+        onStatus: (String) -> Unit
+    ) {
+        scope.launch {
+            val repo = pushInstallationRepository
+            if (repo == null) {
+                onStatus("Notificaciones no configuradas.")
+                return@launch
+            }
+            val result = coordinator.requestPermissionAndRegister(
+                repository = repo,
+                installationId = installationIdProvider(),
+                appVersion = null
+            )
+            onStatus(
+                when (result) {
+                    com.comunidapp.shared.push.PushRegistrationResult.Success ->
+                        "Notificaciones activadas."
+                    com.comunidapp.shared.push.PushRegistrationResult.PermissionDenied ->
+                        "Permiso de notificaciones denegado."
+                    com.comunidapp.shared.push.PushRegistrationResult.MissingToken ->
+                        "No se obtuvo token de dispositivo."
+                    com.comunidapp.shared.push.PushRegistrationResult.Unauthenticated ->
+                        "Iniciá sesión para activar notificaciones."
+                    com.comunidapp.shared.push.PushRegistrationResult.Unavailable ->
+                        "Notificaciones no disponibles."
+                    com.comunidapp.shared.push.PushRegistrationResult.BackendError ->
+                        "No pudimos registrar el dispositivo."
+                    is com.comunidapp.shared.push.PushRegistrationResult.Failed ->
+                        result.message
+                }
+            )
+        }
     }
 
     fun clear() {
