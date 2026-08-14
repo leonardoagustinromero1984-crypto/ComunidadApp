@@ -1,27 +1,17 @@
 package com.comunidapp.app.ui.screens.pets
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -39,17 +29,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.PetClinicalRecord
-import com.comunidapp.app.data.model.SterilizationStatus
-import com.comunidapp.app.ui.components.ComunidappTopBar
-import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.ageDisplay
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
-import com.comunidapp.app.ui.components.toDisplayName
-import com.comunidapp.app.ui.util.formatDisplayDate
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
 import com.comunidapp.app.ui.util.formatRelativeTime
 import com.comunidapp.app.viewmodel.PetDetailViewModel
 
@@ -65,6 +51,7 @@ fun PetDetailScreen(
     onNavigateToPassport: (String) -> Unit = {},
     onNavigateToM28Grants: (String) -> Unit = {},
     onNavigateToM28Proposals: (String) -> Unit = {},
+    onNavigateToReportLost: () -> Unit = {},
     viewModel: PetDetailViewModel = viewModel()
 ) {
     val pet by viewModel.pet.collectAsState()
@@ -73,6 +60,7 @@ fun PetDetailScreen(
     val statusReasonCode by viewModel.statusReasonCode.collectAsState()
     val canManage by viewModel.canManage.collectAsState()
     val canViewGovernance by viewModel.canViewGovernance.collectAsState()
+    @Suppress("UNUSED_VARIABLE")
     val canMarkDeceased by viewModel.canMarkDeceased.collectAsState()
     val canRestore by viewModel.canRestore.collectAsState()
     @Suppress("UNUSED_VARIABLE")
@@ -86,13 +74,13 @@ fun PetDetailScreen(
     val errorMessage by viewModel.errorMessage.collectAsState()
     val principalDisplayName by viewModel.principalDisplayName.collectAsState()
     val principalLoading by viewModel.principalLoading.collectAsState()
-    val canManageHealth by viewModel.access.collectAsState()
+    val access by viewModel.access.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showDeceasedDialog by remember { mutableStateOf(false) }
     var showRestoreDialog by remember { mutableStateOf(false) }
     var showAdminMenu by remember { mutableStateOf(false) }
     var deceasedReason by remember { mutableStateOf("") }
-    val healthEditable = canManageHealth?.canManageHealth == true || canManage
+    val healthEditable = access?.canManageHealth == true || canManage
 
     LaunchedEffect(deleteSuccess) {
         if (deleteSuccess) {
@@ -113,7 +101,7 @@ fun PetDetailScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Archivar perfil") },
+            title = { Text("Archivar mascota") },
             text = {
                 Text(
                     "El perfil dejará de aparecer entre tus mascotas activas, pero conservará " +
@@ -127,7 +115,7 @@ fun PetDetailScreen(
                         viewModel.deletePet()
                     }
                 ) {
-                    Text("Archivar perfil")
+                    Text("Archivar mascota")
                 }
             },
             dismissButton = {
@@ -156,14 +144,14 @@ fun PetDetailScreen(
     if (showRestoreDialog) {
         AlertDialog(
             onDismissRequest = { if (!isSubmitting) showRestoreDialog = false },
-            title = { Text("Restaurar mascota") },
+            title = { Text("Reactivar mascota") },
             text = { Text("¿Volver a activar esta mascota archivada?") },
             confirmButton = {
                 TextButton(
                     onClick = { viewModel.restorePet() },
                     enabled = !isSubmitting
                 ) {
-                    Text("Restaurar")
+                    Text("Reactivar")
                 }
             },
             dismissButton = {
@@ -178,51 +166,37 @@ fun PetDetailScreen(
     }
 
     Scaffold(
+        containerColor = PetDetailV2Background(),
         topBar = {
-            ComunidappTopBar(
-                title = pet?.name ?: "Mascota",
-                showBackButton = true,
-                onBackClick = onNavigateBack,
-                actions = {
-                    if (canManage || canMarkDeceased || canRestore) {
-                        IconButton(onClick = { showAdminMenu = true }) {
-                            Icon(Icons.Default.MoreVert, contentDescription = "Administrar perfil")
-                        }
-                        DropdownMenu(
-                            expanded = showAdminMenu,
-                            onDismissRequest = { showAdminMenu = false }
-                        ) {
-                            if (canManage && pet?.status == "ACTIVE") {
-                                DropdownMenuItem(
-                                    text = { Text("Archivar perfil") },
-                                    onClick = {
-                                        showAdminMenu = false
-                                        showDeleteDialog = true
-                                    }
-                                )
+            PetDetailV2TopBar(
+                onBack = onNavigateBack,
+                showMenu = canManage || canRestore,
+                onMenuClick = { showAdminMenu = true }
+            ) {
+                DropdownMenu(
+                    expanded = showAdminMenu,
+                    onDismissRequest = { showAdminMenu = false }
+                ) {
+                    if (canManage && pet?.status == "ACTIVE") {
+                        DropdownMenuItem(
+                            text = { Text("Archivar mascota") },
+                            onClick = {
+                                showAdminMenu = false
+                                showDeleteDialog = true
                             }
-                            if (canMarkDeceased) {
-                                DropdownMenuItem(
-                                    text = { Text("Informar fallecimiento") },
-                                    onClick = {
-                                        showAdminMenu = false
-                                        showDeceasedDialog = true
-                                    }
-                                )
+                        )
+                    }
+                    if (canRestore) {
+                        DropdownMenuItem(
+                            text = { Text("Reactivar mascota") },
+                            onClick = {
+                                showAdminMenu = false
+                                showRestoreDialog = true
                             }
-                            if (canRestore) {
-                                DropdownMenuItem(
-                                    text = { Text("Restaurar perfil") },
-                                    onClick = {
-                                        showAdminMenu = false
-                                        showRestoreDialog = true
-                                    }
-                                )
-                            }
-                        }
+                        )
                     }
                 }
-            )
+            }
         }
     ) { padding ->
         val data = pet
@@ -265,144 +239,133 @@ fun PetDetailScreen(
                     }
                 }
             }
-            else -> Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(padding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(16.dp)
-            ) {
-                PetImage(
-                    imageUrl = data.photoUrl,
+            else -> {
+                val isActive = data.status.equals("ACTIVE", ignoreCase = true)
+                val isArchived = data.status.equals("ARCHIVED", ignoreCase = true)
+                val isDeceased = data.status.equals("DECEASED", ignoreCase = true)
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .height(220.dp),
-                    cornerRadius = 12.dp,
-                    contentDescription = data.name
-                )
-                Spacer(modifier = Modifier.height(16.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
+                        .fillMaxSize()
+                        .padding(padding)
+                        .verticalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 28.dp)
                 ) {
-                    Text(
-                        text = data.name,
-                        style = MaterialTheme.typography.headlineMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.weight(1f)
+                    PetHero(
+                        imageUrl = data.photoUrl,
+                        petName = data.name
                     )
-                    PetLifecycleStatusBadge(
+                    Spacer(modifier = Modifier.height(18.dp))
+                    PetIdentityBlock(
+                        name = data.name,
+                        subtitle = petIdentitySubtitle(data),
+                        ageLabel = data.ageDisplay().takeIf { it.isNotBlank() },
                         status = data.status,
                         reasonCode = statusReasonCode
                     )
-                }
-                Text(
-                    text = buildString {
-                        append(data.species.toDisplayName())
-                        data.breed?.takeIf { it.isNotBlank() }?.let { append(" · $it") }
-                        append(" · ${data.sex.toDisplayName()} · ${data.ageDisplay()}")
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Text(
-                    text = "Tamaño: ${data.size.toDisplayName()}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(
-                    text = when {
-                        principalLoading -> "Cargando responsable…"
-                        !principalDisplayName.isNullOrBlank() ->
-                            "Responsable principal: $principalDisplayName"
-                        else -> "Responsable principal: No pudimos cargar esta persona"
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium
-                )
-                if (data.description.isNotBlank()) {
+                    Text(
+                        text = when {
+                            principalLoading -> "Cargando responsable…"
+                            !principalDisplayName.isNullOrBlank() ->
+                                "Responsable: $principalDisplayName"
+                            else -> "Responsable: no disponible"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = BrandTextSecondary,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+
+                    if (isArchived) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        PetArchivedBanner(
+                            canRestore = canRestore,
+                            onRestore = { showRestoreDialog = true }
+                        )
+                    }
+                    if (isDeceased) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        PetDeceasedBanner(petName = data.name)
+                    }
+
+                    if (!isDeceased) {
+                        Spacer(modifier = Modifier.height(18.dp))
+                        PetPrimaryActions(
+                            canEdit = canManage && isActive,
+                            onEdit = { onNavigateToEdit(data.id) },
+                            onShare = { onNavigateToPassport(data.id) }
+                        )
+                    }
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    PetInfoCard(rows = petInfoRows(data))
+
+                    if (!isDeceased) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        PetHealthSummary(
+                            pet = data,
+                            canOpenHealth = healthEditable && isActive,
+                            onOpenHealth = { onNavigateToEdit(data.id) }
+                        )
+                    }
+
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = data.description, style = MaterialTheme.typography.bodyLarge)
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                PetHealthSection(
-                    pet = data,
-                    canEdit = healthEditable && data.status == "ACTIVE",
-                    onEditHealth = { onNavigateToEdit(data.id) }
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Pasaporte",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                        Text(
-                            text = "Reuní en un solo lugar la información más importante de ${data.name}.",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
-                        )
-                        Button(
-                            onClick = { onNavigateToPassport(data.id) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Ver pasaporte") }
+                    PetPassportSummary(
+                        petName = data.name,
+                        onOpenPassport = { onNavigateToPassport(data.id) }
+                    ) {
                         OutlinedButton(
                             onClick = { onNavigateToM28Proposals(data.id) },
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
+                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
                         ) { Text("Propuestas Pasaporte") }
                         OutlinedButton(
                             onClick = { onNavigateToM28Grants(data.id) },
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
                         ) { Text("Acceso profesional") }
                     }
-                }
-                if (canViewGovernance) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    PetCareNetworkSection(
-                        petName = data.name,
-                        mutationsEnabled = data.status == "ACTIVE",
-                        onOpenCareNetwork = { onNavigateToResponsibilities(data.id) },
-                        onOpenTransfers = { onNavigateToTransfers(data.id) }
-                    )
-                }
-                @Suppress("UNUSED_EXPRESSION")
-                onNavigateToAuthorizations
-                @Suppress("UNUSED_EXPRESSION")
-                onNavigateToStatusHistory
-                Spacer(modifier = Modifier.height(16.dp))
-                ClinicalRecordsSection(
-                    records = clinicalRecords,
-                    title = clinicalTitle,
-                    note = clinicalNote,
-                    canManage = healthEditable && data.status == "ACTIVE",
-                    onTitleChange = viewModel::updateClinicalTitle,
-                    onNoteChange = viewModel::updateClinicalNote,
-                    onAdd = viewModel::addClinicalNote
-                )
 
-                errorMessage?.let {
-                    Text(
-                        text = it,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 12.dp)
-                    )
-                }
+                    if (isActive) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        PetEmergencyAction(
+                            petName = data.name,
+                            onReportLost = onNavigateToReportLost
+                        )
+                    }
 
-                if (canManage && data.status == "ACTIVE") {
-                    Spacer(modifier = Modifier.height(24.dp))
-                    Button(
-                        onClick = { onNavigateToEdit(data.id) },
-                        modifier = Modifier.fillMaxWidth(),
-                        enabled = !isSubmitting
-                    ) {
-                        Text("Editar perfil")
+                    if (canViewGovernance && !isDeceased) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        PetCareNetworkSection(
+                            petName = data.name,
+                            mutationsEnabled = isActive,
+                            onOpenCareNetwork = { onNavigateToResponsibilities(data.id) },
+                            onOpenTransfers = { onNavigateToTransfers(data.id) }
+                        )
+                    }
+
+                    @Suppress("UNUSED_EXPRESSION")
+                    onNavigateToAuthorizations
+                    @Suppress("UNUSED_EXPRESSION")
+                    onNavigateToStatusHistory
+
+                    if (!isDeceased) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        ClinicalRecordsSection(
+                            records = clinicalRecords,
+                            title = clinicalTitle,
+                            note = clinicalNote,
+                            canManage = healthEditable && isActive,
+                            onTitleChange = viewModel::updateClinicalTitle,
+                            onNoteChange = viewModel::updateClinicalNote,
+                            onAdd = viewModel::addClinicalNote
+                        )
+                    }
+
+                    errorMessage?.let {
+                        Text(
+                            text = it,
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 12.dp)
+                        )
                     }
                 }
             }
@@ -460,26 +423,7 @@ internal fun PetLifecycleStatusBadge(
     status: String,
     reasonCode: String? = null
 ) {
-    val label = petStatusLabel(status, reasonCode)
-    if (status.equals("ACTIVE", ignoreCase = true)) return
-    val color = when {
-        status.equals("ARCHIVED", ignoreCase = true) &&
-            reasonCode.equals("ADOPTED", ignoreCase = true) ->
-            MaterialTheme.colorScheme.secondaryContainer
-        status.equals("ARCHIVED", ignoreCase = true) ->
-            MaterialTheme.colorScheme.surfaceVariant
-        status.equals("DECEASED", ignoreCase = true) ->
-            MaterialTheme.colorScheme.errorContainer
-        else -> MaterialTheme.colorScheme.secondaryContainer
-    }
-    Text(
-        text = label,
-        modifier = Modifier
-            .background(color, RoundedCornerShape(8.dp))
-            .padding(horizontal = 8.dp, vertical = 4.dp),
-        style = MaterialTheme.typography.labelSmall,
-        fontWeight = FontWeight.SemiBold
-    )
+    PetStatusChip(status = status, reasonCode = reasonCode)
 }
 
 @Composable
@@ -489,43 +433,38 @@ private fun PetCareNetworkSection(
     onOpenCareNetwork: () -> Unit,
     onOpenTransfers: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    PetV2Card {
+        Text(
+            text = "Red de cuidado",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = BrandText
+        )
+        Text(
+            text = "Personas que colaboran en el cuidado de $petName.",
+            style = MaterialTheme.typography.bodySmall,
+            color = BrandTextSecondary,
+            modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+        )
+        if (!mutationsEnabled) {
             Text(
-                text = "Red de cuidado",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "Personas que colaboran en el cuidado de $petName.",
+                text = "La gestión está bloqueada para este estado.",
                 style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(bottom = 4.dp)
             )
-            if (!mutationsEnabled) {
-                Text(
-                    text = "La gestión está bloqueada para este estado.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(bottom = 4.dp)
-                )
-            }
-            Button(
-                onClick = onOpenCareNetwork,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = true
-            ) {
-                Text("Ver red de cuidado")
-            }
-            TextButton(
-                onClick = onOpenTransfers,
-                enabled = mutationsEnabled
-            ) {
-                Text("Transferencias")
-            }
+        }
+        Button(
+            onClick = onOpenCareNetwork,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Ver red de cuidado")
+        }
+        TextButton(
+            onClick = onOpenTransfers,
+            enabled = mutationsEnabled
+        ) {
+            Text("Transferencias")
         }
     }
 }
@@ -540,219 +479,67 @@ private fun ClinicalRecordsSection(
     onNoteChange: (String) -> Unit,
     onAdd: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    PetV2Card {
+        Text(
+            text = "Historial clínico",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = BrandText
+        )
+        if (records.isEmpty()) {
             Text(
-                text = "Historial clínico",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                text = "Sin registros clínicos todavía.",
+                style = MaterialTheme.typography.bodySmall,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = 8.dp)
             )
-            if (records.isEmpty()) {
+        } else {
+            records.forEach { record ->
                 Text(
-                    text = "Sin registros clínicos todavía.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 8.dp)
+                    text = record.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(top = 10.dp),
+                    color = BrandText
                 )
-            } else {
-                records.forEach { record ->
-                    Text(
-                        text = record.title,
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 10.dp)
-                    )
-                    Text(
-                        text = record.notes,
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = "${record.authorName} · ${record.recordedAt?.let(::formatRelativeTime).orEmpty()}",
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            }
-            if (canManage) {
-                OutlinedTextField(
-                    value = title,
-                    onValueChange = onTitleChange,
-                    label = { Text("Título") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 12.dp),
-                    singleLine = true
+                Text(
+                    text = record.notes,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = BrandText
                 )
-                OutlinedTextField(
-                    value = note,
-                    onValueChange = onNoteChange,
-                    label = { Text("Nota clínica") },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    minLines = 2
+                Text(
+                    text = "${record.authorName} · ${record.recordedAt?.let(::formatRelativeTime).orEmpty()}",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = BrandTextSecondary
                 )
-                Button(
-                    onClick = onAdd,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp)
-                ) {
-                    Text("Agregar nota")
-                }
             }
         }
-    }
-}
-
-@Composable
-private fun PetHealthSection(
-    pet: Pet,
-    canEdit: Boolean,
-    onEditHealth: () -> Unit
-) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween
+        if (canManage) {
+            OutlinedTextField(
+                value = title,
+                onValueChange = onTitleChange,
+                label = { Text("Título") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = note,
+                onValueChange = onNoteChange,
+                label = { Text("Nota clínica") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                minLines = 2
+            )
+            Button(
+                onClick = onAdd,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp)
             ) {
-                Text(
-                    text = "Salud y cuidados",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.weight(1f)
-                )
-                if (canEdit) {
-                    TextButton(onClick = onEditHealth) {
-                        Text("Editar")
-                    }
-                }
-            }
-            pet.sterilized?.let {
-                Text(
-                    text = "Castración: ${when (it) {
-                        SterilizationStatus.YES -> "Sí"
-                        SterilizationStatus.NO -> "No"
-                        SterilizationStatus.UNKNOWN -> "No especificado"
-                    }}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            pet.lastVetVisit?.let {
-                Text(
-                    text = "Última consulta: ${formatDisplayDate(it)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            pet.weightKg?.let {
-                Text(
-                    text = "Peso: $it kg",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            pet.vaccinations
-                .filter { it.name.isNotBlank() || it.date.isNotBlank() }
-                .forEach { vac ->
-                    val label = vac.name.ifBlank { "Vacuna" }
-                    val applied = vac.date.takeIf { it.isNotBlank() }?.let(::formatDisplayDate) ?: "—"
-                    val next = vac.nextDueDate?.takeIf { d -> d.isNotBlank() }
-                        ?.let { " · Próx: ${formatDisplayDate(it)}" }
-                        .orEmpty()
-                    Text(
-                        text = "$label: $applied$next",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            pet.lastDeworming?.takeIf { it.isNotBlank() }?.let {
-                val product = pet.dewormingProduct?.takeIf { p -> p.isNotBlank() }?.let { p -> " ($p)" }.orEmpty()
-                Text(
-                    text = "Desparasitación: ${formatDisplayDate(it)}$product",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            pet.lastFleaTreatment?.takeIf { it.isNotBlank() }?.let {
-                val product = pet.fleaTreatmentProduct?.takeIf { p -> p.isNotBlank() }?.let { p -> " ($p)" }.orEmpty()
-                Text(
-                    text = "Antiparasitarios: ${formatDisplayDate(it)}$product",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            pet.healthNotes?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = "Observaciones: $it",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            val hasHealthData = pet.vaccinations.any { it.name.isNotBlank() || it.date.isNotBlank() } ||
-                !pet.lastDeworming.isNullOrBlank() ||
-                !pet.lastFleaTreatment.isNullOrBlank() ||
-                pet.sterilized != null ||
-                !pet.lastVetVisit.isNullOrBlank() ||
-                pet.weightKg != null ||
-                !pet.healthNotes.isNullOrBlank() ||
-                pet.reminders.any { it.title.isNotBlank() || it.date.isNotBlank() }
-            if (!hasHealthData) {
-                Text(
-                    text = "Todavía no agregaste información de salud",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                Text(
-                    text = "Registrá vacunas, cuidados, medicación y datos importantes de ${pet.name}.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-                if (canEdit) {
-                    Button(
-                        onClick = onEditHealth,
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 12.dp)
-                    ) {
-                        Text("Agregar información")
-                    }
-                } else {
-                    Text(
-                        text = "Solo la red de cuidado con permiso puede editar la salud.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                }
-            }
-            val reminders = pet.reminders.filter { it.title.isNotBlank() || it.date.isNotBlank() }
-            if (reminders.isNotEmpty()) {
-                Text(
-                    text = "Recordatorios",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 12.dp)
-                )
-                reminders.forEach { reminder ->
-                    val title = reminder.title.ifBlank { "Recordatorio" }
-                    val whenLabel = reminder.date.takeIf { it.isNotBlank() } ?: "—"
-                    Text(
-                        text = "$title — $whenLabel",
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
+                Text("Agregar nota")
             }
         }
     }

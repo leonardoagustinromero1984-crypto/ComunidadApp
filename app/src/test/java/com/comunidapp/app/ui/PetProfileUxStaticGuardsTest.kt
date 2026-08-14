@@ -38,20 +38,22 @@ class PetProfileUxStaticGuardsTest {
     @Test
     fun petDetail_exposesSingleCareNetworkSectionLabel() {
         val detail = sourceFile("app/src/main/java/com/comunidapp/app/ui/screens/pets/PetDetailScreen.kt").readText()
+        val v2 = sourceFile("app/src/main/java/com/comunidapp/app/ui/screens/pets/PetDetailV2Components.kt").readText()
         assertTrue(detail.contains("Red de cuidado"))
         assertFalse(detail.contains("Personas autorizadas"))
         assertFalse(detail.contains("Responsables y custodias"))
-        assertTrue(detail.contains("Archivar perfil"))
+        assertTrue(detail.contains("Archivar mascota"))
         assertTrue(detail.contains("Informar fallecimiento"))
-        assertFalse(detail.contains("Archivar mascota"))
         assertFalse(detail.contains("Marcar como fallecida"))
+        assertTrue(v2.contains("Reactivar mascota"))
+        assertFalse(detail.contains("\"Archivar perfil\""))
     }
 
     @Test
     fun healthEmptyState_offersAddAction() {
-        val detail = sourceFile("app/src/main/java/com/comunidapp/app/ui/screens/pets/PetDetailScreen.kt").readText()
-        assertTrue(detail.contains("Agregar información"))
-        assertTrue(detail.contains("Todavía no agregaste información de salud"))
+        val v2 = sourceFile("app/src/main/java/com/comunidapp/app/ui/screens/pets/PetDetailV2Components.kt").readText()
+        assertTrue(v2.contains("Agregar información"))
+        assertTrue(v2.contains("Todavía no agregaste información de salud"))
     }
 
     @Test

@@ -2310,6 +2310,7 @@ private fun NavGraphBuilder.mainAppRoutes(
             },
             onNavigateToM28Grants = { id -> navController.navigate(NavRoutes.m28PetGrants(id)) },
             onNavigateToM28Proposals = { id -> navController.navigate(NavRoutes.m28PetProposals(id)) },
+            onNavigateToReportLost = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
             viewModel = viewModel(
                 viewModelStoreOwner = backStackEntry,
                 key = "pet_detail_$petId",
