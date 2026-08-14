@@ -1,6 +1,6 @@
 # IOS-PILOT — Readiness report
 
-**Base code:** `043a72c` + IOS-PILOT-1 hardening `f7ce081`
+**Cloud / CI GREEN base:** `33cf1c14aec66abf168244b4514a57c11be29419`
 
 **Gate #19:** PASS (`82a33f3`) — KMP-23/24/25 CLOSED GREEN
 
@@ -8,13 +8,16 @@
 
 **IOS PILOT HARDENING SHA:** `f7ce081df3e60adba044ce460de8b99bef4a236f`
 
+**IOS-PILOT-2 (prep):** docs only — identity / UL / APNs / device strategy / external matrix
+
 ## Verdict layers
 
 | Layer | Status |
 | ----- | ------ |
-| APP CODE READY | **YES** (KMP-1…27 + pilot hardening) |
-| CLOUD GATE READY | Gate #20 PASS; migration-guard CI fixed (no fixed ceiling 052) |
-| REAL DEVICE VALIDATION | **PENDING** (matrix NOT_RUN) |
+| APP CODE READY | **YES** (KMP-1…27 + pilot hardening + CI closure) |
+| IOS PILOT CLOUD | **GREEN** (`33cf1c1`) |
+| EXTERNAL CAPABILITY PLAN | **COMPLETE** (prep docs; nothing activated) |
+| REAL DEVICE VALIDATION | **PENDING** (P-* and RD-* = NOT_RUN) |
 | EXTERNAL CONFIG | **PENDING** |
 
 ## APP_CODE_READY = YES
@@ -31,8 +34,8 @@ Shared/iOS covers auth, profile, pets (CRUD/health/lifecycle), lost/found (publi
 | aps-environment + provisioning | APPLE_DEVELOPER_REQUIRED |
 | Server → APNs delivery | SERVER_REQUIRED |
 
-No secrets / .p8 / web enablement in this package.
+No secrets / .p8 / web enablement in this package. See `IOS-PILOT-2-external-readiness.md`.
 
 ## REAL_DEVICE_VALIDATION = PENDING
 
-Execute `IOS-PILOT-MANUAL-TESTS.md` on physical iPhone before pilot claim.
+Execute `IOS-PILOT-MANUAL-TESTS.md` (incl. RD-01…RD-25) on physical iPhone before pilot claim.

@@ -1,0 +1,30 @@
+{
+  "applinks": {
+    "apps": [],
+    "details": [
+      {
+        "appIDs": [
+          "TEAM_ID.BUNDLE_ID"
+        ],
+        "components": [
+          {
+            "/": "/mascota/*",
+            "comment": "Public pet profile — DeepLinkTarget.PetPublic"
+          },
+          {
+            "/": "/adopciones/*",
+            "comment": "Public adoption — DeepLinkTarget.AdoptionPublic"
+          },
+          {
+            "/": "/perdidos/*",
+            "comment": "Lost case — DeepLinkTarget.LostCase"
+          },
+          {
+            "/": "/encontrados/*",
+            "comment": "Found case — DeepLinkTarget.FoundCase"
+          }
+        ]
+      }
+    ]
+  }
+}
