@@ -175,7 +175,8 @@ internal fun SharedLostFoundDetailScreen(
     id: LostFoundId,
     lostFoundRepository: LostFoundRepository,
     mediaResolver: MediaResolver? = null,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onEdit: (() -> Unit)? = null
 ) {
     val vm = remember(id, lostFoundRepository) {
         LostFoundDetailViewModelShared(id, lostFoundRepository)
@@ -206,6 +207,13 @@ internal fun SharedLostFoundDetailScreen(
                     LostFoundDetailBody(s.data, mediaResolver)
                     manageError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     manageInfo?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                    if (s.data.viewerCanManage && onEdit != null) {
+                        OutlinedButton(
+                            onClick = onEdit,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Editar") }
+                    }
                     if (
                         s.data.viewerCanManage &&
                         s.data.status == com.comunidapp.shared.domain.lostfound.LostFoundCaseStatus.ACTIVE
@@ -233,6 +241,8 @@ internal fun SharedLostFoundDetailScreen(
                                                     confirmResolve = false
                                                     vm.refresh()
                                                 }
+                                                is LostFoundManageResult.PartialSuccess ->
+                                                    manageInfo = result.message
                                                 is LostFoundManageResult.Forbidden ->
                                                     manageError = result.message
                                                 is LostFoundManageResult.Unauthenticated ->

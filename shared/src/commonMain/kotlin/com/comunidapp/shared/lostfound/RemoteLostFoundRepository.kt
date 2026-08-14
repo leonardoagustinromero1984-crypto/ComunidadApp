@@ -32,7 +32,8 @@ internal class RemoteLostFoundRepository(
     private val gateway: LostFoundRemoteGateway,
     private val writeGateway: LostFoundWriteGateway,
     private val sessionRepository: SessionRepository,
-    private val mediaUploadGateway: LostFoundMediaUploadGateway = PartialLostFoundMediaUploadGateway()
+    private val mediaUploadGateway: LostFoundMediaUploadGateway = PartialLostFoundMediaUploadGateway(),
+    private val mediaResolver: com.comunidapp.shared.media.MediaResolver? = null
 ) : LostFoundRepository {
     override val dataMode: LostFoundDataMode = LostFoundDataMode.REAL_REMOTE
 
@@ -189,6 +190,42 @@ internal class RemoteLostFoundRepository(
         return LostFoundManageResult.Success
     }
 
+    override suspend fun replacePhoto(
+        id: LostFoundId,
+        file: com.comunidapp.shared.poc.m08.model.FileRef
+    ): LostFoundManageResult {
+        val session = sessionRepository.currentSession()
+        if (session !is SessionState.Authenticated) {
+            return LostFoundManageResult.Unauthenticated("Tu sesión no está disponible.")
+        }
+        val row = gateway.fetchById(id.value).getOrElse {
+            return mapManageThrowable(it)
+        } ?: return LostFoundManageResult.BackendError("No encontramos ese contenido.")
+
+        if (row.authorId.isNullOrBlank() || row.authorId != session.user.userId) {
+            return LostFoundManageResult.Forbidden("No tenés permiso para esta acción.")
+        }
+
+        val upload = mediaUploadGateway.uploadForCase(
+            caseId = id.value,
+            actorUserId = session.user.userId,
+            file = file
+        )
+        val assetId = upload.getOrElse {
+            return LostFoundManageResult.BackendError(mapLostFoundThrowable(it))
+        }
+
+        val photoUpdate = writeGateway.updatePhotoUrl(id.value, assetId)
+        if (photoUpdate.isFailure) {
+            return LostFoundManageResult.PartialSuccess(
+                "La foto se subió, pero no se pudo asociar al aviso."
+            )
+        }
+        mediaResolver?.clearCache()
+        refreshTick.update { it + 1 }
+        return LostFoundManageResult.Success
+    }
+
     private suspend fun loadList(filter: LostFoundListFilter): VerticalLoadState<List<LostFoundSummary>> {
         val session = sessionRepository.currentSession()
         if (session !is SessionState.Authenticated) {
@@ -252,6 +289,12 @@ internal class UnconfiguredLostFoundRepository : LostFoundRepository {
         id: LostFoundId,
         description: String?,
         location: String?
+    ): LostFoundManageResult =
+        LostFoundManageResult.BackendError(AuthFailureMessages.message(AuthFailure.Unavailable))
+
+    override suspend fun replacePhoto(
+        id: LostFoundId,
+        file: com.comunidapp.shared.poc.m08.model.FileRef
     ): LostFoundManageResult =
         LostFoundManageResult.BackendError(AuthFailureMessages.message(AuthFailure.Unavailable))
 }

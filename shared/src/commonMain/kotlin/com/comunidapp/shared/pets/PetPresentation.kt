@@ -43,7 +43,9 @@ data class PetDetailView(
     val sizeLabel: String? = null,
     val ageYears: Int? = null,
     val ageMonths: Int? = null,
-    val color: String? = null
+    val color: String? = null,
+    /** Solo detalle autenticado — nunca PublicContent. */
+    val health: PetHealthSummary? = null
 )
 
 enum class PetsDataMode {
@@ -58,6 +60,7 @@ interface SharedPetsRepository {
     suspend fun refresh()
     suspend fun create(draft: PetCreateDraft): PetCreateResult
     suspend fun update(petId: PetId, draft: PetEditDraft): PetEditResult
+    suspend fun updateHealth(petId: PetId, draft: PetHealthDraft): PetHealthWriteResult
 }
 
 fun PetAggregate.toSummary(speciesLabel: String, hasAvatar: Boolean = media.avatar != null): PetSummary =
@@ -154,6 +157,26 @@ class FakeSharedPetsRepository(
             avatarAttached = draft.avatarFile != null
         )
     }
+
+    override suspend fun updateHealth(petId: PetId, draft: PetHealthDraft): PetHealthWriteResult {
+        PetHealthDraftValidator.validate(draft).exceptionOrNull()?.let {
+            return PetHealthWriteResult.ValidationError(ErrorSanitizer.sanitize(it))
+        }
+        if (fail) {
+            return PetHealthWriteResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("PETS_UNAVAILABLE"))
+            )
+        }
+        if (seeds.none { it.aggregate.id == petId }) {
+            return PetHealthWriteResult.BackendError("No encontramos ese contenido.")
+        }
+        lastHealthDraft = draft
+        refreshTick.update { it + 1 }
+        return PetHealthWriteResult.Success(petId)
+    }
+
+    var lastHealthDraft: PetHealthDraft? = null
+        private set
 
     private suspend fun loadList(): VerticalLoadState<List<PetSummary>> {
         if (delayMs > 0L) delay(delayMs)

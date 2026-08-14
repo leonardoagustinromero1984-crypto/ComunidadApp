@@ -78,6 +78,7 @@ fun PocIosViewController(): UIViewController =
                     deepLinkController = deepLinkController,
                     pushInstallationRepository = runtime.pushInstallationRepository,
                     pushRegistrationCoordinator = pushCoordinator,
+                    notificationPreferencesRepository = runtime.notificationPreferencesRepository,
                     appleSignInController = appleSignIn,
                     onOpenLegacyPocs = { showLegacyPocs = true }
                 )

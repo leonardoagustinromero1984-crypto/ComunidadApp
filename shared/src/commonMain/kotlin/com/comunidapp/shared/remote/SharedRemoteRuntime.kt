@@ -49,7 +49,8 @@ import io.github.jan.supabase.storage.Storage
 
 /**
  * Único runtime Kotlin-only — un solo SupabaseClient.
- * KMP-11…16 + KMP-20 public content + KMP-21 pet edit + KMP-22 LF manage.
+ * KMP-11…16 + KMP-20 public content + KMP-21 pet edit + KMP-22 LF manage +
+ * KMP-23 pet health + KMP-24 LF edit + KMP-25 notification prefs.
  */
 internal class SharedRemoteRuntime private constructor(
     private val client: SupabaseClient?,
@@ -61,7 +62,8 @@ internal class SharedRemoteRuntime private constructor(
     val adoptionApplicationRepository: AdoptionApplicationRepository,
     val publicContentRepository: PublicContentRepository,
     val mediaResolver: MediaResolver,
-    val pushInstallationRepository: PushInstallationRepository
+    val pushInstallationRepository: PushInstallationRepository,
+    val notificationPreferencesRepository: com.comunidapp.shared.notifications.NotificationPreferencesRepository
 ) {
     companion object {
         fun create(
@@ -80,7 +82,9 @@ internal class SharedRemoteRuntime private constructor(
                     adoptionApplicationRepository = UnconfiguredAdoptionApplicationRepository(),
                     publicContentRepository = UnconfiguredPublicContentRepository(),
                     mediaResolver = UnavailableMediaResolver(),
-                    pushInstallationRepository = UnconfiguredPushInstallationRepository()
+                    pushInstallationRepository = UnconfiguredPushInstallationRepository(),
+                    notificationPreferencesRepository =
+                        com.comunidapp.shared.notifications.UnconfiguredNotificationPreferencesRepository()
                 )
             }
             val client = createClient(usable, storage)
@@ -122,7 +126,8 @@ internal class SharedRemoteRuntime private constructor(
                 gateway = SupabaseLostFoundRemoteGateway(client),
                 writeGateway = SupabaseLostFoundWriteGateway(client),
                 sessionRepository = authRepository,
-                mediaUploadGateway = mediaGateway
+                mediaUploadGateway = mediaGateway,
+                mediaResolver = mediaResolver
             )
             val adoptionGateway = SupabaseAdoptionRemoteGateway(client)
             val adoptionRepository = RemoteAdoptionRepository(
@@ -140,6 +145,11 @@ internal class SharedRemoteRuntime private constructor(
                 gateway = SupabasePushInstallationGateway(client),
                 sessionRepository = authRepository
             )
+            val notificationPreferencesRepository =
+                com.comunidapp.shared.notifications.RemoteNotificationPreferencesRepository(
+                    gateway = com.comunidapp.shared.notifications.SupabaseNotificationPreferencesGateway(client),
+                    sessionRepository = authRepository
+                )
             return SharedRemoteRuntime(
                 client = client,
                 authRepository = authRepository,
@@ -150,7 +160,8 @@ internal class SharedRemoteRuntime private constructor(
                 adoptionApplicationRepository = adoptionApplicationRepository,
                 publicContentRepository = publicContentRepository,
                 mediaResolver = mediaResolver,
-                pushInstallationRepository = pushInstallationRepository
+                pushInstallationRepository = pushInstallationRepository,
+                notificationPreferencesRepository = notificationPreferencesRepository
             )
         }
 

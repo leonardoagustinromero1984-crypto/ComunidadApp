@@ -1,8 +1,10 @@
 # KMP-IOS — Paquete 20–22 validación
 
 **HEAD base (KMP-17/18/19):** `d1d04cb2dfbb002c4960e6001196ba4e370b63a9`
+**HEAD cierre (KMP-20/21/22):** `05a3a2a`
 **Gate #16:** PASS (`22115b1284c6834da17f168a3826d5559465f68d`) — KMP-14/15/16 CLOSED GREEN
-**Gate #17:** PENDING (sobre `d1d04cb…`; no inventar PASS/FAIL)
+**Gate #17:** PASS (`d1d04cb2dfbb002c4960e6001196ba4e370b63a9`) — KMP-17/18/19 CLOSED GREEN
+**Gate #18:** PENDING (sobre `05a3a2a…`; no inventar PASS/FAIL)
 
 ## Alcance
 

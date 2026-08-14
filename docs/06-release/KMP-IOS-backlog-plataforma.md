@@ -1,32 +1,31 @@
-# KMP-IOS — Backlog (post KMP-20/21/22)
+# KMP-IOS — Backlog (post KMP-23/24/25)
 
 ## Terminado
 
-- KMP-1…19
-- **KMP-20:** Public deep link content REAL_REMOTE (`get_public_*`)
-- **KMP-21:** Pet edit REAL_REMOTE (`m08_update_pet_profile` + avatar)
-- **KMP-22:** Lost/Found owner resolve REAL_REMOTE (ACTIVE→RESOLVED)
+- KMP-1…22
+- **KMP-23:** Pet health REAL_REMOTE
+- **KMP-24:** L/F owner edit + media replace REAL_REMOTE (≠ M24 Pagos)
+- **KMP-25:** Notification preferences + iOS push UX
 
 ## iOS ahora
 
 ```text
-SESSION / PROFILE / PETS / LOST_FOUND / ADOPTIONS = REAL_REMOTE
-DEEP_LINKS = SHARED + PUBLIC CONTENT REAL_REMOTE
-PET EDIT = REAL_REMOTE (profile; health deferred)
-L/F OWNER = REAL_REMOTE (resolve; no hard delete UI)
+PET HEALTH = REAL_REMOTE
+L/F OWNER EDIT + MEDIA REPLACE = REAL_REMOTE
+PUSH PREFERENCES = REAL_REMOTE
+IOS PERMISSION UX = REAL_NATIVE
 APPLE_SIGN_IN = APP_SIDE_READY_BACKEND_CONFIG_REQUIRED
-APNs = FOUNDATION (M06 install register/revoke)
 UNIVERSAL_LINKS = APP_SIDE_READY / WEB ASSOCIATION BLOCKED
 ```
 
 ## Pendiente
 
 - Enable Supabase Apple provider + device SIWA entitlement
-- Pet health / archive lifecycle
-- L/F owner field-edit UI + media replace UX
 - Universal Links AASA (web)
-- APNs prod delivery / prefs UI
+- APNs prod server delivery
+- Quiet hours prefs UI
+- Pet archive lifecycle
 
 ## No iniciar
 
-M24, SQL/schema, web, APK en este paquete
+M24 Pagos, SQL/schema, web, APK en este paquete

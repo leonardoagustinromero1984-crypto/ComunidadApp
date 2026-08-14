@@ -5,11 +5,14 @@ import com.comunidapp.shared.auth.AuthFailure
 import com.comunidapp.shared.auth.AuthFailureMessages
 import com.comunidapp.shared.media.M05MediaUploadGateway
 import com.comunidapp.shared.media.mapMediaThrowable
+import com.comunidapp.shared.remote.PetReminderDto
 import com.comunidapp.shared.remote.PetsRemoteGateway
 import com.comunidapp.shared.remote.PetsWriteKind
 import com.comunidapp.shared.remote.RemoteCreatePetParams
 import com.comunidapp.shared.remote.RemotePetsMapper
+import com.comunidapp.shared.remote.RemoteUpdatePetHealthParams
 import com.comunidapp.shared.remote.RemoteUpdatePetProfileParams
+import com.comunidapp.shared.remote.VaccinationRecordDto
 import com.comunidapp.shared.remote.classifyPetsWrite
 import com.comunidapp.shared.remote.mapPetsThrowable
 import com.comunidapp.shared.session.SessionRepository
@@ -198,6 +201,46 @@ internal class RemoteSharedPetsRepository(
         return PetEditResult.Success(id = petId, avatarAttached = true)
     }
 
+    override suspend fun updateHealth(petId: PetId, draft: PetHealthDraft): PetHealthWriteResult {
+        PetHealthDraftValidator.validate(draft).exceptionOrNull()?.let {
+            return PetHealthWriteResult.ValidationError(ErrorSanitizer.sanitize(it))
+        }
+        val session = sessionRepository.currentSession()
+        if (session !is SessionState.Authenticated) {
+            return PetHealthWriteResult.Unauthenticated("Tu sesión no está disponible.")
+        }
+        gateway.updatePetHealth(
+            RemoteUpdatePetHealthParams(
+                petId = petId.value,
+                vaccinations = draft.vaccinations.map {
+                    VaccinationRecordDto(
+                        name = it.name.trim(),
+                        date = it.date.trim(),
+                        nextDueDate = it.nextDueDate?.trim()?.takeIf { d -> d.isNotEmpty() }
+                    )
+                },
+                reminders = draft.reminders.map {
+                    PetReminderDto(
+                        id = it.id.trim().ifBlank { "r-${it.title.trim().hashCode()}" },
+                        title = it.title.trim(),
+                        date = it.date.trim(),
+                        type = it.type.trim().ifBlank { "GENERAL" }
+                    )
+                },
+                lastDeworming = draft.lastDeworming?.trim()?.takeIf { it.isNotEmpty() },
+                dewormingProduct = draft.dewormingProduct?.trim()?.takeIf { it.isNotEmpty() },
+                lastFleaTreatment = draft.lastFleaTreatment?.trim()?.takeIf { it.isNotEmpty() },
+                fleaTreatmentProduct = draft.fleaTreatmentProduct?.trim()?.takeIf { it.isNotEmpty() },
+                sterilized = draft.sterilized?.trim()?.takeIf { it.isNotEmpty() },
+                lastVetVisit = draft.lastVetVisit?.trim()?.takeIf { it.isNotEmpty() },
+                healthNotes = draft.healthNotes?.trim()?.takeIf { it.isNotEmpty() },
+                weightKg = draft.weightKg
+            )
+        ).getOrElse { return mapHealthResult(it) }
+        refreshTick.update { it + 1 }
+        return PetHealthWriteResult.Success(petId)
+    }
+
     private fun mapCreateResult(t: Throwable): PetCreateResult {
         val msg = mapPetsThrowable(t)
         return when (classifyPetsWrite(t)) {
@@ -217,6 +260,17 @@ internal class RemoteSharedPetsRepository(
             PetsWriteKind.CONFLICT,
             PetsWriteKind.BACKEND -> PetEditResult.BackendError(msg)
             PetsWriteKind.VALIDATION -> PetEditResult.ValidationError(msg)
+        }
+    }
+
+    private fun mapHealthResult(t: Throwable): PetHealthWriteResult {
+        val msg = mapPetsThrowable(t)
+        return when (classifyPetsWrite(t)) {
+            PetsWriteKind.UNAUTHENTICATED -> PetHealthWriteResult.Unauthenticated(msg)
+            PetsWriteKind.FORBIDDEN -> PetHealthWriteResult.Forbidden(msg)
+            PetsWriteKind.VALIDATION -> PetHealthWriteResult.ValidationError(msg)
+            PetsWriteKind.CONFLICT,
+            PetsWriteKind.BACKEND -> PetHealthWriteResult.BackendError(msg)
         }
     }
 
@@ -258,4 +312,7 @@ internal class UnconfiguredSharedPetsRepository : SharedPetsRepository {
 
     override suspend fun update(petId: PetId, draft: PetEditDraft): PetEditResult =
         PetEditResult.BackendError("Servicio no configurado.")
+
+    override suspend fun updateHealth(petId: PetId, draft: PetHealthDraft): PetHealthWriteResult =
+        PetHealthWriteResult.BackendError("Servicio no configurado.")
 }

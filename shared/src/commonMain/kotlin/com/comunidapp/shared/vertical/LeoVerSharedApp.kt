@@ -70,11 +70,13 @@ private sealed class SharedRoute {
     data object Pets : SharedRoute()
     data class PetDetail(val petId: PetId) : SharedRoute()
     data class PetEdit(val petId: PetId) : SharedRoute()
+    data class PetHealthEdit(val petId: PetId) : SharedRoute()
     data object Alerts : SharedRoute()
     data object LostList : SharedRoute()
     data object FoundList : SharedRoute()
     data object LostFoundPublish : SharedRoute()
     data class LostFoundDetail(val id: LostFoundId, val backTo: SharedRoute) : SharedRoute()
+    data class LostFoundEdit(val id: LostFoundId, val backTo: SharedRoute) : SharedRoute()
     data object Adoptions : SharedRoute()
     data object AdoptionPublish : SharedRoute()
     data class AdoptionDetail(val id: AdoptionId) : SharedRoute()
@@ -83,6 +85,7 @@ private sealed class SharedRoute {
     data object ReceivedApplications : SharedRoute()
     data class ApplicationReviewDetail(val id: AdoptionApplicationId) : SharedRoute()
     data object PetCreate : SharedRoute()
+    data object NotificationSettings : SharedRoute()
     data class DeepLinkLanding(val target: DeepLinkTarget) : SharedRoute()
 }
 
@@ -105,6 +108,8 @@ fun LeoVerSharedApp(
     deepLinkController: DeepLinkNavigationController? = null,
     pushInstallationRepository: PushInstallationRepository? = null,
     pushRegistrationCoordinator: PushRegistrationCoordinator? = null,
+    notificationPreferencesRepository: com.comunidapp.shared.notifications.NotificationPreferencesRepository =
+        com.comunidapp.shared.notifications.UnconfiguredNotificationPreferencesRepository(),
     appleSignInController: AppleSignInController? = null,
     onOpenLegacyPocs: (() -> Unit)? = null
 ) {
@@ -216,6 +221,7 @@ fun LeoVerSharedApp(
             onOpenPets = { route = SharedRoute.Pets },
             onOpenAlerts = { route = SharedRoute.Alerts },
             onOpenAdoptions = { route = SharedRoute.Adoptions },
+            onOpenNotifications = { route = SharedRoute.NotificationSettings },
             onOpenLegacyPocs = onOpenLegacyPocs
         )
         SharedRoute.Profile -> SharedProfileScreen(
@@ -223,7 +229,8 @@ fun LeoVerSharedApp(
             profileRepository = profileRepository,
             mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Home },
-            onEdit = { route = SharedRoute.ProfileEdit }
+            onEdit = { route = SharedRoute.ProfileEdit },
+            onOpenNotifications = { route = SharedRoute.NotificationSettings }
         )
         SharedRoute.ProfileEdit -> {
             val sessionUser = (session as? SessionState.Authenticated)?.user
@@ -277,12 +284,19 @@ fun LeoVerSharedApp(
             petsRepository = petsRepository,
             mediaResolver = mediaResolver,
             onBack = { route = SharedRoute.Pets },
-            onEdit = { route = SharedRoute.PetEdit(r.petId) }
+            onEdit = { route = SharedRoute.PetEdit(r.petId) },
+            onEditHealth = { route = SharedRoute.PetHealthEdit(r.petId) }
         )
         is SharedRoute.PetEdit -> SharedPetEditScreen(
             petId = r.petId,
             petsRepository = petsRepository,
             imagePicker = imagePicker,
+            onBack = { route = SharedRoute.PetDetail(r.petId) },
+            onSaved = { route = SharedRoute.PetDetail(r.petId) }
+        )
+        is SharedRoute.PetHealthEdit -> SharedPetHealthEditScreen(
+            petId = r.petId,
+            petsRepository = petsRepository,
             onBack = { route = SharedRoute.PetDetail(r.petId) },
             onSaved = { route = SharedRoute.PetDetail(r.petId) }
         )
@@ -320,7 +334,21 @@ fun LeoVerSharedApp(
             id = r.id,
             lostFoundRepository = lostFoundRepository,
             mediaResolver = mediaResolver,
-            onBack = { route = r.backTo }
+            onBack = { route = r.backTo },
+            onEdit = { route = SharedRoute.LostFoundEdit(r.id, r.backTo) }
+        )
+        is SharedRoute.LostFoundEdit -> SharedLostFoundEditScreen(
+            id = r.id,
+            lostFoundRepository = lostFoundRepository,
+            imagePicker = imagePicker,
+            onBack = { route = SharedRoute.LostFoundDetail(r.id, r.backTo) },
+            onSaved = { route = SharedRoute.LostFoundDetail(r.id, r.backTo) }
+        )
+        SharedRoute.NotificationSettings -> SharedNotificationSettingsScreen(
+            preferencesRepository = notificationPreferencesRepository,
+            pushRegistrationCoordinator = pushRegistrationCoordinator,
+            pushInstallationRepository = pushInstallationRepository,
+            onBack = { route = SharedRoute.Home }
         )
         SharedRoute.Adoptions -> SharedAdoptionsListScreen(
             adoptionRepository = adoptionRepository,
@@ -429,6 +457,7 @@ private fun SharedHomeVerticalScreen(
     onOpenPets: () -> Unit,
     onOpenAlerts: () -> Unit,
     onOpenAdoptions: () -> Unit,
+    onOpenNotifications: () -> Unit,
     onOpenLegacyPocs: (() -> Unit)?
 ) {
     val vm = remember(sessionRepository) { SessionViewModelShared(sessionRepository) }
@@ -477,6 +506,14 @@ private fun SharedHomeVerticalScreen(
             }
             Button(onClick = onOpenAdoptions, modifier = Modifier.fillMaxWidth()) {
                 Text("Adopciones")
+            }
+            if (session is SessionState.Authenticated) {
+                OutlinedButton(
+                    onClick = onOpenNotifications,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text("Notificaciones")
+                }
             }
             if (
                 session is SessionState.Authenticated &&
@@ -531,7 +568,8 @@ private fun SharedProfileScreen(
     profileRepository: UserProfileRepository,
     mediaResolver: MediaResolver?,
     onBack: () -> Unit,
-    onEdit: () -> Unit
+    onEdit: () -> Unit,
+    onOpenNotifications: () -> Unit = {}
 ) {
     val vm = remember(sessionRepository, profileRepository) {
         ProfileViewModelShared(sessionRepository, profileRepository)
@@ -556,6 +594,9 @@ private fun SharedProfileScreen(
                     ProfileContent(s.profile, mediaResolver)
                     Button(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
                         Text("Editar perfil")
+                    }
+                    OutlinedButton(onClick = onOpenNotifications, modifier = Modifier.fillMaxWidth()) {
+                        Text("Notificaciones")
                     }
                 }
             }
@@ -663,7 +704,8 @@ private fun SharedPetDetailScreen(
     petsRepository: SharedPetsRepository,
     mediaResolver: MediaResolver?,
     onBack: () -> Unit,
-    onEdit: () -> Unit = {}
+    onEdit: () -> Unit = {},
+    onEditHealth: () -> Unit = {}
 ) {
     val vm = remember(petId, petsRepository) { PetDetailViewModelShared(petId, petsRepository) }
     DisposableEffect(vm) { onDispose { vm.clear() } }
@@ -687,6 +729,9 @@ private fun SharedPetDetailScreen(
                     PetDetailBody(s.data, mediaResolver)
                     Button(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
                         Text("Editar")
+                    }
+                    OutlinedButton(onClick = onEditHealth, modifier = Modifier.fillMaxWidth()) {
+                        Text("Editar salud")
                     }
                 }
             }
@@ -718,6 +763,19 @@ private fun PetDetailBody(detail: PetDetailView, mediaResolver: MediaResolver?) 
         Text("Estado: ${detail.status.name}")
         detail.passportHint?.let {
             Text(it, style = MaterialTheme.typography.bodySmall)
+        }
+        detail.health?.let { health ->
+            Spacer(Modifier.height(8.dp))
+            Text("Salud", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            health.sterilized?.let { Text("Esterilizado: $it") }
+            health.weightKg?.let { Text("Peso: $it kg") }
+            health.lastVetVisit?.let { Text("Última visita vet: $it") }
+            health.lastDeworming?.let { Text("Desparasitación: $it") }
+            health.lastFleaTreatment?.let { Text("Antipulgas: $it") }
+            if (health.vaccinations.isNotEmpty()) {
+                Text("Vacunas: ${health.vaccinations.joinToString { it.name }}")
+            }
+            health.healthNotes?.let { Text("Notas: $it") }
         }
     }
 }

@@ -45,6 +45,21 @@ internal data class RemoteAccessiblePetRow(
 )
 
 @Serializable
+internal data class VaccinationRecordDto(
+    val name: String = "",
+    val date: String = "",
+    @SerialName("next_due_date") val nextDueDate: String? = null
+)
+
+@Serializable
+internal data class PetReminderDto(
+    val id: String = "",
+    val title: String = "",
+    val date: String = "",
+    val type: String = ""
+)
+
+@Serializable
 internal data class RemotePetRow(
     val id: String,
     val name: String,
@@ -59,7 +74,18 @@ internal data class RemotePetRow(
     @SerialName("age_months") val ageMonths: Int = 0,
     val color: String? = null,
     @SerialName("avatar_file_asset_id") val avatarFileAssetId: String? = null,
-    @SerialName("owner_id") val ownerId: String? = null
+    @SerialName("owner_id") val ownerId: String? = null,
+    /** OWNER_WRITE health — never map to PublicContent.Pet. */
+    val vaccinations: List<VaccinationRecordDto> = emptyList(),
+    val reminders: List<PetReminderDto> = emptyList(),
+    @SerialName("last_deworming") val lastDeworming: String? = null,
+    @SerialName("deworming_product") val dewormingProduct: String? = null,
+    @SerialName("last_flea_treatment") val lastFleaTreatment: String? = null,
+    @SerialName("flea_treatment_product") val fleaTreatmentProduct: String? = null,
+    val sterilized: String? = null,
+    @SerialName("last_vet_visit") val lastVetVisit: String? = null,
+    @SerialName("health_notes") val healthNotes: String? = null,
+    @SerialName("weight_kg") val weightKg: Float? = null
 )
 
 /**

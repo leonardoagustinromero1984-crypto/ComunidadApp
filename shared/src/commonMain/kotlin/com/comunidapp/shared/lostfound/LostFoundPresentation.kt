@@ -122,6 +122,16 @@ interface LostFoundRepository {
         description: String?,
         location: String?
     ): LostFoundManageResult
+
+    /**
+     * Reemplazo de foto: session+owner → M05 upload → updatePhotoUrl.
+     * Upload fail → BackendError; associate fail after upload → PartialSuccess/BackendError
+     * sin afirmar foto nueva. Invalida cache media si hay resolver.
+     */
+    suspend fun replacePhoto(
+        id: LostFoundId,
+        file: com.comunidapp.shared.poc.m08.model.FileRef
+    ): LostFoundManageResult
 }
 
 class GetLostFoundCasesUseCase(private val repository: LostFoundRepository) {
@@ -304,6 +314,41 @@ class FakeLostFoundRepository(
         refreshTick.update { it + 1 }
         return LostFoundManageResult.Success
     }
+
+    override suspend fun replacePhoto(
+        id: LostFoundId,
+        file: com.comunidapp.shared.poc.m08.model.FileRef
+    ): LostFoundManageResult {
+        replacePhotoCalls++
+        lastReplacePhoto = file
+        if (fail) {
+            return LostFoundManageResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("LOST_FOUND_UNAVAILABLE"))
+            )
+        }
+        if (!manageAsOwner) {
+            return LostFoundManageResult.Forbidden("No tenés permiso para esta acción.")
+        }
+        if (seedState.value.none { it.summary.id == id }) {
+            return LostFoundManageResult.BackendError("No encontramos ese contenido.")
+        }
+        seedState.update { list ->
+            list.map {
+                if (it.summary.id != id) it
+                else FakeLostFoundSeed(
+                    summary = it.summary.copy(hasPhoto = true),
+                    detail = it.detail.copy(hasPhoto = true, viewerCanManage = manageAsOwner)
+                )
+            }
+        }
+        refreshTick.update { it + 1 }
+        return LostFoundManageResult.Success
+    }
+
+    var replacePhotoCalls: Int = 0
+        private set
+    var lastReplacePhoto: com.comunidapp.shared.poc.m08.model.FileRef? = null
+        private set
 
     private suspend fun loadList(filter: LostFoundListFilter): VerticalLoadState<List<LostFoundSummary>> {
         if (delayMs > 0L) delay(delayMs)

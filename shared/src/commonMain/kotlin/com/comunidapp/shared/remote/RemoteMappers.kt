@@ -14,7 +14,10 @@ import com.comunidapp.shared.lostfound.LostFoundId
 import com.comunidapp.shared.lostfound.LostFoundSummary
 import com.comunidapp.shared.media.MediaRefParser
 import com.comunidapp.shared.pets.PetDetailView
+import com.comunidapp.shared.pets.PetHealthReminder
+import com.comunidapp.shared.pets.PetHealthSummary
 import com.comunidapp.shared.pets.PetSummary
+import com.comunidapp.shared.pets.PetVaccination
 import com.comunidapp.shared.profile.UserProfileSummary
 
 internal object RemoteProfileMapper {
@@ -76,9 +79,37 @@ internal object RemotePetsMapper {
             sizeLabel = row.size.takeIf { it.isNotBlank() },
             ageYears = row.ageYears.takeIf { it > 0 },
             ageMonths = row.ageMonths.takeIf { it > 0 },
-            color = row.color?.takeIf { it.isNotBlank() }
+            color = row.color?.takeIf { it.isNotBlank() },
+            health = toHealth(row)
         )
     }
+
+    fun toHealth(row: RemotePetRow): PetHealthSummary =
+        PetHealthSummary(
+            vaccinations = row.vaccinations.map {
+                PetVaccination(
+                    name = it.name,
+                    date = it.date,
+                    nextDueDate = it.nextDueDate
+                )
+            },
+            reminders = row.reminders.map {
+                PetHealthReminder(
+                    id = it.id,
+                    title = it.title,
+                    date = it.date,
+                    type = it.type
+                )
+            },
+            lastDeworming = row.lastDeworming?.takeIf { it.isNotBlank() },
+            dewormingProduct = row.dewormingProduct?.takeIf { it.isNotBlank() },
+            lastFleaTreatment = row.lastFleaTreatment?.takeIf { it.isNotBlank() },
+            fleaTreatmentProduct = row.fleaTreatmentProduct?.takeIf { it.isNotBlank() },
+            sterilized = row.sterilized?.takeIf { it.isNotBlank() },
+            lastVetVisit = row.lastVetVisit?.takeIf { it.isNotBlank() },
+            healthNotes = row.healthNotes?.takeIf { it.isNotBlank() },
+            weightKg = row.weightKg
+        )
 
     fun accessibleToDetail(row: RemoteAccessiblePetRow): PetDetailView =
         toDetail(

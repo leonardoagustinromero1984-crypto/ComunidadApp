@@ -3,7 +3,8 @@
 **HEAD base (KMP-14/15/16):** `22115b1`
 **HEAD cierre (KMP-17/18/19):** `d1d04cb`
 **Gate #16:** PASS (`22115b1284c6834da17f168a3826d5559465f68d`) — KMP-14/15/16 CLOSED GREEN
-**Gate #17:** PENDING
+**Gate #17:** PASS (`d1d04cb2dfbb002c4960e6001196ba4e370b63a9`) — KMP-17/18/19 CLOSED GREEN
+**Gate #18:** PENDING
 **KMP-14/15/16:** CLOSED GREEN (suite base **294** tests)
 
 ## Alcance
@@ -25,7 +26,8 @@
 | Suite base previa | **294** (HEAD `22115b1`) |
 | WIP `app/` M09/decoding / M29 | NO TOCADO |
 | Gate #16 (commit `22115b1`) | PASS |
-| Gate #17 (commit `d1d04cb`) | PENDING |
+| Gate #17 (commit `d1d04cb`) | PASS |
+| Gate #18 (commit `05a3a2a`) | PENDING |
 
 ## Invariantes
 
@@ -39,4 +41,4 @@
 
 ## Cloud
 
-`READY_TO_RUN_GROUPED_IOS_CLOUD_GATE` (Gate #17 PENDING hasta evidencia)
+`READY_TO_RUN_GROUPED_IOS_CLOUD_GATE` (Gate #18 PENDING hasta evidencia)

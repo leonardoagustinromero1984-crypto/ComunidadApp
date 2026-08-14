@@ -4,8 +4,10 @@ import com.comunidapp.shared.ui.ErrorSanitizer
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
 
 internal data class RemoteCreatePetParams(
@@ -30,17 +32,34 @@ internal data class RemoteUpdatePetProfileParams(
     val microchipId: String? = null
 )
 
+internal data class RemoteUpdatePetHealthParams(
+    val petId: String,
+    val vaccinations: List<VaccinationRecordDto> = emptyList(),
+    val reminders: List<PetReminderDto> = emptyList(),
+    val lastDeworming: String? = null,
+    val dewormingProduct: String? = null,
+    val lastFleaTreatment: String? = null,
+    val fleaTreatmentProduct: String? = null,
+    val sterilized: String? = null,
+    val lastVetVisit: String? = null,
+    val healthNotes: String? = null,
+    val weightKg: Float? = null
+)
+
 internal interface PetsRemoteGateway {
     suspend fun listAccessibleActivePets(): Result<List<RemoteAccessiblePetRow>>
     suspend fun fetchPetById(petId: String): Result<RemotePetRow?>
     suspend fun createPetWithPrincipal(params: RemoteCreatePetParams): Result<RemotePetRow>
     suspend fun updatePetProfile(params: RemoteUpdatePetProfileParams): Result<RemotePetRow>
     suspend fun setPetAvatarAsset(petId: String, assetId: String): Result<RemotePetRow>
+    suspend fun updatePetHealth(params: RemoteUpdatePetHealthParams): Result<RemotePetRow>
 }
 
 internal class SupabasePetsRemoteGateway(
     private val client: SupabaseClient
 ) : PetsRemoteGateway {
+
+    private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun listAccessibleActivePets(): Result<List<RemoteAccessiblePetRow>> {
         return try {
@@ -134,6 +153,64 @@ internal class SupabasePetsRemoteGateway(
     } catch (t: Throwable) {
         Result.failure(t)
     }
+
+    override suspend fun updatePetHealth(
+        params: RemoteUpdatePetHealthParams
+    ): Result<RemotePetRow> = try {
+        val rows = client.postgrest.rpc(
+            function = "m08_update_pet_health",
+            parameters = buildJsonObject {
+                put("p_pet_id", params.petId)
+                put("p_vaccinations", json.encodeToJsonElement(params.vaccinations))
+                put("p_reminders", json.encodeToJsonElement(params.reminders))
+                if (params.lastDeworming != null) {
+                    put("p_last_deworming", params.lastDeworming)
+                } else {
+                    put("p_last_deworming", JsonNull)
+                }
+                if (params.dewormingProduct != null) {
+                    put("p_deworming_product", params.dewormingProduct)
+                } else {
+                    put("p_deworming_product", JsonNull)
+                }
+                if (params.lastFleaTreatment != null) {
+                    put("p_last_flea_treatment", params.lastFleaTreatment)
+                } else {
+                    put("p_last_flea_treatment", JsonNull)
+                }
+                if (params.fleaTreatmentProduct != null) {
+                    put("p_flea_treatment_product", params.fleaTreatmentProduct)
+                } else {
+                    put("p_flea_treatment_product", JsonNull)
+                }
+                if (params.sterilized != null) {
+                    put("p_sterilized", params.sterilized)
+                } else {
+                    put("p_sterilized", JsonNull)
+                }
+                if (params.lastVetVisit != null) {
+                    put("p_last_vet_visit", params.lastVetVisit)
+                } else {
+                    put("p_last_vet_visit", JsonNull)
+                }
+                if (params.healthNotes != null) {
+                    put("p_health_notes", params.healthNotes)
+                } else {
+                    put("p_health_notes", JsonNull)
+                }
+                if (params.weightKg != null) {
+                    put("p_weight_kg", params.weightKg)
+                } else {
+                    put("p_weight_kg", JsonNull)
+                }
+            }
+        ).decodeList<RemotePetRow>()
+        val row = rows.firstOrNull()
+            ?: return Result.failure(IllegalStateException("PET_HEALTH_UPDATE_EMPTY"))
+        Result.success(row)
+    } catch (t: Throwable) {
+        Result.failure(t)
+    }
 }
 
 internal class FakePetsRemoteGateway(
@@ -144,12 +221,15 @@ internal class FakePetsRemoteGateway(
     var createError: Throwable? = null,
     var updateError: Throwable? = null,
     var setAvatarError: Throwable? = null,
+    var healthError: Throwable? = null,
     var listCalls: Int = 0,
     var createCalls: Int = 0,
     var updateCalls: Int = 0,
     var setAvatarCalls: Int = 0,
+    var healthCalls: Int = 0,
     var lastCreate: RemoteCreatePetParams? = null,
     var lastUpdate: RemoteUpdatePetProfileParams? = null,
+    var lastHealth: RemoteUpdatePetHealthParams? = null,
     var lastAvatarPetId: String? = null,
     var lastAvatarAssetId: String? = null,
     var created: RemotePetRow? = null
@@ -267,6 +347,33 @@ internal class FakePetsRemoteGateway(
         return Result.success(updated)
     }
 
+    override suspend fun updatePetHealth(
+        params: RemoteUpdatePetHealthParams
+    ): Result<RemotePetRow> {
+        healthCalls++
+        lastHealth = params
+        healthError?.let { return Result.failure(it) }
+        val existing = created?.takeIf { it.id == params.petId }
+            ?: detail?.takeIf { it.id == params.petId }
+            ?: list.firstOrNull { it.id == params.petId }?.let { accessibleToPetRow(it) }
+            ?: return Result.failure(IllegalStateException("PET_NOT_FOUND"))
+        val updated = existing.copy(
+            vaccinations = params.vaccinations,
+            reminders = params.reminders,
+            lastDeworming = params.lastDeworming,
+            dewormingProduct = params.dewormingProduct,
+            lastFleaTreatment = params.lastFleaTreatment,
+            fleaTreatmentProduct = params.fleaTreatmentProduct,
+            sterilized = params.sterilized,
+            lastVetVisit = params.lastVetVisit,
+            healthNotes = params.healthNotes,
+            weightKg = params.weightKg
+        )
+        created = updated
+        detail = if (detail?.id == params.petId) updated else detail
+        return Result.success(updated)
+    }
+
     private fun accessibleToPetRow(it: RemoteAccessiblePetRow) = RemotePetRow(
         id = it.id,
         name = it.name,
@@ -291,6 +398,8 @@ internal fun mapPetsThrowable(t: Throwable): String {
     return when {
         "PET_NAME_REQUIRED" in code ->
             "El nombre de la mascota es obligatorio."
+        "PET_WEIGHT_INVALID" in code ->
+            "El peso no es válido."
         "PET_AVATAR_ASSET_NOT_FOUND" in code ->
             "No encontramos el archivo de avatar."
         "PET_AVATAR_PURPOSE_INVALID" in code ->
@@ -319,7 +428,7 @@ internal fun classifyPetsWrite(t: Throwable): PetsWriteKind {
             PetsWriteKind.FORBIDDEN
         "PET_MICROCHIP_ACTIVE_CONFLICT" in code -> PetsWriteKind.CONFLICT
         "PET_NAME_REQUIRED" in code || "PET_NAME_TOO_LONG" in code ||
-            "PET_AVATAR_PURPOSE_INVALID" in code ->
+            "PET_AVATAR_PURPOSE_INVALID" in code || "PET_WEIGHT_INVALID" in code ->
             PetsWriteKind.VALIDATION
         else -> PetsWriteKind.BACKEND
     }
