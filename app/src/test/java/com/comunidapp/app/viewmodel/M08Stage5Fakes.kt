@@ -381,9 +381,10 @@ class FakeStage5AuthorizationRepository : PetAuthorizationRepository {
         nowEpochMs: Long
     ): Set<PetCapability> = listForPet(petId)
         .filter {
+            val validTo = it.validToEpochMs
             it.granteeUserId == granteeUserId &&
                 it.status == PetLinkStatus.ACTIVE &&
-                (it.validToEpochMs == null || it.validToEpochMs > nowEpochMs)
+                (validTo == null || validTo > nowEpochMs)
         }
         .flatMap { it.capabilities }
         .toSet()

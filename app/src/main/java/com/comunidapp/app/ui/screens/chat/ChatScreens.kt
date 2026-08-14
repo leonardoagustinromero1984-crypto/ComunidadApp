@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -47,7 +48,6 @@ import com.comunidapp.app.viewmodel.ChatThreadViewModel
 import com.comunidapp.app.viewmodel.SendMessageState
 import java.text.SimpleDateFormat
 import java.util.Date
-import java.util.Locale
 
 @Composable
 fun ChatListScreen(
@@ -258,8 +258,9 @@ private fun MessageBubble(message: ChatMessage, isMine: Boolean) {
     } else {
         MaterialTheme.colorScheme.surfaceVariant
     }
+    val locale = LocalConfiguration.current.locales[0]
     val time = message.createdAt?.let {
-        SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date(it))
+        SimpleDateFormat("HH:mm", locale).format(Date(it))
     }.orEmpty()
 
     Box(modifier = Modifier.fillMaxWidth(), contentAlignment = alignment) {
