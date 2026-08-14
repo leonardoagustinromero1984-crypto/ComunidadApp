@@ -2,7 +2,7 @@
 
 ## Terminado
 
-- KMP-1…22
+- KMP-1…22 (**Gate #18 PASS** — KMP-20/21/22 CLOSED GREEN)
 - **KMP-23:** Pet health REAL_REMOTE
 - **KMP-24:** L/F owner edit + media replace REAL_REMOTE (≠ M24 Pagos)
 - **KMP-25:** Notification preferences + iOS push UX

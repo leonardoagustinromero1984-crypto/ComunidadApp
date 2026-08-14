@@ -16,4 +16,5 @@
 | M09 WIP Android decoding | WIP local (no commit) |
 | M24 Pagos | POSPUESTO / NO |
 | Gate #17 | PASS (`d1d04cb`) |
-| Gate #18 | PENDING |
+| Gate #18 | PASS (`05a3a2a`) — KMP-20/21/22 CLOSED GREEN |
+| Gate #19 | PENDING |
