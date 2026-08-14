@@ -313,6 +313,24 @@ class M05MediaReadVerticalTest {
     }
 
     @Test
+    fun remote_url_resolves_without_authentication() = runTest {
+        val url = "https://cdn.example/public.jpg"
+        val gw = FakeM05MediaReadGateway()
+        gw.urlResults[url] = successResource(key = "public-url")
+        val resolver = CachingMediaResolver(
+            gateway = gw,
+            clock = { 1L },
+            checkAuthenticated = { false }
+        )
+        assertIs<MediaResolveResult.Success>(resolver.resolve(MediaRef.RemoteUrl(url)))
+        assertEquals(1, gw.urlCalls)
+        assertEquals(
+            MediaResolveResult.Unauthenticated,
+            resolver.resolve(MediaRef.Asset(sampleAssetId))
+        )
+    }
+
+    @Test
     fun public_ttl_constants_match_android_fallback() {
         assertEquals(300, SupabaseM05MediaReadGateway.PUBLIC_TTL_SECONDS)
         assertEquals(600, SupabaseM05MediaReadGateway.PRIVATE_TTL_SECONDS)

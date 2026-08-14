@@ -4,7 +4,8 @@
 **HEAD cierre (KMP-23/24/25):** `1ca09b1fb1228bb8bc9d3959dab449ec4a5b3b19`
 **Gate #17:** PASS (`d1d04cb2dfbb002c4960e6001196ba4e370b63a9`) — KMP-17/18/19 CLOSED GREEN
 **Gate #18:** PASS (`05a3a2a2bb904053b6c9a13903ad5ff69fac713a`) — KMP-20/21/22 CLOSED GREEN
-**Gate #19:** PENDING (sobre `1ca09b1…`; no inventar PASS/FAIL)
+**Gate #19:** PASS (`82a33f31627846634bd32e3c7ebaf68bef1d7c80`) — docs Gate #18 package CLOSED
+**Gate #20:** PENDING (sobre `043a72c…`)
 **KMP-20/21/22:** CLOSED GREEN
 
 ## Alcance

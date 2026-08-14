@@ -22,7 +22,8 @@ internal class CachingMediaResolver(
     private val inflight = HashMap<String, CompletableDeferred<MediaResolveResult>>()
 
     override suspend fun resolve(ref: MediaRef): MediaResolveResult {
-        if (!checkAuthenticated()) {
+        // Public HTTPS RemoteUrl may resolve without session; private refs still require auth.
+        if (ref !is MediaRef.RemoteUrl && !checkAuthenticated()) {
             clearCache()
             return MediaResolveResult.Unauthenticated
         }

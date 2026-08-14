@@ -1,29 +1,26 @@
-# KMP-IOS — Backlog (post KMP-26/27)
+# KMP-IOS — Backlog (post IOS-PILOT-1)
 
 ## Terminado
 
-- KMP-1…25
-- **KMP-26:** Pet archive / restore / deceased REAL_REMOTE
-- **KMP-27:** Quiet hours + marketing prefs REAL_REMOTE
-- **IOS-READY:** device/external capabilities audit doc
+- KMP-1…27
+- IOS-PILOT-1 hardening (logout/privacy/nav/media/quiet-days/tests)
+- Device readiness seams documented
 
-## iOS ahora
+## Piloto
 
 ```text
-PET LIFECYCLE = REAL_REMOTE
-QUIET_HOURS = REAL_REMOTE
-APPLE_SIGN_IN = APP_SIDE + EXTERNAL_CONFIG + APPLE_DEVELOPER
-UNIVERSAL_LINKS = WEB_REQUIRED + APPLE_DEVELOPER
-APNS_PROD = APPLE_DEVELOPER + SERVER_REQUIRED
+APP_CODE_READY = YES
+REAL_DEVICE_VALIDATION = PENDING
+EXTERNAL_CONFIG = PENDING
 ```
 
-## Pendiente (externo)
+## Pendiente externo
 
-- Enable Supabase Apple provider + SIWA entitlement
-- AASA + Associated Domains (web)
-- APNs prod entitlement + server sender
-- Quiet-hours days UI (optional; SQL default all days)
+- Supabase Apple provider + SIWA entitlement
+- AASA + Associated Domains
+- APNs entitlement + server sender
+- Ejecutar `IOS-PILOT-MANUAL-TESTS.md` en iPhone
 
 ## No iniciar
 
-M24 Pagos, SQL/schema, web enablement, APK, secrets
+KMP-28, M24 Pagos, SQL/schema, web enablement, secrets

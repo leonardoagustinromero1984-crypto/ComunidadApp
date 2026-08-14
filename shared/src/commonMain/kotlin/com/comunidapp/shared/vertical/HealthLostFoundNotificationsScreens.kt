@@ -52,6 +52,7 @@ import com.comunidapp.shared.push.PushInstallationRepository
 import com.comunidapp.shared.push.PushPermissionState
 import com.comunidapp.shared.push.PushRegistrationCoordinator
 import com.comunidapp.shared.push.PushRegistrationResult
+import com.comunidapp.shared.push.iosInstallationId
 import com.comunidapp.shared.ui.VerticalLoadState
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -367,7 +368,11 @@ internal fun SharedLostFoundEditScreen(
                                 when (val pick = imagePicker.pickImage()) {
                                     is ImagePickResult.Success ->
                                         photo = pick.file
-                                    else -> Unit
+                                    ImagePickResult.Cancelled -> Unit
+                                    is ImagePickResult.Failure ->
+                                        error = com.comunidapp.shared.ui.ErrorSanitizer.sanitize(
+                                            Exception(pick.message)
+                                        )
                                 }
                             }
                         },
@@ -454,20 +459,32 @@ internal fun SharedNotificationSettingsScreen(
     preferencesRepository: NotificationPreferencesRepository,
     pushRegistrationCoordinator: PushRegistrationCoordinator?,
     pushInstallationRepository: PushInstallationRepository?,
+    installationId: String = iosInstallationId(),
     onBack: () -> Unit
 ) {
     var prefs by remember { mutableStateOf<List<SharedNotificationPreference>>(emptyList()) }
     var permission by remember { mutableStateOf<PushPermissionState?>(null) }
     var loaded by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
+    var pushBusy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var info by remember { mutableStateOf<String?>(null) }
     var quietEnabled by remember { mutableStateOf(false) }
     var quietStart by remember { mutableStateOf("22:00") }
     var quietEnd by remember { mutableStateOf("07:00") }
+    var quietDays by remember { mutableStateOf(listOf(1, 2, 3, 4, 5, 6, 7)) }
     var timezone by remember { mutableStateOf("UTC") }
     var marketingConsent by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val dayLabels = listOf(
+        1 to "Lun",
+        2 to "Mar",
+        3 to "Mié",
+        4 to "Jue",
+        5 to "Vie",
+        6 to "Sáb",
+        7 to "Dom"
+    )
 
     fun reload() {
         scope.launch {
@@ -483,6 +500,12 @@ internal fun SharedNotificationSettingsScreen(
                             sample.quietHoursStart != null || sample.quietHoursEnd != null
                         quietStart = sample.quietHoursStart ?: "22:00"
                         quietEnd = sample.quietHoursEnd ?: "07:00"
+                        quietDays = sample.quietHoursDays
+                            ?.filter { day -> day in 1..7 }
+                            ?.distinct()
+                            ?.sorted()
+                            ?.ifEmpty { listOf(1, 2, 3, 4, 5, 6, 7) }
+                            ?: listOf(1, 2, 3, 4, 5, 6, 7)
                         timezone = sample.timezone.ifBlank { "UTC" }
                         marketingConsent = sample.marketingConsent
                     }
@@ -516,17 +539,19 @@ internal fun SharedNotificationSettingsScreen(
                 PushPermissionState.NotDetermined -> {
                     OutlinedButton(
                         onClick = {
+                            if (pushBusy) return@OutlinedButton
                             val coordinator = pushRegistrationCoordinator
                             val repo = pushInstallationRepository
                             if (coordinator == null || repo == null) {
                                 error = "Notificaciones no configuradas."
                                 return@OutlinedButton
                             }
+                            pushBusy = true
                             scope.launch {
                                 when (
                                     val result = coordinator.requestPermissionAndRegister(
                                         repository = repo,
-                                        installationId = "ios-install-${preferencesRepository.hashCode().toUInt()}"
+                                        installationId = installationId
                                     )
                                 ) {
                                     PushRegistrationResult.Success -> {
@@ -537,10 +562,12 @@ internal fun SharedNotificationSettingsScreen(
                                         permission = PushPermissionState.Denied
                                     else -> info = "No se pudo activar notificaciones."
                                 }
+                                pushBusy = false
                             }
                         },
+                        enabled = !pushBusy,
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Activar notificaciones") }
+                    ) { Text(if (pushBusy) "Activando…" else "Activar notificaciones") }
                 }
                 PushPermissionState.Denied -> {
                     Text(
@@ -576,7 +603,12 @@ internal fun SharedNotificationSettingsScreen(
                     Text("Activar horario silencioso")
                     Switch(
                         checked = quietEnabled,
-                        onCheckedChange = { quietEnabled = it },
+                        onCheckedChange = { enabled ->
+                            quietEnabled = enabled
+                            if (enabled && quietDays.isEmpty()) {
+                                quietDays = listOf(1, 2, 3, 4, 5, 6, 7)
+                            }
+                        },
                         enabled = !busy
                     )
                 }
@@ -605,6 +637,30 @@ internal fun SharedNotificationSettingsScreen(
                         modifier = Modifier.fillMaxWidth(),
                         enabled = !busy
                     )
+                    Text("Días", style = MaterialTheme.typography.labelLarge)
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        dayLabels.forEach { (day, label) ->
+                            val selected = day in quietDays
+                            TextButton(
+                                onClick = {
+                                    quietDays = if (selected) {
+                                        quietDays - day
+                                    } else {
+                                        (quietDays + day).distinct().sorted()
+                                    }
+                                },
+                                enabled = !busy
+                            ) {
+                                Text(
+                                    if (selected) "[$label]" else label,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal
+                                )
+                            }
+                        }
+                    }
                 }
                 Row(
                     Modifier.fillMaxWidth(),
@@ -626,6 +682,11 @@ internal fun SharedNotificationSettingsScreen(
                         scope.launch {
                             val start = if (quietEnabled) quietStart.trim().ifBlank { null } else null
                             val end = if (quietEnabled) quietEnd.trim().ifBlank { null } else null
+                            val days = if (quietEnabled) {
+                                quietDays.ifEmpty { listOf(1, 2, 3, 4, 5, 6, 7) }
+                            } else {
+                                null
+                            }
                             when (
                                 val result = preferencesRepository.applyQuietHoursToAll(
                                     loaded = prefs,
@@ -633,7 +694,7 @@ internal fun SharedNotificationSettingsScreen(
                                     quietHoursEnd = end,
                                     timezone = timezone.ifBlank { "UTC" },
                                     marketingConsent = marketingConsent,
-                                    quietHoursDays = null
+                                    quietHoursDays = days
                                 )
                             ) {
                                 is NotificationPreferenceWriteResult.Success -> {

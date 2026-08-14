@@ -1,21 +1,19 @@
-# KMP-IOS — Arquitectura compartida (post KMP-26/27)
+# KMP-IOS — Arquitectura compartida (post IOS-PILOT-1)
 
 ```text
 SharedRemoteRuntime (1 SupabaseClient)
-  → Pets: create / edit / health / archive / restore / deceased
-  → L/F owner resolve + edit + media
-  → Notification prefs + quiet hours + marketing
-  → Push install register/revoke
-  → Public content get_public_*
-  → Apple Sign In APP_SIDE (external config required)
+  → Auth / Profile / Pets (CRUD+health+lifecycle)
+  → LostFound / Adoptions
+  → Public content + DeepLinkParser
+  → Push prefs + quiet hours (+ days)
+  → Logout: revoke push + clear pending deep links + media cache
 ```
 
-## Principios
+## Pilot hardening
 
-1. Un solo SupabaseClient.
-2. Lifecycle vía RPCs M08 — sin hard delete.
-3. Quiet hours REAL_REMOTE (M06).
-4. External SIWA / Universal Links / APNs prod = device-readiness doc.
-5. Catálogo módulos oficiales M00–M27 (no M28).
-6. KT-86501 workaround preservado.
-7. M24 Pagos POSPUESTO.
+1. Stable install id `leover-ios-default-install`
+2. Public `RemoteUrl` media without auth; private assets require session
+3. ErrorSanitizer on image pick failures
+4. Busy guards on write / Activar notificaciones
+5. Catálogo M00–M27 · no KMP-28 · M24 Pagos POSPUESTO
+6. KT-86501 workaround preservado

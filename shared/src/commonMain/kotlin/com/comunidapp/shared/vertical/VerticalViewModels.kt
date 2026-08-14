@@ -34,9 +34,7 @@ import kotlinx.coroutines.launch
 class SessionViewModelShared(
     private val sessionRepository: SessionRepository,
     private val pushInstallationRepository: com.comunidapp.shared.push.PushInstallationRepository? = null,
-    private val installationIdProvider: () -> String = {
-        "ios-install-${sessionRepository.hashCode().toUInt()}"
-    },
+    private val installationId: String = com.comunidapp.shared.push.iosInstallationId(),
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) {
     val state: StateFlow<SessionState> = sessionRepository.observeSession()
@@ -44,8 +42,8 @@ class SessionViewModelShared(
 
     fun signOut() {
         scope.launch {
-            val installId = installationIdProvider()
-            pushInstallationRepository?.revokeCurrent(installId)
+            pushInstallationRepository?.revokeCurrent(installationId)
+            com.comunidapp.shared.deeplink.DeepLinkPendingStore.clear()
             sessionRepository.signOut()
         }
     }
@@ -62,7 +60,7 @@ class SessionViewModelShared(
             }
             val result = coordinator.requestPermissionAndRegister(
                 repository = repo,
-                installationId = installationIdProvider(),
+                installationId = installationId,
                 appVersion = null
             )
             onStatus(

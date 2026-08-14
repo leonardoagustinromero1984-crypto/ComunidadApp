@@ -414,7 +414,10 @@ internal fun SharedProfileEditScreen(
                                     busy = false
                                 }
                                 ImagePickResult.Cancelled -> Unit
-                                is ImagePickResult.Failure -> error = pick.message
+                                is ImagePickResult.Failure ->
+                                    error = com.comunidapp.shared.ui.ErrorSanitizer.sanitize(
+                                        Exception(pick.message)
+                                    )
                             }
                         }
                     },

@@ -63,6 +63,7 @@ import com.comunidapp.shared.publiccontent.UnconfiguredPublicContentRepository
 import com.comunidapp.shared.publiccontent.isPublicContentTarget
 import com.comunidapp.shared.push.PushInstallationRepository
 import com.comunidapp.shared.push.PushRegistrationCoordinator
+import com.comunidapp.shared.push.iosInstallationId
 import com.comunidapp.shared.session.SessionDataMode
 import com.comunidapp.shared.session.SessionRepository
 import com.comunidapp.shared.session.SessionState
@@ -119,6 +120,7 @@ fun LeoVerSharedApp(
     onOpenLegacyPocs: (() -> Unit)? = null
 ) {
     var route by remember { mutableStateOf<SharedRoute>(SharedRoute.Home) }
+    val installationId = remember { iosInstallationId() }
     val controller = remember(deepLinkController) {
         deepLinkController ?: DeepLinkNavigationController()
     }
@@ -130,11 +132,12 @@ fun LeoVerSharedApp(
         adoptionMode = adoptionRepository.dataMode.name
     )
 
-    val sessionVm = remember(sessionRepository, pushInstallationRepository) {
-        SessionViewModelShared(sessionRepository, pushInstallationRepository)
+    val sessionVm = remember(sessionRepository, pushInstallationRepository, installationId) {
+        SessionViewModelShared(sessionRepository, pushInstallationRepository, installationId)
     }
     DisposableEffect(sessionVm) { onDispose { sessionVm.clear() } }
     val session by sessionVm.state.collectAsState()
+    var wasAuthenticated by remember { mutableStateOf(false) }
 
     LaunchedEffect(authRepository) {
         authRepository?.restoreSession()
@@ -142,6 +145,22 @@ fun LeoVerSharedApp(
     LaunchedEffect(session, mediaResolver) {
         if (session !is SessionState.Authenticated) {
             mediaResolver?.clearCache()
+        }
+    }
+    LaunchedEffect(session) {
+        when (session) {
+            is SessionState.Authenticated -> wasAuthenticated = true
+            SessionState.Unauthenticated,
+            SessionState.Expired,
+            is SessionState.Error -> {
+                if (wasAuthenticated) {
+                    DeepLinkPendingStore.clear()
+                    controller.clear()
+                    route = SharedRoute.Home
+                    wasAuthenticated = false
+                }
+            }
+            SessionState.Unknown -> Unit
         }
     }
 
@@ -197,9 +216,7 @@ fun LeoVerSharedApp(
                 if (onPublicLanding) {
                     // Allow public content without login; auth-required routes still need login.
                 } else {
-                    if (route !is SharedRoute.DeepLinkLanding) {
-                        route = SharedRoute.Home
-                    }
+                    route = SharedRoute.Home
                     val hint = when (val s = session) {
                         SessionState.Expired -> "Tu sesión expiró."
                         is SessionState.Error -> s.message
@@ -221,7 +238,9 @@ fun LeoVerSharedApp(
         SharedRoute.Home -> SharedHomeVerticalScreen(
             sessionRepository = sessionRepository,
             badge = badge,
+            pushInstallationRepository = pushInstallationRepository,
             pushRegistrationCoordinator = pushRegistrationCoordinator,
+            installationId = installationId,
             onOpenProfile = { route = SharedRoute.Profile },
             onOpenPets = { route = SharedRoute.Pets },
             onOpenAlerts = { route = SharedRoute.Alerts },
@@ -243,14 +262,43 @@ fun LeoVerSharedApp(
                 route = SharedRoute.Home
             } else {
                 var loaded by remember { mutableStateOf<UserProfileSummary?>(null) }
+                var loadError by remember { mutableStateOf<String?>(null) }
                 LaunchedEffect(sessionUser.userId, profileRepository) {
                     profileRepository.observeMyProfile(sessionUser.userId).collect { st ->
-                        if (st is ProfileLoadState.Content) loaded = st.profile
+                        when (st) {
+                            is ProfileLoadState.Content -> {
+                                loaded = st.profile
+                                loadError = null
+                            }
+                            is ProfileLoadState.Error -> {
+                                loadError = st.message
+                            }
+                            ProfileLoadState.Loading -> Unit
+                        }
                     }
                 }
                 val profile = loaded
-                if (profile == null) {
-                    Scaffold { padding ->
+                val err = loadError
+                when {
+                    profile != null -> SharedProfileEditScreen(
+                        profile = profile,
+                        profileRepository = profileRepository,
+                        imagePicker = imagePicker,
+                        onBack = { route = SharedRoute.Profile },
+                        onSaved = { route = SharedRoute.Profile }
+                    )
+                    err != null -> Scaffold { padding ->
+                        Column(
+                            Modifier.padding(padding).padding(16.dp).fillMaxSize(),
+                            verticalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            TextButton(onClick = { route = SharedRoute.Profile }) {
+                                Text("← Volver")
+                            }
+                            Text(err, color = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                    else -> Scaffold { padding ->
                         Column(
                             Modifier.padding(padding).fillMaxSize(),
                             verticalArrangement = Arrangement.Center,
@@ -259,14 +307,6 @@ fun LeoVerSharedApp(
                             CircularProgressIndicator()
                         }
                     }
-                } else {
-                    SharedProfileEditScreen(
-                        profile = profile,
-                        profileRepository = profileRepository,
-                        imagePicker = imagePicker,
-                        onBack = { route = SharedRoute.Profile },
-                        onSaved = { route = SharedRoute.Profile }
-                    )
                 }
             }
         }
@@ -353,6 +393,7 @@ fun LeoVerSharedApp(
             preferencesRepository = notificationPreferencesRepository,
             pushRegistrationCoordinator = pushRegistrationCoordinator,
             pushInstallationRepository = pushInstallationRepository,
+            installationId = installationId,
             onBack = { route = SharedRoute.Home }
         )
         SharedRoute.Adoptions -> SharedAdoptionsListScreen(
@@ -457,7 +498,9 @@ fun LeoVerSharedApp(
 private fun SharedHomeVerticalScreen(
     sessionRepository: SessionRepository,
     badge: VerticalDataBadge,
+    pushInstallationRepository: PushInstallationRepository?,
     pushRegistrationCoordinator: PushRegistrationCoordinator?,
+    installationId: String,
     onOpenProfile: () -> Unit,
     onOpenPets: () -> Unit,
     onOpenAlerts: () -> Unit,
@@ -465,10 +508,13 @@ private fun SharedHomeVerticalScreen(
     onOpenNotifications: () -> Unit,
     onOpenLegacyPocs: (() -> Unit)?
 ) {
-    val vm = remember(sessionRepository) { SessionViewModelShared(sessionRepository) }
+    val vm = remember(sessionRepository, pushInstallationRepository, installationId) {
+        SessionViewModelShared(sessionRepository, pushInstallationRepository, installationId)
+    }
     DisposableEffect(vm) { onDispose { vm.clear() } }
     val session by vm.state.collectAsState()
     var pushStatus by remember { mutableStateOf<String?>(null) }
+    var pushBusy by remember { mutableStateOf(false) }
     val authLabel = if (sessionRepository.dataMode == SessionDataMode.REAL_REMOTE) {
         "Cerrar sesión"
     } else {
@@ -526,13 +572,18 @@ private fun SharedHomeVerticalScreen(
             ) {
                 OutlinedButton(
                     onClick = {
+                        if (pushBusy) return@OutlinedButton
+                        pushBusy = true
+                        pushStatus = null
                         vm.requestPush(pushRegistrationCoordinator) { msg ->
                             pushStatus = msg
+                            pushBusy = false
                         }
                     },
+                    enabled = !pushBusy,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text("Activar notificaciones")
+                    Text(if (pushBusy) "Activando…" else "Activar notificaciones")
                 }
                 pushStatus?.let {
                     Text(

@@ -306,7 +306,10 @@ internal fun SharedPetCreateScreen(
                                     info = "Foto seleccionada."
                                 }
                                 ImagePickResult.Cancelled -> Unit
-                                is ImagePickResult.Failure -> error = pick.message
+                                is ImagePickResult.Failure ->
+                                    error = com.comunidapp.shared.ui.ErrorSanitizer.sanitize(
+                                        Exception(pick.message)
+                                    )
                             }
                         }
                     },
@@ -495,7 +498,10 @@ internal fun SharedPetEditScreen(
                                         info = "Foto seleccionada."
                                     }
                                     ImagePickResult.Cancelled -> Unit
-                                    is ImagePickResult.Failure -> error = pick.message
+                                    is ImagePickResult.Failure ->
+                                        error = com.comunidapp.shared.ui.ErrorSanitizer.sanitize(
+                                            Exception(pick.message)
+                                        )
                                 }
                             }
                         },
