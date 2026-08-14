@@ -12,6 +12,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.put
@@ -27,7 +28,8 @@ internal data class RemoteNotificationPreferenceRow(
     @SerialName("marketing_consent") val marketingConsent: Boolean = false,
     val timezone: String = "UTC",
     @SerialName("quiet_hours_start") val quietHoursStart: String? = null,
-    @SerialName("quiet_hours_end") val quietHoursEnd: String? = null
+    @SerialName("quiet_hours_end") val quietHoursEnd: String? = null,
+    @SerialName("quiet_hours_days") val quietHoursDays: List<Int>? = null
 )
 
 internal interface NotificationPreferencesGateway {
@@ -39,7 +41,8 @@ internal interface NotificationPreferencesGateway {
         marketingConsent: Boolean,
         timezone: String,
         quietHoursStart: String?,
-        quietHoursEnd: String?
+        quietHoursEnd: String?,
+        quietHoursDays: List<Int>?
     ): Result<RemoteNotificationPreferenceRow>
 }
 
@@ -77,7 +80,8 @@ internal class SupabaseNotificationPreferencesGateway(
         marketingConsent: Boolean,
         timezone: String,
         quietHoursStart: String?,
-        quietHoursEnd: String?
+        quietHoursEnd: String?,
+        quietHoursDays: List<Int>?
     ): Result<RemoteNotificationPreferenceRow> = try {
         val element = client.postgrest.rpc(
             function = "m06_update_preference",
@@ -98,7 +102,14 @@ internal class SupabaseNotificationPreferencesGateway(
                 } else {
                     put("p_quiet_hours_end", JsonNull)
                 }
-                put("p_quiet_hours_days", JsonNull)
+                if (quietHoursDays != null) {
+                    put(
+                        "p_quiet_hours_days",
+                        JsonArray(quietHoursDays.map { JsonPrimitive(it) })
+                    )
+                } else {
+                    put("p_quiet_hours_days", JsonNull)
+                }
             }
         ).decodeAs<JsonObject>()
         Result.success(json.decodeFromJsonElement(element))
@@ -118,7 +129,12 @@ internal class FakeNotificationPreferencesGateway(
     var updateError: Throwable? = null,
     var updateCalls: Int = 0,
     var lastUpdateCategory: String? = null,
-    var lastEmailEnabled: Boolean? = null
+    var lastEmailEnabled: Boolean? = null,
+    var lastQuietHoursDays: List<Int>? = null,
+    var lastQuietHoursStart: String? = null,
+    var lastQuietHoursEnd: String? = null,
+    var lastTimezone: String? = null,
+    var lastMarketingConsent: Boolean? = null
 ) : NotificationPreferencesGateway {
     override suspend fun getPreferences(): Result<List<RemoteNotificationPreferenceRow>> {
         getError?.let { return Result.failure(it) }
@@ -132,11 +148,17 @@ internal class FakeNotificationPreferencesGateway(
         marketingConsent: Boolean,
         timezone: String,
         quietHoursStart: String?,
-        quietHoursEnd: String?
+        quietHoursEnd: String?,
+        quietHoursDays: List<Int>?
     ): Result<RemoteNotificationPreferenceRow> {
         updateCalls++
         lastUpdateCategory = category
         lastEmailEnabled = false
+        lastQuietHoursDays = quietHoursDays
+        lastQuietHoursStart = quietHoursStart
+        lastQuietHoursEnd = quietHoursEnd
+        lastTimezone = timezone
+        lastMarketingConsent = marketingConsent
         updateError?.let { return Result.failure(it) }
         if (!inAppEnabled && category.uppercase() in MANDATORY_IN_APP) {
             return Result.failure(IllegalStateException("M06_IN_APP_MANDATORY"))
@@ -149,7 +171,8 @@ internal class FakeNotificationPreferencesGateway(
             marketingConsent = marketingConsent,
             timezone = timezone,
             quietHoursStart = quietHoursStart,
-            quietHoursEnd = quietHoursEnd
+            quietHoursEnd = quietHoursEnd,
+            quietHoursDays = quietHoursDays
         )
         val idx = rows.indexOfFirst { it.category.equals(category, ignoreCase = true) }
         if (idx >= 0) rows[idx] = updated else rows += updated
@@ -185,14 +208,23 @@ internal class RemoteNotificationPreferencesRepository(
         if (sessionRepository.currentSession() !is SessionState.Authenticated) {
             return NotificationPreferenceWriteResult.Unauthenticated("Tu sesión no está disponible.")
         }
+        val timezone = preference.timezone.ifBlank { "UTC" }
+        QuietHoursValidator.validate(
+            preference.quietHoursStart,
+            preference.quietHoursEnd,
+            timezone
+        ).exceptionOrNull()?.let {
+            return NotificationPreferenceWriteResult.ValidationError(quietHoursValidationMessage(it))
+        }
         val result = gateway.updatePreference(
             category = preference.category.trim().uppercase(),
             inAppEnabled = preference.inAppEnabled,
             pushEnabled = preference.pushEnabled,
             marketingConsent = preference.marketingConsent,
-            timezone = preference.timezone.ifBlank { "UTC" },
+            timezone = timezone,
             quietHoursStart = preference.quietHoursStart,
-            quietHoursEnd = preference.quietHoursEnd
+            quietHoursEnd = preference.quietHoursEnd,
+            quietHoursDays = preference.quietHoursDays
         )
         return result.fold(
             onSuccess = {
@@ -230,7 +262,8 @@ internal fun RemoteNotificationPreferenceRow.toShared(): SharedNotificationPrefe
         marketingConsent = marketingConsent,
         timezone = timezone.ifBlank { "UTC" },
         quietHoursStart = quietHoursStart,
-        quietHoursEnd = quietHoursEnd
+        quietHoursEnd = quietHoursEnd,
+        quietHoursDays = quietHoursDays
     )
 
 internal fun mapPrefsThrowable(t: Throwable): String {
@@ -275,6 +308,13 @@ class FakeNotificationPreferencesRepository(
         if (fail) {
             return NotificationPreferenceWriteResult.BackendError("Preferencias no disponibles.")
         }
+        QuietHoursValidator.validate(
+            preference.quietHoursStart,
+            preference.quietHoursEnd,
+            preference.timezone.ifBlank { "UTC" }
+        ).exceptionOrNull()?.let {
+            return NotificationPreferenceWriteResult.ValidationError(quietHoursValidationMessage(it))
+        }
         updateCalls++
         lastEmailForcedFalse = true
         val category = preference.category.trim().uppercase()
@@ -285,7 +325,8 @@ class FakeNotificationPreferencesRepository(
         }
         val updated = preference.copy(
             category = category,
-            emailEnabled = false
+            emailEnabled = false,
+            timezone = preference.timezone.ifBlank { "UTC" }
         )
         val idx = rows.indexOfFirst { it.category.equals(category, ignoreCase = true) }
         if (idx >= 0) rows[idx] = updated else rows += updated

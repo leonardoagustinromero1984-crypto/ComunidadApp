@@ -141,12 +141,16 @@ class PetListViewModelShared(
 
 class PetDetailViewModelShared(
     petId: PetId,
-    petsRepository: SharedPetsRepository,
+    private val petsRepository: SharedPetsRepository,
     private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 ) {
     val state: StateFlow<VerticalLoadState<PetDetailView>> =
         petsRepository.observePetDetail(petId)
             .stateIn(scope, SharingStarted.Eagerly, VerticalLoadState.Loading)
+
+    fun refresh() {
+        scope.launch { petsRepository.refresh() }
+    }
 
     fun clear() {
         scope.cancel()

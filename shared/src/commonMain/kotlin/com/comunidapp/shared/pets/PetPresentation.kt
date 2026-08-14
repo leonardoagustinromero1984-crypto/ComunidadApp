@@ -61,6 +61,9 @@ interface SharedPetsRepository {
     suspend fun create(draft: PetCreateDraft): PetCreateResult
     suspend fun update(petId: PetId, draft: PetEditDraft): PetEditResult
     suspend fun updateHealth(petId: PetId, draft: PetHealthDraft): PetHealthWriteResult
+    suspend fun archive(petId: PetId, reason: String? = null): PetLifecycleResult
+    suspend fun restore(petId: PetId): PetLifecycleResult
+    suspend fun markDeceased(petId: PetId, reason: String? = null): PetLifecycleResult
 }
 
 fun PetAggregate.toSummary(speciesLabel: String, hasAvatar: Boolean = media.avatar != null): PetSummary =
@@ -83,13 +86,14 @@ data class FakePetSeed(
 
 class FakeSharedPetsRepository(
     private val clock: PlatformClock = PlatformClock.SYSTEM,
-    private val seeds: List<FakePetSeed> = defaultSeeds(clock),
+    seeds: List<FakePetSeed> = defaultSeeds(clock),
     private val fail: Boolean = false,
     private val delayMs: Long = 0L
 ) : SharedPetsRepository {
     override val dataMode: PetsDataMode = PetsDataMode.SHARED_FAKE
 
     private val refreshTick = MutableStateFlow(0)
+    private val pets = seeds.toMutableList()
 
     @OptIn(ExperimentalCoroutinesApi::class)
     override fun observeMyPets(userId: String): Flow<VerticalLoadState<List<PetSummary>>> =
@@ -110,7 +114,7 @@ class FakeSharedPetsRepository(
                     emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("PET_NOT_FOUND"))))
                     return@flow
                 }
-                val seed = seeds.firstOrNull { it.aggregate.id == petId }
+                val seed = pets.firstOrNull { it.aggregate.id == petId }
                 if (seed == null) {
                     emit(VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("PET_NOT_FOUND"))))
                     return@flow
@@ -148,7 +152,7 @@ class FakeSharedPetsRepository(
                 ErrorSanitizer.sanitize(IllegalStateException("PETS_UNAVAILABLE"))
             )
         }
-        if (seeds.none { it.aggregate.id == petId }) {
+        if (pets.none { it.aggregate.id == petId }) {
             return PetEditResult.BackendError("No encontramos ese contenido.")
         }
         refreshTick.update { it + 1 }
@@ -167,12 +171,86 @@ class FakeSharedPetsRepository(
                 ErrorSanitizer.sanitize(IllegalStateException("PETS_UNAVAILABLE"))
             )
         }
-        if (seeds.none { it.aggregate.id == petId }) {
+        if (pets.none { it.aggregate.id == petId }) {
             return PetHealthWriteResult.BackendError("No encontramos ese contenido.")
         }
         lastHealthDraft = draft
         refreshTick.update { it + 1 }
         return PetHealthWriteResult.Success(petId)
+    }
+
+    override suspend fun archive(petId: PetId, reason: String?): PetLifecycleResult {
+        if (fail) {
+            return PetLifecycleResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("PETS_UNAVAILABLE"))
+            )
+        }
+        val idx = pets.indexOfFirst { it.aggregate.id == petId }
+        if (idx < 0) return PetLifecycleResult.BackendError("No encontramos ese contenido.")
+        val current = pets[idx]
+        when (current.aggregate.status) {
+            PetLifecycleStatus.ARCHIVED ->
+                return PetLifecycleResult.Conflict("La mascota ya está archivada.")
+            PetLifecycleStatus.DECEASED ->
+                return PetLifecycleResult.Conflict("No se puede archivar una mascota fallecida.")
+            PetLifecycleStatus.ACTIVE -> Unit
+        }
+        pets[idx] = current.copy(
+            aggregate = current.aggregate.copy(
+                status = PetLifecycleStatus.ARCHIVED,
+                archivedAtEpochMs = clock.nowEpochMs()
+            )
+        )
+        refreshTick.update { it + 1 }
+        return PetLifecycleResult.Success(petId, PetLifecycleStatus.ARCHIVED)
+    }
+
+    override suspend fun restore(petId: PetId): PetLifecycleResult {
+        if (fail) {
+            return PetLifecycleResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("PETS_UNAVAILABLE"))
+            )
+        }
+        val idx = pets.indexOfFirst { it.aggregate.id == petId }
+        if (idx < 0) return PetLifecycleResult.BackendError("No encontramos ese contenido.")
+        val current = pets[idx]
+        if (current.aggregate.status != PetLifecycleStatus.ARCHIVED) {
+            return PetLifecycleResult.Conflict("Solo se pueden restaurar mascotas archivadas.")
+        }
+        pets[idx] = current.copy(
+            aggregate = current.aggregate.copy(
+                status = PetLifecycleStatus.ACTIVE,
+                archivedAtEpochMs = null
+            )
+        )
+        refreshTick.update { it + 1 }
+        return PetLifecycleResult.Success(petId, PetLifecycleStatus.ACTIVE)
+    }
+
+    override suspend fun markDeceased(petId: PetId, reason: String?): PetLifecycleResult {
+        if (fail) {
+            return PetLifecycleResult.BackendError(
+                ErrorSanitizer.sanitize(IllegalStateException("PETS_UNAVAILABLE"))
+            )
+        }
+        val idx = pets.indexOfFirst { it.aggregate.id == petId }
+        if (idx < 0) return PetLifecycleResult.BackendError("No encontramos ese contenido.")
+        val current = pets[idx]
+        if (current.aggregate.status == PetLifecycleStatus.DECEASED) {
+            return PetLifecycleResult.Conflict("La mascota ya está marcada como fallecida.")
+        }
+        if (current.aggregate.status != PetLifecycleStatus.ACTIVE) {
+            return PetLifecycleResult.Conflict("Solo se puede marcar como fallecida desde ACTIVE.")
+        }
+        pets[idx] = current.copy(
+            aggregate = current.aggregate.copy(
+                status = PetLifecycleStatus.DECEASED,
+                deceasedAtEpochMs = clock.nowEpochMs(),
+                archivedAtEpochMs = null
+            )
+        )
+        refreshTick.update { it + 1 }
+        return PetLifecycleResult.Success(petId, PetLifecycleStatus.DECEASED)
     }
 
     var lastHealthDraft: PetHealthDraft? = null
@@ -183,9 +261,10 @@ class FakeSharedPetsRepository(
         if (fail) {
             return VerticalLoadState.Error(ErrorSanitizer.sanitize(IllegalStateException("PETS_UNAVAILABLE")))
         }
-        if (seeds.isEmpty()) return VerticalLoadState.Empty
+        val active = pets.filter { it.aggregate.status == PetLifecycleStatus.ACTIVE }
+        if (active.isEmpty()) return VerticalLoadState.Empty
         return VerticalLoadState.Content(
-            seeds.map {
+            active.map {
                 it.aggregate.toSummary(it.speciesLabel, it.aggregate.media.avatar != null)
             }
         )

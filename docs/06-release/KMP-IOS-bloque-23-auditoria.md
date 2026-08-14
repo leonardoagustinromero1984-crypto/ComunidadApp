@@ -10,7 +10,6 @@ Fuente: `036` `m08_update_pet_health` + SELECT `pets` (sin `m08_get_pet_health`)
 | HEALTH_WRITE | `m08_update_pet_health` + `pet.manage_health` | OWNER_WRITE |
 | VACCINE R/W | jsonb `vaccinations` `{name,date,next_due_date}` | OWNER_WRITE |
 | REMINDER R/W | jsonb `reminders` `{id,title,date,type}` | OWNER_WRITE |
-| M28 clinic vaccines | separate | PROFESSIONAL_ONLY (no port) |
 
 ## PRIVACY
 
@@ -19,4 +18,4 @@ Fuente: `036` `m08_update_pet_health` + SELECT `pets` (sin `m08_get_pet_health`)
 
 ## NOT IN SCOPE
 
-Archive/deceased; M28 veterinary records.
+Archive/deceased (KMP-26).

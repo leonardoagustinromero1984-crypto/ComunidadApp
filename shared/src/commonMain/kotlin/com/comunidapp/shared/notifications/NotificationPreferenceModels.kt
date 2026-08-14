@@ -12,8 +12,43 @@ data class SharedNotificationPreference(
     val marketingConsent: Boolean = false,
     val timezone: String = "UTC",
     val quietHoursStart: String? = null,
-    val quietHoursEnd: String? = null
+    val quietHoursEnd: String? = null,
+    /** Días ISO 1=Lunes … 7=Domingo; null → backend default all days. */
+    val quietHoursDays: List<Int>? = null
 )
+
+object QuietHoursValidator {
+    private val timeRegex = Regex("""^([01]?\d|2[0-3]):([0-5]\d)(:([0-5]\d))?$""")
+
+    /**
+     * Si uno de start/end está seteado, ambos son requeridos.
+     * Formato HH:MM o HH:MM:SS. start==end es soft (no falla).
+     */
+    fun validate(
+        quietHoursStart: String?,
+        quietHoursEnd: String?,
+        timezone: String = "UTC"
+    ): Result<Unit> {
+        val start = quietHoursStart?.trim()?.takeIf { it.isNotEmpty() }
+        val end = quietHoursEnd?.trim()?.takeIf { it.isNotEmpty() }
+        if (start == null && end == null) {
+            return Result.success(Unit)
+        }
+        if (start == null || end == null) {
+            return Result.failure(
+                IllegalArgumentException("QUIET_HOURS_RANGE_INCOMPLETE")
+            )
+        }
+        if (!timeRegex.matches(start) || !timeRegex.matches(end)) {
+            return Result.failure(IllegalArgumentException("QUIET_HOURS_TIME_INVALID"))
+        }
+        if (timezone.trim().isEmpty()) {
+            return Result.failure(IllegalArgumentException("QUIET_HOURS_TIMEZONE_REQUIRED"))
+        }
+        // soft: start == end allowed (window of zero length / overnight edge)
+        return Result.success(Unit)
+    }
+}
 
 sealed interface NotificationPreferencesLoadState {
     data object Loading : NotificationPreferencesLoadState
@@ -62,4 +97,52 @@ suspend fun NotificationPreferencesRepository.updatePreferenceSanitized(
         return updatePreference(forcedEmail.copy(inAppEnabled = true))
     }
     return first
+}
+
+/**
+ * Aplica quiet hours / timezone / marketing a cada preferencia cargada, preservando flags push/in-app.
+ */
+suspend fun NotificationPreferencesRepository.applyQuietHoursToAll(
+    loaded: List<SharedNotificationPreference>,
+    quietHoursStart: String?,
+    quietHoursEnd: String?,
+    timezone: String,
+    marketingConsent: Boolean,
+    quietHoursDays: List<Int>? = null
+): NotificationPreferenceWriteResult {
+    QuietHoursValidator.validate(quietHoursStart, quietHoursEnd, timezone).exceptionOrNull()?.let {
+        return NotificationPreferenceWriteResult.ValidationError(quietHoursValidationMessage(it))
+    }
+    var lastSuccess: SharedNotificationPreference? = null
+    for (pref in loaded) {
+        val result = updatePreferenceSanitized(
+            pref.copy(
+                quietHoursStart = quietHoursStart,
+                quietHoursEnd = quietHoursEnd,
+                timezone = timezone.ifBlank { "UTC" },
+                marketingConsent = marketingConsent,
+                quietHoursDays = quietHoursDays,
+                emailEnabled = false
+            )
+        )
+        when (result) {
+            is NotificationPreferenceWriteResult.Success -> lastSuccess = result.preference
+            else -> return result
+        }
+    }
+    return lastSuccess?.let { NotificationPreferenceWriteResult.Success(it) }
+        ?: NotificationPreferenceWriteResult.BackendError("No hay preferencias para actualizar.")
+}
+
+internal fun quietHoursValidationMessage(t: Throwable): String {
+    val code = t.message.orEmpty()
+    return when {
+        "QUIET_HOURS_RANGE_INCOMPLETE" in code ->
+            "Indicá inicio y fin del horario silencioso."
+        "QUIET_HOURS_TIME_INVALID" in code ->
+            "Usá formato HH:MM o HH:MM:SS."
+        "QUIET_HOURS_TIMEZONE_REQUIRED" in code ->
+            "Indicá una zona horaria."
+        else -> "Revisá el horario silencioso."
+    }
 }

@@ -11,6 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -25,12 +27,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.comunidapp.app.domain.pets.PetId
+import com.comunidapp.app.domain.pets.PetLifecycleStatus
 import com.comunidapp.shared.adoption.AdoptionApplicationId
 import com.comunidapp.shared.adoption.AdoptionApplicationRepository
 import com.comunidapp.shared.adoption.AdoptionId
@@ -46,6 +50,7 @@ import com.comunidapp.shared.lostfound.LostFoundRepository
 import com.comunidapp.shared.media.MediaResolver
 import com.comunidapp.shared.media.SharedRemoteImage
 import com.comunidapp.shared.pets.PetDetailView
+import com.comunidapp.shared.pets.PetLifecycleResult
 import com.comunidapp.shared.pets.PetSummary
 import com.comunidapp.shared.pets.SharedPetsRepository
 import com.comunidapp.shared.poc.m08.platform.ImagePicker
@@ -62,7 +67,7 @@ import com.comunidapp.shared.session.SessionDataMode
 import com.comunidapp.shared.session.SessionRepository
 import com.comunidapp.shared.session.SessionState
 import com.comunidapp.shared.ui.VerticalLoadState
-
+import kotlinx.coroutines.launch
 private sealed class SharedRoute {
     data object Home : SharedRoute()
     data object Profile : SharedRoute()
@@ -710,13 +715,20 @@ private fun SharedPetDetailScreen(
     val vm = remember(petId, petsRepository) { PetDetailViewModelShared(petId, petsRepository) }
     DisposableEffect(vm) { onDispose { vm.clear() } }
     val state by vm.state.collectAsState()
+    var confirmArchive by remember { mutableStateOf(false) }
+    var confirmDeceased by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var actionError by remember { mutableStateOf<String?>(null) }
+    var actionInfo by remember { mutableStateOf<String?>(null) }
+    val scope = rememberCoroutineScope()
 
     Scaffold { padding ->
         Column(
             Modifier
                 .padding(padding)
                 .padding(16.dp)
-                .fillMaxSize(),
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             TextButton(onClick = onBack) { Text("← Volver") }
@@ -727,11 +739,136 @@ private fun SharedPetDetailScreen(
                 is VerticalLoadState.Error -> Text(s.message, color = MaterialTheme.colorScheme.error)
                 is VerticalLoadState.Content -> {
                     PetDetailBody(s.data, mediaResolver)
-                    Button(onClick = onEdit, modifier = Modifier.fillMaxWidth()) {
-                        Text("Editar")
+                    actionError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    actionInfo?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
+                    if (s.data.status == PetLifecycleStatus.ACTIVE) {
+                        Button(onClick = onEdit, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                            Text("Editar")
+                        }
+                        OutlinedButton(
+                            onClick = onEditHealth,
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Editar salud")
+                        }
+                        if (!confirmArchive) {
+                            OutlinedButton(
+                                onClick = {
+                                    confirmArchive = true
+                                    confirmDeceased = false
+                                },
+                                enabled = !busy,
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Archivar") }
+                        } else {
+                            Text("¿Confirmás archivar esta mascota? Podés reactivarla después.")
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        if (busy) return@Button
+                                        busy = true
+                                        actionError = null
+                                        scope.launch {
+                                            when (
+                                                val result = petsRepository.archive(petId)
+                                            ) {
+                                                is PetLifecycleResult.Success -> onBack()
+                                                is PetLifecycleResult.Forbidden ->
+                                                    actionError = result.message
+                                                is PetLifecycleResult.Unauthenticated ->
+                                                    actionError = result.message
+                                                is PetLifecycleResult.Conflict ->
+                                                    actionError = result.message
+                                                is PetLifecycleResult.BackendError ->
+                                                    actionError = result.message
+                                            }
+                                            busy = false
+                                            confirmArchive = false
+                                        }
+                                    },
+                                    enabled = !busy
+                                ) { Text(if (busy) "Guardando…" else "Confirmar") }
+                                TextButton(
+                                    onClick = { confirmArchive = false },
+                                    enabled = !busy
+                                ) { Text("Cancelar") }
+                            }
+                        }
+                        if (!confirmDeceased) {
+                            OutlinedButton(
+                                onClick = {
+                                    confirmDeceased = true
+                                    confirmArchive = false
+                                },
+                                enabled = !busy,
+                                modifier = Modifier.fillMaxWidth()
+                            ) { Text("Marcar como fallecida") }
+                        } else {
+                            Text("¿Confirmás marcar esta mascota como fallecida?")
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(
+                                    onClick = {
+                                        if (busy) return@Button
+                                        busy = true
+                                        actionError = null
+                                        scope.launch {
+                                            when (
+                                                val result = petsRepository.markDeceased(petId)
+                                            ) {
+                                                is PetLifecycleResult.Success -> {
+                                                    actionInfo = "Mascota marcada como fallecida."
+                                                    confirmDeceased = false
+                                                    vm.refresh()
+                                                }
+                                                is PetLifecycleResult.Forbidden ->
+                                                    actionError = result.message
+                                                is PetLifecycleResult.Unauthenticated ->
+                                                    actionError = result.message
+                                                is PetLifecycleResult.Conflict ->
+                                                    actionError = result.message
+                                                is PetLifecycleResult.BackendError ->
+                                                    actionError = result.message
+                                            }
+                                            busy = false
+                                        }
+                                    },
+                                    enabled = !busy
+                                ) { Text(if (busy) "Guardando…" else "Confirmar") }
+                                TextButton(
+                                    onClick = { confirmDeceased = false },
+                                    enabled = !busy
+                                ) { Text("Cancelar") }
+                            }
+                        }
                     }
-                    OutlinedButton(onClick = onEditHealth, modifier = Modifier.fillMaxWidth()) {
-                        Text("Editar salud")
+                    if (s.data.status == PetLifecycleStatus.ARCHIVED) {
+                        Button(
+                            onClick = {
+                                if (busy) return@Button
+                                busy = true
+                                actionError = null
+                                scope.launch {
+                                    when (val result = petsRepository.restore(petId)) {
+                                        is PetLifecycleResult.Success -> {
+                                            actionInfo = "Mascota reactivada."
+                                            vm.refresh()
+                                        }
+                                        is PetLifecycleResult.Forbidden ->
+                                            actionError = result.message
+                                        is PetLifecycleResult.Unauthenticated ->
+                                            actionError = result.message
+                                        is PetLifecycleResult.Conflict ->
+                                            actionError = result.message
+                                        is PetLifecycleResult.BackendError ->
+                                            actionError = result.message
+                                    }
+                                    busy = false
+                                }
+                            },
+                            enabled = !busy,
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text(if (busy) "Guardando…" else "Reactivar") }
                     }
                 }
             }

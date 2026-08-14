@@ -1,31 +1,29 @@
-# KMP-IOS — Backlog (post KMP-23/24/25)
+# KMP-IOS — Backlog (post KMP-26/27)
 
 ## Terminado
 
-- KMP-1…22 (**Gate #18 PASS** — KMP-20/21/22 CLOSED GREEN)
-- **KMP-23:** Pet health REAL_REMOTE
-- **KMP-24:** L/F owner edit + media replace REAL_REMOTE (≠ M24 Pagos)
-- **KMP-25:** Notification preferences + iOS push UX
+- KMP-1…25
+- **KMP-26:** Pet archive / restore / deceased REAL_REMOTE
+- **KMP-27:** Quiet hours + marketing prefs REAL_REMOTE
+- **IOS-READY:** device/external capabilities audit doc
 
 ## iOS ahora
 
 ```text
-PET HEALTH = REAL_REMOTE
-L/F OWNER EDIT + MEDIA REPLACE = REAL_REMOTE
-PUSH PREFERENCES = REAL_REMOTE
-IOS PERMISSION UX = REAL_NATIVE
-APPLE_SIGN_IN = APP_SIDE_READY_BACKEND_CONFIG_REQUIRED
-UNIVERSAL_LINKS = APP_SIDE_READY / WEB ASSOCIATION BLOCKED
+PET LIFECYCLE = REAL_REMOTE
+QUIET_HOURS = REAL_REMOTE
+APPLE_SIGN_IN = APP_SIDE + EXTERNAL_CONFIG + APPLE_DEVELOPER
+UNIVERSAL_LINKS = WEB_REQUIRED + APPLE_DEVELOPER
+APNS_PROD = APPLE_DEVELOPER + SERVER_REQUIRED
 ```
 
-## Pendiente
+## Pendiente (externo)
 
-- Enable Supabase Apple provider + device SIWA entitlement
-- Universal Links AASA (web)
-- APNs prod server delivery
-- Quiet hours prefs UI
-- Pet archive lifecycle
+- Enable Supabase Apple provider + SIWA entitlement
+- AASA + Associated Domains (web)
+- APNs prod entitlement + server sender
+- Quiet-hours days UI (optional; SQL default all days)
 
 ## No iniciar
 
-M24 Pagos, SQL/schema, web, APK en este paquete
+M24 Pagos, SQL/schema, web enablement, APK, secrets

@@ -14,6 +14,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -23,6 +24,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -35,6 +37,7 @@ import com.comunidapp.shared.lostfound.LostFoundRepository
 import com.comunidapp.shared.notifications.NotificationPreferenceWriteResult
 import com.comunidapp.shared.notifications.NotificationPreferencesRepository
 import com.comunidapp.shared.notifications.SharedNotificationPreference
+import com.comunidapp.shared.notifications.applyQuietHoursToAll
 import com.comunidapp.shared.notifications.updatePreferenceSanitized
 import com.comunidapp.shared.pets.PetHealthDraft
 import com.comunidapp.shared.pets.PetHealthReminder
@@ -459,6 +462,11 @@ internal fun SharedNotificationSettingsScreen(
     var busy by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     var info by remember { mutableStateOf<String?>(null) }
+    var quietEnabled by remember { mutableStateOf(false) }
+    var quietStart by remember { mutableStateOf("22:00") }
+    var quietEnd by remember { mutableStateOf("07:00") }
+    var timezone by remember { mutableStateOf("UTC") }
+    var marketingConsent by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
 
     fun reload() {
@@ -467,7 +475,18 @@ internal fun SharedNotificationSettingsScreen(
             error = null
             permission = pushRegistrationCoordinator?.currentPermission()
             preferencesRepository.getPreferences().fold(
-                onSuccess = { prefs = it },
+                onSuccess = {
+                    prefs = it
+                    val sample = it.firstOrNull()
+                    if (sample != null) {
+                        quietEnabled =
+                            sample.quietHoursStart != null || sample.quietHoursEnd != null
+                        quietStart = sample.quietHoursStart ?: "22:00"
+                        quietEnd = sample.quietHoursEnd ?: "07:00"
+                        timezone = sample.timezone.ifBlank { "UTC" }
+                        marketingConsent = sample.marketingConsent
+                    }
+                },
                 onFailure = {
                     error = com.comunidapp.shared.ui.ErrorSanitizer.sanitize(it)
                     prefs = emptyList()
@@ -548,6 +567,96 @@ internal fun SharedNotificationSettingsScreen(
             if (!loaded) {
                 CircularProgressIndicator()
             } else {
+                Text("Horario silencioso", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Activar horario silencioso")
+                    Switch(
+                        checked = quietEnabled,
+                        onCheckedChange = { quietEnabled = it },
+                        enabled = !busy
+                    )
+                }
+                if (quietEnabled) {
+                    OutlinedTextField(
+                        value = quietStart,
+                        onValueChange = { quietStart = it },
+                        label = { Text("Desde (HH:MM)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !busy
+                    )
+                    OutlinedTextField(
+                        value = quietEnd,
+                        onValueChange = { quietEnd = it },
+                        label = { Text("Hasta (HH:MM)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !busy
+                    )
+                    OutlinedTextField(
+                        value = timezone,
+                        onValueChange = { timezone = it },
+                        label = { Text("Zona horaria (IANA)") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        enabled = !busy
+                    )
+                }
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Consentimiento marketing")
+                    Switch(
+                        checked = marketingConsent,
+                        onCheckedChange = { marketingConsent = it },
+                        enabled = !busy
+                    )
+                }
+                Button(
+                    onClick = {
+                        if (busy) return@Button
+                        busy = true
+                        error = null
+                        scope.launch {
+                            val start = if (quietEnabled) quietStart.trim().ifBlank { null } else null
+                            val end = if (quietEnabled) quietEnd.trim().ifBlank { null } else null
+                            when (
+                                val result = preferencesRepository.applyQuietHoursToAll(
+                                    loaded = prefs,
+                                    quietHoursStart = start,
+                                    quietHoursEnd = end,
+                                    timezone = timezone.ifBlank { "UTC" },
+                                    marketingConsent = marketingConsent,
+                                    quietHoursDays = null
+                                )
+                            ) {
+                                is NotificationPreferenceWriteResult.Success -> {
+                                    info = "Horario silencioso guardado."
+                                    reload()
+                                }
+                                is NotificationPreferenceWriteResult.ValidationError ->
+                                    error = result.message
+                                is NotificationPreferenceWriteResult.Unauthenticated ->
+                                    error = result.message
+                                is NotificationPreferenceWriteResult.Forbidden ->
+                                    error = result.message
+                                is NotificationPreferenceWriteResult.BackendError ->
+                                    error = result.message
+                            }
+                            busy = false
+                        }
+                    },
+                    enabled = !busy && prefs.isNotEmpty(),
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text(if (busy) "Guardando…" else "Guardar horario silencioso") }
+
+                Text("Categorías", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
                 prefs.forEach { pref ->
                     Row(
                         Modifier.fillMaxWidth(),

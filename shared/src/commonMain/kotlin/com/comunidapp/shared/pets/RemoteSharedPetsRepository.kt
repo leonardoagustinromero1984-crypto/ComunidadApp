@@ -241,6 +241,48 @@ internal class RemoteSharedPetsRepository(
         return PetHealthWriteResult.Success(petId)
     }
 
+    override suspend fun archive(petId: PetId, reason: String?): PetLifecycleResult {
+        val session = sessionRepository.currentSession()
+        if (session !is SessionState.Authenticated) {
+            return PetLifecycleResult.Unauthenticated("Tu sesión no está disponible.")
+        }
+        val row = gateway.archivePet(petId.value, reason?.trim()?.takeIf { it.isNotEmpty() })
+            .getOrElse { return mapLifecycleResult(it) }
+        refreshTick.update { it + 1 }
+        return PetLifecycleResult.Success(
+            petId = PetId(row.id),
+            status = RemotePetsMapper.toDetail(row).status
+        )
+    }
+
+    override suspend fun restore(petId: PetId): PetLifecycleResult {
+        val session = sessionRepository.currentSession()
+        if (session !is SessionState.Authenticated) {
+            return PetLifecycleResult.Unauthenticated("Tu sesión no está disponible.")
+        }
+        val row = gateway.restorePet(petId.value)
+            .getOrElse { return mapLifecycleResult(it) }
+        refreshTick.update { it + 1 }
+        return PetLifecycleResult.Success(
+            petId = PetId(row.id),
+            status = RemotePetsMapper.toDetail(row).status
+        )
+    }
+
+    override suspend fun markDeceased(petId: PetId, reason: String?): PetLifecycleResult {
+        val session = sessionRepository.currentSession()
+        if (session !is SessionState.Authenticated) {
+            return PetLifecycleResult.Unauthenticated("Tu sesión no está disponible.")
+        }
+        val row = gateway.markPetDeceased(petId.value, reason?.trim()?.takeIf { it.isNotEmpty() })
+            .getOrElse { return mapLifecycleResult(it) }
+        refreshTick.update { it + 1 }
+        return PetLifecycleResult.Success(
+            petId = PetId(row.id),
+            status = RemotePetsMapper.toDetail(row).status
+        )
+    }
+
     private fun mapCreateResult(t: Throwable): PetCreateResult {
         val msg = mapPetsThrowable(t)
         return when (classifyPetsWrite(t)) {
@@ -271,6 +313,17 @@ internal class RemoteSharedPetsRepository(
             PetsWriteKind.VALIDATION -> PetHealthWriteResult.ValidationError(msg)
             PetsWriteKind.CONFLICT,
             PetsWriteKind.BACKEND -> PetHealthWriteResult.BackendError(msg)
+        }
+    }
+
+    private fun mapLifecycleResult(t: Throwable): PetLifecycleResult {
+        val msg = mapPetsThrowable(t)
+        return when (classifyPetsWrite(t)) {
+            PetsWriteKind.UNAUTHENTICATED -> PetLifecycleResult.Unauthenticated(msg)
+            PetsWriteKind.FORBIDDEN -> PetLifecycleResult.Forbidden(msg)
+            PetsWriteKind.CONFLICT -> PetLifecycleResult.Conflict(msg)
+            PetsWriteKind.VALIDATION,
+            PetsWriteKind.BACKEND -> PetLifecycleResult.BackendError(msg)
         }
     }
 
@@ -315,4 +368,13 @@ internal class UnconfiguredSharedPetsRepository : SharedPetsRepository {
 
     override suspend fun updateHealth(petId: PetId, draft: PetHealthDraft): PetHealthWriteResult =
         PetHealthWriteResult.BackendError("Servicio no configurado.")
+
+    override suspend fun archive(petId: PetId, reason: String?): PetLifecycleResult =
+        PetLifecycleResult.BackendError("Servicio no configurado.")
+
+    override suspend fun restore(petId: PetId): PetLifecycleResult =
+        PetLifecycleResult.BackendError("Servicio no configurado.")
+
+    override suspend fun markDeceased(petId: PetId, reason: String?): PetLifecycleResult =
+        PetLifecycleResult.BackendError("Servicio no configurado.")
 }

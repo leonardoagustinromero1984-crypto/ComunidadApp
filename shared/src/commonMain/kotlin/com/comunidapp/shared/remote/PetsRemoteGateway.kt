@@ -53,6 +53,9 @@ internal interface PetsRemoteGateway {
     suspend fun updatePetProfile(params: RemoteUpdatePetProfileParams): Result<RemotePetRow>
     suspend fun setPetAvatarAsset(petId: String, assetId: String): Result<RemotePetRow>
     suspend fun updatePetHealth(params: RemoteUpdatePetHealthParams): Result<RemotePetRow>
+    suspend fun archivePet(petId: String, reason: String?): Result<RemotePetRow>
+    suspend fun restorePet(petId: String): Result<RemotePetRow>
+    suspend fun markPetDeceased(petId: String, reason: String?): Result<RemotePetRow>
 }
 
 internal class SupabasePetsRemoteGateway(
@@ -211,6 +214,56 @@ internal class SupabasePetsRemoteGateway(
     } catch (t: Throwable) {
         Result.failure(t)
     }
+
+    override suspend fun archivePet(
+        petId: String,
+        reason: String?
+    ): Result<RemotePetRow> = try {
+        val rows = client.postgrest.rpc(
+            function = "m08_archive_pet",
+            parameters = buildJsonObject {
+                put("p_pet_id", petId)
+                if (reason != null) put("p_reason", reason) else put("p_reason", JsonNull)
+            }
+        ).decodeList<RemotePetRow>()
+        val row = rows.firstOrNull()
+            ?: return Result.failure(IllegalStateException("PET_ARCHIVE_EMPTY"))
+        Result.success(row)
+    } catch (t: Throwable) {
+        Result.failure(t)
+    }
+
+    override suspend fun restorePet(petId: String): Result<RemotePetRow> = try {
+        val rows = client.postgrest.rpc(
+            function = "m08_restore_pet",
+            parameters = buildJsonObject {
+                put("p_pet_id", petId)
+            }
+        ).decodeList<RemotePetRow>()
+        val row = rows.firstOrNull()
+            ?: return Result.failure(IllegalStateException("PET_RESTORE_EMPTY"))
+        Result.success(row)
+    } catch (t: Throwable) {
+        Result.failure(t)
+    }
+
+    override suspend fun markPetDeceased(
+        petId: String,
+        reason: String?
+    ): Result<RemotePetRow> = try {
+        val rows = client.postgrest.rpc(
+            function = "m08_mark_pet_deceased",
+            parameters = buildJsonObject {
+                put("p_pet_id", petId)
+                if (reason != null) put("p_reason", reason) else put("p_reason", JsonNull)
+            }
+        ).decodeList<RemotePetRow>()
+        val row = rows.firstOrNull()
+            ?: return Result.failure(IllegalStateException("PET_DECEASED_EMPTY"))
+        Result.success(row)
+    } catch (t: Throwable) {
+        Result.failure(t)
+    }
 }
 
 internal class FakePetsRemoteGateway(
@@ -222,14 +275,25 @@ internal class FakePetsRemoteGateway(
     var updateError: Throwable? = null,
     var setAvatarError: Throwable? = null,
     var healthError: Throwable? = null,
+    var archiveError: Throwable? = null,
+    var restoreError: Throwable? = null,
+    var deceasedError: Throwable? = null,
     var listCalls: Int = 0,
     var createCalls: Int = 0,
     var updateCalls: Int = 0,
     var setAvatarCalls: Int = 0,
     var healthCalls: Int = 0,
+    var archiveCalls: Int = 0,
+    var restoreCalls: Int = 0,
+    var deceasedCalls: Int = 0,
     var lastCreate: RemoteCreatePetParams? = null,
     var lastUpdate: RemoteUpdatePetProfileParams? = null,
     var lastHealth: RemoteUpdatePetHealthParams? = null,
+    var lastArchivePetId: String? = null,
+    var lastArchiveReason: String? = null,
+    var lastRestorePetId: String? = null,
+    var lastDeceasedPetId: String? = null,
+    var lastDeceasedReason: String? = null,
     var lastAvatarPetId: String? = null,
     var lastAvatarAssetId: String? = null,
     var created: RemotePetRow? = null
@@ -374,6 +438,104 @@ internal class FakePetsRemoteGateway(
         return Result.success(updated)
     }
 
+    override suspend fun archivePet(petId: String, reason: String?): Result<RemotePetRow> {
+        archiveCalls++
+        lastArchivePetId = petId
+        lastArchiveReason = reason
+        archiveError?.let { return Result.failure(it) }
+        val existing = resolvePet(petId)
+            ?: return Result.failure(IllegalStateException("PET_NOT_FOUND"))
+        when (existing.status.uppercase()) {
+            "ARCHIVED" -> return Result.failure(IllegalStateException("PET_ALREADY_ARCHIVED"))
+            "DECEASED" -> return Result.failure(IllegalStateException("PET_DECEASED_CANNOT_ARCHIVE"))
+        }
+        val updated = existing.copy(status = "ARCHIVED")
+        applyPetUpdate(updated)
+        list = list.filterNot { it.id == petId }
+        return Result.success(updated)
+    }
+
+    override suspend fun restorePet(petId: String): Result<RemotePetRow> {
+        restoreCalls++
+        lastRestorePetId = petId
+        restoreError?.let { return Result.failure(it) }
+        val existing = resolvePet(petId)
+            ?: return Result.failure(IllegalStateException("PET_NOT_FOUND"))
+        when (existing.status.uppercase()) {
+            "DECEASED" -> return Result.failure(IllegalStateException("PET_DECEASED_CANNOT_RESTORE"))
+            "ARCHIVED" -> Unit
+            else -> return Result.failure(IllegalStateException("PET_NOT_ARCHIVED"))
+        }
+        val updated = existing.copy(status = "ACTIVE")
+        applyPetUpdate(updated)
+        if (list.none { it.id == petId }) {
+            list = list + RemoteAccessiblePetRow(
+                id = updated.id,
+                name = updated.name,
+                photoUrl = updated.photoUrl,
+                species = updated.species,
+                sex = updated.sex,
+                breed = updated.breed,
+                status = updated.status,
+                size = updated.size,
+                description = updated.description,
+                ageYears = updated.ageYears,
+                ageMonths = updated.ageMonths,
+                color = updated.color,
+                avatarFileAssetId = updated.avatarFileAssetId,
+                ownerId = updated.ownerId
+            )
+        } else {
+            list = list.map {
+                if (it.id == petId) it.copy(status = "ACTIVE") else it
+            }
+        }
+        return Result.success(updated)
+    }
+
+    override suspend fun markPetDeceased(petId: String, reason: String?): Result<RemotePetRow> {
+        deceasedCalls++
+        lastDeceasedPetId = petId
+        lastDeceasedReason = reason
+        deceasedError?.let { return Result.failure(it) }
+        val existing = resolvePet(petId)
+            ?: return Result.failure(IllegalStateException("PET_NOT_FOUND"))
+        if (existing.status.uppercase() == "DECEASED") {
+            return Result.failure(IllegalStateException("PET_ALREADY_DECEASED"))
+        }
+        val updated = existing.copy(status = "DECEASED")
+        applyPetUpdate(updated)
+        list = list.filterNot { it.id == petId }
+        return Result.success(updated)
+    }
+
+    private fun resolvePet(petId: String): RemotePetRow? =
+        created?.takeIf { it.id == petId }
+            ?: detail?.takeIf { it.id == petId }
+            ?: list.firstOrNull { it.id == petId }?.let { accessibleToPetRow(it) }
+
+    private fun applyPetUpdate(updated: RemotePetRow) {
+        created = updated
+        detail = if (detail?.id == updated.id) updated else detail
+        list = list.map {
+            if (it.id == updated.id) {
+                it.copy(
+                    name = updated.name,
+                    species = updated.species,
+                    breed = updated.breed,
+                    sex = updated.sex,
+                    size = updated.size,
+                    description = updated.description,
+                    ageYears = updated.ageYears,
+                    ageMonths = updated.ageMonths,
+                    color = updated.color,
+                    avatarFileAssetId = updated.avatarFileAssetId,
+                    status = updated.status
+                )
+            } else it
+        }
+    }
+
     private fun accessibleToPetRow(it: RemoteAccessiblePetRow) = RemotePetRow(
         id = it.id,
         name = it.name,
@@ -404,6 +566,18 @@ internal fun mapPetsThrowable(t: Throwable): String {
             "No encontramos el archivo de avatar."
         "PET_AVATAR_PURPOSE_INVALID" in code ->
             "El archivo no es un avatar de mascota válido."
+        "PET_ALREADY_ARCHIVED" in code ->
+            "La mascota ya está archivada."
+        "PET_NOT_ARCHIVED" in code ->
+            "Solo se pueden restaurar mascotas archivadas."
+        "PET_ALREADY_DECEASED" in code ->
+            "La mascota ya está marcada como fallecida."
+        "PET_DECEASED_CANNOT_ARCHIVE" in code ->
+            "No se puede archivar una mascota fallecida."
+        "PET_DECEASED_CANNOT_RESTORE" in code ->
+            "No se puede restaurar una mascota fallecida."
+        "PET_MICROCHIP_ACTIVE_CONFLICT" in code ->
+            "Hay un conflicto con el microchip activo."
         "FORBIDDEN" in code ->
             "No tenés permiso para esta acción."
         "401" in raw || "jwt" in raw || "not authenticated" in raw || "session" in raw ->
@@ -426,7 +600,13 @@ internal fun classifyPetsWrite(t: Throwable): PetsWriteKind {
         "401" in raw || "not_authenticated" in raw || "jwt" in raw -> PetsWriteKind.UNAUTHENTICATED
         "FORBIDDEN" in code || "403" in raw || "forbidden" in raw || "rls" in raw ->
             PetsWriteKind.FORBIDDEN
-        "PET_MICROCHIP_ACTIVE_CONFLICT" in code -> PetsWriteKind.CONFLICT
+        "PET_MICROCHIP_ACTIVE_CONFLICT" in code ||
+            "PET_ALREADY_ARCHIVED" in code ||
+            "PET_NOT_ARCHIVED" in code ||
+            "PET_ALREADY_DECEASED" in code ||
+            "PET_DECEASED_CANNOT_ARCHIVE" in code ||
+            "PET_DECEASED_CANNOT_RESTORE" in code ->
+            PetsWriteKind.CONFLICT
         "PET_NAME_REQUIRED" in code || "PET_NAME_TOO_LONG" in code ||
             "PET_AVATAR_PURPOSE_INVALID" in code || "PET_WEIGHT_INVALID" in code ->
             PetsWriteKind.VALIDATION
