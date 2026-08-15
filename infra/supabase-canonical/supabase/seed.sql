@@ -1,0 +1,3 @@
+-- LeoVer Canonical Baseline
+-- Catalog seeds live in logical migration 1021 (idempotent).
+-- This file stays empty so `db reset` (not used in 03C) does not invent QA data.
