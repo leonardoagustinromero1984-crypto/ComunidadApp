@@ -152,7 +152,8 @@ data class FosterPlacement(
     val endReason: String? = null,
     val endNotes: String? = null,
     val endedBy: String? = null,
-    val temporaryResponsibilityId: String? = null
+    val temporaryResponsibilityId: String? = null,
+    val vitacoraAccessGranted: Boolean? = null
 )
 
 enum class FosterExpenseCategory {

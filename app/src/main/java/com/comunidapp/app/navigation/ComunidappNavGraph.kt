@@ -1,8 +1,13 @@
 ﻿package com.comunidapp.app.navigation
 
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -19,6 +24,8 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.domain.context.OperationalContext
+import com.comunidapp.app.domain.context.OperationalContextProvider
 import com.comunidapp.app.domain.organization.OrganizationId
 import com.comunidapp.app.notifications.NotificationDeepLinkRouter
 import com.comunidapp.app.notifications.NotificationDeepLinkSessionResolver
@@ -36,7 +43,12 @@ import com.comunidapp.app.ui.screens.admin.ObservabilityRetentionScreen
 import com.comunidapp.app.ui.screens.admin.ObservabilityAuditListScreen
 import com.comunidapp.app.ui.screens.admin.ObservabilityErrorsListScreen
 import com.comunidapp.app.ui.screens.admin.ObservabilityExportsScreen
+import com.comunidapp.app.ui.screens.admin.LocationCatalogAdminScreen
+import com.comunidapp.app.ui.screens.admin.MasterCatalogAdminScreen
 import com.comunidapp.app.ui.screens.admin.PlatformAdminScreen
+import com.comunidapp.app.ui.screens.vitacora.AdminVitacoraImportNewScreen
+import com.comunidapp.app.ui.screens.vitacora.AdminVitacoraImportQueueScreen
+import com.comunidapp.app.ui.screens.vitacora.VitacoraImportScreen
 import com.comunidapp.app.ui.screens.moderation.ModerationAppealDetailScreen
 import com.comunidapp.app.ui.screens.moderation.ModerationAppealQueueScreen
 import com.comunidapp.app.ui.screens.moderation.ModerationCaseDetailScreen
@@ -56,6 +68,7 @@ import com.comunidapp.app.ui.screens.adoptions.AdoptionAgreementScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionApplicationDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionApplyScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionsScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDocumentsScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionFinalizeScreen
 import com.comunidapp.app.ui.screens.foster.FosterCompleteScreen
@@ -73,6 +86,7 @@ import com.comunidapp.app.ui.screens.foster.FosterHomesScreen
 import com.comunidapp.app.ui.screens.foster.FosterPlacementDetailScreen
 import com.comunidapp.app.ui.screens.foster.FosterPlacementManagementScreen
 import com.comunidapp.app.ui.screens.foster.FosterPlacementsScreen
+import com.comunidapp.app.ui.screens.foster.FosterNewPlacementScreen
 import com.comunidapp.app.ui.screens.foster.FosterRequestDetailScreen
 import com.comunidapp.app.ui.screens.foster.FosterRequestFormScreen
 import com.comunidapp.app.ui.screens.foster.FosterRequestsScreen
@@ -106,6 +120,8 @@ import com.comunidapp.app.ui.screens.chat.ChatThreadScreen
 import com.comunidapp.app.ui.screens.business.MiNegocioScreen
 import com.comunidapp.app.ui.screens.comunidad.ComunidadScreen
 import com.comunidapp.app.ui.screens.comunidad.ServiceDetailScreen
+import com.comunidapp.app.ui.screens.daycare.DaycareGuestsScreen
+import com.comunidapp.app.ui.screens.daycare.DaycareReservationsScreen
 import com.comunidapp.app.ui.screens.home.HomeScreen
 import com.comunidapp.app.ui.screens.login.EmailVerificationScreen
 import com.comunidapp.app.ui.screens.login.ForgotPasswordScreen
@@ -138,8 +154,12 @@ import com.comunidapp.app.ui.screens.profile.EditProfileScreen
 import com.comunidapp.app.ui.screens.profile.FriendRequestsScreen
 import com.comunidapp.app.ui.screens.profile.NotificationPreferencesScreen
 import com.comunidapp.app.ui.screens.profile.NotificationsScreen
+import com.comunidapp.app.ui.screens.profile.MyPublicationsScreen
 import com.comunidapp.app.ui.screens.profile.ProfileScreen
+import com.comunidapp.app.ui.screens.profile.ProfilePrivacyScreen
 import com.comunidapp.app.ui.screens.profile.SearchFriendsScreen
+import com.comunidapp.app.ui.screens.profile.FriendsListScreen
+import com.comunidapp.app.ui.screens.profile.SettingsScreen
 import com.comunidapp.app.ui.screens.profile.UserPublicProfileScreen
 import com.comunidapp.app.ui.screens.organization.CreateOrganizationScreen
 import com.comunidapp.app.ui.screens.organization.EditOrganizationScreen
@@ -150,6 +170,16 @@ import com.comunidapp.app.ui.screens.organization.OrganizationTeamScreen
 import com.comunidapp.app.ui.screens.organization.PublicOrganizationScreen
 import com.comunidapp.app.ui.screens.onboarding.FirstRunOnboardingScreen
 import com.comunidapp.app.ui.screens.onboarding.ProfileOnboardingScreen
+import com.comunidapp.app.ui.screens.onboarding.onb02.HelpTutorialsScreen
+import com.comunidapp.app.ui.screens.onboarding.onb02.Onb02HostScreen
+import com.comunidapp.app.ui.screens.onboarding.onb02.UseLeoverAsScreen
+import com.comunidapp.app.data.local.Onb02StoreProvider
+import com.comunidapp.app.domain.onboarding.onb02.Onb02FlowKind
+import com.comunidapp.app.domain.onboarding.onb02.Onb02SessionFlags
+import com.comunidapp.app.domain.onboarding.onb02.OrganizationKindOption
+import com.comunidapp.app.domain.onboarding.onb02.ProfileActorTaxonomy
+import com.comunidapp.app.domain.onboarding.onb02.TutorialId
+import kotlinx.coroutines.launch
 import com.comunidapp.app.ui.screens.security.AccountAccessBlockedScreen
 import com.comunidapp.app.ui.screens.security.AccountSecurityScreen
 import com.comunidapp.app.ui.screens.security.LegalConsentRequiredScreen
@@ -174,7 +204,6 @@ import com.comunidapp.app.ui.screens.publish.PublishEventScreen
 import com.comunidapp.app.ui.screens.publish.PublishFosterScreen
 import com.comunidapp.app.ui.screens.publish.PublishShelterScreen
 import com.comunidapp.app.ui.screens.publish.PublishScreen
-import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.ui.screens.shelters.MySheltersScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterCampaignDetailScreen
 import com.comunidapp.app.ui.screens.shelters.ShelterCampaignFormScreen
@@ -255,7 +284,6 @@ import com.comunidapp.app.viewmodel.PetFormViewModel
 import com.comunidapp.app.viewmodel.PetResponsibilitiesViewModel
 import com.comunidapp.app.viewmodel.PetStatusHistoryViewModel
 import com.comunidapp.app.viewmodel.PetTransfersViewModel
-import com.comunidapp.app.viewmodel.FirstRunOnboardingViewModel
 import com.comunidapp.app.viewmodel.SessionState
 import com.comunidapp.app.viewmodel.SessionViewModel
 
@@ -264,9 +292,18 @@ fun ComunidappNavGraph(
     sessionViewModel: SessionViewModel = viewModel()
 ) {
     val sessionState by sessionViewModel.sessionState.collectAsState()
-    val currentUser by sessionViewModel.currentUser.collectAsState()
+    val activeContext by OperationalContextProvider.active.collectAsState()
+    var lastReadySession by remember { mutableStateOf<SessionState?>(null) }
+    if (sessionState == SessionState.LoggedIn || sessionState == SessionState.LoggedOut) {
+        lastReadySession = sessionState
+    }
+    val displaySession = if (sessionState == SessionState.Loading && lastReadySession != null) {
+        lastReadySession!!
+    } else {
+        sessionState
+    }
 
-    when (sessionState) {
+    when (displaySession) {
         SessionState.Loading -> SessionLoadingScreen()
         SessionState.LegalConsentRequired -> {
             val consentNav = rememberNavController()
@@ -294,9 +331,13 @@ fun ComunidappNavGraph(
             )
         }
         SessionState.ProfileSetupRequired -> {
-            ProfileOnboardingScreen(
-                onComplete = { sessionViewModel.onProfileSetupCompleted() }
-            )
+            val setupUserId = sessionViewModel.currentUser.collectAsState().value?.id.orEmpty()
+            key(setupUserId) {
+                ProfileOnboardingScreen(
+                    onComplete = { sessionViewModel.onProfileSetupCompleted() },
+                    sessionUserId = setupUserId
+                )
+            }
         }
         SessionState.AccountAccessBlocked -> {
             val blockedStatus by sessionViewModel.blockedAccountStatus.collectAsState()
@@ -306,10 +347,11 @@ fun ComunidappNavGraph(
             )
         }
         SessionState.LoggedOut, SessionState.LoggedIn -> {
-            key(sessionState) {
+            key(displaySession) {
                 RootNavHost(
-                    isLoggedIn = sessionState == SessionState.LoggedIn,
-                    accountType = currentUser?.accountType ?: AccountType.PERSON
+                    isLoggedIn = displaySession == SessionState.LoggedIn,
+                    context = activeContext,
+                    onLogout = { sessionViewModel.logout() }
                 )
             }
         }
@@ -319,14 +361,16 @@ fun ComunidappNavGraph(
 @Composable
 private fun RootNavHost(
     isLoggedIn: Boolean,
-    accountType: AccountType
+    context: OperationalContext,
+    onLogout: () -> Unit
 ) {
     val rootNavController = rememberNavController()
     val startDestination = if (isLoggedIn) NavRoutes.MAIN else NavRoutes.LOGIN
 
     NavHost(
         navController = rootNavController,
-        startDestination = startDestination
+        startDestination = startDestination,
+        modifier = Modifier.imePadding()
     ) {
         composable(NavRoutes.LOGIN) {
             LoginScreen(
@@ -381,30 +425,70 @@ private fun RootNavHost(
                 email = email,
                 onNavigateBack = { rootNavController.popBackStack() },
                 onVerified = {
-                    rootNavController.navigate(NavRoutes.LOGIN) {
-                        popUpTo(NavRoutes.LOGIN) { inclusive = true }
+                    if (!com.comunidapp.app.data.repository.AuthProvider.isRemoteBackendEnabled) {
+                        rootNavController.navigate(NavRoutes.LOGIN) {
+                            popUpTo(NavRoutes.LOGIN) { inclusive = true }
+                        }
                     }
                 }
             )
         }
         composable(NavRoutes.MAIN) {
-            MainScreen(accountType = accountType)
+            MainScreen(context = context, onLogout = onLogout)
         }
     }
 }
 
 @Composable
-private fun MainScreen(accountType: AccountType) {
+private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
     val navController = rememberNavController()
-    val onboardingViewModel: FirstRunOnboardingViewModel = viewModel()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
-    val bottomNavRoutes = bottomNavItemsFor(accountType).map { it.route }
+    val bottomNavRoutes = bottomNavItemsFor(context).map { it.route }
     val showBottomBar = currentRoute in bottomNavRoutes
 
+    LaunchedEffect(currentRoute) {
+        com.comunidapp.app.domain.navigation.AppNavRestoreStore.write(currentRoute, loggedIn = true)
+    }
+
     LaunchedEffect(Unit) {
-        if (onboardingViewModel.shouldAutoShow()) {
-            navController.navigate(NavRoutes.firstRunOnboarding(restart = false)) {
+        val restored = com.comunidapp.app.domain.navigation.AppNavRestoreStore.read()
+        val userId = AuthProvider.repository.getCurrentUser()?.id
+        if (!userId.isNullOrBlank()) {
+            runCatching {
+                com.comunidapp.app.data.repository.CanonicalTutorialProgressRepository.hydrate(
+                    com.comunidapp.app.data.local.Onb02StoreProvider.instance,
+                    userId
+                )
+            }
+        }
+        val onb02Done = !userId.isNullOrBlank() &&
+            Onb02StoreProvider.instance.completion(userId) ==
+            com.comunidapp.app.data.local.Onb02Completion.COMPLETED
+        val shouldRestore = !restored.isNullOrBlank() &&
+            restored != NavRoutes.HOME &&
+            onb02Done
+        if (shouldRestore) {
+            navController.navigate(restored) {
+                launchSingleTop = true
+            }
+            return@LaunchedEffect
+        }
+        val onb02Kind = if (!userId.isNullOrBlank()) {
+            val personComplete = runCatching {
+                DataProvider.userRepository.getUser(userId)
+            }.getOrNull()?.let { com.comunidapp.app.domain.user.OnboardingCompleteness.isComplete(it) }
+                ?: false
+            Onb02StoreProvider.decideEntry(
+                userId = userId,
+                justCompletedProfileSetup = Onb02SessionFlags.consumeJustCompletedProfileSetup(),
+                personOnboardingComplete = personComplete
+            )
+        } else {
+            null
+        }
+        if (onb02Kind != null) {
+            navController.navigate(NavRoutes.onb02(onb02Kind.name)) {
                 launchSingleTop = true
             }
         }
@@ -470,7 +554,24 @@ private fun MainScreen(accountType: AccountType) {
         NavRoutes.PUBLISH_REEL,
         NavRoutes.PUBLISH_STORY
     )
-    val showBar = showBottomBar || currentRoute in overlayRoutes
+    val hideBottomBarRoutes = setOf(
+        NavRoutes.ONB02,
+        NavRoutes.ONB02_REOPEN,
+        NavRoutes.USE_LEOVER_AS,
+        NavRoutes.HELP_TUTORIALS,
+        NavRoutes.FIRST_RUN_ONBOARDING,
+        NavRoutes.SETTINGS,
+        NavRoutes.ACCOUNT_SECURITY
+    )
+    val onb02Open = hideBottomBarRoutes.any { pattern ->
+        currentRoute == pattern || currentRoute?.startsWith("onb02") == true ||
+            currentRoute == NavRoutes.USE_LEOVER_AS ||
+            currentRoute == NavRoutes.HELP_TUTORIALS ||
+            currentRoute == NavRoutes.SETTINGS ||
+            currentRoute == NavRoutes.ACCOUNT_SECURITY ||
+            currentRoute?.startsWith("first_run_onboarding") == true
+    }
+    val showBar = (showBottomBar || currentRoute in overlayRoutes) && !onb02Open
 
     Scaffold(
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
@@ -478,7 +579,7 @@ private fun MainScreen(accountType: AccountType) {
             if (showBar) {
                 ComunidappBottomBar(
                     navController = navController,
-                    accountType = accountType
+                    context = context
                 )
             }
         }
@@ -488,7 +589,7 @@ private fun MainScreen(accountType: AccountType) {
             startDestination = NavRoutes.HOME,
             modifier = Modifier.padding(bottom = innerPadding.calculateBottomPadding())
         ) {
-            mainAppRoutes(navController, accountType)
+            mainAppRoutes(navController, context, onLogout)
         }
     }
 }
@@ -496,7 +597,8 @@ private fun MainScreen(accountType: AccountType) {
 /** Route table extracted from MainScreen to shrink Compose IR of the host composable. */
 private fun NavGraphBuilder.mainAppRoutes(
     navController: NavHostController,
-    accountType: AccountType
+    context: OperationalContext,
+    onLogout: () -> Unit
 ) {
     composable(
         route = NavRoutes.FIRST_RUN_ONBOARDING,
@@ -520,6 +622,68 @@ private fun NavGraphBuilder.mainAppRoutes(
             onOpenPrivacy = { navController.navigate(NavRoutes.LEGAL_PRIVACY) }
         )
     }
+    composable(
+        route = NavRoutes.ONB02,
+        arguments = listOf(
+            navArgument(NavRoutes.ARG_ONB02_KIND) {
+                type = NavType.StringType
+            }
+        )
+    ) { entry ->
+        val kind = runCatching {
+            Onb02FlowKind.valueOf(entry.arguments?.getString(NavRoutes.ARG_ONB02_KIND).orEmpty())
+        }.getOrDefault(Onb02FlowKind.FULL_ONBOARDING)
+        Onb02HostScreen(
+            kind = kind,
+            onFinished = { setupRoute ->
+                if (!setupRoute.isNullOrBlank()) {
+                    navController.navigate(setupRoute) {
+                        popUpTo(NavRoutes.HOME) { inclusive = false }
+                        launchSingleTop = true
+                    }
+                } else {
+                    navController.popBackStack()
+                }
+            }
+        )
+    }
+    composable(
+        route = NavRoutes.ONB02_REOPEN,
+        arguments = listOf(
+            navArgument(NavRoutes.ARG_TUTORIAL_ID) {
+                type = NavType.StringType
+            }
+        )
+    ) { entry ->
+        val tutorialId = TutorialId.fromKey(
+            entry.arguments?.getString(NavRoutes.ARG_TUTORIAL_ID).orEmpty()
+        )
+        Onb02HostScreen(
+            kind = Onb02FlowKind.REOPEN_FROM_HELP,
+            reopenId = tutorialId,
+            onFinished = { navController.popBackStack() }
+        )
+    }
+    composable(NavRoutes.USE_LEOVER_AS) {
+        UseLeoverAsScreen(
+            onAddFunction = {
+                navController.navigate(NavRoutes.onb02(Onb02FlowKind.ADD_FUNCTION_LATER.name)) {
+                    launchSingleTop = true
+                }
+            },
+            onNavigateBack = { navController.popBackStack() }
+        )
+    }
+    composable(NavRoutes.HELP_TUTORIALS) {
+        HelpTutorialsScreen(
+            onOpenTutorial = { id ->
+                navController.navigate(NavRoutes.onb02Reopen(id.key)) {
+                    launchSingleTop = true
+                }
+            },
+            onNavigateBack = { navController.popBackStack() }
+        )
+    }
     composable(NavRoutes.HOME) {
         HomeScreen(
             onAuthorClick = { userId ->
@@ -535,8 +699,15 @@ private fun NavGraphBuilder.mainAppRoutes(
                 }
             },
             onNavigateToSumate = { navController.navigate(NavRoutes.SUMATE) },
-            onNavigateToLostFound = { navController.navigate(NavRoutes.LOST_FOUND) },
-            onNavigateToComunidad = { navController.navigate(NavRoutes.COMUNIDAD) }
+            onNavigateToLostFound = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
+            onNavigateToFound = { navController.navigate(NavRoutes.PUBLISH_FOUND_PET) },
+            onNavigateToComunidad = { navController.navigate(NavRoutes.COMUNIDAD) },
+            onNavigateToMyPets = { navController.navigate(NavRoutes.MY_PETS) },
+            onNavigateToPetDetail = { id -> navController.navigate(NavRoutes.petDetail(id)) },
+            onNavigateToAddPet = { navController.navigate(NavRoutes.ADD_PET) },
+            onOpenStoryViewer = { authorId ->
+                navController.navigate(NavRoutes.storyViewer(authorId))
+            }
         )
     }
     composable(NavRoutes.SUMATE) {
@@ -560,17 +731,20 @@ private fun NavGraphBuilder.mainAppRoutes(
             onM16Shelters = { navController.navigate(NavRoutes.M16_SHELTERS) },
             onM17Campaigns = { navController.navigate(NavRoutes.M17_HUB) },
             onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) },
+            onOpenAdoptions = { navController.navigate(NavRoutes.ADOPTIONS) },
+            onOpenLostFound = { navController.navigate(NavRoutes.LOST_FOUND) },
             onNavigateToPublish = { navController.navigate(NavRoutes.PUBLISH) },
             onCreateAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
             onCreateLost = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
             onCreateFound = { navController.navigate(NavRoutes.PUBLISH_FOUND_PET) },
-            onCreateFoster = { navController.navigate(NavRoutes.PUBLISH_FOSTER) },
-            onCreateEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) }
+            onCreateFoster = { navController.navigate(NavRoutes.FOSTER_HOME_FORM) },
+            onCreateEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) },
+            context = context
         )
     }
     composable(NavRoutes.PUBLISH) {
         PublishScreen(
-            accountType = accountType,
+            context = context,
             showBackButton = false,
             onNavigateBack = { navController.popBackStack() },
             onNavigateToGeneral = { navController.navigate(NavRoutes.PUBLISH_GENERAL) },
@@ -580,16 +754,19 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateToPromo = { navController.navigate(NavRoutes.PUBLISH_PROMO) },
             onNavigateToAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
             onNavigateToLostFound = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
+            onNavigateToFound = { navController.navigate(NavRoutes.PUBLISH_FOUND_PET) },
             onNavigateToUrgent = { navController.navigate(NavRoutes.PUBLISH_URGENT) },
             onNavigateToFoster = { navController.navigate(NavRoutes.PUBLISH_FOSTER) },
             onNavigateToEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) },
             onNavigateToDonation = { navController.navigate(NavRoutes.PUBLISH_DONATION) },
-            onNavigateToShelter = { navController.navigate(NavRoutes.PUBLISH_SHELTER) }
+            onNavigateToShelter = { navController.navigate(NavRoutes.PUBLISH_SHELTER) },
+            onNavigateToProviderFicha = { navController.navigate(NavRoutes.MY_BUSINESS) },
+            onNavigateToCampaign = { navController.navigate(NavRoutes.M17_CAMPAIGNS_CREATE) }
         )
     }
     composable(NavRoutes.PUBLISH_FROM_PROFILE) {
         PublishScreen(
-            accountType = accountType,
+            context = context,
             showBackButton = true,
             onNavigateBack = {
                 if (!navController.popBackStack(NavRoutes.PROFILE, inclusive = false)) {
@@ -603,11 +780,14 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateToPromo = { navController.navigate(NavRoutes.PUBLISH_PROMO) },
             onNavigateToAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
             onNavigateToLostFound = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
+            onNavigateToFound = { navController.navigate(NavRoutes.PUBLISH_FOUND_PET) },
             onNavigateToUrgent = { navController.navigate(NavRoutes.PUBLISH_URGENT) },
             onNavigateToFoster = { navController.navigate(NavRoutes.PUBLISH_FOSTER) },
             onNavigateToEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) },
             onNavigateToDonation = { navController.navigate(NavRoutes.PUBLISH_DONATION) },
-            onNavigateToShelter = { navController.navigate(NavRoutes.PUBLISH_SHELTER) }
+            onNavigateToShelter = { navController.navigate(NavRoutes.PUBLISH_SHELTER) },
+            onNavigateToProviderFicha = { navController.navigate(NavRoutes.MY_BUSINESS) },
+            onNavigateToCampaign = { navController.navigate(NavRoutes.M17_CAMPAIGNS_CREATE) }
         )
     }
     composable(NavRoutes.COMUNIDAD) {
@@ -627,6 +807,12 @@ private fun NavGraphBuilder.mainAppRoutes(
         MiNegocioScreen(
             onNavigateToEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) }
         )
+    }
+    composable(NavRoutes.DAYCARE_RESERVATIONS) {
+        DaycareReservationsScreen(onNavigateBack = { navController.popBackStack() })
+    }
+    composable(NavRoutes.DAYCARE_GUESTS) {
+        DaycareGuestsScreen(onNavigateBack = { navController.popBackStack() })
     }
     composable(NavRoutes.PROFILE) {
         ProfileScreen(
@@ -653,9 +839,18 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateToAudit = { navController.navigate(NavRoutes.ADMINISTRATIVE_AUDIT) },
             onNavigateToObservability = { navController.navigate(NavRoutes.OBSERVABILITY_OVERVIEW) },
             onNavigateToSearchFriends = { navController.navigate(NavRoutes.SEARCH_FRIENDS) },
+            onNavigateToMyFriends = { navController.navigate(NavRoutes.MY_FRIENDS) },
             onNavigateToAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
             onNavigateToFirstRunTutorial = {
-                navController.navigate(NavRoutes.firstRunOnboarding(restart = true)) {
+                navController.navigate(NavRoutes.HELP_TUTORIALS) {
+                    launchSingleTop = true
+                }
+            },
+            onNavigateToUseLeoverAs = {
+                navController.navigate(NavRoutes.USE_LEOVER_AS) { launchSingleTop = true }
+            },
+            onNavigateToHelpTutorials = {
+                navController.navigate(NavRoutes.HELP_TUTORIALS) {
                     launchSingleTop = true
                 }
             },
@@ -665,6 +860,15 @@ private fun NavGraphBuilder.mainAppRoutes(
                     launchSingleTop = true
                 }
             },
+            onNavigateToMyPublications = {
+                navController.navigate(NavRoutes.MY_PUBLICATIONS) {
+                    launchSingleTop = true
+                }
+            },
+            onNavigateToAddPet = { navController.navigate(NavRoutes.ADD_PET) },
+            onNavigateToDonations = { navController.navigate(NavRoutes.M17_HUB) },
+            onNavigateToPrivacy = { navController.navigate(NavRoutes.PROFILE_PRIVACY) },
+            onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
             onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
             onPetClick = { id ->
                 val petId = id.trim()
@@ -674,6 +878,41 @@ private fun NavGraphBuilder.mainAppRoutes(
                     }
                 }
             }
+        )
+    }
+    composable(NavRoutes.MY_PUBLICATIONS) {
+        MyPublicationsScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onAuthorClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) }
+        )
+    }
+    composable(NavRoutes.SETTINGS) {
+        SettingsScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
+            onPrivacy = { navController.navigate(NavRoutes.PROFILE_PRIVACY) },
+            onLegalPrivacy = { navController.navigate(NavRoutes.LEGAL_PRIVACY) },
+            onAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
+            onAddFunction = {
+                navController.navigate(NavRoutes.onb02(Onb02FlowKind.ADD_FUNCTION_LATER.name)) {
+                    launchSingleTop = true
+                }
+            },
+            onNotificationPreferences = { navController.navigate(NavRoutes.NOTIFICATION_PREFERENCES) },
+            onHelpTutorials = {
+                navController.navigate(NavRoutes.HELP_TUTORIALS) { launchSingleTop = true }
+            },
+            onSupport = { navController.navigate(NavRoutes.MY_SUPPORT_TICKETS) },
+            onTerms = { navController.navigate(NavRoutes.LEGAL_TERMS) },
+            onLogout = onLogout,
+            onModeration = { navController.navigate(NavRoutes.ADMIN_MODERATION) },
+            onCases = { navController.navigate(NavRoutes.MODERATION_CASES) },
+            onAppealsStaff = { navController.navigate(NavRoutes.MODERATION_APPEALS) },
+            onVerification = { navController.navigate(NavRoutes.ORG_VERIFICATION_QUEUE) },
+            onSupportStaff = { navController.navigate(NavRoutes.SUPPORT_ADMIN_QUEUE) },
+            onAudit = { navController.navigate(NavRoutes.ADMINISTRATIVE_AUDIT) },
+            onObservability = { navController.navigate(NavRoutes.OBSERVABILITY_OVERVIEW) },
+            onPlatformAdmin = { navController.navigate(NavRoutes.PLATFORM_ADMIN) }
         )
     }
     composable(NavRoutes.ACCOUNT_SECURITY) {
@@ -692,10 +931,22 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.LEGAL_PRIVACY) {
         PrivacyDraftScreen(onNavigateBack = { navController.popBackStack() })
     }
+    composable(NavRoutes.PROFILE_PRIVACY) {
+        ProfilePrivacyScreen(onNavigateBack = { navController.popBackStack() })
+    }
     composable(NavRoutes.SEARCH_FRIENDS) {
         SearchFriendsScreen(
             onNavigateBack = { navController.popBackStack() },
             onUserClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) }
+        )
+    }
+    composable(NavRoutes.MY_FRIENDS) {
+        FriendsListScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onUserClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
+            onMessageClick = { userId, name ->
+                navController.navigate(NavRoutes.chatStart(userId, name))
+            }
         )
     }
     composable(NavRoutes.EDIT_PROFILE) {
@@ -707,7 +958,7 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.MY_ORGANIZATIONS) {
         MyOrganizationsScreen(
             onNavigateBack = { navController.popBackStack() },
-            onCreateOrganization = { navController.navigate(NavRoutes.CREATE_ORGANIZATION) },
+            onCreateOrganization = { navController.navigate(NavRoutes.createOrganization()) },
             onManageOrganization = { id ->
                 navController.navigate(NavRoutes.manageOrganization(id))
             },
@@ -719,12 +970,56 @@ private fun NavGraphBuilder.mainAppRoutes(
             }
         )
     }
-    composable(NavRoutes.CREATE_ORGANIZATION) {
+    composable(
+        route = NavRoutes.CREATE_ORGANIZATION,
+        arguments = listOf(
+            navArgument(NavRoutes.ARG_ORG_PRESELECT) {
+                type = NavType.StringType
+                defaultValue = ""
+            },
+            navArgument(NavRoutes.ARG_ORG_WELFARE) {
+                type = NavType.BoolType
+                defaultValue = false
+            }
+        )
+    ) { entry ->
+        val preselect = entry.arguments?.getString(NavRoutes.ARG_ORG_PRESELECT).orEmpty()
+        val welfare = entry.arguments?.getBoolean(NavRoutes.ARG_ORG_WELFARE) == true
+        val createOrgScope = rememberCoroutineScope()
         CreateOrganizationScreen(
             onNavigateBack = { navController.popBackStack() },
+            preselect = preselect.takeIf { it.isNotBlank() },
+            welfare = welfare,
             onCreated = { organizationId ->
-                navController.navigate(NavRoutes.editOrganization(organizationId)) {
-                    popUpTo(NavRoutes.MY_ORGANIZATIONS)
+                val kind = runCatching { OrganizationKindOption.valueOf(preselect) }.getOrNull()
+                val createdContext = com.comunidapp.app.domain.context.NewContextActivation.contextForOrganization(
+                    organizationId = organizationId,
+                    publicName = kind?.let { ProfileActorTaxonomy.businessVisibleLabel(it) }
+                        ?: "Organización",
+                    typeOrCapability = kind?.name ?: preselect.ifBlank { "ORGANIZATION" }
+                )
+                createOrgScope.launch {
+                    com.comunidapp.app.domain.context.OperationalContextProvider.activateNewlyCreated(createdContext)
+                }
+                val pending = com.comunidapp.app.domain.onboarding.onb03.PendingTutorialQueue.peek()
+                if (pending != null && pending.tutorials.isNotEmpty()) {
+                    navController.navigate(
+                        NavRoutes.onb02(
+                            com.comunidapp.app.domain.onboarding.onb02.Onb02FlowKind.EVENT_QUEUE.name
+                        )
+                    ) {
+                        popUpTo(NavRoutes.CREATE_ORGANIZATION) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                } else {
+                    val landing = com.comunidapp.app.domain.context.NewContextActivation.landingRoute(
+                        createdContext,
+                        kind
+                    )
+                    navController.navigate(landing) {
+                        popUpTo(NavRoutes.HOME) { inclusive = false }
+                        launchSingleTop = true
+                    }
                 }
             }
         )
@@ -866,7 +1161,8 @@ private fun NavGraphBuilder.mainAppRoutes(
         MyPetsScreen(
             onNavigateBack = { navController.popBackStack() },
             onPetClick = { id -> navController.navigate(NavRoutes.petDetail(id)) },
-            onAddPet = { navController.navigate(NavRoutes.ADD_PET) }
+            onAddPet = { navController.navigate(NavRoutes.ADD_PET) },
+            onImportRescuer = { navController.navigate(NavRoutes.VITACORA_IMPORT_RESCUER) }
         )
     }
     composable(NavRoutes.ADD_PET) {
@@ -907,6 +1203,18 @@ private fun NavGraphBuilder.mainAppRoutes(
             onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) }
         )
     }
+    composable(NavRoutes.ADOPTIONS) {
+        AdoptionsScreen(
+            onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
+            onMyApplications = { navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS) },
+            onReceivedApplications = {
+                navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
+            },
+            showReceivedApplications = !context.isPersonal,
+            showBackButton = true,
+            onNavigateBack = { navController.popBackStack() }
+        )
+    }
     composable(NavRoutes.MY_ADOPTIONS) {
         MyAdoptionsScreen(
             onNavigateBack = { navController.popBackStack() },
@@ -916,6 +1224,7 @@ private fun NavGraphBuilder.mainAppRoutes(
             onReceivedApplications = {
                 navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
             },
+            showReceivedApplications = !context.isPersonal,
             onProcess = { id -> navController.navigate(NavRoutes.adoptionProcess(id)) }
         )
     }
@@ -976,7 +1285,11 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateBack = { navController.popBackStack() },
             onSightingClick = { id -> navController.navigate(NavRoutes.m13SightingDetail(id)) },
             onCreate = { navController.navigate(NavRoutes.M13_SIGHTING_NEW) },
-            onOpenMetrics = { navController.navigate(NavRoutes.M13_METRICS) }
+            onOpenMetrics = if (!context.isPersonal) {
+                { navController.navigate(NavRoutes.M13_METRICS) }
+            } else {
+                null
+            }
         )
     }
     composable(NavRoutes.M13_SIGHTING_NEW) {
@@ -1187,7 +1500,10 @@ private fun NavGraphBuilder.mainAppRoutes(
         MyFosterHomeScreen(
             onNavigateBack = { navController.popBackStack() },
             onCreate = { navController.navigate(NavRoutes.FOSTER_HOME_FORM) },
-            onEdit = { id -> navController.navigate(NavRoutes.fosterHomeFormEdit(id)) }
+            onEdit = { id -> navController.navigate(NavRoutes.fosterHomeFormEdit(id)) },
+            onPlacements = { navController.navigate(NavRoutes.FOSTER_PLACEMENTS) },
+            onRequests = { navController.navigate(NavRoutes.FOSTER_REQUESTS_RECEIVED) },
+            onNewPlacement = { navController.navigate(NavRoutes.FOSTER_NEW_PLACEMENT) }
         )
     }
     composable(NavRoutes.FOSTER_HOME_FORM) {
@@ -1195,7 +1511,8 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateBack = { navController.popBackStack() },
             onSaved = {
                 navController.navigate(NavRoutes.MY_FOSTER_HOME) {
-                    popUpTo(NavRoutes.FOSTER_HOMES) { inclusive = false }
+                    popUpTo(NavRoutes.FOSTER_HOME_FORM) { inclusive = true }
+                    launchSingleTop = true
                 }
             }
         )
@@ -1260,6 +1577,7 @@ private fun NavGraphBuilder.mainAppRoutes(
             title = "Solicitudes recibidas",
             received = true,
             onNavigateBack = { navController.popBackStack() },
+            showBackButton = context !is OperationalContext.Foster,
             onRequestClick = { id -> navController.navigate(NavRoutes.fosterRequestDetail(id)) }
         )
     }
@@ -1284,7 +1602,20 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.FOSTER_PLACEMENTS) {
         FosterPlacementsScreen(
             onNavigateBack = { navController.popBackStack() },
-            onPlacementClick = { id -> navController.navigate(NavRoutes.fosterPlacementManagement(id)) }
+            showBackButton = context !is OperationalContext.Foster,
+            onPlacementClick = { id -> navController.navigate(NavRoutes.fosterPlacementManagement(id)) },
+            onNewPlacement = { navController.navigate(NavRoutes.FOSTER_NEW_PLACEMENT) }
+        )
+    }
+    composable(NavRoutes.FOSTER_NEW_PLACEMENT) {
+        FosterNewPlacementScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onCreated = {
+                navController.navigate(NavRoutes.FOSTER_PLACEMENTS) {
+                    popUpTo(NavRoutes.FOSTER_NEW_PLACEMENT) { inclusive = true }
+                    launchSingleTop = true
+                }
+            }
         )
     }
     composable(
@@ -1462,19 +1793,65 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.SHELTERS) {
         ShelterOpsListScreen(
             onNavigateBack = { navController.popBackStack() },
+            showBackButton = context !is OperationalContext.Organization,
             onShelterClick = { id -> navController.navigate(NavRoutes.shelterOpsDetail(id)) },
             onMyShelters = { navController.navigate(NavRoutes.MY_SHELTERS) },
             onPublicCampaigns = { navController.navigate(NavRoutes.SHELTER_PUBLIC_CAMPAIGNS) },
             onPublicSupplyRequests = { navController.navigate(NavRoutes.SHELTER_PUBLIC_SUPPLY_REQUESTS) },
             onPublicEmergencies = { navController.navigate(NavRoutes.SHELTER_PUBLIC_EMERGENCIES) },
-            onPublicEvents = { navController.navigate(NavRoutes.SHELTER_PUBLIC_EVENTS) }
+            onPublicEvents = { navController.navigate(NavRoutes.SHELTER_PUBLIC_EVENTS) },
+            onImportPets = { orgId, orgName -> navController.navigate(NavRoutes.vitacoraImport(orgId, orgName)) },
+            onImportRescuer = { navController.navigate(NavRoutes.VITACORA_IMPORT_RESCUER) },
+            onAddPet = { navController.navigate(NavRoutes.ADD_PET) },
+            operationalHub = com.comunidapp.app.ui.screens.context.OperationalHubActions(
+                onProfile = {
+                    val org = context as? com.comunidapp.app.domain.context.OperationalContext.Organization
+                    if (org != null) navController.navigate(NavRoutes.editOrganization(org.entityId))
+                    else navController.navigate(NavRoutes.EDIT_PROFILE)
+                },
+                onAnimals = {
+                    if (context is com.comunidapp.app.domain.context.OperationalContext.Rescuer) {
+                        navController.navigate(NavRoutes.MY_PETS)
+                    } else {
+                        navController.navigate(NavRoutes.MY_SHELTERS)
+                    }
+                },
+                onAddPet = { navController.navigate(NavRoutes.ADD_PET) },
+                onImportPets = {
+                    val org = context as? com.comunidapp.app.domain.context.OperationalContext.Organization
+                    if (org != null) {
+                        navController.navigate(NavRoutes.vitacoraImport(org.entityId, org.displayName))
+                    } else {
+                        navController.navigate(NavRoutes.VITACORA_IMPORT_RESCUER)
+                    }
+                },
+                onAdoptions = { navController.navigate(NavRoutes.ADOPTIONS) },
+                onCampaigns = { navController.navigate(NavRoutes.M17_HUB) },
+                onEvents = { navController.navigate(NavRoutes.M18_EVENTS) },
+                onManagement = { navController.navigate(NavRoutes.SHELTERS) },
+                onTeam = {
+                    val org = context as? com.comunidapp.app.domain.context.OperationalContext.Organization
+                    if (org != null) navController.navigate(NavRoutes.organizationTeam(org.entityId))
+                },
+                onBranches = {
+                    val org = context as? com.comunidapp.app.domain.context.OperationalContext.Organization
+                    if (org != null) navController.navigate(NavRoutes.organizationBranches(org.entityId))
+                },
+                onFoster = { navController.navigate(NavRoutes.FOSTER_HOMES) },
+                onLostFound = { navController.navigate(NavRoutes.LOST_FOUND) },
+                onRescuerProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
+                onVolunteer = { navController.navigate(NavRoutes.M17_HUB) }
+            )
         )
     }
     composable(NavRoutes.MY_SHELTERS) {
         MySheltersScreen(
             onNavigateBack = { navController.popBackStack() },
+            showBackButton = context !is OperationalContext.Organization,
             onShelterClick = { id -> navController.navigate(NavRoutes.shelterDashboard(id)) },
-            onCreate = { navController.navigate(NavRoutes.SHELTER_FORM) }
+            onCreate = { navController.navigate(NavRoutes.SHELTER_FORM) },
+            onImportPets = { orgId, orgName -> navController.navigate(NavRoutes.vitacoraImport(orgId, orgName)) },
+            onAddPet = { navController.navigate(NavRoutes.ADD_PET) }
         )
     }
     composable(NavRoutes.SHELTER_FORM) {
@@ -1555,6 +1932,12 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateBack = { navController.popBackStack() },
             onIntake = { navController.navigate(NavRoutes.shelterPetIntake(id)) },
             onDetail = { pid -> navController.navigate(NavRoutes.shelterPetDetail(pid)) },
+            onImportPets = {
+                val org = context as? OperationalContext.Organization
+                navController.navigate(
+                    NavRoutes.vitacoraImport(org?.entityId ?: id, org?.displayName ?: "Organización")
+                )
+            },
             viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
                 factory = ShelterPetsViewModel.factory(id)
             )
@@ -2310,7 +2693,7 @@ private fun NavGraphBuilder.mainAppRoutes(
             },
             onNavigateToM28Grants = { id -> navController.navigate(NavRoutes.m28PetGrants(id)) },
             onNavigateToM28Proposals = { id -> navController.navigate(NavRoutes.m28PetProposals(id)) },
-            onNavigateToReportLost = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
+            onNavigateToReportLost = { navController.navigate(NavRoutes.publishLostFound(petId)) },
             viewModel = viewModel(
                 viewModelStoreOwner = backStackEntry,
                 key = "pet_detail_$petId",
@@ -2436,7 +2819,7 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.PUBLISH_STORY) {
         PublishStoryScreen(
             origin = "HOME_STORY_PLUS",
-            autoOpenPicker = true,
+            autoOpenPicker = false,
             onNavigateBack = {
                 if (!navController.popBackStack(NavRoutes.HOME, inclusive = false)) {
                     navController.popBackStack()
@@ -2517,6 +2900,23 @@ private fun NavGraphBuilder.mainAppRoutes(
             initialType = com.comunidapp.app.data.model.LostFoundType.LOST
         )
     }
+    composable(
+        route = NavRoutes.PUBLISH_LOST_FOUND_FOR_PET,
+        arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
+    ) { entry ->
+        val petId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+            Charsets.UTF_8.name()
+        )
+        PublishLostFoundScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onPublishSuccess = {
+                navController.popBackStack(NavRoutes.SUMATE, inclusive = false)
+            },
+            initialType = com.comunidapp.app.data.model.LostFoundType.LOST,
+            prefillPetId = petId
+        )
+    }
     composable(NavRoutes.PUBLISH_FOUND_PET) {
         PublishLostFoundScreen(
             onNavigateBack = { navController.popBackStack() },
@@ -2593,7 +2993,57 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateBack = { navController.popBackStack() },
             onNavigateToPreferences = {
                 navController.navigate(NavRoutes.NOTIFICATION_PREFERENCES)
+            },
+            onOpenInvitation = { id ->
+                navController.navigate(NavRoutes.orgInvitation(id))
             }
+        )
+    }
+    composable(
+        route = NavRoutes.ORG_INVITATION,
+        arguments = listOf(navArgument(NavRoutes.ARG_INVITATION_ID) { type = NavType.StringType })
+    ) { entry ->
+        val invitationId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_INVITATION_ID).orEmpty(),
+            Charsets.UTF_8
+        )
+        com.comunidapp.app.ui.screens.organization.OrgInvitationAcceptScreen(
+            invitationId = invitationId,
+            onNavigateBack = { navController.popBackStack() },
+            onAccepted = { orgId ->
+                val pending = com.comunidapp.app.domain.onboarding.onb03.PendingTutorialQueue.peek()
+                if (pending != null && pending.tutorials.isNotEmpty()) {
+                    navController.navigate(
+                        NavRoutes.onb02(
+                            com.comunidapp.app.domain.onboarding.onb02.Onb02FlowKind.EVENT_QUEUE.name
+                        )
+                    ) {
+                        popUpTo(NavRoutes.ORG_INVITATION) { inclusive = true }
+                    }
+                } else {
+                    navController.navigate(NavRoutes.manageOrganization(orgId)) {
+                        popUpTo(NavRoutes.ORG_INVITATION) { inclusive = true }
+                    }
+                }
+            }
+        )
+    }
+    composable(
+        route = NavRoutes.STORY_VIEWER,
+        arguments = listOf(navArgument(NavRoutes.ARG_STORY_AUTHOR_ID) { type = NavType.StringType })
+    ) { entry ->
+        val authorId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_STORY_AUTHOR_ID).orEmpty(),
+            Charsets.UTF_8
+        )
+        val stories by DataProvider.feedRepository.observeActiveStories().collectAsState()
+        val ordered = com.comunidapp.app.domain.social.StoryTrayGrouping.segmentsOldestFirst(
+            stories.filter { it.authorId == authorId && it.isActiveStory() }
+        )
+        com.comunidapp.app.ui.screens.social.StoryViewerScreen(
+            stories = ordered,
+            initialIndex = 0,
+            onClose = { navController.popBackStack() }
         )
     }
     composable(NavRoutes.NOTIFICATION_PREFERENCES) {
@@ -2788,7 +3238,66 @@ private fun NavGraphBuilder.mainAppRoutes(
         ObservabilityPermissionsInfoScreen(onNavigateBack = { navController.popBackStack() })
     }
     composable(NavRoutes.PLATFORM_ADMIN) {
-        PlatformAdminScreen(onNavigateBack = { navController.popBackStack() })
+        PlatformAdminScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onNavigateToLocationCatalog = {
+                navController.navigate(NavRoutes.LOCATION_CATALOG_ADMIN)
+            },
+            onNavigateToMasterCatalog = {
+                navController.navigate(NavRoutes.MASTER_CATALOG_ADMIN)
+            },
+            onNavigateToImports = { navController.navigate(NavRoutes.ADMIN_VITACORA_IMPORTS) }
+        )
+    }
+    composable(NavRoutes.ADMIN_VITACORA_IMPORTS) {
+        AdminVitacoraImportQueueScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onNew = { navController.navigate(NavRoutes.ADMIN_VITACORA_IMPORT_NEW) }
+        )
+    }
+    composable(NavRoutes.ADMIN_VITACORA_IMPORT_NEW) {
+        AdminVitacoraImportNewScreen(onNavigateBack = { navController.popBackStack() })
+    }
+    composable(
+        route = NavRoutes.VITACORA_IMPORT,
+        arguments = listOf(
+            navArgument(NavRoutes.ARG_ORGANIZATION_ID) { type = NavType.StringType },
+            navArgument(NavRoutes.ARG_ORG_NAME) { type = NavType.StringType }
+        )
+    ) { entry ->
+        val orgId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_ORGANIZATION_ID).orEmpty(),
+            Charsets.UTF_8.name()
+        )
+        val orgName = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_ORG_NAME).orEmpty(),
+            Charsets.UTF_8.name()
+        )
+        VitacoraImportScreen(
+            orgId = orgId,
+            orgName = orgName,
+            isStaff = false,
+            onNavigateBack = { navController.popBackStack() },
+            onViewImported = { navController.navigate(NavRoutes.MY_PETS) }
+        )
+    }
+    composable(NavRoutes.VITACORA_IMPORT_RESCUER) {
+        VitacoraImportScreen(
+            orgId = "",
+            orgName = "Rescatista",
+            isStaff = false,
+            onNavigateBack = { navController.popBackStack() },
+            onViewImported = { navController.navigate(NavRoutes.MY_PETS) }
+        )
+    }
+    composable(NavRoutes.LOCATION_CATALOG_ADMIN) {
+        LocationCatalogAdminScreen(onNavigateBack = { navController.popBackStack() })
+    }
+    composable(NavRoutes.MASTER_CATALOG_ADMIN) {
+        MasterCatalogAdminScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onNavigateToLocations = { navController.navigate(NavRoutes.LOCATION_CATALOG_ADMIN) }
+        )
     }
     composable(
         route = NavRoutes.CHAT_START,

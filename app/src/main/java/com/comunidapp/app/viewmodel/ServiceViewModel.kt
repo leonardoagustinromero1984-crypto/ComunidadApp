@@ -3,8 +3,9 @@ package com.comunidapp.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.BookingStatus
+import com.comunidapp.app.domain.context.OperationalContext
+import com.comunidapp.app.domain.context.OperationalContextProvider
 import com.comunidapp.app.data.model.PaymentIntent
 import com.comunidapp.app.data.model.PaymentStatus
 import com.comunidapp.app.data.model.ServiceBooking
@@ -18,9 +19,15 @@ import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.ServiceRepository
+import com.comunidapp.app.data.repository.CanonicalServiceRepository
+import com.comunidapp.app.domain.canonical.CanonicalProviderWrite
+import com.comunidapp.app.domain.schedule.ProviderWeeklySchedule
+import com.comunidapp.app.domain.schedule.WeeklyHoursDay
+import com.comunidapp.app.domain.ux.CanonicalUiErrorMapper
 import com.comunidapp.app.data.model.NotificationType
 import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -32,14 +39,32 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
+enum class CommunityResultsView { LIST, MAP }
+
 data class ComunidadUiState(
-    val selectedCategory: ServiceCategory = ServiceCategory.VET,
+    val selectedCategory: ServiceCategory? = null,
     val isLoading: Boolean = false,
     val locationQuery: String = "",
-    val activeOnly: Boolean = false
+    val province: String = "",
+    val city: String = "",
+    val localityId: String? = null,
+    val selectedTag: String? = null,
+    val activeOnly: Boolean = false,
+    val nearMeEnabled: Boolean = false,
+    val deviceLat: Double? = null,
+    val deviceLng: Double? = null,
+    val resultsView: CommunityResultsView = CommunityResultsView.LIST,
+    val hasSearched: Boolean = false,
+    val resultsStale: Boolean = false,
+    val searchError: String? = null
 ) {
     val activeFilterCount: Int
-        get() = (if (locationQuery.isNotBlank()) 1 else 0) + (if (activeOnly) 1 else 0)
+        get() = listOf(
+            locationQuery.isNotBlank(),
+            selectedTag != null,
+            nearMeEnabled,
+            activeOnly
+        ).count { it }
 }
 
 data class ServiceDetailUiState(
@@ -62,8 +87,15 @@ data class MiNegocioUiState(
     val description: String = "",
     val contactInfo: String = "",
     val scheduleText: String = "",
+    val weeklyHours: List<WeeklyHoursDay> = emptyList(),
+    val pinLat: Double? = null,
+    val pinLng: Double? = null,
+    val geoIsPublicPremises: Boolean = false,
     val priceFrom: String = "",
     val acceptsBookings: Boolean = true,
+    val slotIntervalMinutes: Int = com.comunidapp.app.domain.schedule.AppointmentSlotPolicy.DEFAULT_INTERVAL_MINUTES,
+    val missingRequirements: com.comunidapp.app.domain.validation.ValidationSummary =
+        com.comunidapp.app.domain.validation.ValidationSummary(items = emptyList()),
     val isSaving: Boolean = false,
     val message: String? = null,
     val productName: String = "",
@@ -74,40 +106,160 @@ data class MiNegocioUiState(
 
 @OptIn(ExperimentalCoroutinesApi::class)
 class ComunidadViewModel(
-    private val serviceRepository: ServiceRepository = DataProvider.serviceRepository
+    private val serviceRepository: ServiceRepository = DataProvider.serviceRepository,
+    private val authRepository: AuthRepository = AuthProvider.repository,
+    private val userRepository: com.comunidapp.app.data.repository.UserRepository =
+        DataProvider.userRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ComunidadUiState())
     val uiState: StateFlow<ComunidadUiState> = _uiState.asStateFlow()
+    private var searchJob: Job? = null
+    private var searchGeneration: Int = 0
 
     val services: StateFlow<List<ServiceProfile>> = _uiState
-        .flatMapLatest { state -> serviceRepository.observeServices(state.selectedCategory) }
+        .flatMapLatest { state ->
+            val category = state.selectedCategory
+            if (!state.hasSearched || category == null) flowOf(emptyList())
+            else serviceRepository.observeServices(category)
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    init {
-        viewModelScope.launch {
-            services.collect {
-                _uiState.update { state -> state.copy(isLoading = false) }
+    fun selectCategory(category: ServiceCategory) {
+        _uiState.update { state ->
+            if (state.selectedCategory == category) {
+                state.copy(selectedCategory = null, selectedTag = null, isLoading = false)
+            } else {
+                state.copy(
+                    selectedCategory = category,
+                    selectedTag = null,
+                    isLoading = false,
+                    resultsStale = state.hasSearched
+                )
             }
         }
     }
 
-    fun selectCategory(category: ServiceCategory) {
-        if (_uiState.value.selectedCategory == category) return
-        _uiState.update { it.copy(selectedCategory = category, isLoading = true) }
+    fun search() {
+        val category = _uiState.value.selectedCategory ?: return
+        searchJob?.cancel()
+        val generation = ++searchGeneration
+        searchJob = viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, searchError = null) }
+            try {
+                runCatching {
+                    serviceRepository.refreshDirectory(
+                        nearLat = _uiState.value.deviceLat.takeIf { _uiState.value.nearMeEnabled },
+                        nearLng = _uiState.value.deviceLng.takeIf { _uiState.value.nearMeEnabled }
+                    )
+                }
+                    .onFailure { error ->
+                        if (generation == searchGeneration) {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    hasSearched = true,
+                                    resultsStale = false,
+                                    searchError = error.message ?: "No pudimos buscar ahora. Intentá de nuevo."
+                                )
+                            }
+                        }
+                        return@launch
+                    }
+                if (generation == searchGeneration) {
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            hasSearched = true,
+                            resultsStale = false,
+                            searchError = null,
+                            selectedCategory = category
+                        )
+                    }
+                }
+            } finally {
+                if (generation == searchGeneration && _uiState.value.isLoading) {
+                    _uiState.update { it.copy(isLoading = false, hasSearched = true, resultsStale = false) }
+                }
+            }
+        }
     }
 
     fun applyFilters(locationQuery: String, activeOnly: Boolean) {
         _uiState.update {
             it.copy(
                 locationQuery = locationQuery.trim(),
-                activeOnly = activeOnly
+                activeOnly = activeOnly,
+                nearMeEnabled = false,
+                resultsStale = it.hasSearched
             )
         }
     }
 
+    fun applyGeography(province: String, city: String, localityId: String?) {
+        val query = listOf(city.trim(), province.trim()).filter { it.isNotBlank() }.joinToString(", ")
+        _uiState.update {
+            it.copy(
+                province = province.trim(),
+                city = city.trim(),
+                localityId = localityId,
+                locationQuery = query,
+                nearMeEnabled = false,
+                resultsStale = it.hasSearched
+            )
+        }
+    }
+
+    fun selectTag(tag: String?) {
+        _uiState.update { it.copy(selectedTag = tag, resultsStale = it.hasSearched) }
+    }
+
+    fun setResultsView(view: CommunityResultsView) {
+        _uiState.update { it.copy(resultsView = view) }
+    }
+
+    fun enableNearMe(lat: Double, lng: Double) {
+        _uiState.update {
+            it.copy(
+                nearMeEnabled = true,
+                deviceLat = lat,
+                deviceLng = lng,
+                locationQuery = "",
+                resultsStale = it.hasSearched
+            )
+        }
+    }
+
+    fun disableNearMe() {
+        _uiState.update {
+            it.copy(
+                nearMeEnabled = false,
+                deviceLat = null,
+                deviceLng = null,
+                resultsStale = it.hasSearched
+            )
+        }
+    }
+
+    fun toggleNearMe() {
+        if (_uiState.value.nearMeEnabled) disableNearMe()
+    }
+
     fun clearFilters() {
-        _uiState.update { it.copy(locationQuery = "", activeOnly = false) }
+        _uiState.update {
+            it.copy(
+                locationQuery = "",
+                province = "",
+                city = "",
+                localityId = null,
+                selectedTag = null,
+                activeOnly = false,
+                nearMeEnabled = false,
+                deviceLat = null,
+                deviceLng = null,
+                resultsStale = it.hasSearched
+            )
+        }
     }
 }
 
@@ -271,22 +423,36 @@ class MiNegocioViewModel(
         viewModelScope.launch {
             currentUser.collect { user ->
                 if (user == null) return@collect
-                val existing = serviceRepository.fetchMyServiceProfile(user.id)
-                val category = ServiceCategory.fromAccountType(user.accountType)
-                _uiState.update {
-                    it.copy(
-                        profile = existing,
-                        name = existing?.name ?: user.name,
-                        location = existing?.location ?: user.locationText.orEmpty(),
-                        description = existing?.description ?: user.bio.orEmpty(),
-                        contactInfo = existing?.contactInfo.orEmpty(),
-                        scheduleText = existing?.scheduleText.orEmpty(),
-                        priceFrom = existing?.priceFrom?.toInt()?.toString().orEmpty(),
-                        acceptsBookings = existing?.acceptsBookings
-                            ?: (category != null && category != ServiceCategory.SHOP)
-                    )
-                }
+                reloadIsolatedProfile(user.id)
             }
+        }
+        viewModelScope.launch {
+            OperationalContextProvider.active.collect {
+                val user = authRepository.getCurrentUser() ?: return@collect
+                reloadIsolatedProfile(user.id)
+            }
+        }
+    }
+
+    private suspend fun reloadIsolatedProfile(userId: String) {
+        val existing = serviceRepository.fetchMyServiceProfile(userId)
+        _uiState.update {
+            it.copy(
+                profile = existing,
+                name = existing?.name.orEmpty(),
+                location = existing?.location.orEmpty(),
+                description = existing?.description.orEmpty(),
+                contactInfo = existing?.contactInfo.orEmpty(),
+                scheduleText = "",
+                weeklyHours = existing?.weeklyHours.orEmpty(),
+                pinLat = existing?.latitude,
+                pinLng = existing?.longitude,
+                geoIsPublicPremises = existing?.geoIsPublicPremises == true,
+                priceFrom = existing?.priceFrom?.takeIf { it.isFinite() }?.toInt()?.toString().orEmpty(),
+                acceptsBookings = existing?.acceptsBookings == true,
+                slotIntervalMinutes = existing?.slotIntervalMinutes
+                    ?: com.comunidapp.app.domain.schedule.AppointmentSlotPolicy.DEFAULT_INTERVAL_MINUTES
+            )
         }
     }
 
@@ -295,8 +461,12 @@ class MiNegocioViewModel(
     fun updateDescription(v: String) = _uiState.update { it.copy(description = v) }
     fun updateContact(v: String) = _uiState.update { it.copy(contactInfo = v) }
     fun updateSchedule(v: String) = _uiState.update { it.copy(scheduleText = v) }
+    fun updateWeeklyHours(days: List<WeeklyHoursDay>) = _uiState.update { it.copy(weeklyHours = days) }
+    fun updateMapPin(lat: Double, lng: Double, publicPremises: Boolean) =
+        _uiState.update { it.copy(pinLat = lat, pinLng = lng, geoIsPublicPremises = publicPremises) }
     fun updatePrice(v: String) = _uiState.update { it.copy(priceFrom = v) }
     fun updateAcceptsBookings(v: Boolean) = _uiState.update { it.copy(acceptsBookings = v) }
+    fun updateSlotInterval(minutes: Int) = _uiState.update { it.copy(slotIntervalMinutes = minutes) }
     fun updateProductName(v: String) = _uiState.update { it.copy(productName = v) }
     fun updateProductPrice(v: String) = _uiState.update { it.copy(productPrice = v) }
     fun updateProductStock(v: String) = _uiState.update { it.copy(productStock = v) }
@@ -304,7 +474,7 @@ class MiNegocioViewModel(
 
     fun addProduct() {
         val user = authRepository.getCurrentUser() ?: return
-        if (user.accountType != AccountType.SHOP) return
+        if (OperationalContextProvider.active.value !is OperationalContext.Shop) return
         val state = _uiState.value
         if (state.productName.isBlank()) {
             _uiState.update { it.copy(message = "Indicá el nombre del producto") }
@@ -349,14 +519,23 @@ class MiNegocioViewModel(
     }
 
     fun saveProfile() {
+        check(!com.comunidapp.app.domain.qa.ProfilePublishAuthPolicy.TRIGGERS_OAUTH)
         val user = authRepository.getCurrentUser() ?: return
-        val category = ServiceCategory.fromAccountType(user.accountType) ?: run {
-            _uiState.update { it.copy(message = "Tu tipo de cuenta no es un negocio") }
+        val category = serviceCategoryFromActiveContext() ?: run {
+            _uiState.update { it.copy(message = CanonicalProviderWrite.INCOMPLETE_SETUP_MESSAGE) }
             return
         }
         val state = _uiState.value
-        if (state.name.isBlank() || state.location.isBlank()) {
-            _uiState.update { it.copy(message = "Completá nombre y ubicación") }
+        val missing = com.comunidapp.app.domain.validation.ProviderPublishRequirements.summary(
+            name = state.name,
+            location = state.location,
+            phone = state.contactInfo,
+            hours = state.weeklyHours,
+            acceptsBookings = state.acceptsBookings,
+            slotIntervalMinutes = state.slotIntervalMinutes
+        )
+        if (!missing.isEmpty) {
+            _uiState.update { it.copy(missingRequirements = missing, message = missing.message()) }
             return
         }
         viewModelScope.launch {
@@ -371,12 +550,32 @@ class MiNegocioViewModel(
                 contactInfo = state.contactInfo.trim().ifBlank { null },
                 photoUrl = user.profileImageUrl ?: state.profile?.photoUrl,
                 tags = state.profile?.tags.orEmpty(),
-                scheduleText = state.scheduleText.trim().ifBlank { null },
+                scheduleText = null,
+                weeklyHours = state.weeklyHours,
+                latitude = state.pinLat,
+                longitude = state.pinLng,
+                geoIsPublicPremises = state.geoIsPublicPremises,
                 priceFrom = state.priceFrom.toDoubleOrNull(),
                 acceptsBookings = state.acceptsBookings,
+                slotIntervalMinutes = state.slotIntervalMinutes,
                 active = true
             )
             val result = serviceRepository.upsertServiceProfile(profile)
+            result.onSuccess { id ->
+                val canonical = serviceRepository as? CanonicalServiceRepository
+                if (canonical != null) {
+                    val hours = state.weeklyHours.ifEmpty { ProviderWeeklySchedule.emptyTemplate().days }
+                    runCatching { canonical.saveWeeklyHours(id, hours) }
+                    val lat = state.pinLat
+                    val lng = state.pinLng
+                    if (lat != null && lng != null) {
+                        runCatching {
+                            canonical.savePublicGeo(id, lat, lng, state.geoIsPublicPremises, state.location)
+                        }
+                    }
+                    runCatching { canonical.refreshDirectory() }
+                }
+            }
             _uiState.update {
                 it.copy(
                     isSaving = false,
@@ -387,7 +586,12 @@ class MiNegocioViewModel(
                     },
                     message = result.fold(
                         onSuccess = { "Ficha publicada en Comunidad" },
-                        onFailure = { e -> e.message ?: "No se pudo guardar" }
+                        onFailure = { e ->
+                            CanonicalUiErrorMapper.userMessage(
+                                e,
+                                CanonicalProviderWrite.INCOMPLETE_SETUP_MESSAGE
+                            )
+                        }
                     )
                 )
             }
@@ -413,4 +617,7 @@ class MiNegocioViewModel(
             }
         }
     }
+
+    private fun serviceCategoryFromActiveContext(): ServiceCategory? =
+        CanonicalProviderWrite.categoryFromContext(OperationalContextProvider.active.value)
 }

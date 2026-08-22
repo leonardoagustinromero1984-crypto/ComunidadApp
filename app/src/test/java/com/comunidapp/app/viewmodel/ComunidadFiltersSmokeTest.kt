@@ -23,8 +23,8 @@ class ComunidadFiltersSmokeTest {
     }
 
     @Test
-    fun defaultCategory_isDeterministicVet() {
-        assertEquals(ServiceCategory.VET, ComunidadUiState().selectedCategory)
+    fun defaultCategory_isUnsetUntilUserSelectsService() {
+        assertEquals(null, ComunidadUiState().selectedCategory)
         assertFalse(ComunidadUiState().isLoading)
     }
 

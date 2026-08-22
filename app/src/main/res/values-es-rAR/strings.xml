@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="music_search">Buscar música</string>
+    <string name="music_for_you">Para vos</string>
+    <string name="share_send_leover">Enviar por LeoVer</string>
+    <string name="story_expired">Esta historia ya no está disponible</string>
+    <string name="geo_country">País</string>
+</resources>

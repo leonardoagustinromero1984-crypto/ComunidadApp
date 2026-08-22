@@ -35,13 +35,25 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.model.FosterAvailabilityStatus
 import com.comunidapp.app.data.model.FosterHomeRequestStatus
 import com.comunidapp.app.data.model.FosterHomeStatus
+import com.comunidapp.app.data.model.FosterPlacementStatus
 import com.comunidapp.app.data.model.FosterUrgency
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
+import com.comunidapp.app.ui.components.v2.V2LocationCityProvincePicker
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.FosterDetailUiState
 import com.comunidapp.app.viewmodel.FosterHomeDetailViewModel
 import com.comunidapp.app.viewmodel.FosterHomeFormViewModel
@@ -68,8 +80,9 @@ fun FosterHomesScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Hogares de tránsito",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -111,7 +124,7 @@ fun FosterHomesScreen(
                                 .padding(12.dp)
                         ) {
                             Text(home.displayName, fontWeight = FontWeight.Bold)
-                            Text("${home.zoneText} · ${home.availabilityStatus.name} · libres ${home.freeSlots}")
+                            Text("${home.zoneText} · ${home.freeSlots} lugares libres")
                             Text(
                                 home.acceptedSpecies.joinToString() + " · " +
                                     home.acceptedSizes.joinToString()
@@ -129,14 +142,18 @@ fun MyFosterHomeScreen(
     onNavigateBack: () -> Unit,
     onCreate: () -> Unit,
     onEdit: (String) -> Unit,
+    onPlacements: () -> Unit = {},
+    onRequests: () -> Unit = {},
+    onNewPlacement: () -> Unit = {},
     viewModel: MyFosterHomeViewModel = viewModel(factory = MyFosterHomeViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
     val error by viewModel.actionError.collectAsState()
     val submitting by viewModel.submitting.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Mi hogar de tránsito",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -156,27 +173,54 @@ fun MyFosterHomeScreen(
                 is MyFosterHomeUiState.Error -> ErrorState(message = s.message)
                 is MyFosterHomeUiState.Content -> {
                     val h = s.home
-                    Text(h.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-                    Text("Estado: ${h.status.name} · ${h.availabilityStatus.name}")
-                    Text("Capacidad: ${h.totalCapacity} · Ocupación: ${h.currentOccupancy} · Reservas: ${h.reservedCount}")
-                    Text("Zona: ${h.zoneText}")
-                    h.privateAddressText?.let { Text("Dirección (privada): $it") }
+                    Text("Hogar de tránsito", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                    Text("Alojamientos temporales de mascotas que están a tu cuidado.")
+                    Text(
+                        if (h.status == FosterHomeStatus.ACTIVE) {
+                            "Hogar de tránsito activo"
+                        } else {
+                            "Hogar de tránsito pausado"
+                        }
+                    )
+                    Text(
+                        if (h.availabilityStatus == FosterAvailabilityStatus.AVAILABLE ||
+                            h.availabilityStatus == FosterAvailabilityStatus.LIMITED
+                        ) {
+                            "Disponible para recibir tránsitos"
+                        } else {
+                            "No disponible por ahora"
+                        }
+                    )
+                    Text("Capacidad: ${h.totalCapacity} mascotas")
+                    if (h.zoneText.isNotBlank()) Text("Zona: ${com.comunidapp.app.domain.ux.HumanLocationLabel.visible(h.zoneText)}")
                     Spacer(Modifier.height(12.dp))
+                    Button(onClick = onPlacements, modifier = Modifier.fillMaxWidth()) {
+                        Text("Tránsitos")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    Button(onClick = onNewPlacement, modifier = Modifier.fillMaxWidth()) {
+                        Text("+ Nuevo tránsito")
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    OutlinedButton(onClick = onRequests, modifier = Modifier.fillMaxWidth()) {
+                        Text("Solicitudes")
+                    }
+                    Spacer(Modifier.height(8.dp))
                     OutlinedButton(onClick = { onEdit(h.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Editar")
+                        Text("Editar disponibilidad")
                     }
                     if (h.status != FosterHomeStatus.ACTIVE) {
                         Button(
                             onClick = { viewModel.activate(h.id) },
                             enabled = !submitting,
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("Activar") }
+                        ) { Text("Activar disponibilidad") }
                     } else {
                         OutlinedButton(
                             onClick = { viewModel.pause(h.id) },
                             enabled = !submitting,
                             modifier = Modifier.fillMaxWidth()
-                        ) { Text("Pausar") }
+                        ) { Text("Pausar disponibilidad") }
                     }
                 }
             }
@@ -199,9 +243,10 @@ fun FosterHomeFormScreen(
         viewModel.saved.collect { onSaved() }
     }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
-                title = if (editHomeId == null) "Nuevo hogar" else "Editar hogar",
+            LeoTopAppBar(
+                title = if (editHomeId == null) "Hogar de tránsito" else "Editar hogar de tránsito",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -214,76 +259,27 @@ fun FosterHomeFormScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            OutlinedTextField(
-                form.displayName,
-                { v -> viewModel.update { it.copy(displayName = v) } },
-                label = { Text("Nombre público") },
-                modifier = Modifier.fillMaxWidth()
+            Text(
+                "Este es un perfil personal. No es una organización.",
+                style = MaterialTheme.typography.bodySmall
             )
-            OutlinedTextField(
-                form.description,
-                { v -> viewModel.update { it.copy(description = v) } },
-                label = { Text("Descripción") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                form.zoneText,
-                { v -> viewModel.update { it.copy(zoneText = v) } },
-                label = { Text("Zona (localidad / área)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                form.publicLocationText,
-                { v -> viewModel.update { it.copy(publicLocationText = v) } },
-                label = { Text("Ubicación pública aproximada") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                form.privateAddressText,
-                { v -> viewModel.update { it.copy(privateAddressText = v) } },
-                label = { Text("Dirección privada (no pública)") },
-                modifier = Modifier.fillMaxWidth()
+            V2LocationCityProvincePicker(
+                city = form.publicLocationText,
+                province = form.zoneText,
+                onCityChange = { v -> viewModel.update { it.copy(publicLocationText = v) } },
+                onProvinceChange = { v -> viewModel.update { it.copy(zoneText = v) } },
+                onLocalityIdChange = { id -> viewModel.update { it.copy(localityId = id) } }
             )
             OutlinedTextField(
                 form.capacity,
                 { v -> viewModel.update { it.copy(capacity = v) } },
-                label = { Text("Capacidad total") },
+                label = { Text("Capacidad") },
                 modifier = Modifier.fillMaxWidth()
             )
-            Text("Especies", fontWeight = FontWeight.SemiBold)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(form.speciesDog, { c -> viewModel.update { it.copy(speciesDog = c) } })
-                Text("Perro")
-                Checkbox(form.speciesCat, { c -> viewModel.update { it.copy(speciesCat = c) } })
-                Text("Gato")
-            }
-            Text("Tamaños", fontWeight = FontWeight.SemiBold)
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(form.sizeS, { c -> viewModel.update { it.copy(sizeS = c) } })
-                Text("S")
-                Checkbox(form.sizeM, { c -> viewModel.update { it.copy(sizeM = c) } })
-                Text("M")
-                Checkbox(form.sizeL, { c -> viewModel.update { it.copy(sizeL = c) } })
-                Text("L")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    form.acceptsSpecialNeeds,
-                    { c -> viewModel.update { it.copy(acceptsSpecialNeeds = c) } }
-                )
-                Text("Necesidades especiales")
-            }
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(
-                    form.acceptsEmergencies,
-                    { c -> viewModel.update { it.copy(acceptsEmergencies = c) } }
-                )
-                Text("Urgencias")
-            }
             if (editHomeId == null) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Checkbox(form.activate, { c -> viewModel.update { it.copy(activate = c) } })
-                    Text("Activar al guardar")
+                    Text("Disponible para tránsito")
                 }
             }
             form.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
@@ -306,8 +302,9 @@ fun FosterHomeDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Hogar de tránsito", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Hogar de tránsito", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -321,7 +318,7 @@ fun FosterHomeDetailScreen(
                 Text(h.displayName, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
                 Text(h.zoneText)
                 h.publicLocationText?.let { Text(it) }
-                Text("${h.availabilityStatus.name} · libres ${h.freeSlots}/${h.totalCapacity}")
+                Text("${h.freeSlots} lugares libres de ${h.totalCapacity}")
                 Text("Especies: ${h.acceptedSpecies.joinToString()}")
                 Text("Tamaños: ${h.acceptedSizes.joinToString()}")
                 if (h.acceptsEmergencies) Text("Acepta urgencias")
@@ -348,8 +345,9 @@ fun FosterRequestFormScreen(
         if (form.submitted) onSubmitted()
     }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Solicitar tránsito", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Solicitar tránsito", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -417,6 +415,7 @@ fun FosterRequestsScreen(
     received: Boolean,
     onNavigateBack: () -> Unit,
     onRequestClick: (String) -> Unit,
+    showBackButton: Boolean = true,
     viewModel: FosterRequestsListViewModel = viewModel(
         factory = FosterRequestsListViewModel.factory(received)
     )
@@ -457,8 +456,13 @@ fun FosterRequestsScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = title, showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(
+                title = title,
+                showBackButton = showBackButton,
+                onBackClick = onNavigateBack
+            )
         }
     ) { padding ->
         when {
@@ -472,21 +476,17 @@ fun FosterRequestsScreen(
                 contentModifier = Modifier.padding(padding)
             )
             else -> LazyColumn(
-                Modifier.padding(padding).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                Modifier.padding(padding).padding(LeoDimens.SpaceMd),
+                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
             ) {
                 items(requests, key = { it.id }) { req ->
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onRequestClick(req.id) }
-                            .padding(8.dp)
-                    ) {
+                    V2SurfaceCard(onClick = { onRequestClick(req.id) }) {
                         Text(
                             "${req.petName ?: req.petId} · ${req.urgency.name} · ${req.status.name}",
-                            fontWeight = FontWeight.SemiBold
+                            style = LeoCardTitle,
+                            color = BrandText
                         )
-                        Text(req.message, style = MaterialTheme.typography.bodySmall)
+                        Text(req.message, style = LeoCaption, color = BrandTextSecondary)
                         if (received) {
                             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                                 if (req.status == FosterHomeRequestStatus.SUBMITTED) {
@@ -543,8 +543,9 @@ fun FosterRequestDetailScreen(
         viewModel.placementStarted.collect { onPlacementStarted(it) }
     }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Solicitud", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Solicitud", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {
@@ -584,35 +585,58 @@ fun FosterRequestDetailScreen(
 fun FosterPlacementsScreen(
     onNavigateBack: () -> Unit,
     onPlacementClick: (String) -> Unit,
+    showBackButton: Boolean = true,
+    onNewPlacement: () -> Unit = {},
     viewModel: FosterPlacementsViewModel = viewModel(factory = FosterPlacementsViewModel.factory())
 ) {
     val placements by viewModel.placements.collectAsState()
+    val active = placements.filter { it.status == FosterPlacementStatus.ACTIVE || it.status == FosterPlacementStatus.RESERVED }
+    val previous = placements.filter { it.status == FosterPlacementStatus.COMPLETED || it.status == FosterPlacementStatus.CANCELLED }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Alojamientos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(
+                title = "Hogar de tránsito",
+                subtitle = "Tránsitos temporales a tu cargo.",
+                showBackButton = showBackButton,
+                onBackClick = onNavigateBack
+            )
         }
     ) { padding ->
-        if (placements.isEmpty()) {
-            EmptyState(
-                title = "Sin alojamientos activos.",
-                contentModifier = Modifier.padding(padding)
-            )
-        } else {
-            LazyColumn(
-                Modifier.padding(padding).padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                items(placements, key = { it.id }) { p ->
-                    Column(
-                        Modifier
-                            .fillMaxWidth()
-                            .clickable { onPlacementClick(p.id) }
-                            .padding(8.dp)
-                    ) {
-                        Text(
-                            "${p.petName ?: p.petId} · ${p.status.name}",
-                            fontWeight = FontWeight.SemiBold
-                        )
+        LazyColumn(
+            Modifier.padding(padding).padding(LeoDimens.SpaceMd),
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
+        ) {
+            item {
+                Button(onClick = onNewPlacement, modifier = Modifier.fillMaxWidth()) {
+                    Text("+ Nuevo tránsito")
+                }
+            }
+            if (placements.isEmpty()) {
+                item {
+                    EmptyState(title = "Todavía no tenés tránsitos activos.")
+                }
+            } else {
+                if (active.isNotEmpty()) {
+                    item { Text("Activos", style = LeoCardTitle, color = BrandText) }
+                    items(active, key = { it.id }) { p ->
+                        V2SurfaceCard(onClick = { onPlacementClick(p.id) }) {
+                            Text(p.petName ?: "Mascota", style = LeoCardTitle, color = BrandText)
+                            Text(if (p.status == FosterPlacementStatus.ACTIVE) "Activo" else "Reservado")
+                            Text(
+                                if (p.vitacoraAccessGranted == true) "VitaCora ✓ Acceso habilitado"
+                                else "VitaCora Acceso pendiente"
+                            )
+                        }
+                    }
+                }
+                if (previous.isNotEmpty()) {
+                    item { Text("Anteriores", style = LeoCardTitle, color = BrandText) }
+                    items(previous, key = { it.id }) { p ->
+                        V2SurfaceCard(onClick = { onPlacementClick(p.id) }) {
+                            Text(p.petName ?: "Mascota", style = LeoCardTitle, color = BrandText)
+                            Text("Anterior")
+                        }
                     }
                 }
             }
@@ -629,8 +653,9 @@ fun FosterPlacementDetailScreen(
     val loading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Alojamiento", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Alojamiento", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {
@@ -648,6 +673,10 @@ fun FosterPlacementDetailScreen(
                 Column(Modifier.padding(padding).padding(16.dp)) {
                     Text("Estado: ${p.status.name}")
                     Text("Mascota: ${p.petName ?: p.petId}")
+                    Text(
+                        if (p.vitacoraAccessGranted == true) "VitaCora ✓ Acceso habilitado"
+                        else "VitaCora Acceso pendiente"
+                    )
                     Text("Hogar: ${p.fosterHomeId}")
                     Text("Cuidador temporal: ${p.fosterUserId}")
                     p.temporaryResponsibilityId?.let {

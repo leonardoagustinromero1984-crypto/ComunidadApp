@@ -1,28 +1,27 @@
-<h2 style="font-family: sans-serif; color: #1a1a1a;">Bienvenido a LeoVer</h2>
-
-<p style="font-family: sans-serif; color: #333;">Hola{{ if .Data.name }}, {{ .Data.name }}{{ end }}.</p>
+<h2 style="font-family: sans-serif; color: #1a1a1a;">LeoVer</h2>
+<h3 style="font-family: sans-serif; color: #1a1a1a;">Confirmá tu correo</h3>
 
 <p style="font-family: sans-serif; color: #333;">
-  Gracias por registrarte en <strong>LeoVer</strong>, la comunidad animal de tu zona.
-</p>
-
-<p style="font-family: sans-serif; color: #333; font-weight: bold;">
-  Tu código de confirmación es:
+  Tu código de verificación es:
 </p>
 <p style="font-family: monospace; font-size: 32px; letter-spacing: 8px; font-weight: bold; margin: 16px 0; color: #e65100;">
   {{ .Token }}
 </p>
-
 <p style="font-family: sans-serif; color: #333;">
-  Abrí la app LeoVer → pantalla <em>Confirmar email</em> → ingresá el código → tocá
-  <strong>Confirmar con código</strong>.
+  This code is for confirming your LeoVer account.
 </p>
-
+<p style="font-family: sans-serif; color: #333;">
+  Abrí LeoVer → pantalla <em>Verificá tu correo</em> → ingresá el código → tocá <strong>Verificar</strong>.
+</p>
+<p style="font-family: sans-serif; margin: 24px 0;">
+  <a href="{{ .ConfirmationURL }}" style="display: inline-block; background: #e65100; color: #ffffff; text-decoration: none; font-family: sans-serif; font-weight: bold; padding: 12px 20px; border-radius: 8px;">
+    Confirmar correo en LeoVer
+  </a>
+</p>
 <p style="font-family: sans-serif; color: #666; font-size: 13px; margin-top: 32px;">
   Si no creaste una cuenta en LeoVer, ignorá este mensaje.<br>
-  El código expira en unos minutos.
+  El código y el enlace vencen en unos minutos.
 </p>
-
 <p style="font-family: sans-serif; color: #999; font-size: 12px; margin-top: 24px;">
   — El equipo de LeoVer
 </p>

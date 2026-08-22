@@ -42,6 +42,7 @@ class OrganizationInvitationRulesTest {
                 organizationId = orgId,
                 invitedRole = OrganizationRoleCode.MEMBER,
                 invitedByUserId = "owner",
+                targetUserId = "u2",
                 expiresAtEpochMs = now - 1,
                 token = token
             )
@@ -86,6 +87,7 @@ class OrganizationInvitationRulesTest {
                 organizationId = orgId,
                 invitedRole = OrganizationRoleCode.VIEWER,
                 invitedByUserId = "owner",
+                targetUserId = "anyone",
                 expiresAtEpochMs = expires,
                 token = token
             )
@@ -102,6 +104,7 @@ class OrganizationInvitationRulesTest {
                 organizationId = orgId,
                 invitedRole = OrganizationRoleCode.MEMBER,
                 invitedByUserId = "owner",
+                targetUserId = "u9",
                 expiresAtEpochMs = expires,
                 token = token
             )

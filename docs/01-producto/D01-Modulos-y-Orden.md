@@ -1,6 +1,6 @@
 # LEOVER — D01 Mapa de Módulos y Orden de Desarrollo
 
-> **SUPERSEDIDO PARA PLANIFICACIÓN NUEVA.** Consultar [`D01-Modulos-y-Orden-v1.2.md`](D01-Modulos-y-Orden-v1.2.md). Se conserva por trazabilidad histórica.
+> **SUPERSEDIDO PARA PLANIFICACIÓN NUEVA.** Consultar [`D01-Modulos-y-Orden-v1.3.md`](D01-Modulos-y-Orden-v1.3.md). Se conserva por trazabilidad histórica.
 
 **Versión:** 1.0  
 **Fuente superior:** Documento Maestro Integral de Leover v1.0  

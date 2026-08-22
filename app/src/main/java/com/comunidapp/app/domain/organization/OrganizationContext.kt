@@ -62,13 +62,28 @@ object OrganizationContextProvider {
             userRepository.getUser(authUser.id)?.accountStatus ?: authUser.accountStatus
         )
         val org = organizationRepository.getById(organizationId)
-        val membership = membershipRepository.getActiveMembership(organizationId, authUser.id)
-        if (org == null || membership == null) {
+        if (org == null) {
             selectPersonal()
             _state.update {
                 it.copy(
                     isLoading = false,
                     errorMessage = "Ya no tenés acceso a esta organización"
+                )
+            }
+            return
+        }
+        val membership = membershipRepository.getActiveMembership(organizationId, authUser.id)
+        if (membership == null) {
+            _state.update {
+                OrganizationContextState(
+                    mode = OrganizationContextMode.ORGANIZATION,
+                    organizationId = organizationId,
+                    organizationName = org.publicName,
+                    organizationSlug = org.slug.value,
+                    role = null,
+                    permissions = emptySet(),
+                    isLoading = false,
+                    errorMessage = null
                 )
             }
             return

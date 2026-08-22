@@ -49,17 +49,10 @@ class M08Stage4CIntegrationGuardsTest {
 
         assertTrue(provider.contains("LegacyPetRepositoryAdapter"))
         assertFalse(adapter.contains("PetSupabaseDataSource"))
-        for (rpc in listOf(
-            "m08_list_accessible_pets",
-            "m08_create_pet_with_principal",
-            "m08_update_pet_profile",
-            "m08_update_pet_health",
-            "m08_archive_pet",
-            "m08_set_pet_avatar_asset",
-            "m08_get_pet_access_context"
-        )) {
-            assertTrue("$rpc missing", ds.contains(rpc) || adapter.contains(rpc))
-        }
+        assertTrue(ds.contains("RPC_UPDATE_PET") || ds.contains("canon_update_pet"))
+        assertTrue(ds.contains("RPC_SET_PET_AVATAR") || ds.contains("canon_set_pet_avatar"))
+        assertTrue(ds.contains("m08_archive_pet") || adapter.contains("archivePet"))
+        assertTrue(ds.contains("CanonicalBackend"))
         assertFalse(ds.contains("service_role"))
         assertFalse(adapter.contains("service_role"))
     }

@@ -13,4 +13,10 @@ describe("getLoginRedirectPath", () => {
     expect(getLoginRedirectPath("//evil.example")).toBe("/cuenta");
     expect(getLoginRedirectPath(null)).toBe("/cuenta");
   });
+
+  it("rejects null-like destinations", () => {
+    expect(getLoginRedirectPath("null")).toBe("/cuenta");
+    expect(getLoginRedirectPath("anull")).toBe("/cuenta");
+    expect(getLoginRedirectPath("undefined")).toBe("/cuenta");
+  });
 });

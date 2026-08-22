@@ -113,7 +113,7 @@ class M14SetPublicRedactedTest {
 
         assertEquals(M14Visibility.PUBLIC_REDACTED, capturedInput?.visibility)
         assertEquals(M14Visibility.PUBLIC_REDACTED, vm.passport.value?.visibility)
-        assertEquals("Pasaporte visible en modo público resumido", vm.message.value)
+        assertEquals("VitaCora visible en modo público resumido", vm.message.value)
         assertFalse(vm.messageIsError.value)
     }
 

@@ -14,14 +14,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.comunidapp.app.domain.auth.LegalDocumentConfig
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.VisualDirectionPilot
+import com.comunidapp.app.ui.theme.leoVisual
+import com.comunidapp.app.ui.theme.BrandText
 
 @Composable
 fun TermsDraftScreen(onNavigateBack: () -> Unit) {
     LegalDraftScreen(
         title = "Términos",
         version = LegalDocumentConfig.terms.version,
-        draftLabel = LegalDocumentConfig.terms.draftLabel,
         body = TERMS_DRAFT_BODY,
         onNavigateBack = onNavigateBack
     )
@@ -32,7 +34,6 @@ fun PrivacyDraftScreen(onNavigateBack: () -> Unit) {
     LegalDraftScreen(
         title = "Privacidad",
         version = LegalDocumentConfig.privacy.version,
-        draftLabel = LegalDocumentConfig.privacy.draftLabel,
         body = PRIVACY_DRAFT_BODY,
         onNavigateBack = onNavigateBack
     )
@@ -42,19 +43,21 @@ fun PrivacyDraftScreen(onNavigateBack: () -> Unit) {
 private fun LegalDraftScreen(
     title: String,
     version: String,
-    draftLabel: String?,
     body: String,
     onNavigateBack: () -> Unit
 ) {
+    VisualDirectionPilot {
+    val visual = leoVisual()
     Scaffold(
+        containerColor = visual.background,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = title,
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
         }
-    ) { padding ->
+        ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -63,9 +66,9 @@ private fun LegalDraftScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                text = draftLabel ?: "BORRADOR — NO PUBLICABLE",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.error
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                color = BrandText
             )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
@@ -75,25 +78,19 @@ private fun LegalDraftScreen(
             Spacer(modifier = Modifier.height(16.dp))
             Text(
                 text = body,
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(
-                text = "La revisión legal formal es requisito de lanzamiento, no de compilación debug.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = MaterialTheme.typography.bodyMedium,
+                color = BrandText
             )
         }
+    }
     }
 }
 
 private const val TERMS_DRAFT_BODY =
-    "Este documento es un BORRADOR interno de Términos de uso de Leover. " +
-        "No constituye texto jurídico definitivo ni está publicado en un dominio externo. " +
-        "Al continuar en debug aceptás usar la app en modo de desarrollo según esta versión de borrador."
+    "Estos Términos describen el uso de LeoVer. Al continuar aceptás las condiciones " +
+        "de esta versión. El texto jurídico definitivo se publica con cada release."
 
 private const val PRIVACY_DRAFT_BODY =
-    "Este documento es un BORRADOR interno de Política de privacidad de Leover. " +
-        "No inventa URLs públicas ni compromete un tratamiento legal final. " +
-        "Describe de forma provisional que los datos de cuenta se procesan vía Supabase Auth/Postgres " +
-        "según la configuración del proyecto. Revisión legal requerida antes de release."
+    "Esta Política de privacidad describe cómo LeoVer trata los datos de cuenta. " +
+        "La autenticación y el almacenamiento se procesan vía Supabase Auth y Postgres " +
+        "según la configuración del proyecto."

@@ -6,7 +6,9 @@ data class PostComment(
     val authorId: String,
     val authorName: String,
     val content: String,
-    val createdAt: Long? = null
+    val createdAt: Long? = null,
+    val authorImageUrl: String? = null,
+    val parentId: String? = null
 )
 
 enum class AdoptionRequestStatus {

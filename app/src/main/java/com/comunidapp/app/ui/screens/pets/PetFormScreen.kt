@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -33,20 +32,31 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
+import com.comunidapp.app.domain.publish.LocalDebugDiagnostic
+import com.comunidapp.app.ui.components.v2.V2FormErrorBanner
 import com.comunidapp.app.R
 import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.HealthOptionDropdown
 import com.comunidapp.app.ui.components.PetHealthFormSection
-import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.SpeciesDropdown
+import com.comunidapp.app.ui.components.v2.V2FormImagePreview
+import com.comunidapp.app.ui.components.v2.v2KeepVisibleOnFocus
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.media.LeoVerAvatarCropKind
+import com.comunidapp.app.ui.media.rememberLeoVerAvatarCropLauncher
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.PetFormViewModel
 
 @Composable
@@ -91,9 +101,15 @@ private fun PetFormScreen(
     val uiState by viewModel.uiState.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
 
+    val cropPhoto = rememberLeoVerAvatarCropLauncher(
+        kind = LeoVerAvatarCropKind.PET,
+        onCropped = { viewModel.onImageSelected(it) },
+        onCancel = {},
+        onError = viewModel::onPhotoCropFailed
+    )
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> viewModel.onImageSelected(uri) }
+    ) { uri -> uri?.let(cropPhoto) }
 
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
@@ -130,8 +146,9 @@ private fun PetFormScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = title, showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = title, showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {
@@ -145,12 +162,8 @@ private fun PetFormScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Spacer(modifier = Modifier.height(16.dp))
-                PetImage(
+                V2FormImagePreview(
                     imageUrl = uiState.pendingImageUri?.toString() ?: uiState.photoUrl,
-                    modifier = Modifier
-                        .size(112.dp)
-                        .clip(CircleShape),
-                    cornerRadius = 56.dp,
                     contentDescription = uiState.name
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -179,15 +192,29 @@ private fun PetFormScreen(
                     value = uiState.name,
                     onValueChange = viewModel::onNameChange,
                     label = { Text("Nombre") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .v2KeepVisibleOnFocus(),
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 SpeciesDropdown(
                     selected = uiState.species,
                     onSelected = viewModel::onSpeciesChange,
-                    enabled = !uiState.isSaving && !uiState.isDeleting
+                    enabled = !uiState.isSaving && !uiState.isDeleting,
+                    options = uiState.speciesOptions,
+                    labels = uiState.speciesLabels
                 )
+                if (uiState.breedOptions.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    HealthOptionDropdown(
+                        label = "Raza",
+                        options = uiState.breedOptions,
+                        selected = uiState.breed,
+                        onSelected = viewModel::onBreedChange,
+                        enabled = !uiState.isSaving && !uiState.isDeleting
+                    )
+                }
                 Spacer(modifier = Modifier.height(8.dp))
                 EnumChipRowSex(uiState.sex, viewModel::onSexChange)
                 Spacer(modifier = Modifier.height(8.dp))
@@ -195,18 +222,24 @@ private fun PetFormScreen(
                 Spacer(modifier = Modifier.height(12.dp))
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedTextField(
-                        value = uiState.ageYears.toString(),
-                        onValueChange = { viewModel.onAgeYearsChange(it.toIntOrNull() ?: 0) },
+                        value = uiState.ageYearsInput,
+                        onValueChange = viewModel::onAgeYearsInput,
                         label = { Text("Años") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
+                        modifier = Modifier
+                            .weight(1f)
+                            .v2KeepVisibleOnFocus(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                     OutlinedTextField(
-                        value = uiState.ageMonths.toString(),
-                        onValueChange = { viewModel.onAgeMonthsChange(it.toIntOrNull() ?: 0) },
+                        value = uiState.ageMonthsInput,
+                        onValueChange = viewModel::onAgeMonthsInput,
                         label = { Text("Meses") },
-                        modifier = Modifier.weight(1f),
-                        singleLine = true
+                        modifier = Modifier
+                            .weight(1f)
+                            .v2KeepVisibleOnFocus(),
+                        singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
@@ -214,7 +247,9 @@ private fun PetFormScreen(
                     value = uiState.description,
                     onValueChange = viewModel::onDescriptionChange,
                     label = { Text("Descripción") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .v2KeepVisibleOnFocus(),
                     minLines = 3
                 )
 
@@ -230,9 +265,14 @@ private fun PetFormScreen(
                     pendingVaccineNextDate = uiState.pendingVaccineNextDate,
                     dewormingProduct = uiState.dewormingProduct,
                     lastDeworming = uiState.lastDeworming,
+                    nextDeworming = uiState.nextDeworming,
                     fleaTreatmentProduct = uiState.fleaTreatmentProduct,
                     lastFleaTreatment = uiState.lastFleaTreatment,
+                    nextFleaTreatment = uiState.nextFleaTreatment,
                     healthNotes = uiState.healthNotes,
+                    allergyName = uiState.allergyName,
+                    medicationName = uiState.medicationName,
+                    conditionName = uiState.conditionName,
                     enabled = !uiState.isSaving && !uiState.isDeleting,
                     onSterilizedChange = viewModel::onSterilizedChange,
                     onMicrochipChange = viewModel::onMicrochipChange,
@@ -244,9 +284,17 @@ private fun PetFormScreen(
                     onRemoveVaccination = viewModel::removeVaccination,
                     onDewormingProductChange = viewModel::onDewormingProductChange,
                     onLastDewormingChange = viewModel::onLastDewormingChange,
+                    onNextDewormingChange = viewModel::onNextDewormingChange,
                     onFleaProductChange = viewModel::onFleaProductChange,
                     onLastFleaTreatmentChange = viewModel::onLastFleaTreatmentChange,
-                    onHealthNotesChange = viewModel::onHealthNotesChange
+                    onNextFleaTreatmentChange = viewModel::onNextFleaTreatmentChange,
+                    onAllergyNameChange = viewModel::onAllergyNameChange,
+                    onMedicationNameChange = viewModel::onMedicationNameChange,
+                    onConditionNameChange = viewModel::onConditionNameChange,
+                    onHealthNotesChange = viewModel::onHealthNotesChange,
+                    vaccineOptions = uiState.vaccineOptions,
+                    dewormerOptions = uiState.dewormerOptions,
+                    fleaOptions = uiState.fleaOptions
                 )
 
                 uiState.duplicateWarning?.let { warning ->
@@ -260,7 +308,18 @@ private fun PetFormScreen(
 
                 uiState.errorMessage?.let { error ->
                     Spacer(modifier = Modifier.height(12.dp))
-                    Text(text = error, color = MaterialTheme.colorScheme.error)
+                    val clipboard = LocalClipboardManager.current
+                    val diagnostic = uiState.debugDiagnostic
+                    V2FormErrorBanner(
+                        title = error,
+                        onCopyDiagnostic = if (
+                            LocalDebugDiagnostic.isCopyEnabled() && !diagnostic.isNullOrBlank()
+                        ) {
+                            { clipboard.setText(AnnotatedString(diagnostic)) }
+                        } else {
+                            null
+                        }
+                    )
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
@@ -274,6 +333,17 @@ private fun PetFormScreen(
                     } else {
                         Text(stringResource(R.string.save_profile))
                     }
+                }
+                Spacer(modifier = Modifier.height(8.dp))
+                OutlinedButton(
+                    onClick = {
+                        viewModel.discardDraft()
+                        onNavigateBack()
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !uiState.isSaving && !uiState.isDeleting
+                ) {
+                    Text("Descartar")
                 }
 
                 if (uiState.isEditMode) {

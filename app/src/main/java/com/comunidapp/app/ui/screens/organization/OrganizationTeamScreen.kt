@@ -31,10 +31,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.domain.organization.authorization.MembershipDisplay
 import com.comunidapp.app.domain.organization.authorization.OrganizationMembership
 import com.comunidapp.app.domain.organization.authorization.OrganizationRoleCode
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.OrganizationTeamViewModel
 
 @Composable
@@ -85,7 +88,7 @@ fun OrganizationTeamScreen(
         AlertDialog(
             onDismissRequest = { transferTarget = null },
             title = { Text("Transferir ownership") },
-            text = { Text("¿Transferir ownership al usuario ${target.userId}?") },
+            text = { Text("¿Transferir la administración a este miembro?") },
             confirmButton = {
                 TextButton(onClick = {
                     viewModel.transferOwnership(target.userId)
@@ -99,8 +102,9 @@ fun OrganizationTeamScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Equipo",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -126,14 +130,19 @@ fun OrganizationTeamScreen(
                         Text(text = msg, color = MaterialTheme.colorScheme.primary)
                     }
                 }
-                if (uiState.canInvite) {
+                        if (uiState.canInvite) {
                     item {
                         InviteMemberSection(
-                            email = uiState.inviteEmail,
+                            query = uiState.personQuery,
+                            hits = uiState.personHits,
+                            selected = uiState.selectedPerson,
                             role = uiState.inviteRole,
+                            selectedPermissions = uiState.selectedPermissions,
                             isInviting = uiState.isInviting,
-                            onEmailChange = viewModel::onInviteEmailChange,
+                            onQueryChange = viewModel::onPersonQueryChange,
+                            onSelectPerson = viewModel::selectPerson,
                             onRoleChange = viewModel::onInviteRoleChange,
+                            onTogglePermission = viewModel::togglePermission,
                             onInvite = viewModel::inviteMember
                         )
                     }
@@ -183,7 +192,7 @@ fun OrganizationTeamScreen(
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
                                 Text(
-                                    text = "${invitation.invitedRole.name} · ${invitation.status.name}",
+                                    text = "${MembershipDisplay.visibleRole(invitation.invitedRole)} · ${invitation.status.name}",
                                     fontWeight = FontWeight.Medium
                                 )
                                 invitation.targetEmailHint?.let {
@@ -220,37 +229,56 @@ fun OrganizationTeamScreen(
 
 @Composable
 private fun InviteMemberSection(
-    email: String,
+    query: String,
+    hits: List<com.comunidapp.app.domain.organization.PersonSearchHit>,
+    selected: com.comunidapp.app.domain.organization.PersonSearchHit?,
     role: OrganizationRoleCode,
+    selectedPermissions: Set<String>,
     isInviting: Boolean,
-    onEmailChange: (String) -> Unit,
+    onQueryChange: (String) -> Unit,
+    onSelectPerson: (com.comunidapp.app.domain.organization.PersonSearchHit) -> Unit,
     onRoleChange: (OrganizationRoleCode) -> Unit,
+    onTogglePermission: (String) -> Unit,
     onInvite: () -> Unit
 ) {
-    val roles = listOf(
-        OrganizationRoleCode.ADMIN,
-        OrganizationRoleCode.MANAGER,
-        OrganizationRoleCode.MEMBER,
-        OrganizationRoleCode.VIEWER
-    )
     OutlinedCard(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Invitar miembro", fontWeight = FontWeight.SemiBold)
+            Text("Invitar persona", fontWeight = FontWeight.SemiBold)
             OutlinedTextField(
-                value = email,
-                onValueChange = onEmailChange,
-                label = { Text("Email") },
+                value = query,
+                onValueChange = onQueryChange,
+                label = { Text("Buscar por nombre o @usuario") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
-            Text(text = "Rol: ${role.name}", style = MaterialTheme.typography.labelLarge)
+            hits.forEach { hit ->
+                TextButton(onClick = { onSelectPerson(hit) }, modifier = Modifier.fillMaxWidth()) {
+                    Text("${hit.displayName}  @${hit.username}")
+                }
+            }
+            selected?.let {
+                Text(
+                    text = "Seleccionada: ${it.displayName}  @${it.username}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+            Text(text = "Rol: ${MembershipDisplay.visibleRole(role)}", style = MaterialTheme.typography.labelLarge)
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                roles.forEach { r ->
+                listOf(OrganizationRoleCode.ADMIN, OrganizationRoleCode.MEMBER).forEach { r ->
                     TextButton(onClick = { onRoleChange(r) }) {
-                        Text(r.name)
+                        Text(MembershipDisplay.visibleRole(r))
+                    }
+                }
+            }
+            if (role == OrganizationRoleCode.MEMBER) {
+                Text("Permisos", fontWeight = FontWeight.SemiBold)
+                com.comunidapp.app.domain.organization.OrgInvitePolicy.MEMBER_PERMISSION_OPTIONS.forEach { option ->
+                    TextButton(onClick = { onTogglePermission(option.catalogCode) }) {
+                        val mark = if (option.catalogCode in selectedPermissions) "[x]" else "[ ]"
+                        Text("$mark ${option.visibleLabel}")
                     }
                 }
             }
@@ -258,7 +286,7 @@ private fun InviteMemberSection(
                 onClick = onInvite,
                 enabled = !isInviting,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text(if (isInviting) "Enviando…" else "Invitar") }
+            ) { Text(if (isInviting) "Enviando…" else "Enviar invitación") }
         }
     }
 }
@@ -280,29 +308,29 @@ private fun MemberCard(
         shape = RoundedCornerShape(14.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            Text(text = member.userId, fontWeight = FontWeight.Medium)
+            Text(text = MembershipDisplay.visibleRole(member.role), fontWeight = FontWeight.Medium)
             Text(
-                text = "${member.role.name} · ${member.status.name}",
+                text = "${MembershipDisplay.visibleRole(member.role)} · ${member.status.name}",
                 style = MaterialTheme.typography.bodySmall
             )
             if (canManageRoles && member.role != OrganizationRoleCode.OWNER) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = { onChangeRole(OrganizationRoleCode.MEMBER) }) {
-                        Text("Miembro")
+                        Text(MembershipDisplay.MEMBER_VISIBLE)
                     }
-                    TextButton(onClick = { onChangeRole(OrganizationRoleCode.VIEWER) }) {
-                        Text("Viewer")
+                    TextButton(onClick = { onChangeRole(OrganizationRoleCode.ADMIN) }) {
+                        Text(MembershipDisplay.ADMINISTRATOR_VISIBLE)
                     }
                 }
             }
-            if (canRemove && !(member.role == OrganizationRoleCode.OWNER && ownerCount <= 1)) {
+            if (canRemove && !(MembershipDisplay.isAdministrator(member.role) && ownerCount <= 1)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     TextButton(onClick = onSuspend) { Text("Suspender") }
                     TextButton(onClick = onRemove) { Text("Remover") }
                 }
             }
             if (canTransfer && member.role != OrganizationRoleCode.OWNER) {
-                TextButton(onClick = onTransfer) { Text("Transferir ownership") }
+                TextButton(onClick = onTransfer) { Text("Transferir administración") }
             }
         }
     }

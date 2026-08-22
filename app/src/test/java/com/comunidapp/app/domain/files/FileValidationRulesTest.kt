@@ -14,7 +14,29 @@ class FileValidationRulesTest {
             safeFilename = "a.jpg",
             declaredMimeType = "image/jpeg",
             detectedMimeType = null,
-            sizeBytes = 6L * 1024 * 1024
+            sizeBytes = 201L * 1024 * 1024
+        )
+        assertTrue(r.isFailure)
+        assertEquals("SOURCE_MALICIOUS_SIZE", r.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun normal_phone_photo_not_rejected_before_ingest() {
+        val r = FileValidationRules.validateMimeAndExtension(
+            purpose = FileAssetPurpose.USER_AVATAR,
+            safeFilename = "a.jpg",
+            declaredMimeType = "image/jpeg",
+            detectedMimeType = null,
+            sizeBytes = 26L * 1024 * 1024
+        )
+        assertTrue(r.isSuccess)
+    }
+
+    @Test
+    fun processed_avatar_over_master_cap_rejected() {
+        val r = FileValidationRules.validateProcessedSize(
+            FileAssetPurpose.USER_AVATAR,
+            6L * 1024 * 1024
         )
         assertTrue(r.isFailure)
         assertEquals("SIZE_EXCEEDED", r.exceptionOrNull()?.message)
@@ -66,6 +88,18 @@ class FileValidationRulesTest {
         val r = FileValidationRules.validateUploadRequest(req, existingCountForResource = 1)
         assertTrue(r.isFailure)
         assertEquals("COUNT_EXCEEDED", r.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun heic_source_is_accepted_for_ingest() {
+        val r = FileValidationRules.validateMimeAndExtension(
+            purpose = FileAssetPurpose.USER_AVATAR,
+            safeFilename = "IMG_0001.HEIC",
+            declaredMimeType = "image/heic",
+            detectedMimeType = null,
+            sizeBytes = 18L * 1024 * 1024
+        )
+        assertTrue(r.isSuccess)
     }
 }
 

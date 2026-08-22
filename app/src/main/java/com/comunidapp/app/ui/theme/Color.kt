@@ -11,8 +11,13 @@ val BrandOrange = Color(0xFFFF7A00)
 val BrandOrangeSoft = Color(0xFFFFA64D)
 val BrandGreen = Color(0xFF49B749)
 val BrandGreenDark = Color(0xFF247A3D)
-val BrandCream = Color(0xFFFFF6EA)
-val BrandText = Color(0xFF2F3A37)
+/** Profile header/accent only. Do not replace BrandGreen or BrandGreenDark. */
+val ProfileGreen = Color(0xFF66B978)
+/** Canonical general background. Never use cream as a full-screen default. */
+val BrandBackground = Color(0xFFFAFBF8)
+/** Soft cream accent only — chips, badges, highlights. Not a full-screen fill. */
+val BrandCream = Color(0xFFFFF8E1)
+val BrandText = Color(0xFF263238)
 val BrandWhite = Color(0xFFFFFFFF)
 
 /** Contenedor cálido derivado de crema + naranja suave. */
@@ -28,11 +33,11 @@ val BrandGreenSoft = Color(0xFF8FD18F)
 val BrandOrangeDeep = Color(0xFFE56E00)
 
 /** Texto secundario / muted derivado de BrandText. */
-val BrandTextSecondary = Color(0xFF5C6965)
+val BrandTextSecondary = Color(0xFF667085)
 val MutedText = BrandTextSecondary
 
-/** Borde neutro cálido derivado de crema. */
-val NeutralBorder = Color(0xFFE8DFD2)
+/** Canonical soft border. */
+val NeutralBorder = Color(0xFFE5EAE4)
 
 val BrandGrayLight = Color(0xFFE0E0E0)
 val BrandGrayMedium = Color(0xFF9E9E9E)
@@ -48,7 +53,7 @@ val GreenPrimaryDark = BrandGreenDark // reservado: contraste / positivo fuerte
 val GreenPrimaryLight = BrandGreenSoft
 val GreenContainer = BrandGreenContainer
 val White = BrandWhite
-val BackgroundLight = BrandCream
+val BackgroundLight = BrandBackground
 val SurfaceLight = BrandWhite
 val GrayLight = BrandGrayLight
 val GrayMedium = BrandGrayMedium

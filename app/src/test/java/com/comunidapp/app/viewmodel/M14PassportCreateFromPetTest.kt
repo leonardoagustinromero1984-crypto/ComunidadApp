@@ -87,7 +87,7 @@ class M14PassportCreateFromPetTest {
         vm.createFromPet()
         advanceUntilIdle()
         assertNotNull(vm.passport.value)
-        assertEquals("Pasaporte creado", vm.message.value)
+        assertEquals("VitaCora lista", vm.message.value)
         assertEquals(pet.name, vm.passport.value?.displayName)
     }
 

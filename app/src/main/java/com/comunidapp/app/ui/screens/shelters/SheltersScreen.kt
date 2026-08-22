@@ -1,5 +1,8 @@
 package com.comunidapp.app.ui.screens.shelters
 
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -24,7 +27,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.Shelter
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.viewmodel.SheltersViewModel
 
@@ -36,7 +39,8 @@ fun SheltersScreen(
     val shelters by viewModel.shelters.collectAsState()
 
     Scaffold(
-        topBar = { ComunidappTopBar(title = "Refugios") }
+        containerColor = BrandBackground,
+        topBar = { LeoTopAppBar(title = "Refugios") }
     ) { padding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),

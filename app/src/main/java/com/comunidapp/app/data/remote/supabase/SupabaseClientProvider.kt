@@ -8,6 +8,7 @@ import com.comunidapp.app.domain.auth.AuthErrorCode
 import com.comunidapp.app.domain.auth.AuthErrorMapper
 import io.github.jan.supabase.SupabaseClient
 import io.github.jan.supabase.auth.Auth
+import io.github.jan.supabase.auth.FlowType
 import io.github.jan.supabase.createSupabaseClient
 import io.github.jan.supabase.postgrest.Postgrest
 import io.github.jan.supabase.postgrest.PropertyConversionMethod
@@ -16,6 +17,7 @@ import io.github.jan.supabase.storage.Storage
 
 object SupabaseTables {
     const val USERS = "users"
+    const val PERSONS = "persons"
     const val PETS = "pets"
     const val POSTS = "posts"
     const val ADOPTIONS = "adoptions"
@@ -54,7 +56,12 @@ object SupabaseClientProvider {
     private const val TAG = "SupabaseClient"
 
     val instance: SupabaseClient by lazy {
-        val url = BuildConfig.SUPABASE_URL.trim()
+        val apiUrl = BuildConfig.SUPABASE_URL.trim()
+        val url = com.comunidapp.app.domain.auth.LeoVerAuthDomains.supabaseUrlForClient(
+            apiUrl = apiUrl,
+            customAuthUrl = BuildConfig.AUTH_DOMAIN,
+            customActive = BuildConfig.AUTH_CUSTOM_DOMAIN_ACTIVE
+        )
         val key = BuildConfig.SUPABASE_ANON_KEY.trim()
         if (!BuildConfig.SUPABASE_ENABLED ||
             !SupabaseUrlPolicy.isUsableRemoteUrl(url) ||
@@ -66,7 +73,17 @@ object SupabaseClientProvider {
                 "supabase client requires remote HTTPS url + anon key"
             )
         }
+        val redirect = SupabaseAuthConfig.requireRedirectUrl()
         AppLog.info(TAG, "creating shared client host=${SupabaseUrlPolicy.hostOf(url)}")
+        AppLog.info(TAG, "auth redirect configured scheme=${SupabaseAuthConfig.SCHEME} host=${SupabaseAuthConfig.HOST}")
+        AppLog.info(
+            TAG,
+            "auth custom domain active=${BuildConfig.AUTH_CUSTOM_DOMAIN_ACTIVE} " +
+                "authHost=${SupabaseUrlPolicy.hostOf(url)}"
+        )
+        check(redirect == "${SupabaseAuthConfig.SCHEME}://${SupabaseAuthConfig.HOST}") {
+            "AUTH_REDIRECT_MISMATCH"
+        }
         createSupabaseClient(
             supabaseUrl = url,
             supabaseKey = key
@@ -74,6 +91,7 @@ object SupabaseClientProvider {
             install(Auth) {
                 scheme = SupabaseAuthConfig.SCHEME
                 host = SupabaseAuthConfig.HOST
+                flowType = FlowType.PKCE
             }
             install(Postgrest) {
                 propertyConversionMethod = PropertyConversionMethod.SERIAL_NAME

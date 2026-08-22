@@ -39,7 +39,9 @@ import com.comunidapp.app.data.model.ShelterCampaignVisibility
 import com.comunidapp.app.data.model.ShelterSupplyCategory
 import com.comunidapp.app.data.model.ShelterSupplyContributionStatus
 import com.comunidapp.app.data.model.ShelterSupplyPriority
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -67,8 +69,9 @@ fun ShelterPublicCampaignsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Campañas públicas", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Campañas", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -103,8 +106,9 @@ fun ShelterCampaignsScreen(
     val campaigns by viewModel.campaigns.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Campañas", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Campañas", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -136,8 +140,9 @@ fun ShelterCampaignDetailScreen(
     val busy by viewModel.busy.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Detalle de campaña", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Detalle de campaña", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -248,8 +253,9 @@ fun ShelterCampaignFormScreen(
     }
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved(it) } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (editCampaignId == null) "Nueva campaña" else "Editar campaña",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -306,8 +312,9 @@ fun ShelterCampaignUpdateScreen(
     val error by viewModel.error.collectAsState()
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved() } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Nueva novedad", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Nueva novedad", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -343,8 +350,9 @@ fun ShelterPublicSupplyRequestsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Pedidos de insumos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Pedidos de insumos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -385,8 +393,9 @@ fun ShelterSupplyRequestsScreen(
     val requests by viewModel.requests.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Pedidos de insumos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Pedidos de insumos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -424,8 +433,9 @@ fun ShelterSupplyRequestDetailScreen(
     val error by viewModel.error.collectAsState()
     LaunchedEffect(Unit) { viewModel.cancelled.collect { onNavigateBack() } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Detalle del pedido", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Detalle del pedido", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -537,8 +547,9 @@ fun ShelterSupplyRequestFormScreen(
     }
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved(it) } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (editRequestId == null) "Nuevo pedido" else "Editar pedido",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -634,8 +645,9 @@ fun ShelterSupplyContributeScreen(
     val error by viewModel.error.collectAsState()
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved() } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Comprometer insumos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Comprometer insumos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -670,8 +682,9 @@ fun ShelterSupplyContributionsScreen(
     val busy by viewModel.busy.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Aportes", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Aportes", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {

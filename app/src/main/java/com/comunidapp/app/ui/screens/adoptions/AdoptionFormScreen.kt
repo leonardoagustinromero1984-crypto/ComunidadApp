@@ -9,10 +9,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -25,8 +23,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.viewmodel.AdoptionFormState
 import com.comunidapp.app.viewmodel.AdoptionFormViewModel
@@ -54,8 +57,9 @@ fun AdoptionFormScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (state.adoptionId == null) "Nueva adopción" else "Editar adopción",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -88,9 +92,7 @@ fun AdoptionFormScreen(
                     style = MaterialTheme.typography.bodyMedium
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = viewModel::load, modifier = Modifier.fillMaxWidth()) {
-                    Text("Reintentar")
-                }
+                LeoPrimaryButton(text = "Reintentar", onClick = viewModel::load)
                 TextButton(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) {
                     Text("Volver")
                 }
@@ -147,10 +149,7 @@ private fun AdoptionFormBody(
                     text = "Necesitás un perfil de mascota para publicar la adopción.",
                     style = MaterialTheme.typography.bodyMedium
                 )
-                Button(
-                    onClick = onNavigateToCreatePet,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Crear mascota") }
+                LeoPrimaryButton(text = "Crear mascota", onClick = onNavigateToCreatePet)
                 TextButton(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) {
                     Text("Cancelar")
                 }
@@ -205,13 +204,10 @@ private fun AdoptionFormBody(
             enabled = state.editable && !state.saving,
             minLines = 2
         )
-        OutlinedTextField(
+        V2LocationStringPicker(
             value = state.location,
             onValueChange = onLocationChange,
-            label = { Text("Ubicación") },
-            modifier = Modifier.fillMaxWidth(),
-            enabled = state.editable && !state.saving,
-            singleLine = true
+            enabled = state.editable && !state.saving
         )
 
         state.fieldError?.let {
@@ -223,16 +219,16 @@ private fun AdoptionFormBody(
 
         Spacer(modifier = Modifier.height(8.dp))
         if (state.editable) {
-            OutlinedButton(
+            LeoOutlinedButton(
+                text = if (state.adoptionId == null) "Guardar borrador" else "Guardar cambios",
                 onClick = onSaveDraft,
-                modifier = Modifier.fillMaxWidth(),
                 enabled = !state.saving && (state.adoptionId != null || !state.selectedPetId.isNullOrBlank())
-            ) { Text(if (state.adoptionId == null) "Guardar borrador" else "Guardar cambios") }
-            Button(
+            )
+            LeoPrimaryButton(
+                text = "Publicar",
                 onClick = onPublish,
-                modifier = Modifier.fillMaxWidth(),
                 enabled = !state.saving && (state.adoptionId != null || !state.selectedPetId.isNullOrBlank())
-            ) { Text("Publicar") }
+            )
             TextButton(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) {
                 Text("Cancelar")
             }

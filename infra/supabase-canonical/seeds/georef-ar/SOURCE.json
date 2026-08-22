@@ -1,0 +1,14 @@
+{
+    "source":  "GEOREF_AR",
+    "source_api":  "https://apis.datos.gob.ar/georef/api/v2.1",
+    "source_resources":  [
+                             "https://apis.datos.gob.ar/georef/api/v2.1/provincias.json?campos=id,nombre,iso_id,nombre_completo\u0026max=100",
+                             "https://apis.datos.gob.ar/georef/api/v2.1/localidades.json?campos=id,nombre,provincia,categoria\u0026max=5000"
+                         ],
+    "source_date":  "2026-08-16",
+    "source_version":  "georef-api-v2.1",
+    "georef_province_count":  24,
+    "georef_locality_raw_count":  4028,
+    "imported_locality_count":  3866,
+    "dedup_rule":  "unique (province, official name); prefer Localidad simple, then componente, then entidad; keep existing LeoVer IDs"
+}

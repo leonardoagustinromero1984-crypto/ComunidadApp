@@ -30,6 +30,7 @@ import com.comunidapp.app.data.repository.FeedRepository
 import com.comunidapp.app.data.repository.LostFoundRepository
 import com.comunidapp.app.data.repository.ShelterRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.core.logging.AppLog
 import com.comunidapp.app.core.result.AppResult
 import com.comunidapp.app.domain.files.FileAssetOwner
 import com.comunidapp.app.domain.files.FileAssetPurpose
@@ -39,6 +40,8 @@ import com.comunidapp.app.domain.files.FileResourceType
 import com.comunidapp.app.domain.files.FileUiErrorMapper
 import com.comunidapp.app.domain.files.FileUploadRequest
 import com.comunidapp.app.domain.files.PreparedFileUpload
+import com.comunidapp.app.domain.publish.LocalDebugDiagnostic
+import com.comunidapp.app.domain.publish.PublishUiErrorMapper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -48,10 +51,22 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+data class BitacoraPrompt(
+    val kind: com.comunidapp.app.domain.social.SocialContentKind,
+    val petId: String,
+    val petName: String,
+    val contentId: String,
+    val compositionJson: String? = null,
+    val mediaUrl: String? = null
+)
+
 data class PublishFormState(
     val isLoading: Boolean = false,
     val isSuccess: Boolean = false,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    val diagnosticText: String? = null,
+    val uploadProgress: Int? = null,
+    val bitacoraPrompt: BitacoraPrompt? = null
 )
 
 class PublishViewModel(
@@ -92,35 +107,37 @@ class PublishViewModel(
         description: String,
         location: String,
         videoUri: Uri?,
-        petId: String? = null
+        petId: String? = null,
+        localityId: String? = null,
+        compositionJson: String? = null,
+        context: android.content.Context
     ) {
         if (videoUri == null) {
             _formState.update { it.copy(errorMessage = "Elegí un video para el Reel") }
             return
         }
-        if (description.isBlank()) {
-            _formState.update { it.copy(errorMessage = "Agregá una descripción corta") }
-            return
-        }
         viewModelScope.launch {
-            _formState.update { PublishFormState(isLoading = true) }
+            _formState.update { PublishFormState(isLoading = true, uploadProgress = 0) }
             resolveAuthor()
                 .onSuccess { author ->
-                    publishFeedPost(
+                    publishSocialMedia(
                         author = author,
                         type = PostType.REEL,
                         title = "Reel",
-                        content = description.trim(),
+                        content = description.trim().ifBlank { "Reel" },
                         locationText = location.trim().ifBlank { null },
-                        imageUri = videoUri,
+                        sourceUri = videoUri,
                         petId = petId?.takeIf { it.isNotBlank() },
-                        requireMedia = true,
-                        mimeType = "video/mp4",
-                        filename = "reel.mp4"
+                        localityId = localityId,
+                        compositionJson = compositionJson,
+                        expectVideo = true,
+                        context = context
                     )
                 }
                 .onFailure { error ->
-                    _formState.update { PublishFormState(errorMessage = error.message) }
+                    _formState.update {
+                        PublishFormState(errorMessage = humanizePublishError(error))
+                    }
                 }
         }
     }
@@ -129,33 +146,39 @@ class PublishViewModel(
         text: String,
         mediaUri: Uri?,
         petId: String? = null,
-        isVideo: Boolean = false
+        isVideo: Boolean = false,
+        localityId: String? = null,
+        compositionJson: String? = null,
+        context: android.content.Context
     ) {
         if (mediaUri == null) {
             _formState.update { it.copy(errorMessage = "Elegí una imagen o un video para la historia") }
             return
         }
         viewModelScope.launch {
-            _formState.update { PublishFormState(isLoading = true) }
+            _formState.update { PublishFormState(isLoading = true, uploadProgress = 0) }
             resolveAuthor()
                 .onSuccess { author ->
                     val now = System.currentTimeMillis()
-                    publishFeedPost(
+                    publishSocialMedia(
                         author = author,
                         type = PostType.STORY,
                         title = "Historia",
-                        content = text.trim().ifBlank { "Historia" },
+                        content = text.trim(),
                         locationText = null,
-                        imageUri = mediaUri,
+                        sourceUri = mediaUri,
                         petId = petId?.takeIf { it.isNotBlank() },
+                        localityId = localityId,
+                        compositionJson = compositionJson,
+                        expectVideo = isVideo,
                         expiresAt = com.comunidapp.app.domain.social.StoryExpiration.expiresAtFrom(now),
-                        requireMedia = true,
-                        mimeType = if (isVideo) "video/mp4" else "image/jpeg",
-                        filename = if (isVideo) "story.mp4" else "story.jpg"
+                        context = context
                     )
                 }
                 .onFailure { error ->
-                    _formState.update { PublishFormState(errorMessage = error.message) }
+                    _formState.update {
+                        PublishFormState(errorMessage = humanizePublishError(error))
+                    }
                 }
         }
     }
@@ -175,9 +198,13 @@ class PublishViewModel(
             _formState.update { PublishFormState(isLoading = true) }
             resolveAuthor()
                 .onSuccess { author ->
-                    if (type == PostType.PROMO && !RolePermissions.canPublishPromo(author.accountType)) {
+                    if (type == PostType.PROMO &&
+                        !RolePermissions.canPublishPromo(
+                            com.comunidapp.app.domain.context.OperationalContextProvider.active.value
+                        )
+                    ) {
                         _formState.update {
-                            PublishFormState(errorMessage = "Tu tipo de cuenta no puede publicar promociones")
+                            PublishFormState(errorMessage = "Este contexto no puede publicar promociones")
                         }
                         return@launch
                     }
@@ -191,7 +218,7 @@ class PublishViewModel(
                     )
                 }
                 .onFailure { error ->
-                    _formState.update { PublishFormState(errorMessage = error.message) }
+                    _formState.update { PublishFormState(errorMessage = humanizePublishError(error)) }
                 }
         }
     }
@@ -225,6 +252,17 @@ class PublishViewModel(
             _formState.update { PublishFormState(isLoading = true) }
             resolveAuthor()
                 .onSuccess { author ->
+                    if (!RolePermissions.canPublishAdoption(
+                            com.comunidapp.app.domain.context.OperationalContextProvider.active.value
+                        )
+                    ) {
+                        _formState.update {
+                            PublishFormState(
+                                errorMessage = "Las personas no publican adopciones. Usá un perfil de rescatista o refugio."
+                            )
+                        }
+                        return@onSuccess
+                    }
                     if (!RolePermissions.canPublishAdoption(author)) {
                         _formState.update {
                             PublishFormState(
@@ -285,12 +323,12 @@ class PublishViewModel(
                         }
                         .onFailure { error ->
                             _formState.update {
-                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar la adopción")
+                                PublishFormState(errorMessage = humanizePublishError(error))
                             }
                         }
                 }
                 .onFailure { error ->
-                    _formState.update { PublishFormState(errorMessage = error.message) }
+                    _formState.update { PublishFormState(errorMessage = humanizePublishError(error)) }
                 }
         }
     }
@@ -302,23 +340,33 @@ class PublishViewModel(
         location: String,
         description: String,
         contactInfo: String,
-        imageUri: Uri?
+        imageUri: Uri?,
+        petId: String? = null,
+        hasExistingPhoto: Boolean = false
     ) {
         if (location.isBlank() || description.isBlank() || contactInfo.isBlank()) {
-            _formState.update { it.copy(errorMessage = "Completá los campos obligatorios") }
+            _formState.update { it.copy(errorMessage = "Completá los campos obligatorios", diagnosticText = null) }
             return
         }
-        if (imageUri == null) {
-            _formState.update { it.copy(errorMessage = "La foto es obligatoria para alertas de perdidos/encontrados") }
+        if (imageUri == null && !hasExistingPhoto) {
+            _formState.update {
+                it.copy(
+                    errorMessage = "La foto es obligatoria para alertas de perdidos/encontrados",
+                    diagnosticText = null
+                )
+            }
             return
         }
         viewModelScope.launch {
             _formState.update { PublishFormState(isLoading = true) }
             resolveAuthor()
                 .onSuccess { author ->
-                    if (!RolePermissions.canPublishLostFound(author.accountType)) {
+                    if (!RolePermissions.canPublishLostFound(
+                            com.comunidapp.app.domain.context.OperationalContextProvider.active.value
+                        )
+                    ) {
                         _formState.update {
-                            PublishFormState(errorMessage = "Tu cuenta no puede publicar perdidos/encontrados")
+                            PublishFormState(errorMessage = "Este contexto no puede publicar perdidos/encontrados")
                         }
                         return@launch
                     }
@@ -333,27 +381,30 @@ class PublishViewModel(
                         location = location.trim(),
                         description = description.trim(),
                         contactInfo = contactInfo.trim(),
-                        date = date
+                        date = date,
+                        petId = petId
                     )
                     lostFoundRepository.addLostFoundPost(lostPost)
                         .onSuccess { lostId ->
-                            when (val upload = uploadMedia(
-                                imageUri,
-                                FileAssetPurpose.LOST_FOUND_MEDIA,
-                                author.id,
-                                lostId,
-                                FileResourceType.LOST_FOUND_CASE
-                            )) {
-                                is AppResult.Success -> lostFoundRepository.updateLostFoundPost(
-                                    lostPost.copy(id = lostId, photoUrl = upload.data.assetId)
-                                )
-                                is AppResult.Failure -> {
-                                    _formState.update {
-                                        PublishFormState(
-                                            errorMessage = FileUiErrorMapper.message(upload.error)
-                                        )
+                            if (imageUri != null) {
+                                when (val upload = uploadMedia(
+                                    imageUri,
+                                    FileAssetPurpose.LOST_FOUND_MEDIA,
+                                    author.id,
+                                    lostId,
+                                    FileResourceType.LOST_FOUND_CASE
+                                )) {
+                                    is AppResult.Success -> lostFoundRepository.updateLostFoundPost(
+                                        lostPost.copy(id = lostId, photoUrl = upload.data.assetId)
+                                    )
+                                    is AppResult.Failure -> {
+                                        _formState.update {
+                                            PublishFormState(
+                                                errorMessage = FileUiErrorMapper.message(upload.error)
+                                            )
+                                        }
+                                        return@launch
                                     }
-                                    return@launch
                                 }
                             }
                             publishFeedPost(
@@ -366,19 +417,50 @@ class PublishViewModel(
                             )
                         }
                         .onFailure { error ->
+                            AppLog.error(
+                                "PublishLostFound",
+                                "LOST_FOUND_PUBLISH_FAILED ${PublishUiErrorMapper.sanitizeTechnical(error)}",
+                                error
+                            )
                             _formState.update {
-                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar el aviso")
+                                lostFoundErrorState(type, error, PublishUiErrorMapper.lostFoundUserMessage())
                             }
                         }
                 }
                 .onFailure { error ->
-                    _formState.update { PublishFormState(errorMessage = error.message) }
+                    AppLog.error(
+                        "PublishLostFound",
+                        "LOST_FOUND_PUBLISH_FAILED ${PublishUiErrorMapper.sanitizeTechnical(error)}",
+                        error
+                    )
+                    val sessionMessage = error.message
+                        ?.takeIf { it.isNotBlank() && !PublishUiErrorMapper.isUnsafeToShow(it) }
+                    _formState.update {
+                        lostFoundErrorState(
+                            type,
+                            error,
+                            sessionMessage ?: PublishUiErrorMapper.lostFoundUserMessage()
+                        )
+                    }
                 }
         }
     }
 
     fun resetFormState() {
         _formState.value = PublishFormState()
+    }
+
+    private fun lostFoundErrorState(
+        type: LostFoundType,
+        error: Throwable,
+        userMessage: String
+    ): PublishFormState {
+        val diagnostic = if (LocalDebugDiagnostic.isCopyEnabled()) {
+            LocalDebugDiagnostic.lostFoundCreate(type.name, error)
+        } else {
+            null
+        }
+        return PublishFormState(errorMessage = userMessage, diagnosticText = diagnostic)
     }
 
     private suspend fun resolveAuthor(): Result<User> {
@@ -405,6 +487,29 @@ class PublishViewModel(
             return
         }
         val now = System.currentTimeMillis()
+        var mediaAssetId: String? = null
+        if (imageUri != null) {
+            val uploadOwner = java.util.UUID.randomUUID().toString()
+            when (
+                val upload = uploadMedia(
+                    imageUri,
+                    FileAssetPurpose.POST_MEDIA,
+                    author.id,
+                    uploadOwner,
+                    FileResourceType.POST,
+                    mimeType = mimeType,
+                    filename = filename
+                )
+            ) {
+                is AppResult.Success -> mediaAssetId = upload.data.assetId
+                is AppResult.Failure -> {
+                    _formState.update {
+                        PublishFormState(errorMessage = FileUiErrorMapper.message(upload.error))
+                    }
+                    return
+                }
+            }
+        }
         val post = FeedPost(
             id = "",
             authorId = author.id,
@@ -414,6 +519,7 @@ class PublishViewModel(
             title = title,
             content = content,
             locationText = locationText,
+            imageUrl = mediaAssetId,
             createdAt = now,
             updatedAt = now,
             petId = petId,
@@ -421,32 +527,7 @@ class PublishViewModel(
         )
 
         feedRepository.addFeedPost(post)
-            .onSuccess { postId ->
-                var finalPost = post.copy(id = postId)
-                if (imageUri != null) {
-                    when (val upload = uploadMedia(
-                        imageUri,
-                        FileAssetPurpose.POST_MEDIA,
-                        author.id,
-                        postId,
-                        FileResourceType.POST,
-                        mimeType = mimeType,
-                        filename = filename
-                    )) {
-                        is AppResult.Success -> {
-                            finalPost = finalPost.copy(imageUrl = upload.data.assetId)
-                            feedRepository.updateFeedPost(finalPost)
-                        }
-                        is AppResult.Failure -> {
-                            _formState.update {
-                                PublishFormState(
-                                    errorMessage = FileUiErrorMapper.message(upload.error)
-                                )
-                            }
-                            return
-                        }
-                    }
-                }
+            .onSuccess {
                 _formState.update { PublishFormState(isSuccess = true) }
             }
             .onFailure { error ->
@@ -454,6 +535,147 @@ class PublishViewModel(
                     PublishFormState(errorMessage = humanizePublishError(error))
                 }
             }
+    }
+
+    fun confirmBitacoraSave() {
+        val prompt = _formState.value.bitacoraPrompt ?: return
+        viewModelScope.launch {
+            val result = DataProvider.vitaCoraRepository.createMoment(
+                petId = prompt.petId,
+                kind = "SOCIAL",
+                title = if (prompt.kind == com.comunidapp.app.domain.social.SocialContentKind.STORY) {
+                    "Historia en VitaCora"
+                } else {
+                    "Reel en VitaCora"
+                },
+                body = com.comunidapp.app.domain.vitacora.VitaCoraSocialMomentCodec.encode(
+                    contentId = prompt.contentId,
+                    compositionJson = prompt.compositionJson,
+                    mediaUrl = prompt.mediaUrl
+                )
+            )
+            result.fold(
+                onSuccess = {
+                    _formState.update { PublishFormState(isSuccess = true) }
+                },
+                onFailure = { error ->
+                    AppLog.warning("VitaCora", "story association failed", error)
+                    _formState.update {
+                        PublishFormState(
+                            isSuccess = false,
+                            errorMessage = "No pudimos guardar esto en VitaCora. Intentá nuevamente."
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    fun skipBitacoraSave() {
+        _formState.update { PublishFormState(isSuccess = true) }
+    }
+
+    private suspend fun publishSocialMedia(
+        author: User,
+        type: PostType,
+        title: String,
+        content: String,
+        locationText: String?,
+        sourceUri: Uri,
+        petId: String?,
+        localityId: String?,
+        compositionJson: String?,
+        expectVideo: Boolean,
+        expiresAt: Long? = null,
+        context: android.content.Context
+    ) {
+        val prepared = com.comunidapp.app.domain.social.SocialMediaPipeline.prepare(
+            context = context,
+            source = sourceUri,
+            expectVideo = expectVideo
+        ) { progress ->
+            _formState.update { it.copy(isLoading = true, uploadProgress = progress) }
+        }.getOrElse { error ->
+            _formState.update { PublishFormState(errorMessage = humanizePublishError(error)) }
+            return
+        }
+        val purpose = if (type == PostType.STORY) FileAssetPurpose.STORY_MEDIA else FileAssetPurpose.REEL_MEDIA
+        val resourceType = if (type == PostType.STORY) FileResourceType.STORY else FileResourceType.REEL
+        val tempId = java.util.UUID.randomUUID().toString()
+        _formState.update { it.copy(uploadProgress = 80) }
+        when (
+            val upload = uploadMedia(
+                prepared.uri,
+                purpose,
+                author.id,
+                tempId,
+                resourceType,
+                mimeType = prepared.mimeType,
+                filename = prepared.filename
+            )
+        ) {
+            is AppResult.Failure -> {
+                _formState.update {
+                    PublishFormState(errorMessage = FileUiErrorMapper.message(upload.error))
+                }
+                return
+            }
+            is AppResult.Success -> {
+                val now = System.currentTimeMillis()
+                val post = FeedPost(
+                    id = "",
+                    authorId = author.id,
+                    authorName = author.name,
+                    authorImageUrl = author.profileImageUrl,
+                    type = type,
+                    title = title,
+                    content = content,
+                    locationText = locationText,
+                    createdAt = now,
+                    updatedAt = now,
+                    petId = petId,
+                    expiresAt = expiresAt,
+                    localityId = localityId,
+                    compositionJson = compositionJson,
+                    mediaMime = prepared.mimeType
+                )
+                val created = if (type == PostType.STORY) {
+                    feedRepository.addStory(post, upload.data.assetId)
+                } else {
+                    feedRepository.addReel(post, upload.data.assetId)
+                }
+                created.onSuccess { contentId ->
+                    feedRepository.refreshStories()
+                    feedRepository.refreshPosts()
+                    val petName = petId?.let { DataProvider.petRepository.getPetById(it)?.name }
+                    if (!petId.isNullOrBlank() && !petName.isNullOrBlank()) {
+                        val kind = if (type == PostType.STORY) {
+                            com.comunidapp.app.domain.social.SocialContentKind.STORY
+                        } else {
+                            com.comunidapp.app.domain.social.SocialContentKind.REEL
+                        }
+                        _formState.update {
+                            PublishFormState(
+                                bitacoraPrompt = BitacoraPrompt(
+                                    kind = kind,
+                                    petId = petId,
+                                    petName = petName,
+                                    contentId = contentId,
+                                    compositionJson = compositionJson,
+                                    mediaUrl = upload.data.assetId
+                                )
+                            )
+                        }
+                    } else {
+                        _formState.update { PublishFormState(isSuccess = true) }
+                    }
+                }.onFailure { error ->
+                    _formState.update {
+                        PublishFormState(errorMessage = humanizePublishError(error))
+                    }
+                }
+            }
+        }
     }
 
     private fun humanizePublishError(error: Throwable): String {
@@ -465,16 +687,19 @@ class PublishViewModel(
             blob.contains("Could not find", ignoreCase = true)) &&
             (blob.contains("expires_at", ignoreCase = true) || blob.contains("pet_id", ignoreCase = true))
         return when {
+            blob.contains("wrong thread", ignoreCase = true) ||
+                blob.contains("Transformer is accessed", ignoreCase = true) ->
+                "No pudimos procesar el video. Intentá nuevamente."
             schemaGap ->
                 "No pudimos publicar la historia. Revisá tu conexión e intentá nuevamente."
             blob.contains("JWT", ignoreCase = true) ||
                 blob.contains("Bearer", ignoreCase = true) ||
                 blob.contains("apikey", ignoreCase = true) ->
                 "No pudimos publicar. Revisá tu sesión e intentá nuevamente."
-            blob.length > 180 ->
-                "No pudimos publicar. Revisá tu conexión e intentá nuevamente."
-            else -> error.message?.takeIf { it.isNotBlank() && it.length <= 180 }
-                ?: "No pudimos publicar. Revisá tu conexión e intentá nuevamente."
+            else -> PublishUiErrorMapper.userFacing(
+                error,
+                "No pudimos publicar. Intentá nuevamente."
+            )
         }
     }
 
@@ -532,12 +757,12 @@ class PublishViewModel(
                     ).onSuccess { _formState.update { PublishFormState(isSuccess = true) } }
                         .onFailure { error ->
                             _formState.update {
-                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                                PublishFormState(errorMessage = humanizePublishError(error))
                             }
                         }
                 }
                 .onFailure { error ->
-                    _formState.update { PublishFormState(errorMessage = error.message) }
+                    _formState.update { PublishFormState(errorMessage = humanizePublishError(error)) }
                 }
         }
     }
@@ -572,12 +797,12 @@ class PublishViewModel(
                     ).onSuccess { _formState.update { PublishFormState(isSuccess = true) } }
                         .onFailure { error ->
                             _formState.update {
-                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                                PublishFormState(errorMessage = humanizePublishError(error))
                             }
                         }
                 }
                 .onFailure { error ->
-                    _formState.update { PublishFormState(errorMessage = error.message) }
+                    _formState.update { PublishFormState(errorMessage = humanizePublishError(error)) }
                 }
         }
     }
@@ -611,12 +836,12 @@ class PublishViewModel(
                     ).onSuccess { _formState.update { PublishFormState(isSuccess = true) } }
                         .onFailure { error ->
                             _formState.update {
-                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                                PublishFormState(errorMessage = humanizePublishError(error))
                             }
                         }
                 }
                 .onFailure { error ->
-                    _formState.update { PublishFormState(errorMessage = error.message) }
+                    _formState.update { PublishFormState(errorMessage = humanizePublishError(error)) }
                 }
         }
     }
@@ -662,12 +887,12 @@ class PublishViewModel(
                     ).onSuccess { _formState.update { PublishFormState(isSuccess = true) } }
                         .onFailure { error ->
                             _formState.update {
-                                PublishFormState(errorMessage = error.message ?: "No se pudo publicar")
+                                PublishFormState(errorMessage = humanizePublishError(error))
                             }
                         }
                 }
                 .onFailure { error ->
-                    _formState.update { PublishFormState(errorMessage = error.message) }
+                    _formState.update { PublishFormState(errorMessage = humanizePublishError(error)) }
                 }
         }
     }

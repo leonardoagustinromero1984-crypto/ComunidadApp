@@ -11,7 +11,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 
 @Composable
 fun AdministrativeOperationsHubScreen(
@@ -29,8 +31,9 @@ fun AdministrativeOperationsHubScreen(
     onAudit: () -> Unit
 ) {
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Operaciones LeoVer",
                 showBackButton = true,
                 onBackClick = onNavigateBack

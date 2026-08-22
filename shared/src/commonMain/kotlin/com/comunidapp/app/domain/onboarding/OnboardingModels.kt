@@ -27,6 +27,7 @@ enum class OnboardingIntent {
     FOUND_ANIMAL,
     ADOPT,
     OFFER_FOSTER,
+    OFFER_SERVICE,
     ORGANIZATION,
     VOLUNTEER,
     EXPLORE

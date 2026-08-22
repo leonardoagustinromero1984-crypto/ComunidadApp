@@ -1,5 +1,8 @@
 package com.comunidapp.app.ui.screens.m13
 
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -37,7 +40,8 @@ import com.comunidapp.app.data.model.M13MatchReason
 import com.comunidapp.app.data.model.M13MatchStatus
 import com.comunidapp.app.data.model.nextStep
 import com.comunidapp.app.data.model.PetSpecies
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -62,8 +66,9 @@ fun M13SightingListScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Avistamientos",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -142,8 +147,9 @@ fun M13SightingCreateScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Nuevo avistamiento",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -166,11 +172,9 @@ fun M13SightingCreateScreen(
                 label = { Text("Color principal") },
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
+            V2LocationStringPicker(
                 value = zone,
-                onValueChange = { zone = it },
-                label = { Text("Zona aproximada") },
-                modifier = Modifier.fillMaxWidth()
+                onValueChange = { zone = it }
             )
             OutlinedTextField(
                 value = description,
@@ -226,8 +230,9 @@ fun M13SightingDetailScreen(
     val state by viewModel.uiState.collectAsState()
     val message by viewModel.message.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Detalle de avistamiento",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -273,8 +278,9 @@ fun M13CaseMatchesScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Coincidencias del caso",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -331,8 +337,9 @@ fun M13MatchDetailScreen(
     val message by viewModel.message.collectAsState()
     val busy by viewModel.busy.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Revisión de coincidencia",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -444,8 +451,9 @@ fun M13MetricsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Métricas de avistamientos",
                 showBackButton = true,
                 onBackClick = onNavigateBack

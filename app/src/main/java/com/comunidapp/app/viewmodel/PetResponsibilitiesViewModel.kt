@@ -140,10 +140,12 @@ class PetResponsibilitiesViewModel(
                     val name = runCatching { userRepository.getUser(holder.userId)?.name?.trim() }
                         .getOrNull()
                         ?.takeIf { it.isNotBlank() }
+                        ?: link.holderDisplayName
                     if (name != null) out[key] = name
                 }
                 is PetPrincipalHolder.Organization -> {
-                    out["o:${holder.organizationId.value}"] = "Organización"
+                    out["o:${holder.organizationId.value}"] =
+                        link.holderDisplayName?.takeIf { it.isNotBlank() } ?: "Organización"
                 }
             }
         }

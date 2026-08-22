@@ -42,4 +42,41 @@ class AuthDeepLinkParserTest {
             )
         )
     }
+
+    @Test
+    fun classify_pkce_code_as_session_callback() {
+        val uri = "com.comunidapp.app://login-callback?code=abc"
+        assertEquals(AuthDeepLinkKind.SessionCallback, AuthDeepLinkParser.classify(uri))
+    }
+
+    @Test
+    fun classify_expired_error_as_link_error() {
+        val uri =
+            "com.comunidapp.app://login-callback?error=access_denied&error_code=otp_expired"
+        assertEquals(AuthDeepLinkKind.LinkError, AuthDeepLinkParser.classify(uri))
+        assertEquals(
+            "El enlace venció o ya fue utilizado.",
+            AuthDeepLinkParser.userMessageFor(uri)
+        )
+    }
+
+    @Test
+    fun classify_null_literals_as_link_error() {
+        assertEquals(AuthDeepLinkKind.LinkError, AuthDeepLinkParser.classify("null"))
+        assertEquals(AuthDeepLinkKind.LinkError, AuthDeepLinkParser.classify("anull"))
+        assertTrue(AuthDeepLinkParser.isForbiddenCallback("com.comunidapp.app://null"))
+    }
+
+    @Test
+    fun notice_store_publishes_and_consumes() {
+        AuthLinkNoticeStore.resetForTests()
+        AuthLinkNoticeStore.publish(
+            AuthDeepLinkKind.LinkError,
+            "El enlace venció o ya fue utilizado."
+        )
+        val notice = AuthLinkNoticeStore.consume()
+        assertEquals(AuthDeepLinkKind.LinkError, notice?.kind)
+        assertEquals("El enlace venció o ya fue utilizado.", notice?.userMessage)
+        assertNull(AuthLinkNoticeStore.consume())
+    }
 }

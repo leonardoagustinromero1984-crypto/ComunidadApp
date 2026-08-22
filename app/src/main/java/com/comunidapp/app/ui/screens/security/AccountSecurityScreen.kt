@@ -33,8 +33,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.auth.DeleteAccountCommand
 import com.comunidapp.app.domain.auth.LegalDocumentConfig
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.PasswordTextField
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.theme.VisualDirectionPilot
+import com.comunidapp.app.ui.theme.leoVisual
+import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.viewmodel.AccountSecurityViewModel
 import com.comunidapp.app.viewmodel.PasswordResetActiveViewModel
 import com.comunidapp.app.viewmodel.SessionViewModel
@@ -53,9 +57,12 @@ fun AccountSecurityScreen(
         if (uiState.deleteSuccess) onAccountDeleted()
     }
 
+    VisualDirectionPilot {
+    val visual = leoVisual()
     Scaffold(
+        containerColor = visual.background,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Seguridad de la cuenta",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -69,20 +76,33 @@ fun AccountSecurityScreen(
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 24.dp, vertical = 16.dp)
         ) {
-            Text("Cambiar contraseña", style = MaterialTheme.typography.titleMedium)
+            Text(
+                if (uiState.canCreatePassword) "Crear contraseña" else "Cambiar contraseña",
+                style = MaterialTheme.typography.titleMedium
+            )
             Spacer(modifier = Modifier.height(4.dp))
+            if (uiState.canCreatePassword) {
+                Text(
+                    "Tu cuenta se creó con Google. Podés agregar una contraseña LeoVer para entrar también con email.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = visual.textSecondary
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+            }
             Text(
                 text = "Pedimos tu contraseña actual antes de guardar una nueva.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             Spacer(modifier = Modifier.height(12.dp))
-            PasswordTextField(
-                value = uiState.currentPassword,
-                onValueChange = viewModel::onCurrentPasswordChange,
-                label = "Contraseña actual"
-            )
-            Spacer(modifier = Modifier.height(8.dp))
+            if (!uiState.canCreatePassword) {
+                PasswordTextField(
+                    value = uiState.currentPassword,
+                    onValueChange = viewModel::onCurrentPasswordChange,
+                    label = "Contraseña actual"
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+            }
             PasswordTextField(
                 value = uiState.newPassword,
                 onValueChange = viewModel::onNewPasswordChange,
@@ -95,27 +115,25 @@ fun AccountSecurityScreen(
                 label = "Confirmar nueva contraseña"
             )
             Spacer(modifier = Modifier.height(12.dp))
-            Button(
-                onClick = viewModel::changePassword,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isChangingPassword && !uiState.isDeleting
-            ) {
-                if (uiState.isChangingPassword) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text("Guardar contraseña")
-                }
+            if (uiState.isChangingPassword) {
+                CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            } else {
+                LeoPrimaryButton(
+                    text = if (uiState.canCreatePassword) "Crear contraseña" else "Guardar contraseña",
+                    onClick = viewModel::changePassword,
+                    enabled = !uiState.isDeleting
+                )
             }
             if (uiState.passwordChangeSuccess) {
                 Spacer(modifier = Modifier.height(8.dp))
-                Text("Contraseña actualizada.", color = MaterialTheme.colorScheme.primary)
+                Text("Contraseña actualizada.", color = visual.primary)
             }
 
             Spacer(modifier = Modifier.height(32.dp))
             Text("Eliminar cuenta", style = MaterialTheme.typography.titleMedium)
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = "Se borrarán tu perfil y datos asociados en Leover. " +
+                text = "Se borrarán tu perfil y datos asociados en LeoVer. " +
                     "Esta acción no se puede deshacer desde la app.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -173,6 +191,7 @@ fun AccountSecurityScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -192,8 +211,9 @@ fun PasswordResetActiveScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Nueva contraseña",
                 showBackButton = true,
                 onBackClick = {

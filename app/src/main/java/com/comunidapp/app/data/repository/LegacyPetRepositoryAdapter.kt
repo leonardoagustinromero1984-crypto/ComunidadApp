@@ -6,7 +6,6 @@ import com.comunidapp.app.data.remote.supabase.m08.DetectPetDuplicateParams
 import com.comunidapp.app.data.remote.supabase.m08.M08PetErrorMapper
 import com.comunidapp.app.data.remote.supabase.m08.MarkPetDeceasedParams
 import com.comunidapp.app.data.remote.supabase.m08.PetAccessContext
-import com.comunidapp.app.data.remote.supabase.m08.PetCreatePartialException
 import com.comunidapp.app.data.remote.supabase.m08.PetDuplicateCandidateRow
 import com.comunidapp.app.data.remote.supabase.m08.PetM08Mappers.toPet
 import com.comunidapp.app.data.remote.supabase.m08.PetM08Mappers.toUpdateHealthParams
@@ -19,6 +18,7 @@ import com.comunidapp.app.data.remote.supabase.m08.RestorePetParams
 import com.comunidapp.app.data.remote.supabase.m08.SetPetAvatarAssetParams
 import com.comunidapp.app.data.remote.supabase.m08.SupabasePetM08RemoteDataSource
 import com.comunidapp.app.data.remote.supabase.supabase
+import com.comunidapp.app.domain.pets.PetHealthMerge
 import io.github.jan.supabase.auth.auth
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -51,7 +51,7 @@ class LegacyPetRepositoryAdapter(
         scope.launch {
             while (isActive) {
                 try {
-                    _pets.value = remote.listAccessiblePets(status = "ACTIVE").map { it.toPet() }
+                    _pets.value = enrichList(remote.listAccessiblePets(status = "ACTIVE"))
                 } catch (_: Exception) {
                     // transient poll errors ignored
                 }
@@ -63,6 +63,12 @@ class LegacyPetRepositoryAdapter(
     override fun observePets(): StateFlow<List<Pet>> = _pets.asStateFlow()
 
     override fun observePetsForOwner(ownerId: String): Flow<List<Pet>> = flow {
+        val authUid = authUidProvider()
+        if (authUid == null || authUid != ownerId) {
+            emit(emptyList())
+            return@flow
+        }
+        emit(_pets.value)
         while (coroutineContext.isActive) {
             emit(loadAccessibleForOwner(ownerId))
             delay(4_000)
@@ -72,7 +78,14 @@ class LegacyPetRepositoryAdapter(
     override fun observePet(petId: String): Flow<Pet?> = flow {
         while (coroutineContext.isActive) {
             try {
-                emit(fetchPetById(petId) ?: _pets.value.find { it.id == petId })
+                val cached = _pets.value.find { it.id == petId }
+                val fetched = fetchPetById(petId)
+                emit(
+                    when {
+                        fetched != null -> PetHealthMerge.preferRicherHealth(cached, fetched)
+                        else -> cached
+                    }
+                )
             } catch (_: Exception) {
                 // Transient network/decode errors must not cancel PetDetail collectors.
                 emit(_pets.value.find { it.id == petId })
@@ -102,22 +115,29 @@ class LegacyPetRepositoryAdapter(
 
     override suspend fun createPet(pet: Pet): Result<String> {
         return try {
+            com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging("PET-STAGE=CREATE-BEGIN")
             val created = remote.createPetWithPrincipal(pet.toCreateParams())
             val petId = created.id
-            val withId = pet.copy(id = petId, ownerId = created.ownerId)
-            try {
-                remote.updatePetProfile(withId.toUpdateProfileParams())
-            } catch (e: Exception) {
-                return Result.failure(PetCreatePartialException(petId, "profile", e))
+            runCatching {
+                remote.updatePetProfile(pet.copy(id = petId).toUpdateProfileParams())
             }
-            try {
-                remote.updatePetHealth(withId.toUpdateHealthParams())
-            } catch (e: Exception) {
-                return Result.failure(PetCreatePartialException(petId, "health", e))
+            runCatching {
+                remote.updatePetHealth(pet.copy(id = petId).toUpdateHealthParams())
             }
+            com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                "PET-STAGE=CREATE-RESULT CREATED petId=$petId"
+            )
             refreshCache()
+            val mapped = created.toPet()
+            _pets.value = com.comunidapp.app.domain.pets.PetListMerge.withCreated(_pets.value, mapped)
+            com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                "PET-STAGE=LIST-REFRESH count=${_pets.value.size} hasCreated=${_pets.value.any { it.id == petId }}"
+            )
             Result.success(petId)
         } catch (e: Exception) {
+            com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                "PET-STAGE=CREATE-RESULT FAIL type=${e::class.java.simpleName}"
+            )
             M08PetErrorMapper.failure(e)
         }
     }
@@ -206,21 +226,38 @@ class LegacyPetRepositoryAdapter(
         }
     }
 
+    private suspend fun enrichList(rows: List<com.comunidapp.app.data.remote.supabase.m08.AccessiblePetM08Row>): List<Pet> {
+        val previous = _pets.value.associateBy { it.id }
+        return rows.map { row ->
+            val base = row.toPet()
+            val enriched = runCatching { remote.getPetById(row.id)?.toPet() }.getOrNull() ?: base
+            PetHealthMerge.preferRicherHealth(previous[row.id], enriched)
+        }
+    }
+
     private suspend fun loadAccessibleForOwner(ownerId: String): List<Pet> {
         val authUid = authUidProvider()
         if (authUid == null || authUid != ownerId) return emptyList()
         return try {
-            remote.listAccessiblePets(status = "ACTIVE").map { it.toPet() }
+            val listed = enrichList(remote.listAccessiblePets(status = "ACTIVE"))
+            _pets.value = listed
+            listed
         } catch (_: Exception) {
-            emptyList()
+            _pets.value
         }
     }
 
     private suspend fun refreshCache() {
         try {
-            _pets.value = remote.listAccessiblePets(status = "ACTIVE").map { it.toPet() }
-        } catch (_: Exception) {
-            // keep previous cache
+            com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging("PET-STAGE=LIST-REFRESH")
+            _pets.value = enrichList(remote.listAccessiblePets(status = "ACTIVE"))
+            com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                "PET-STAGE=LIST-RESULT count=${_pets.value.size}"
+            )
+        } catch (error: Exception) {
+            com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                "PET-STAGE=LIST-RESULT FAIL type=${error::class.java.simpleName}"
+            )
         }
     }
 }

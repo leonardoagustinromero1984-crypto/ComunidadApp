@@ -43,6 +43,7 @@ import com.comunidapp.app.data.remote.supabase.supabase
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -556,12 +557,24 @@ class SupabaseShelterM11RemoteDataSource {
     private suspend inline fun <reified T : Any> decodeOne(
         function: String,
         parameters: JsonObject
-    ): T = supabase.postgrest.rpc(function = function, parameters = parameters).decodeSingle()
+    ): T {
+        val element: JsonElement = supabase.postgrest.rpc(
+            function = function,
+            parameters = parameters
+        ).decodeAs()
+        return M11RpcDecoding.decodeRow(element)
+    }
 
     private suspend inline fun <reified T : Any> decodeList(
         function: String,
         parameters: JsonObject = buildJsonObject { }
-    ): List<T> = supabase.postgrest.rpc(function = function, parameters = parameters).decodeList()
+    ): List<T> {
+        val element: JsonElement = supabase.postgrest.rpc(
+            function = function,
+            parameters = parameters
+        ).decodeAs()
+        return M11RpcDecoding.decodeRows(element)
+    }
 
     suspend fun listPublic(): List<ShelterProfileRow> = decodeList("m11_list_public_shelters")
     suspend fun listMine(): List<ShelterProfileRow> = decodeList("m11_get_my_shelter_profiles")

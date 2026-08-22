@@ -20,6 +20,7 @@ import com.comunidapp.app.domain.organization.PublicOrganization
 import com.comunidapp.app.domain.organization.UpdateOrganizationBranchCommand
 import com.comunidapp.app.domain.organization.UpdateOrganizationCommand
 import com.comunidapp.app.domain.organization.ValidatedOrganizationDraft
+import com.comunidapp.app.domain.organization.authorization.MembershipDisplay
 import com.comunidapp.app.domain.organization.authorization.OrganizationAuthorizationContext
 import com.comunidapp.app.domain.organization.authorization.OrganizationAuthorizationService
 import com.comunidapp.app.domain.organization.authorization.OrganizationMembership
@@ -164,6 +165,8 @@ interface OrganizationInvitationRepository {
     suspend fun acceptByToken(token: OrganizationInvitationToken): Result<OrganizationMembership>
 
     suspend fun declineByToken(token: OrganizationInvitationToken): Result<Unit>
+
+    suspend fun rejectMine(invitationId: String): Result<Unit>
 }
 
 interface OrganizationPermissionRepository {
@@ -516,7 +519,9 @@ class MockOrganizationMembershipRepository : OrganizationMembershipRepository {
         }
 
     override suspend fun countActiveOwners(organizationId: OrganizationId): Int =
-        listActiveByOrganization(organizationId).count { it.role == OrganizationRoleCode.OWNER }
+        listActiveByOrganization(organizationId).count {
+            MembershipDisplay.isAdministrator(it.role)
+        }
 
     override suspend fun addMembership(membership: OrganizationMembership): Result<Unit> {
         memberships.update { it + (membership.id to membership) }
@@ -636,6 +641,22 @@ class MockOrganizationInvitationRepository(
         if (!OrganizationInvitationRules.canInviteRole(command.invitedRole)) {
             return Result.failure(IllegalArgumentException("ROLE_NOT_INVITABLE"))
         }
+        if (command.targetUserId.isNullOrBlank()) {
+            return Result.failure(IllegalArgumentException("INVITE_TARGET_REQUIRED"))
+        }
+        val alreadyMember = membershipRepository.listActiveByOrganization(command.organizationId)
+            .any { it.userId == command.targetUserId && it.status == OrganizationMembershipStatus.ACTIVE }
+        if (alreadyMember) {
+            return Result.failure(IllegalStateException("ALREADY_MEMBER"))
+        }
+        val duplicatePending = invites.value.values.any {
+            it.organizationId == command.organizationId &&
+                it.targetUserId == command.targetUserId &&
+                it.status == OrganizationInvitationStatus.PENDING
+        }
+        if (duplicatePending) {
+            return Result.failure(IllegalStateException("PENDING_INVITE_EXISTS"))
+        }
         val id = UUID.randomUUID().toString()
         val invitation = OrganizationInvitation(
             id = id,
@@ -645,6 +666,7 @@ class MockOrganizationInvitationRepository(
             invitedByUserId = command.invitedByUserId,
             targetUserId = command.targetUserId,
             targetEmailHint = command.targetEmailHint,
+            permissionCodes = command.permissionCodes,
             expiresAtEpochMs = command.expiresAtEpochMs,
             token = command.token
         )
@@ -737,6 +759,20 @@ class MockOrganizationInvitationRepository(
         } ?: return Result.failure(IllegalStateException("INVITATION_INVALID"))
         val declined = OrganizationInvitationRules.markDeclined(invitation, System.currentTimeMillis())
         invites.update { it + (invitation.id to declined) }
+        return Result.success(Unit)
+    }
+
+    override suspend fun rejectMine(invitationId: String): Result<Unit> {
+        val actor = AuthProvider.repository.getCurrentUser()?.id
+            ?: return Result.failure(IllegalStateException("NOT_AUTHENTICATED"))
+        val invitation = invites.value[invitationId]
+            ?: return Result.failure(IllegalStateException("NOT_FOUND"))
+        if (invitation.targetUserId != actor) {
+            return Result.failure(IllegalStateException("FORBIDDEN"))
+        }
+        val declined = OrganizationInvitationRules.markDeclined(invitation, System.currentTimeMillis())
+            .copy(status = OrganizationInvitationStatus.REJECTED)
+        invites.update { it + (invitationId to declined) }
         return Result.success(Unit)
     }
 }

@@ -32,7 +32,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.AppNotification
 import com.comunidapp.app.notifications.NotificationInboxRefreshCoordinator
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.util.formatRelativeTime
 import com.comunidapp.app.viewmodel.NotificationsViewModel
 
@@ -40,6 +42,7 @@ import com.comunidapp.app.viewmodel.NotificationsViewModel
 fun NotificationsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPreferences: () -> Unit = {},
+    onOpenInvitation: (String) -> Unit = {},
     viewModel: NotificationsViewModel = viewModel()
 ) {
     val notifications by viewModel.notifications.collectAsState()
@@ -52,8 +55,9 @@ fun NotificationsScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Notificaciones",
                 showBackButton = true,
                 onBackClick = onNavigateBack,
@@ -101,7 +105,12 @@ fun NotificationsScreen(
                 items(notifications, key = { it.id }) { notification ->
                     NotificationCard(
                         notification = notification,
-                        onClick = { viewModel.markRead(notification.id) },
+                        onClick = {
+                            viewModel.markRead(notification.id)
+                            if (notification.type == com.comunidapp.app.data.model.NotificationType.ORG_INVITE) {
+                                notification.relatedId?.let(onOpenInvitation)
+                            }
+                        },
                         onArchive = { viewModel.archive(notification.id) },
                         onDelete = { viewModel.deleteLogical(notification.id) }
                     )

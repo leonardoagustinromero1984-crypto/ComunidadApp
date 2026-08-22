@@ -19,7 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -49,7 +51,7 @@ fun M27HubScreen(
     viewModel: M27HubViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Integraciones y API", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Integraciones y API", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (val s = state) {
                 M27HubUiState.Loading -> LoadingState()
@@ -82,7 +84,7 @@ private fun <T> M27ListScreen(
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null
 ) {
-    Scaffold(topBar = { ComunidappTopBar(title = title, showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = title, showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (state) {
                 M27ListUiState.Loading -> LoadingState()

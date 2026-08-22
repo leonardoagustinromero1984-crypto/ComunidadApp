@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.FriendConnection
+import com.comunidapp.app.data.model.NotificationType
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.ProfileRelation
 import com.comunidapp.app.data.model.User
@@ -16,7 +17,7 @@ import com.comunidapp.app.data.repository.FriendRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.ProfilePrivacy
-import com.comunidapp.app.data.model.NotificationType
+import com.comunidapp.app.domain.social.FriendshipErrorMapper
 import com.comunidapp.app.domain.user.toBridgeUser
 import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -176,7 +177,12 @@ class UserPublicProfileViewModel(
                         relatedType = "user"
                     )
                 }
-                .onFailure { _actionMessage.value = it.message ?: "No se pudo enviar la solicitud" }
+                .onFailure {
+                    _actionMessage.value = FriendshipErrorMapper.userMessage(
+                        it,
+                        FriendshipErrorMapper.Operation.SEND
+                    )
+                }
             _actionInProgress.value = false
         }
     }
@@ -200,7 +206,12 @@ class UserPublicProfileViewModel(
                         relatedType = "user"
                     )
                 }
-                .onFailure { _actionMessage.value = it.message ?: "No se pudo aceptar la solicitud" }
+                .onFailure {
+                    _actionMessage.value = FriendshipErrorMapper.userMessage(
+                        it,
+                        FriendshipErrorMapper.Operation.RESPOND
+                    )
+                }
             _actionInProgress.value = false
         }
     }
@@ -213,7 +224,12 @@ class UserPublicProfileViewModel(
             _actionMessage.value = null
             friendRepository.respondToRequest(connectionId, accept = false, responderId = viewer.id)
                 .onSuccess { _actionMessage.value = "Solicitud rechazada" }
-                .onFailure { _actionMessage.value = it.message ?: "No se pudo rechazar la solicitud" }
+                .onFailure {
+                    _actionMessage.value = FriendshipErrorMapper.userMessage(
+                        it,
+                        FriendshipErrorMapper.Operation.RESPOND
+                    )
+                }
             _actionInProgress.value = false
         }
     }
@@ -226,7 +242,12 @@ class UserPublicProfileViewModel(
             _actionMessage.value = null
             friendRepository.cancelRequest(connectionId, viewer.id)
                 .onSuccess { _actionMessage.value = "Solicitud cancelada" }
-                .onFailure { _actionMessage.value = it.message ?: "No se pudo cancelar la solicitud" }
+                .onFailure {
+                    _actionMessage.value = FriendshipErrorMapper.userMessage(
+                        it,
+                        FriendshipErrorMapper.Operation.CANCEL
+                    )
+                }
             _actionInProgress.value = false
         }
     }

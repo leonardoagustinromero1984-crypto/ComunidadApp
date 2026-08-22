@@ -8,11 +8,8 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -21,7 +18,14 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.theme.BrandOrange
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
 import com.comunidapp.app.ui.theme.ComunidappTheme
+import com.comunidapp.app.ui.theme.LeoBody
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
 fun LoadingState(
@@ -34,7 +38,7 @@ fun LoadingState(
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator(color = MaterialTheme.colorScheme.primary)
+        CircularProgressIndicator(color = BrandOrange)
     }
 }
 
@@ -56,23 +60,22 @@ fun EmptyState(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
+            style = LeoCardTitle,
+            color = BrandText,
             textAlign = TextAlign.Center
         )
         if (!message.isNullOrBlank()) {
-            Spacer(Modifier.height(8.dp))
+            Spacer(Modifier.height(LeoDimens.SpaceS))
             Text(
                 text = message,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = LeoBody,
+                color = BrandTextSecondary,
                 textAlign = TextAlign.Center
             )
         }
         if (actionLabel != null && onAction != null) {
-            Spacer(Modifier.height(16.dp))
-            TextButton(onClick = onAction, modifier = Modifier.fillMaxWidth(0.6f)) {
-                Text(actionLabel)
-            }
+            Spacer(Modifier.height(LeoDimens.SpaceL))
+            LeoPrimaryButton(text = actionLabel, onClick = onAction, modifier = Modifier.fillMaxWidth(0.6f))
         }
     }
 }
@@ -95,22 +98,20 @@ fun ErrorState(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.error,
+            style = LeoCardTitle,
+            color = BrandText,
             textAlign = TextAlign.Center
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(LeoDimens.SpaceS))
         Text(
             text = message,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = LeoBody,
+            color = BrandTextSecondary,
             textAlign = TextAlign.Center
         )
         if (onRetry != null) {
-            Spacer(Modifier.height(16.dp))
-            Button(onClick = onRetry, modifier = Modifier.fillMaxWidth(0.6f)) {
-                Text(retryLabel)
-            }
+            Spacer(Modifier.height(LeoDimens.SpaceL))
+            LeoPrimaryButton(text = retryLabel, onClick = onRetry, modifier = Modifier.fillMaxWidth(0.6f))
         }
     }
 }

@@ -32,6 +32,8 @@ import com.comunidapp.app.data.repository.FosterEvolutionRepository
 import com.comunidapp.app.data.repository.FosterExpenseRepository
 import com.comunidapp.app.data.repository.FosterHelpRepository
 import com.comunidapp.app.data.repository.FosterHomeRepository
+import com.comunidapp.app.data.repository.InMemoryLocationCatalogRepository
+import com.comunidapp.app.data.repository.LocationCatalogRepository
 import com.comunidapp.app.data.repository.FosterPlacementRepository
 import com.comunidapp.app.data.repository.FosterRequestRepository
 import com.comunidapp.app.data.mock.InMemoryDataStore
@@ -210,6 +212,21 @@ import com.comunidapp.app.data.repository.LostFoundRepository
 import com.comunidapp.app.data.repository.MockAdoptionRepository
 import com.comunidapp.app.data.repository.MockFeedRepository
 import com.comunidapp.app.data.repository.MockLostFoundRepository
+import com.comunidapp.app.data.repository.CanonicalAdoptionRepository
+import com.comunidapp.app.data.repository.CanonicalChatRepository
+import com.comunidapp.app.data.repository.CanonicalFriendRepository
+import com.comunidapp.app.data.repository.CanonicalM28Repository
+import com.comunidapp.app.data.repository.CanonicalFeedRepository
+import com.comunidapp.app.data.repository.CanonicalLocationCatalogRepository
+import com.comunidapp.app.data.repository.CanonicalLostFoundRepository
+import com.comunidapp.app.data.repository.CanonicalOrganizationRepository
+import com.comunidapp.app.data.repository.CanonicalFosterHomeRepository
+import com.comunidapp.app.data.repository.CanonicalFosterPlacementRepository
+import com.comunidapp.app.data.repository.CanonicalDaycareRepository
+import com.comunidapp.app.data.repository.CanonicalOrganizationInvitationRepository
+import com.comunidapp.app.data.repository.CanonicalOrganizationMembershipRepository
+import com.comunidapp.app.data.repository.CanonicalOrganizationPermissionRepository
+import com.comunidapp.app.data.repository.CanonicalServiceRepository
 import com.comunidapp.app.data.repository.LegacyPetRepositoryAdapter
 import com.comunidapp.app.data.repository.MockPetRepository
 import com.comunidapp.app.data.repository.MockShelterRepository
@@ -369,6 +386,12 @@ import com.comunidapp.app.data.repository.SupabaseNotificationInboxRepository
 import com.comunidapp.app.data.repository.SupabaseNotificationInstallationRepository
 import com.comunidapp.app.data.repository.SupabaseNotificationPreferenceRepository
 import com.comunidapp.app.data.repository.SupabaseShelterRepository
+import com.comunidapp.app.data.repository.CanonicalFileAssetRepository
+import com.comunidapp.app.data.repository.CanonicalFileDownloadRepository
+import com.comunidapp.app.data.repository.CanonicalFileObjectUploader
+import com.comunidapp.app.data.repository.CanonicalFileUploadRepository
+import com.comunidapp.app.data.repository.CanonicalVitaCoraProjectionRepository
+import com.comunidapp.app.data.repository.CanonicalVitaCoraRepository
 import com.comunidapp.app.data.repository.SupabaseUserRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.viewmodel.files.FileSessionCleanup
@@ -377,8 +400,41 @@ object DataProvider {
 
     val useSupabase: Boolean get() = AppConfigProvider.featureFlags().useSupabase
 
+    /**
+     * Legacy module RPCs (m14_*, feed, marketplace, …) do not exist on canonical Staging.
+     * Keep those repositories on mock so they do not call missing functions.
+     */
+    val useLegacyRemoteModules: Boolean
+        get() = useSupabase && !com.comunidapp.app.domain.canonical.CanonicalBackend.isCanonicalStagingUrl(
+            AppConfigProvider.get().supabaseUrl ?: com.comunidapp.app.BuildConfig.SUPABASE_URL
+        )
+
     val userRepository: UserRepository by lazy {
         if (useSupabase) SupabaseUserRepository() else MockUserRepository()
+    }
+
+    /**
+     * Catálogo de ubicación administrativa (UI-V2-03).
+     * LOCATION_BACKEND_MIGRATION_REQUIRED = YES — semilla + CRUD de sesión, sin SQL.
+     */
+    val locationCatalogRepository: LocationCatalogRepository by lazy {
+        if (useSupabase) CanonicalLocationCatalogRepository() else InMemoryLocationCatalogRepository()
+    }
+
+    val masterCatalogRepository: com.comunidapp.app.data.repository.MasterCatalogRepository by lazy {
+        if (useSupabase) {
+            com.comunidapp.app.data.repository.CanonicalMasterCatalogRepository()
+        } else {
+            com.comunidapp.app.data.repository.InMemoryMasterCatalogRepository()
+        }
+    }
+
+    val personCapabilityRepository: com.comunidapp.app.data.repository.PersonCapabilityRepository by lazy {
+        if (useSupabase) {
+            com.comunidapp.app.data.repository.CanonicalPersonCapabilityRepository()
+        } else {
+            com.comunidapp.app.data.repository.InMemoryPersonCapabilityRepository()
+        }
     }
 
     val petRepository: PetRepository by lazy {
@@ -387,7 +443,7 @@ object DataProvider {
 
     /** LeoVer M08 domain repos (optional; wired when useSupabase). */
     val petDomainRepository: PetDomainRepository? by lazy {
-        if (useSupabase) SupabasePetDomainRepository() else null
+        if (useLegacyRemoteModules) SupabasePetDomainRepository() else null
     }
 
     val petResponsibilityRepository: PetResponsibilityRepository? by lazy {
@@ -395,33 +451,41 @@ object DataProvider {
     }
 
     val petAuthorizationRepository: PetAuthorizationRepository? by lazy {
-        if (useSupabase) SupabasePetAuthorizationRepository() else null
+        if (useLegacyRemoteModules) SupabasePetAuthorizationRepository() else null
     }
 
     val petTransferRepository: PetTransferRepository? by lazy {
-        if (useSupabase) SupabasePetTransferRepository() else null
+        if (useLegacyRemoteModules) SupabasePetTransferRepository() else null
     }
 
     val feedRepository: FeedRepository by lazy {
-        if (useSupabase) SupabaseFeedRepository() else MockFeedRepository()
+        when {
+            useLegacyRemoteModules -> SupabaseFeedRepository()
+            useSupabase -> CanonicalFeedRepository()
+            else -> MockFeedRepository()
+        }
     }
 
     val adoptionRepository: AdoptionRepository by lazy {
-        if (useSupabase) {
-            SupabaseAdoptionRepository()
-        } else {
-            MockAdoptionRepository(
+        when {
+            useLegacyRemoteModules -> SupabaseAdoptionRepository()
+            useSupabase -> CanonicalAdoptionRepository()
+            else -> MockAdoptionRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
         }
     }
 
     val lostFoundRepository: LostFoundRepository by lazy {
-        if (useSupabase) SupabaseLostFoundRepository() else MockLostFoundRepository()
+        when {
+            useLegacyRemoteModules -> SupabaseLostFoundRepository()
+            useSupabase -> CanonicalLostFoundRepository()
+            else -> MockLostFoundRepository()
+        }
     }
 
     val adoptionRequestRepository: AdoptionRequestRepository by lazy {
-        if (useSupabase) SupabaseAdoptionRequestRepository() else MockAdoptionRequestRepository()
+        if (useLegacyRemoteModules) SupabaseAdoptionRequestRepository() else MockAdoptionRequestRepository()
     }
 
     private val m09ApplicationStore by lazy {
@@ -431,7 +495,7 @@ object DataProvider {
     private val m09CompletionStore by lazy { M09CompletionMemoryStore() }
 
     val adoptionApplicationRepository: AdoptionApplicationRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseAdoptionApplicationRepository()
         } else {
             MockAdoptionApplicationRepository(
@@ -453,7 +517,7 @@ object DataProvider {
             ?: m09ApplicationStore.value
 
     val adoptionInterviewRepository: AdoptionInterviewRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseAdoptionInterviewRepository()
         } else {
             MockAdoptionInterviewRepository(
@@ -466,7 +530,7 @@ object DataProvider {
     }
 
     val adoptionDocumentRepository: AdoptionDocumentRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseAdoptionDocumentRepository()
         } else {
             MockAdoptionDocumentRepository(
@@ -479,7 +543,7 @@ object DataProvider {
     }
 
     val adoptionAgreementRepository: AdoptionAgreementRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseAdoptionAgreementRepository()
         } else {
             MockAdoptionAgreementRepository(
@@ -492,7 +556,7 @@ object DataProvider {
     }
 
     val adoptionCompletionRepository: AdoptionCompletionRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseAdoptionCompletionRepository()
         } else {
             MockAdoptionCompletionRepository(
@@ -505,7 +569,7 @@ object DataProvider {
     }
 
     val adoptionFollowUpRepository: AdoptionFollowUpRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseAdoptionFollowUpRepository()
         } else {
             MockAdoptionFollowUpRepository(
@@ -519,10 +583,10 @@ object DataProvider {
     private val m10FosterStore by lazy { M10FosterMemoryStore() }
 
     val fosterHomeRepository: FosterHomeRepository by lazy {
-        if (useSupabase) {
-            SupabaseFosterHomeRepository()
-        } else {
-            MockFosterHomeRepository(
+        when {
+            useLegacyRemoteModules -> SupabaseFosterHomeRepository()
+            useSupabase -> CanonicalFosterHomeRepository()
+            else -> MockFosterHomeRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m10FosterStore
             )
@@ -530,7 +594,7 @@ object DataProvider {
     }
 
     val fosterRequestRepository: FosterRequestRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseFosterRequestRepository()
         } else {
             MockFosterRequestRepository(
@@ -544,18 +608,20 @@ object DataProvider {
     }
 
     val fosterPlacementRepository: FosterPlacementRepository by lazy {
-        if (useSupabase) {
-            SupabaseFosterPlacementRepository()
-        } else {
-            MockFosterPlacementRepository(
+        when {
+            useLegacyRemoteModules -> SupabaseFosterPlacementRepository()
+            useSupabase -> CanonicalFosterPlacementRepository()
+            else -> MockFosterPlacementRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m10FosterStore
             )
         }
     }
 
+    val canonicalDaycareRepository: CanonicalDaycareRepository by lazy { CanonicalDaycareRepository() }
+
     val fosterExpenseRepository: FosterExpenseRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseFosterExpenseRepository()
         } else {
             MockFosterExpenseRepository(
@@ -566,7 +632,7 @@ object DataProvider {
     }
 
     val fosterEvolutionRepository: FosterEvolutionRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseFosterEvolutionRepository()
         } else {
             MockFosterEvolutionRepository(
@@ -577,7 +643,7 @@ object DataProvider {
     }
 
     val fosterHelpRepository: FosterHelpRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseFosterHelpRepository()
         } else {
             MockFosterHelpRepository(
@@ -588,15 +654,19 @@ object DataProvider {
     }
 
     val chatRepository: ChatRepository by lazy {
-        if (useSupabase) SupabaseChatRepository() else MockChatRepository()
+        when {
+            useLegacyRemoteModules -> SupabaseChatRepository()
+            useSupabase -> CanonicalChatRepository()
+            else -> MockChatRepository()
+        }
     }
 
     val communityRepository: CommunityRepository by lazy {
-        if (useSupabase) SupabaseCommunityRepository() else MockCommunityRepository()
+        if (useLegacyRemoteModules) SupabaseCommunityRepository() else MockCommunityRepository()
     }
 
     val shelterRepository: ShelterRepository by lazy {
-        if (useSupabase) SupabaseShelterRepository() else MockShelterRepository()
+        if (useLegacyRemoteModules) SupabaseShelterRepository() else MockShelterRepository()
     }
 
     val m11ShelterStore by lazy {
@@ -604,7 +674,7 @@ object DataProvider {
     }
 
     val shelterProfileRepository: ShelterProfileRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseShelterProfileRepository()
         } else {
             MockShelterProfileRepository(
@@ -615,7 +685,7 @@ object DataProvider {
     }
 
     val shelterPetRepository: ShelterPetRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseShelterPetRepository()
         } else {
             MockShelterPetRepository(
@@ -627,7 +697,7 @@ object DataProvider {
     }
 
     val shelterVolunteerRepository: ShelterVolunteerRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseShelterVolunteerRepository()
         } else {
             MockShelterVolunteerRepository(
@@ -638,7 +708,7 @@ object DataProvider {
     }
 
     val shelterCampaignRepository: ShelterCampaignRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseShelterCampaignRepository()
         } else {
             MockShelterCampaignRepository(
@@ -649,7 +719,7 @@ object DataProvider {
     }
 
     val shelterSupplyRepository: ShelterSupplyRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseShelterSupplyRepository()
         } else {
             MockShelterSupplyRepository(
@@ -660,7 +730,7 @@ object DataProvider {
     }
 
     val shelterEmergencyRepository: ShelterEmergencyRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseShelterEmergencyRepository()
         } else {
             MockShelterEmergencyRepository(
@@ -671,7 +741,7 @@ object DataProvider {
     }
 
     val shelterEventRepository: ShelterEventRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseShelterEventRepository()
         } else {
             MockShelterEventRepository(
@@ -682,7 +752,7 @@ object DataProvider {
     }
 
     val shelterReportRepository: ShelterReportRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseShelterReportRepository()
         } else {
             MockShelterReportRepository(
@@ -698,7 +768,7 @@ object DataProvider {
     }
 
     val veterinaryClinicRepository: VeterinaryClinicRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseVeterinaryClinicRepository()
         } else {
             MockVeterinaryClinicRepository(
@@ -709,7 +779,7 @@ object DataProvider {
     }
 
     val veterinaryClinicLifecycle: VeterinaryClinicLifecycle by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             veterinaryClinicRepository as VeterinaryClinicLifecycle
         } else {
             MockVeterinaryClinicLifecycle(
@@ -720,7 +790,7 @@ object DataProvider {
     }
 
     val veterinaryProfessionalRepository: VeterinaryProfessionalRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseVeterinaryProfessionalRepository()
         } else {
             MockVeterinaryProfessionalRepository(store = m12VeterinaryStore)
@@ -728,7 +798,7 @@ object DataProvider {
     }
 
     val veterinaryProfessionalOpsRepository: VeterinaryProfessionalOpsRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             veterinaryProfessionalRepository as VeterinaryProfessionalOpsRepository
         } else {
             MockVeterinaryProfessionalOpsRepository(
@@ -739,7 +809,7 @@ object DataProvider {
     }
 
     val veterinaryDirectoryRepository: VeterinaryDirectoryRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseVeterinaryDirectoryRepository()
         } else {
             MockVeterinaryDirectoryRepository(store = m12VeterinaryStore)
@@ -747,7 +817,7 @@ object DataProvider {
     }
 
     val veterinaryServiceRepository: VeterinaryServiceRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseVeterinaryServiceRepository()
         } else {
             MockVeterinaryServiceRepository(
@@ -758,7 +828,7 @@ object DataProvider {
     }
 
     val veterinaryOpeningHoursRepository: VeterinaryOpeningHoursRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseVeterinaryOpeningHoursRepository()
         } else {
             MockVeterinaryOpeningHoursRepository(
@@ -769,7 +839,7 @@ object DataProvider {
     }
 
     val veterinaryScheduleRepository: VeterinaryScheduleRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseVeterinaryScheduleRepository()
         } else {
             MockVeterinaryScheduleRepository(
@@ -780,7 +850,7 @@ object DataProvider {
     }
 
     val veterinaryAppointmentRepository: VeterinaryAppointmentRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseVeterinaryAppointmentRepository()
         } else {
             MockVeterinaryAppointmentRepository(
@@ -798,7 +868,7 @@ object DataProvider {
     }
 
     val m13SightingRepository: M13SightingRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM13SightingRepository()
         } else {
             MockM13SightingRepository(
@@ -809,7 +879,7 @@ object DataProvider {
     }
 
     val m13MatchRepository: M13MatchRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM13MatchRepository()
         } else {
             MockM13MatchRepository(
@@ -821,7 +891,7 @@ object DataProvider {
     }
 
     val m13OperationsRepository: M13OperationsRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM13OperationsRepository()
         } else {
             MockM13OperationsRepository(
@@ -838,11 +908,23 @@ object DataProvider {
 
     private val m14ResolvePet: (String) -> Pet? = { id -> InMemoryDataStore.getPetById(id) }
 
+    val vitaCoraRepository: com.comunidapp.app.domain.vitacora.VitaCoraRepository by lazy {
+        CanonicalVitaCoraRepository()
+    }
+
+    val vitacoraImportRepository: com.comunidapp.app.data.repository.VitacoraImportRepository by lazy {
+        when {
+            useSupabase && !useLegacyRemoteModules ->
+                com.comunidapp.app.data.repository.CanonicalVitacoraImportRepository()
+            else -> com.comunidapp.app.data.repository.MockVitacoraImportRepository()
+        }
+    }
+
     val m14PassportRepository: M14PassportRepository by lazy {
-        if (useSupabase) {
-            SupabaseM14PassportRepository()
-        } else {
-            MockM14PassportRepository(
+        when {
+            useLegacyRemoteModules -> SupabaseM14PassportRepository()
+            useSupabase -> CanonicalVitaCoraProjectionRepository()
+            else -> MockM14PassportRepository(
                 store = m14Store,
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 resolvePet = m14ResolvePet,
@@ -852,7 +934,7 @@ object DataProvider {
     }
 
     val m14CredentialRepository: M14CredentialRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM14CredentialRepository()
         } else {
             MockM14CredentialRepository(
@@ -865,7 +947,7 @@ object DataProvider {
     }
 
     val m14VerificationRepository: M14VerificationRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM14VerificationRepository()
         } else {
             MockM14VerificationRepository(
@@ -878,7 +960,7 @@ object DataProvider {
 
     /** M14 Bloque 4 — expiraciones y métricas locales; remoto 052 = PENDIENTE_EXTERNO. */
     val m14OperationsRepository: M14OperationsRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM14OperationsRepository()
         } else {
             MockM14OperationsRepository(
@@ -892,21 +974,22 @@ object DataProvider {
     private val m28Store by lazy { M28MemoryStore() }
 
     val m28Repository: M28Repository by lazy {
-        if (useSupabase) {
+        val mockDelegate = MockM28Repository(
+            store = m28Store,
+            actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
+            resolvePet = m14ResolvePet,
+            isPetResponsible = { petId, userId ->
+                petRepository.observePets().value.any { it.id == petId } ||
+                    petRepository.getPetsByOwner(userId).any { it.id == petId }
+            },
+            orgRoleForClinic = { _, userId ->
+                if (AuthProvider.repository.getCurrentUser()?.id == userId) "VETERINARIAN" else "NONE"
+            }
+        )
+        if (useLegacyRemoteModules) {
             SupabaseM28Repository()
         } else {
-            MockM28Repository(
-                store = m28Store,
-                actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
-                resolvePet = m14ResolvePet,
-                isPetResponsible = { petId, userId ->
-                    val pet = InMemoryDataStore.getPetById(petId)
-                    pet != null && pet.ownerId == userId
-                },
-                orgRoleForClinic = { _, userId ->
-                    if (AuthProvider.repository.getCurrentUser()?.id == userId) "VETERINARIAN" else "NONE"
-                }
-            )
+            CanonicalM28Repository(delegate = mockDelegate)
         }
     }
 
@@ -918,7 +1001,7 @@ object DataProvider {
     private val m15ResolvePet: (String) -> Pet? = { id -> InMemoryDataStore.getPetById(id) }
 
     val m15FosterHomeRepository: M15FosterHomeRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM15FosterHomeRepository(delegate = fosterHomeRepository)
         } else {
             MockM15FosterHomeRepository(
@@ -930,7 +1013,7 @@ object DataProvider {
     }
 
     val m15FosterRequestRepository: M15FosterRequestRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM15FosterRequestRepository(delegate = fosterRequestRepository)
         } else {
             MockM15FosterRequestRepository(
@@ -943,7 +1026,7 @@ object DataProvider {
     }
 
     val m15FosterPlacementRepository: M15FosterPlacementRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM15FosterPlacementRepository(delegate = fosterPlacementRepository)
         } else {
             MockM15FosterPlacementRepository(
@@ -956,7 +1039,7 @@ object DataProvider {
 
     /** M15 Bloque 3 — evolución, egreso, gastos y ayuda sobre placements M10. */
     val m15EvolutionRepository: M15PlacementEvolutionRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM15PlacementEvolutionRepository(delegate = fosterEvolutionRepository)
         } else {
             MockM15PlacementEvolutionRepository(
@@ -967,7 +1050,7 @@ object DataProvider {
     }
 
     val m15DischargeRepository: M15PlacementDischargeRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM15PlacementDischargeRepository(delegate = fosterPlacementRepository)
         } else {
             MockM15PlacementDischargeRepository(
@@ -978,7 +1061,7 @@ object DataProvider {
     }
 
     val m15ExpenseRepository: M15PlacementExpenseRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM15PlacementExpenseRepository(delegate = fosterExpenseRepository)
         } else {
             MockM15PlacementExpenseRepository(
@@ -989,7 +1072,7 @@ object DataProvider {
     }
 
     val m15HelpRepository: M15PlacementHelpRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM15PlacementHelpRepository(delegate = fosterHelpRepository)
         } else {
             MockM15PlacementHelpRepository(
@@ -1001,7 +1084,7 @@ object DataProvider {
 
     /** M15 Bloque 4 — métricas agregadas, M06 hooks y dashboard operativo. */
     val m15OperationsRepository: M15OperationsRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM15OperationsRepository()
         } else {
             MockM15OperationsRepository(
@@ -1017,7 +1100,7 @@ object DataProvider {
     private val m16Authority by lazy { MockM16ShelterAuthorityPolicy() }
 
     val m16ShelterRepository: M16ShelterRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM16ShelterRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1034,7 +1117,7 @@ object DataProvider {
     private val m17ExtendedStore by lazy { M17ExtendedMemoryStore() }
 
     val m17InKindRepository: M17InKindRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM17InKindRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1047,7 +1130,7 @@ object DataProvider {
     }
 
     val m17VolunteerRepository: M17VolunteerRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM17VolunteerRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1060,7 +1143,7 @@ object DataProvider {
     }
 
     val m17TransparencyRepository: M17TransparencyRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM17TransparencyRepository()
         } else {
             MockM17TransparencyRepository(store = m17ExtendedStore)
@@ -1077,7 +1160,7 @@ object DataProvider {
     private val m17Authority by lazy { MockM17DonationAuthorityPolicy() }
 
     val m17DonationRepository: M17DonationRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM17DonationRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1096,13 +1179,19 @@ object DataProvider {
     private val m18Authority by lazy { MockM18EventAuthorityPolicy() }
 
     val m18EventRepository: M18EventRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM18EventRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
         } else {
             MockM18EventRepository(
-                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+                actorUserId = {
+                    if (useSupabase) {
+                        "mock_user_admin"
+                    } else {
+                        AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin"
+                    }
+                },
                 store = m18Store,
                 authority = m18Authority
             )
@@ -1115,7 +1204,7 @@ object DataProvider {
     private val m19Authority by lazy { MockM19SocialAuthorityPolicy() }
 
     val m19SocialRepository: M19SocialRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM19SocialRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1132,7 +1221,7 @@ object DataProvider {
     private val m20Store by lazy { M20MessagingMemoryStore() }
 
     val m20MessagingRepository: M20MessagingRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM20MessagingRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1148,7 +1237,7 @@ object DataProvider {
     private val m21Store by lazy { M21ReputationMemoryStore() }
 
     val m21ReputationRepository: M21ReputationRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM21ReputationRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1164,7 +1253,7 @@ object DataProvider {
     private val m22Store by lazy { M22ProviderMemoryStore() }
 
     val m22ProviderRepository: M22ProviderRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM22ProviderRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1183,11 +1272,11 @@ object DataProvider {
         get() = !useSupabase || runCatching { m20MessagingRepository }.isSuccess
 
     val m23AvailabilityRepository: M23AvailabilityRepository by lazy {
-        if (useSupabase) SupabaseM23AvailabilityRepository() else MockM23AvailabilityRepository(m23Store)
+        if (useLegacyRemoteModules) SupabaseM23AvailabilityRepository() else MockM23AvailabilityRepository(m23Store)
     }
 
     val m23BookingRepository: M23BookingRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM23BookingRepository()
         } else {
             MockM23BookingRepository(
@@ -1199,14 +1288,14 @@ object DataProvider {
     }
 
     val m23BookingPolicyRepository: M23BookingPolicyRepository by lazy {
-        if (useSupabase) SupabaseM23BookingPolicyRepository() else MockM23BookingPolicyRepository(m23Store)
+        if (useLegacyRemoteModules) SupabaseM23BookingPolicyRepository() else MockM23BookingPolicyRepository(m23Store)
     }
 
     /** M25 Bloque 2 — marketplace remoto bajo feature flag; mock conservado para local. */
     private val m25Store by lazy { M25MarketplaceMemoryStore() }
 
     val m25MarketplaceRepository: M25MarketplaceRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM25MarketplaceRepository(actorUserId = { AuthProvider.repository.getCurrentUser()?.id })
         } else {
             MockM25MarketplaceRepository(
@@ -1217,7 +1306,7 @@ object DataProvider {
     }
 
     val m25CartRepository: M25CartRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM25CartRepository(actorUserId = { AuthProvider.repository.getCurrentUser()?.id })
         } else {
             MockM25CartRepository(
@@ -1228,7 +1317,7 @@ object DataProvider {
     }
 
     val m25OrderRepository: M25OrderRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM25OrderRepository(actorUserId = { AuthProvider.repository.getCurrentUser()?.id })
         } else {
             MockM25OrderRepository(
@@ -1242,7 +1331,7 @@ object DataProvider {
     private val m26Store by lazy { M26AiMemoryStore() }
 
     val m26AiRepository: M26AiRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM26AiRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1257,7 +1346,7 @@ object DataProvider {
     private val m27Store by lazy { M27IntegrationMemoryStore() }
 
     val m27IntegrationRepository: M27IntegrationRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM27IntegrationRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1279,7 +1368,7 @@ object DataProvider {
                 actorUserId = AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin"
             )
         }
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseM16ShelterOperationsRepository()
         } else {
             M16ShelterOperationsRepositoryImpl(shelterRepository = m16ShelterRepository)
@@ -1288,7 +1377,7 @@ object DataProvider {
 
     /** M16 Bloque 4 — cola administrativa verificación refugio (M04). */
     val m16ShelterVerificationRepository: com.comunidapp.app.data.repository.M16ShelterVerificationRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             com.comunidapp.app.data.repository.SupabaseM16ShelterVerificationRepository(
                 profileRepo = m16ShelterRepository
             )
@@ -1301,15 +1390,23 @@ object DataProvider {
     }
 
     val serviceRepository: ServiceRepository by lazy {
-        if (useSupabase) SupabaseServiceRepository() else MockServiceRepository()
+        when {
+            useLegacyRemoteModules -> SupabaseServiceRepository()
+            useSupabase -> CanonicalServiceRepository()
+            else -> MockServiceRepository()
+        }
     }
 
     val friendRepository: FriendRepository by lazy {
-        if (useSupabase) SupabaseFriendRepository() else MockFriendRepository()
+        when {
+            useLegacyRemoteModules -> SupabaseFriendRepository()
+            useSupabase -> CanonicalFriendRepository()
+            else -> MockFriendRepository()
+        }
     }
 
     val platformRepository: PlatformRepository by lazy {
-        if (useSupabase) SupabasePlatformRepository() else MockPlatformRepository()
+        if (useLegacyRemoteModules) SupabasePlatformRepository() else MockPlatformRepository()
     }
 
     /**
@@ -1324,23 +1421,23 @@ object DataProvider {
     }
 
     val notificationInboxRepository: NotificationInboxRepository by lazy {
-        if (useSupabase) SupabaseNotificationInboxRepository() else m06Stage2ContractMocks.inbox
+        if (useLegacyRemoteModules) SupabaseNotificationInboxRepository() else m06Stage2ContractMocks.inbox
     }
 
     val notificationPreferenceRepository: NotificationPreferenceRepository by lazy {
-        if (useSupabase) SupabaseNotificationPreferenceRepository() else m06Stage2ContractMocks.preference
+        if (useLegacyRemoteModules) SupabaseNotificationPreferenceRepository() else m06Stage2ContractMocks.preference
     }
 
     val notificationInstallationRepository: NotificationInstallationRepository by lazy {
-        if (useSupabase) SupabaseNotificationInstallationRepository() else m06Stage2ContractMocks.installation
+        if (useLegacyRemoteModules) SupabaseNotificationInstallationRepository() else m06Stage2ContractMocks.installation
     }
 
     val notificationDeliveryRepository: NotificationDeliveryRepository by lazy {
-        if (useSupabase) ClientDeniedNotificationDeliveryRepository() else m06Stage2ContractMocks.delivery
+        if (useLegacyRemoteModules) ClientDeniedNotificationDeliveryRepository() else m06Stage2ContractMocks.delivery
     }
 
     val notificationOutboxRepository: NotificationOutboxRepository by lazy {
-        if (useSupabase) ClientDeniedNotificationOutboxRepository() else m06Stage2ContractMocks.outbox
+        if (useLegacyRemoteModules) ClientDeniedNotificationOutboxRepository() else m06Stage2ContractMocks.outbox
     }
 
     /** Acceso tipado a los mocks de etapa 2 (tests / inyección). */
@@ -1374,15 +1471,15 @@ object DataProvider {
         get() = m07Stage2ContractMocks
 
     val auditEventRepository: AuditEventRepository by lazy {
-        if (useSupabase) SupabaseAuditEventRepository() else m07Stage2ContractMocks.audit
+        if (useLegacyRemoteModules) SupabaseAuditEventRepository() else m07Stage2ContractMocks.audit
     }
 
     val securityEventRepository: SecurityEventRepository by lazy {
-        if (useSupabase) SupabaseSecurityEventRepository() else m07Stage2ContractMocks.security
+        if (useLegacyRemoteModules) SupabaseSecurityEventRepository() else m07Stage2ContractMocks.security
     }
 
     val applicationErrorRepository: ApplicationErrorRepository by lazy {
-        if (useSupabase) SupabaseApplicationErrorRepository() else m07Stage2ContractMocks.errors
+        if (useLegacyRemoteModules) SupabaseApplicationErrorRepository() else m07Stage2ContractMocks.errors
     }
 
     val performanceMetricRepository: PerformanceMetricRepository by lazy {
@@ -1402,7 +1499,7 @@ object DataProvider {
     }
 
     val observabilityExportRepository: ObservabilityExportRepository by lazy {
-        if (useSupabase) SupabaseObservabilityExportRepository() else m07Stage2ContractMocks.exports
+        if (useLegacyRemoteModules) SupabaseObservabilityExportRepository() else m07Stage2ContractMocks.exports
     }
 
     val eventCatalogRepository: EventCatalogRepository by lazy {
@@ -1418,7 +1515,7 @@ object DataProvider {
      * useSupabase=false: mock completo; useSupabase=true: RPC-only (sin write arbitrario de métricas).
      */
     val operationalObservabilityRepository: OperationalObservabilityRepository by lazy {
-        if (useSupabase) SupabaseOperationalObservabilityRepository()
+        if (useLegacyRemoteModules) SupabaseOperationalObservabilityRepository()
         else MockOperationalObservabilityRepository()
     }
 
@@ -1426,7 +1523,7 @@ object DataProvider {
      * M07 Etapa 5 — retención (RPC-only / mock). Preview ≠ execute.
      */
     val retentionRepository: RetentionRepository by lazy {
-        if (useSupabase) SupabaseRetentionRepository()
+        if (useLegacyRemoteModules) SupabaseRetentionRepository()
         else MockRetentionRepository()
     }
 
@@ -1436,7 +1533,7 @@ object DataProvider {
     }
 
     val permissionRepository: PermissionRepository by lazy {
-        if (useSupabase) SupabasePermissionRepository() else MockPermissionRepository()
+        if (useLegacyRemoteModules) SupabasePermissionRepository() else MockPermissionRepository()
     }
 
     /**
@@ -1455,33 +1552,41 @@ object DataProvider {
     }
 
     val organizationRepository: OrganizationRepository by lazy {
-        if (useSupabase) SupabaseOrganizationRepository() else mockOrganizationRepository
+        when {
+            useLegacyRemoteModules -> SupabaseOrganizationRepository()
+            useSupabase -> CanonicalOrganizationRepository()
+            else -> mockOrganizationRepository
+        }
     }
 
     val organizationMembershipRepository: OrganizationMembershipRepository by lazy {
-        if (useSupabase) {
-            SupabaseOrganizationMembershipRepository()
-        } else {
-            mockOrganizationMembershipRepository
+        when {
+            useLegacyRemoteModules -> SupabaseOrganizationMembershipRepository()
+            useSupabase -> CanonicalOrganizationMembershipRepository(organizationRepository)
+            else -> mockOrganizationMembershipRepository
         }
     }
 
     val organizationInvitationRepository: OrganizationInvitationRepository by lazy {
-        if (useSupabase) {
-            SupabaseOrganizationInvitationRepository(organizationMembershipRepository)
-        } else {
-            mockOrganizationInvitationRepository
+        when {
+            useLegacyRemoteModules ->
+                SupabaseOrganizationInvitationRepository(organizationMembershipRepository)
+            useSupabase -> CanonicalOrganizationInvitationRepository()
+            else -> mockOrganizationInvitationRepository
         }
     }
 
     val organizationPermissionRepository: OrganizationPermissionRepository by lazy {
-        if (useSupabase) {
-            SupabaseOrganizationPermissionRepository(
+        when {
+            useLegacyRemoteModules -> SupabaseOrganizationPermissionRepository(
                 organizationRepository,
                 organizationMembershipRepository
             )
-        } else {
-            MockOrganizationPermissionRepository(
+            useSupabase -> CanonicalOrganizationPermissionRepository(
+                organizationRepository,
+                organizationMembershipRepository
+            )
+            else -> MockOrganizationPermissionRepository(
                 organizationRepository,
                 organizationMembershipRepository
             )
@@ -1489,7 +1594,7 @@ object DataProvider {
     }
 
     val platformAdministrationRepository: PlatformAdministrationRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabasePlatformAdministrationRepository()
         } else {
             MockPlatformAdministrationRepository(permissionRepository)
@@ -1500,11 +1605,11 @@ object DataProvider {
      * M04 Etapa 3: repositorios Supabase cuando useSupabase; mocks locales en caso contrario.
      */
     val moderationRepository: ModerationRepository by lazy {
-        if (useSupabase) SupabaseModerationRepository() else MockModerationRepository()
+        if (useLegacyRemoteModules) SupabaseModerationRepository() else MockModerationRepository()
     }
 
     val organizationVerificationRepository: OrganizationVerificationRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseOrganizationVerificationRepository()
         } else {
             MockOrganizationVerificationRepository()
@@ -1512,11 +1617,11 @@ object DataProvider {
     }
 
     val supportRepository: SupportRepository by lazy {
-        if (useSupabase) SupabaseSupportRepository() else MockSupportRepository()
+        if (useLegacyRemoteModules) SupabaseSupportRepository() else MockSupportRepository()
     }
 
     val administrativeAuditRepository: AdministrativeAuditRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseAdministrativeAuditRepository()
         } else {
             MockAdministrativeAuditRepository()
@@ -1527,27 +1632,31 @@ object DataProvider {
     private val mockFileAssetRepository: MockFileAssetRepository by lazy { MockFileAssetRepository() }
 
     val fileAssetRepository: FileAssetRepository by lazy {
-        if (useSupabase) SupabaseFileAssetRepository() else mockFileAssetRepository
+        when {
+            useLegacyRemoteModules -> SupabaseFileAssetRepository()
+            useSupabase -> CanonicalFileAssetRepository()
+            else -> mockFileAssetRepository
+        }
     }
 
     val fileUploadRepository: FileUploadRepository by lazy {
-        if (useSupabase) {
-            SupabaseFileUploadRepository()
-        } else {
-            MockFileUploadRepository(mockFileAssetRepository)
+        when {
+            useLegacyRemoteModules -> SupabaseFileUploadRepository()
+            useSupabase -> CanonicalFileUploadRepository()
+            else -> MockFileUploadRepository(mockFileAssetRepository)
         }
     }
 
     val fileDownloadRepository: FileDownloadRepository by lazy {
-        if (useSupabase) {
-            SupabaseFileDownloadRepository(fileAssetRepository)
-        } else {
-            MockFileDownloadRepository(mockFileAssetRepository)
+        when {
+            useLegacyRemoteModules -> SupabaseFileDownloadRepository(fileAssetRepository)
+            useSupabase -> CanonicalFileDownloadRepository(fileAssetRepository)
+            else -> MockFileDownloadRepository(mockFileAssetRepository)
         }
     }
 
     val fileAccessRepository: FileAccessRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseFileAccessRepository(fileAssetRepository)
         } else {
             MockFileAccessRepository(mockFileAssetRepository)
@@ -1555,7 +1664,7 @@ object DataProvider {
     }
 
     val fileRetentionRepository: FileRetentionRepository by lazy {
-        if (useSupabase) {
+        if (useLegacyRemoteModules) {
             SupabaseFileRetentionRepository()
         } else {
             MockFileRetentionRepository(mockFileAssetRepository)
@@ -1563,7 +1672,11 @@ object DataProvider {
     }
 
     val fileObjectUploader: FileObjectUploader by lazy {
-        if (useSupabase) SupabaseFileObjectUploader() else MockFileObjectUploader()
+        when {
+            useLegacyRemoteModules -> SupabaseFileObjectUploader()
+            useSupabase -> CanonicalFileObjectUploader()
+            else -> MockFileObjectUploader()
+        }
     }
 
     val fileLocalMetadataReader: FileLocalMetadataReader by lazy {
@@ -1580,7 +1693,11 @@ object DataProvider {
             assetRepository = fileAssetRepository,
             objectUploader = fileObjectUploader,
             metadataReader = fileLocalMetadataReader,
-            bytesReader = fileBytesReader
+            bytesReader = fileBytesReader,
+            imageIngest = com.comunidapp.app.domain.media.AndroidImageIngest(
+                LeoverApplication.instance.contentResolver,
+                LeoverApplication.instance.cacheDir
+            )
         ).also { FileSessionCleanup.register(coordinator = it) }
     }
 
@@ -1592,14 +1709,14 @@ object DataProvider {
     }
 
     val storageService: ImageStorageService? by lazy {
-        if (useSupabase) SupabaseStorageService() else null
+        if (useLegacyRemoteModules) SupabaseStorageService() else null
     }
 
     val profileAvatarStorage: ProfileAvatarStorageService? by lazy {
-        if (useSupabase) ProfileAvatarStorageService() else null
+        if (useLegacyRemoteModules) ProfileAvatarStorageService() else null
     }
 
     val organizationMediaStorage: OrganizationMediaStorageService? by lazy {
-        if (useSupabase) OrganizationMediaStorageService() else null
+        if (useLegacyRemoteModules) OrganizationMediaStorageService() else null
     }
 }

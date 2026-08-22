@@ -42,6 +42,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
+import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.LeoCaption
@@ -55,6 +56,7 @@ data class ProfileMenuActions(
     val onMyPets: () -> Unit = {},
     val onMyApplications: () -> Unit = {},
     val onReceivedApplications: () -> Unit = {},
+    val showReceivedApplications: Boolean = false,
     val onMyOrganizations: () -> Unit = {},
     val onMessages: () -> Unit = {},
     val onMyPosts: () -> Unit = {},
@@ -77,7 +79,10 @@ data class ProfileMenuActions(
     val onPlatformAdmin: (() -> Unit)? = null,
     val onMyAppeals: () -> Unit = {},
     val onFriendRequests: () -> Unit = {},
-    val onTutorial: () -> Unit = {}
+    val onTutorial: () -> Unit = {},
+    val onHelpTutorials: () -> Unit = {},
+    val onUseLeoverAs: () -> Unit = {},
+    val onEditProfile: () -> Unit = {}
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -100,7 +105,7 @@ fun ProfileMenuSheet(
     ModalBottomSheet(
         onDismissRequest = onDismiss,
         sheetState = sheetState,
-        containerColor = BrandCream
+        containerColor = BrandBackground
     ) {
         ProfileMenuContent(
             actions = actions,
@@ -140,8 +145,10 @@ fun ProfileMenuContent(
             MenuRow("Mis postulaciones", Icons.AutoMirrored.Filled.Assignment) {
                 onItemClick(actions.onMyApplications)
             }
-            MenuRow("Solicitudes recibidas", Icons.Default.Inbox) {
-                onItemClick(actions.onReceivedApplications)
+            if (actions.showReceivedApplications) {
+                MenuRow("Solicitudes recibidas", Icons.Default.Inbox) {
+                    onItemClick(actions.onReceivedApplications)
+                }
             }
             MenuRow("Mis organizaciones", Icons.Default.Business) {
                 onItemClick(actions.onMyOrganizations)
@@ -152,20 +159,24 @@ fun ProfileMenuContent(
             MenuRow("Notificaciones", Icons.Default.Notifications) {
                 onItemClick(actions.onNotifications)
             }
-            MenuRow("Solicitudes de amistad", Icons.Default.People) {
+            MenuRow("Solicitudes para seguirte", Icons.Default.People) {
                 onItemClick(actions.onFriendRequests)
             }
             MenuRow("Mis apelaciones", Icons.Default.Gavel) { onItemClick(actions.onMyAppeals) }
         }
         MenuGroup("Cuenta") {
+            MenuRow("Editar perfil", Icons.Default.Settings) { onItemClick(actions.onEditProfile) }
+            MenuRow("Usar LeoVer como", Icons.Default.Settings) { onItemClick(actions.onUseLeoverAs) }
             MenuRow("Configuración", Icons.Default.Settings) { onItemClick(actions.onSettings) }
             MenuRow("Privacidad", Icons.Default.Lock) { onItemClick(actions.onPrivacy) }
             MenuRow("Soporte", Icons.Default.SupportAgent) { onItemClick(actions.onSupport) }
-            MenuRow("Tutorial", Icons.AutoMirrored.Filled.HelpOutline) {
-                onItemClick(actions.onTutorial)
-            }
             MenuRow("Cerrar sesión", Icons.AutoMirrored.Filled.Logout) {
                 onItemClick(actions.onLogout)
+            }
+        }
+        MenuGroup("Ayuda") {
+            MenuRow("Tutoriales", Icons.AutoMirrored.Filled.HelpOutline) {
+                onItemClick(actions.onHelpTutorials)
             }
         }
 

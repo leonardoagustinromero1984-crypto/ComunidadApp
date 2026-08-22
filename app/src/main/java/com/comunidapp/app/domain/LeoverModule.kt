@@ -31,19 +31,19 @@ enum class UserCategory {
     EMPRESA
 }
 
-fun AccountType.toUserCategory(): UserCategory = when (this) {
-    AccountType.PERSON,
-    AccountType.FOSTER_HOME -> UserCategory.USUARIO
-    AccountType.SHELTER -> UserCategory.ORGANIZACION
-    AccountType.VET,
-    AccountType.TRAINER,
-    AccountType.WALKER -> UserCategory.PROFESIONAL
-    AccountType.SHOP -> UserCategory.EMPRESA
+@Deprecated("AccountType is LEGACY. Identity is always PERSON.")
+fun AccountType.toUserCategory(): UserCategory {
+    @Suppress("UNUSED_PARAMETER")
+    val ignored = this
+    return UserCategory.USUARIO
 }
 
-/** Módulos habilitados por defecto según el tipo de cuenta (§4 y §5). */
-fun AccountType.defaultModules(): Set<LeoverModule> = when (this) {
-    AccountType.PERSON -> setOf(
+/** Módulos habilitados por defecto. AccountType no expande módulos. */
+@Deprecated("AccountType is LEGACY. Always PERSON defaults.")
+fun AccountType.defaultModules(): Set<LeoverModule> {
+    @Suppress("UNUSED_PARAMETER")
+    val ignored = this
+    return setOf(
         LeoverModule.SOCIAL,
         LeoverModule.PET_PROFILE,
         LeoverModule.LOST_FOUND,
@@ -53,56 +53,14 @@ fun AccountType.defaultModules(): Set<LeoverModule> = when (this) {
         LeoverModule.REPUTATION,
         LeoverModule.BADGES
     )
-    AccountType.SHELTER -> setOf(
-        LeoverModule.SOCIAL,
-        LeoverModule.PET_PROFILE,
-        LeoverModule.ADOPTIONS,
-        LeoverModule.SHELTERS,
-        LeoverModule.LOST_FOUND,
-        LeoverModule.DONATIONS,
-        LeoverModule.EVENTS
-    )
-    AccountType.FOSTER_HOME -> setOf(
-        LeoverModule.SOCIAL,
-        LeoverModule.PET_PROFILE,
-        LeoverModule.FOSTER,
-        LeoverModule.ADOPTIONS,
-        LeoverModule.LOST_FOUND,
-        LeoverModule.EVENTS
-    )
-    AccountType.VET -> setOf(
-        LeoverModule.SOCIAL,
-        LeoverModule.PET_PROFILE,
-        LeoverModule.VETERINARY,
-        LeoverModule.LOST_FOUND,
-        LeoverModule.DONATIONS,
-        LeoverModule.EVENTS
-    )
-    AccountType.TRAINER -> setOf(
-        LeoverModule.SOCIAL,
-        LeoverModule.PET_PROFILE,
-        LeoverModule.EDUCATOR,
-        LeoverModule.LOST_FOUND,
-        LeoverModule.EVENTS
-    )
-    AccountType.WALKER -> setOf(
-        LeoverModule.SOCIAL,
-        LeoverModule.PET_PROFILE,
-        LeoverModule.WALKER,
-        LeoverModule.LOST_FOUND,
-        LeoverModule.EVENTS
-    )
-    AccountType.SHOP -> setOf(
-        LeoverModule.SOCIAL,
-        LeoverModule.SHOP,
-        LeoverModule.LOST_FOUND,
-        LeoverModule.DONATIONS,
-        LeoverModule.EVENTS
-    )
 }
 
 fun resolveActiveModules(
     accountType: AccountType,
     storedModules: Set<LeoverModule>?
-): Set<LeoverModule> =
-    storedModules?.takeIf { it.isNotEmpty() } ?: accountType.defaultModules()
+): Set<LeoverModule> {
+    // Identidad = PERSON. account_type no expande módulos ni permisos.
+    @Suppress("UNUSED_PARAMETER")
+    val ignoredLegacyType = accountType
+    return storedModules?.takeIf { it.isNotEmpty() } ?: AccountType.PERSON.defaultModules()
+}

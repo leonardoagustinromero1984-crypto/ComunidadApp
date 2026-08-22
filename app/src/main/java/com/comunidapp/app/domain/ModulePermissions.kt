@@ -2,6 +2,7 @@ package com.comunidapp.app.domain
 
 import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.User
+import com.comunidapp.app.domain.context.OperationalContext
 
 /**
  * Matriz de permisos del Documento Funcional §20, aplicada sobre módulos activos del usuario.
@@ -57,48 +58,49 @@ object ModulePermissions {
         // Usar AuthorizationService / PermissionRepository (moderation.view).
         false
 
-    // Compatibilidad con chequeos basados solo en AccountType
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
     fun canPublishContent(accountType: AccountType): Boolean =
-        canPublishContent(accountType.toSyntheticUser())
+        canPublishContent(personIdentityUser(accountType))
 
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
     fun canCreatePetProfile(accountType: AccountType): Boolean =
-        canCreatePetProfile(accountType.toSyntheticUser())
+        canCreatePetProfile(personIdentityUser(accountType))
 
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
     fun canPublishAdoption(accountType: AccountType): Boolean =
-        canPublishAdoption(accountType.toSyntheticUser())
+        canPublishAdoption(personIdentityUser(accountType))
 
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
     fun canPublishLostFound(accountType: AccountType): Boolean =
-        canPublishLostFound(accountType.toSyntheticUser())
+        canPublishLostFound(personIdentityUser(accountType))
 
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
     fun canPublishPromo(accountType: AccountType): Boolean =
-        accountType.toAppMode() == AppMode.NEGOCIO
+        RolePermissions.canPublishPromo(OperationalContext.Personal)
 
-    fun canPublishQuestion(accountType: AccountType): Boolean = when (accountType.toAppMode()) {
-        AppMode.PERSONA, AppMode.SOLIDARIO -> true
-        AppMode.NEGOCIO -> accountType == AccountType.TRAINER
-    }
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canPublishQuestion(accountType: AccountType): Boolean =
+        RolePermissions.canPublishQuestion(OperationalContext.Personal)
 
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
     fun canPublishFosterHome(accountType: AccountType): Boolean =
-        LeoverModule.FOSTER in accountType.defaultModules() ||
-            accountType == AccountType.PERSON
+        RolePermissions.canPublishFosterHome(OperationalContext.Personal)
 
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
     fun canPublishShelterNeeds(accountType: AccountType): Boolean =
-        LeoverModule.SHELTERS in accountType.defaultModules()
+        RolePermissions.canPublishShelterNeeds(OperationalContext.Personal)
 
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
     fun canPublishEvent(accountType: AccountType): Boolean =
-        LeoverModule.EVENTS in accountType.defaultModules() ||
-            accountType == AccountType.SHELTER ||
-            accountType == AccountType.PERSON
+        RolePermissions.canPublishEvent(OperationalContext.Personal)
 
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
     fun canPublishDonation(accountType: AccountType): Boolean =
-        LeoverModule.DONATIONS in accountType.defaultModules() ||
-            accountType == AccountType.SHELTER ||
-            accountType == AccountType.PERSON
+        RolePermissions.canPublishDonation(OperationalContext.Personal)
 
-    private fun AccountType.toSyntheticUser(): User = User(
-        id = "",
-        name = "",
-        email = "",
-        accountType = this
-    )
+    private fun personIdentityUser(accountType: AccountType): User {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return User(id = "", name = "", email = "", accountType = AccountType.PERSON)
+    }
 }

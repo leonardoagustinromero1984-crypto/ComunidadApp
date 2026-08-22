@@ -37,6 +37,7 @@ interface AuthRepository {
         password: String,
         consent: ConsentMetadata,
         username: String,
+        birthDate: String = "",
         accountType: AccountType = AccountType.PERSON
     ): Result<User>
     suspend fun sendPasswordResetEmail(email: String): Result<Unit>
@@ -59,6 +60,52 @@ interface AuthRepository {
     fun getCurrentUser(): User?
     suspend fun logout()
     fun observeAuthState(): Flow<User?>
+
+    /**
+     * Builds the Google PKCE authorize URL. The ViewModel must open it with
+     * [com.comunidapp.app.domain.auth.LeoVerGoogleSignIn.openAuthorizeUrl].
+     * Empty URL means mock: [signInWithGoogle] completes locally.
+     */
+    suspend fun createGoogleOAuthUrl(): Result<String> = Result.success("")
+
+    /**
+     * Mock/local Google completion only. Real Google never uses this to open a browser.
+     */
+    suspend fun signInWithGoogle(): Result<User> =
+        Result.failure(
+            AuthErrorMapper.toException(
+                AuthErrorCode.CONFIGURATION_ERROR,
+                "google auth requires custom tabs pkce"
+            )
+        )
+
+    suspend fun signInWithGoogleIdToken(idToken: String): Result<User> =
+        Result.failure(
+            AuthErrorMapper.toException(
+                AuthErrorCode.CONFIGURATION_ERROR,
+                "google id token path disconnected"
+            )
+        )
+
+    /** Linked login methods for the current session. Read-only. No unlink. */
+    fun linkedAuthMethods(): List<com.comunidapp.app.domain.auth.AuthMethodKind> = emptyList()
+
+    /** Google/OAuth users can add a LeoVer password to the same auth.users / PERSON. */
+    suspend fun addPassword(newPassword: String): Result<Unit> =
+        Result.failure(
+            AuthErrorMapper.toException(
+                AuthErrorCode.CONFIGURATION_ERROR,
+                "add password not implemented"
+            )
+        )
+
+    suspend fun ensureAuthenticatedSession(): Result<User> {
+        val user = getCurrentUser()
+            ?: return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+            )
+        return Result.success(user)
+    }
 }
 
 class MockAuthRepository : AuthRepository {
@@ -97,11 +144,18 @@ class MockAuthRepository : AuthRepository {
         consentsByEmail.clear()
         deletedEmails.clear()
         reauthFailures = 0
+        sendEmailVerificationOverride = null
+        verifyEmailOtpOverride = null
         MockAuthDatabase.resetToFixtures()
+        googleSignInOverride = null
+        mockLinkedMethods = emptyList()
         // Fixture demo ya verificada: consentimiento vigente alineado a LegalDocumentConfig.
         consentsByEmail[AuthValidators.normalizeEmail(MockData.currentUser.email)] =
             ConsentMetadata.forRegistration()
     }
+
+    var sendEmailVerificationOverride: Result<Unit>? = null
+    var verifyEmailOtpOverride: Result<Unit>? = null
 
     private var recoverySessionEmail: String? = null
     private val deletedEmails = mutableSetOf<String>()
@@ -179,6 +233,7 @@ class MockAuthRepository : AuthRepository {
         password: String,
         consent: ConsentMetadata,
         username: String,
+        birthDate: String,
         accountType: AccountType
     ): Result<User> {
         delay(50)
@@ -220,6 +275,16 @@ class MockAuthRepository : AuthRepository {
                 )
             )
         }
+        val personAge = com.comunidapp.app.domain.user.PersonAgeRules
+            .validateSignupBirthDate(birthDate.ifBlank { "1990-01-15" })
+            .getOrElse {
+                return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.UNKNOWN_AUTH_ERROR,
+                        it.message ?: "BIRTH_DATE_INVALID"
+                    )
+                )
+            }
         val normalizedEmail = AuthValidators.normalizeEmail(email)
 
         if (MockAuthDatabase.findByEmail(normalizedEmail) != null) {
@@ -242,7 +307,7 @@ class MockAuthRepository : AuthRepository {
             )
         }
 
-        val effectiveType = AccountType.PERSON
+        val effectiveType = com.comunidapp.app.domain.user.SessionIdentity.signupAccountType()
 
         MockAuthDatabase.save(
             AuthAccount(
@@ -268,7 +333,9 @@ class MockAuthRepository : AuthRepository {
             emailVerified = false,
             username = normalizedUsername.value,
             displayName = name.trim(),
-            onboardingStatus = "COMPLETED"
+            onboardingStatus = "COMPLETED",
+            birthDate = personAge.birthDate.toString(),
+            ageBand = personAge.band.name
         )
         MockUserStore.upsert(user)
         setLoggedInUser(user)
@@ -435,6 +502,7 @@ class MockAuthRepository : AuthRepository {
 
     override suspend fun sendEmailVerification(email: String): Result<Unit> {
         delay(30)
+        sendEmailVerificationOverride?.let { return it }
         val normalizedEmail = AuthValidators.normalizeEmail(email)
         if (MockAuthDatabase.findByEmail(normalizedEmail) == null) {
             return Result.failure(
@@ -463,11 +531,12 @@ class MockAuthRepository : AuthRepository {
 
     override suspend fun verifyEmailOtp(email: String, otpCode: String): Result<Unit> {
         delay(30)
+        verifyEmailOtpOverride?.let { return it }
         val normalizedEmail = AuthValidators.normalizeEmail(email)
         EmailOtpValidators.validate(otpCode).getOrElse { err ->
             return Result.failure(
                 AuthErrorMapper.toException(
-                    AuthErrorCode.RECOVERY_LINK_INVALID,
+                    AuthErrorCode.OTP_INVALID,
                     err.message ?: "otp invalid"
                 )
             )
@@ -481,6 +550,14 @@ class MockAuthRepository : AuthRepository {
             )
         // Mock: cualquier código de longitud válida confirma (no registrar el OTP).
         MockAuthDatabase.setEmailVerified(normalizedEmail, true)
+        val pending = _authState.value
+        if (pending != null && pending.email.equals(normalizedEmail, ignoreCase = true)) {
+            setLoggedInUser(pending.copy(emailVerified = true))
+        } else {
+            MockUserStore.allUsers()
+                .firstOrNull { it.email.equals(normalizedEmail, ignoreCase = true) }
+                ?.let { stored -> setLoggedInUser(stored.copy(emailVerified = true)) }
+        }
         return Result.success(Unit)
     }
 
@@ -496,5 +573,55 @@ class MockAuthRepository : AuthRepository {
 
     override suspend fun logout() {
         setLoggedInUser(null)
+        mockLinkedMethods = emptyList()
+    }
+
+    var googleSignInOverride: Result<User>? = null
+    private var mockLinkedMethods: List<com.comunidapp.app.domain.auth.AuthMethodKind> = emptyList()
+
+    override suspend fun createGoogleOAuthUrl(): Result<String> = Result.success("")
+
+    override suspend fun signInWithGoogle(): Result<User> {
+        delay(40)
+        googleSignInOverride?.let { return it }
+        val fixture = MockData.currentUser
+        val account = MockAuthDatabase.findByEmail(fixture.email)
+        if (account != null && !account.emailVerified) {
+            MockAuthDatabase.setEmailVerified(fixture.email, true)
+        }
+        val stored = MockUserStore.get(fixture.id) ?: fixture.copy(emailVerified = true)
+        val user = stored.copy(emailVerified = true)
+        MockUserStore.upsert(user)
+        mockLinkedMethods = listOf(
+            com.comunidapp.app.domain.auth.AuthMethodKind.EMAIL_PASSWORD_OTP,
+            com.comunidapp.app.domain.auth.AuthMethodKind.GOOGLE
+        )
+        setLoggedInUser(user)
+        return Result.success(user)
+    }
+
+    override suspend fun signInWithGoogleIdToken(idToken: String): Result<User> = signInWithGoogle()
+
+    override fun linkedAuthMethods(): List<com.comunidapp.app.domain.auth.AuthMethodKind> {
+        if (_authState.value == null) return emptyList()
+        return mockLinkedMethods.ifEmpty {
+            listOf(com.comunidapp.app.domain.auth.AuthMethodKind.EMAIL_PASSWORD_OTP)
+        }
+    }
+
+    override suspend fun addPassword(newPassword: String): Result<Unit> {
+        delay(40)
+        AuthValidators.validatePassword(newPassword).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        val user = _authState.value
+            ?: return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+            )
+        MockAuthDatabase.updatePassword(user.email, newPassword)
+        mockLinkedMethods = (
+            mockLinkedMethods + com.comunidapp.app.domain.auth.AuthMethodKind.EMAIL_PASSWORD_OTP
+            ).distinct()
+        return Result.success(Unit)
     }
 }

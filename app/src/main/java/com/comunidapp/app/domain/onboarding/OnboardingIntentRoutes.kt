@@ -10,7 +10,8 @@ object OnboardingIntentRoutes {
         OnboardingIntent.LOST_PET -> NavRoutes.PUBLISH_LOST_FOUND
         OnboardingIntent.FOUND_ANIMAL -> NavRoutes.PUBLISH_LOST_FOUND
         OnboardingIntent.ADOPT -> NavRoutes.SUMATE
-        OnboardingIntent.OFFER_FOSTER -> NavRoutes.PUBLISH_FOSTER
+        OnboardingIntent.OFFER_FOSTER -> NavRoutes.FOSTER_HOME_FORM
+        OnboardingIntent.OFFER_SERVICE -> NavRoutes.COMUNIDAD
         OnboardingIntent.ORGANIZATION -> NavRoutes.MY_ORGANIZATIONS
         OnboardingIntent.VOLUNTEER -> NavRoutes.M17_HUB
         OnboardingIntent.EXPLORE -> NavRoutes.HOME
@@ -22,6 +23,7 @@ object OnboardingIntentRoutes {
         OnboardingIntent.FOUND_ANIMAL -> "Informar un animal encontrado"
         OnboardingIntent.ADOPT -> "Explorar adopciones"
         OnboardingIntent.OFFER_FOSTER -> "Configurar tránsito"
+        OnboardingIntent.OFFER_SERVICE -> "Ver servicios para mascotas"
         OnboardingIntent.ORGANIZATION -> "Administrar organización"
         OnboardingIntent.VOLUNTEER -> "Buscar formas de ayudar"
         OnboardingIntent.EXPLORE -> "Explorar LeoVer"

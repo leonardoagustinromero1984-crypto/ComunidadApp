@@ -59,7 +59,7 @@ class PetProfileUxStaticGuardsTest {
     @Test
     fun passportEmptyState_isHumanLanguage() {
         val passport = sourceFile("app/src/main/java/com/comunidapp/app/ui/screens/m14/M14PassportScreens.kt").readText()
-        assertTrue(passport.contains("Crear pasaporte"))
+        assertTrue(passport.contains("Abrir VitaCora"))
         assertTrue(passport.contains("Reuní en un solo lugar su información más importante."))
         assertFalse(passport.contains("el responsable M08"))
         assertFalse(passport.contains("\"Microchip"))

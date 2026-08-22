@@ -1,5 +1,6 @@
 package com.comunidapp.app.data.model
 
+/** LEGACY / DEPRECATED. Identidad humana = PERSON. No usar como autoridad. */
 enum class AccountType {
     PERSON,
     SHELTER,

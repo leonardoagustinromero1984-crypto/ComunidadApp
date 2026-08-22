@@ -2,87 +2,80 @@ package com.comunidapp.app.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Menu
+import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.PostAdd
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.SwapHoriz
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.data.model.FeedPost
-import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.User
-import com.comunidapp.app.domain.RolePermissions
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.leo.LeoEmptyState
-import com.comunidapp.app.ui.components.leo.LeoFilterChip
-import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
-import com.comunidapp.app.ui.components.leo.LeoSecondaryButton
-import com.comunidapp.app.ui.components.leo.LeoSocialPostCard
-import com.comunidapp.app.ui.theme.BrandCream
-import com.comunidapp.app.ui.theme.BrandOrangeContainer
-import com.comunidapp.app.ui.theme.BrandOrangeSoft
+import com.comunidapp.app.ui.components.v2.V2NavRow
+import com.comunidapp.app.ui.components.v2.V2PetsStrip
+import com.comunidapp.app.ui.components.v2.V2SectionHeader
 import com.comunidapp.app.ui.theme.BrandText
-import com.comunidapp.app.ui.theme.BrandWhite
 import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoCardTitle
 import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.theme.LeoPageTitle
 import com.comunidapp.app.ui.theme.MutedText
-import com.comunidapp.app.ui.theme.NeutralBorder
+import com.comunidapp.app.ui.theme.VisualDirectionPilot
+import com.comunidapp.app.ui.theme.leoVisual
+import com.comunidapp.app.domain.context.OperationalContextProvider
+import com.comunidapp.app.domain.onboarding.onb02.Onb02Copy
 import com.comunidapp.app.viewmodel.ProfileViewModel
-import kotlinx.coroutines.launch
-
-private enum class ProfileContentTab { Posts, Reels, Tagged }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ProfileScreen(
     onNavigateToEditProfile: () -> Unit = {},
     onNavigateToMyPets: () -> Unit = {},
+    onNavigateToAddPet: () -> Unit = {},
     onNavigateToMyAdoptions: () -> Unit = {},
     onNavigateToMyApplications: () -> Unit = {},
     onNavigateToReceivedApplications: () -> Unit = {},
@@ -100,22 +93,41 @@ fun ProfileScreen(
     onNavigateToAudit: () -> Unit = {},
     onNavigateToObservability: () -> Unit = {},
     onNavigateToSearchFriends: () -> Unit = {},
+    onNavigateToMyFriends: () -> Unit = {},
     onNavigateToAccountSecurity: () -> Unit = {},
+    onNavigateToPrivacy: () -> Unit = {},
+    onNavigateToSettings: () -> Unit = {},
+    onNavigateToDonations: () -> Unit = {},
     onNavigateToFirstRunTutorial: () -> Unit = {},
+    onNavigateToUseLeoverAs: () -> Unit = {},
+    onNavigateToHelpTutorials: () -> Unit = {},
     onNavigateToMyOrganizations: () -> Unit = {},
     onNavigateToPublish: () -> Unit = {},
+    onNavigateToMyPublications: () -> Unit = {},
     onFriendClick: (String) -> Unit = {},
     onPetClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
-    val uiState by viewModel.uiState.collectAsState()
-    var menuOpen by remember { mutableStateOf(false) }
-    var contentTab by remember { mutableStateOf(ProfileContentTab.Posts) }
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
+    @Suppress("UNUSED_PARAMETER", "UNUSED_VARIABLE")
+    val preservedCallbacks = remember {
+        listOf(
+            onNavigateToMyAdoptions, onFriendClick, onNavigateToModeration, onNavigateToCases,
+            onNavigateToAppealsStaff, onNavigateToVerification, onNavigateToSupportStaff,
+            onNavigateToAudit, onNavigateToObservability, onNavigateToPlatformAdmin,
+            onNavigateToMyAppeals, onNavigateToFriendRequests, onNavigateToNotifications,
+            onNavigateToAccountSecurity, onNavigateToMyApplications, onNavigateToReceivedApplications,
+            onNavigateToMyOrganizations, onNavigateToFirstRunTutorial, onNavigateToHelpTutorials
+        )
+    }
 
+    val uiState by viewModel.uiState.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    val listState = rememberLazyListState()
+    val showPets = uiState.user != null
+
+    VisualDirectionPilot {
     Scaffold(
-        containerColor = BrandCream,
+        containerColor = leoVisual().background,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -128,301 +140,253 @@ fun ProfileScreen(
                 ) {
                     LeoEmptyState(
                         title = "Iniciá sesión para ver tu perfil",
-                        message = "Tu perfil social muestra publicaciones, mascotas y actividad.",
+                        message = "Tu perfil muestra publicaciones, mascotas y actividad.",
                         icon = Icons.Default.Pets
                     )
                 }
             }
             else -> {
                 val user = uiState.user!!
-                val showPets = RolePermissions.canManagePets(user.accountType)
-                val postsWithImage = uiState.posts.filter {
-                    it.type != com.comunidapp.app.data.model.PostType.STORY &&
-                        it.type != com.comunidapp.app.data.model.PostType.REEL &&
-                        !it.imageUrl.isNullOrBlank()
-                }
-                val textPosts = uiState.posts.filter {
-                    it.type != com.comunidapp.app.data.model.PostType.STORY &&
-                        it.type != com.comunidapp.app.data.model.PostType.REEL &&
-                        it.imageUrl.isNullOrBlank()
-                }
-                val reelPosts = uiState.posts.filter {
-                    it.type == com.comunidapp.app.data.model.PostType.REEL
-                }
 
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
                         top = padding.calculateTopPadding(),
                         bottom = padding.calculateBottomPadding() + LeoDimens.SpaceMd
-                    )
+                    ),
+                    verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
                 ) {
-                    item {
-                        SocialProfileHeader(
+                    item(key = "header") {
+                        PersonaProfileHeader(
                             user = user,
+                            avatarUrl = uiState.avatarDisplayUrl,
                             postsCount = uiState.posts.size,
-                            followersCount = uiState.friends.size,
-                            followingCount = uiState.friends.size,
-                            onEdit = onNavigateToEditProfile,
-                            onCreate = {
-                                menuOpen = false
-                                onNavigateToPublish()
-                            },
-                            onMenu = { menuOpen = true }
+                            friendsCount = uiState.friends.size,
+                            onSettings = onNavigateToSettings,
+                            onEditProfile = onNavigateToEditProfile
                         )
                     }
 
+                    item(key = "use_leover_as") {
+                        CompactUseLeoverAsRow(onClick = onNavigateToUseLeoverAs)
+                    }
+
                     if (showPets) {
-                        item {
-                            Text(
-                                text = "Mis mascotas",
-                                style = LeoCardTitle,
-                                color = BrandText,
-                                modifier = Modifier.padding(
-                                    horizontal = LeoDimens.SpaceMd,
-                                    vertical = LeoDimens.SpaceSm
-                                )
+                        item(key = "pets_header") {
+                            V2SectionHeader(
+                                title = "Mis mascotas",
+                                actionLabel = "Ver todas",
+                                onAction = onNavigateToMyPets
                             )
                         }
-                        item {
-                            if (uiState.pets.isEmpty()) {
-                                Text(
-                                    text = "Todavía no cargaste mascotas",
-                                    style = LeoCaption,
-                                    color = MutedText,
-                                    modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)
-                                )
-                            } else {
-                                LazyRow(
-                                    contentPadding = PaddingValues(horizontal = LeoDimens.SpaceMd),
-                                    horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
-                                ) {
-                                    items(uiState.pets, key = { it.id }) { pet ->
-                                        ProfilePetChip(pet = pet, onClick = { onPetClick(pet.id) })
-                                    }
-                                }
-                            }
+                        item(key = "pets_row") {
+                            V2PetsStrip(
+                                pets = uiState.pets,
+                                onPetClick = onPetClick,
+                                onAddPet = onNavigateToAddPet
+                            )
                         }
                     }
 
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(LeoDimens.SpaceMd),
-                            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+                    item(key = "menu") {
+                        Column(
+                            modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd),
+                            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
                         ) {
-                            LeoFilterChip(
-                                label = "Publicaciones",
-                                selected = contentTab == ProfileContentTab.Posts,
-                                onClick = { contentTab = ProfileContentTab.Posts }
+                            V2NavRow(
+                                title = "Mis publicaciones",
+                                description = "Lo que compartiste en Inicio",
+                                icon = Icons.Default.PostAdd,
+                                onClick = onNavigateToMyPublications
                             )
-                            LeoFilterChip(
-                                label = "Reels",
-                                selected = contentTab == ProfileContentTab.Reels,
-                                onClick = { contentTab = ProfileContentTab.Reels }
+                            V2NavRow(
+                                title = "Mis amigos",
+                                description = "Personas con las que te conectaste",
+                                icon = Icons.Default.People,
+                                onClick = onNavigateToMyFriends
                             )
-                            LeoFilterChip(
-                                label = "Etiquetadas",
-                                selected = contentTab == ProfileContentTab.Tagged,
-                                onClick = { contentTab = ProfileContentTab.Tagged }
-                            )
-                        }
-                    }
-
-                    when (contentTab) {
-                        ProfileContentTab.Posts -> {
-                            if (uiState.posts.isEmpty()) {
-                                item {
-                                    LeoEmptyState(
-                                        title = "Todavía no hay publicaciones",
-                                        message = "Mostrá tu día a día con tus mascotas.",
-                                        actionLabel = "Crear tu primera publicación",
-                                        onAction = onNavigateToPublish,
-                                        icon = Icons.Default.PostAdd
-                                    )
-                                }
-                            } else {
-                                if (postsWithImage.isNotEmpty()) {
-                                    item {
-                                        ProfilePostsGrid(posts = postsWithImage)
-                                    }
-                                }
-                                items(textPosts, key = { it.id }) { post ->
-                                    LeoSocialPostCard(
-                                        post = post,
-                                        modifier = Modifier.padding(
-                                            horizontal = LeoDimens.SpaceMd,
-                                            vertical = LeoDimens.SpaceSm
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                        ProfileContentTab.Reels -> {
-                            item {
-                                if (reelPosts.isEmpty()) {
-                                    LeoEmptyState(
-                                        title = "Sin Reels todavía",
-                                        message = "Cuando publiques videos cortos, aparecerán aquí.",
-                                        actionLabel = "Crear",
-                                        onAction = onNavigateToPublish,
-                                        icon = Icons.Default.PlayArrow
-                                    )
+                            V2NavRow(
+                                title = "Solicitudes de amistad",
+                                description = if (uiState.pendingFriendRequests > 0) {
+                                    "${uiState.pendingFriendRequests} pendiente(s)"
                                 } else {
-                                    ProfilePostsGrid(
-                                        posts = reelPosts,
-                                        showPlay = true
-                                    )
-                                }
-                            }
-                        }
-                        ProfileContentTab.Tagged -> {
-                            item {
-                                LeoEmptyState(
-                                    title = "Sin etiquetas todavía",
-                                    message = "Cuando te etiqueten a vos o a tus mascotas, lo vas a ver aquí.",
-                                    icon = Icons.Default.Pets
-                                )
-                            }
+                                    "Revisá quién quiere conectar contigo"
+                                },
+                                icon = Icons.Default.People,
+                                onClick = onNavigateToFriendRequests
+                            )
+                            V2NavRow(
+                                title = "Buscar amigos",
+                                description = "Encontrá personas por nombre o usuario",
+                                icon = Icons.Default.People,
+                                onClick = onNavigateToSearchFriends
+                            )
+                            V2NavRow(
+                                title = "Mensajes",
+                                description = "Chats con personas y organizaciones",
+                                icon = Icons.AutoMirrored.Filled.Chat,
+                                onClick = onNavigateToChat
+                            )
+                            V2NavRow(
+                                title = "Donaciones",
+                                description = "Tus aportes y campañas",
+                                icon = Icons.Default.Favorite,
+                                onClick = onNavigateToDonations
+                            )
+                            V2NavRow(
+                                title = "Configuración",
+                                description = "Cuenta, privacidad y seguridad",
+                                icon = Icons.Default.Settings,
+                                onClick = onNavigateToSettings
+                            )
                         }
                     }
                 }
             }
         }
     }
-
-    if (menuOpen) {
-        ProfileMenuSheet(
-            onDismiss = { menuOpen = false },
-            actions = ProfileMenuActions(
-                onMyPets = onNavigateToMyPets,
-                onMyApplications = onNavigateToMyApplications,
-                onReceivedApplications = onNavigateToReceivedApplications,
-                onMyOrganizations = onNavigateToMyOrganizations,
-                onMessages = onNavigateToChat,
-                onMyPosts = { contentTab = ProfileContentTab.Posts },
-                onMyReels = { contentTab = ProfileContentTab.Reels },
-                onMyStories = {
-                    scope.launch { snackbarHostState.showSnackbar("Historias próximamente") }
-                },
-                onSaved = {
-                    scope.launch { snackbarHostState.showSnackbar("Guardados próximamente") }
-                },
-                onDrafts = {
-                    scope.launch { snackbarHostState.showSnackbar("Borradores próximamente") }
-                },
-                onNotifications = onNavigateToNotifications,
-                onSettings = onNavigateToAccountSecurity,
-                onPrivacy = onNavigateToAccountSecurity,
-                onSupport = onNavigateToMySupport,
-                onLogout = viewModel::logout,
-                onModeration = onNavigateToModeration.takeIf { uiState.canViewModeration },
-                onCases = onNavigateToCases.takeIf { uiState.canViewModeration },
-                onAppealsStaff = onNavigateToAppealsStaff.takeIf { uiState.canReviewAppeals },
-                onVerification = onNavigateToVerification.takeIf { uiState.canReviewVerification },
-                onSupportStaff = onNavigateToSupportStaff.takeIf { uiState.canViewSupportStaff },
-                onAudit = onNavigateToAudit.takeIf { uiState.canViewAudit },
-                onObservability = onNavigateToObservability.takeIf { uiState.canViewObservability },
-                onPlatformAdmin = onNavigateToPlatformAdmin.takeIf { uiState.canViewPlatformAdmin },
-                onMyAppeals = onNavigateToMyAppeals,
-                onFriendRequests = onNavigateToFriendRequests,
-                onTutorial = onNavigateToFirstRunTutorial
-            )
-        )
     }
 }
 
 @Composable
-private fun SocialProfileHeader(
+private fun PersonaProfileHeader(
     user: User,
+    avatarUrl: String? = null,
     postsCount: Int,
-    followersCount: Int,
-    followingCount: Int,
-    onEdit: () -> Unit,
-    onCreate: () -> Unit,
-    onMenu: () -> Unit
+    friendsCount: Int,
+    onSettings: () -> Unit,
+    onEditProfile: () -> Unit = {}
 ) {
-    Surface(color = BrandWhite) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(LeoDimens.SpaceMd)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+    val visual = leoVisual()
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(visual.background)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(horizontal = LeoDimens.SpaceMd)
+                    .padding(bottom = 36.dp)
             ) {
-                Text(
-                    text = user.username?.takeIf { it.isNotBlank() }?.let { "@$it" } ?: user.resolvedDisplayName,
-                    style = LeoCardTitle,
-                    color = BrandText
-                )
-                IconButton(onClick = onMenu) {
-                    Icon(Icons.Default.Menu, contentDescription = "Menú", tint = BrandText)
-                }
-            }
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(88.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, BrandOrangeContainer, CircleShape)
-                        .background(BrandCream)
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
                 ) {
-                    PetImage(
-                        imageUrl = user.profileImageUrl,
-                        modifier = Modifier.fillMaxSize(),
-                        cornerRadius = 44.dp,
-                        contentDescription = user.name
+                    IconButton(onClick = onSettings) {
+                        Icon(
+                            Icons.Default.Settings,
+                            contentDescription = "Ajustes",
+                            tint = visual.textPrimary
+                        )
+                    }
+                }
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .size(84.dp)
+                            .clip(CircleShape)
+                            .border(2.dp, visual.primary, CircleShape)
+                            .background(visual.surface)
+                    ) {
+                        PetImage(
+                            imageUrl = avatarUrl ?: user.profileImageUrl,
+                            modifier = Modifier.fillMaxSize(),
+                            cornerRadius = 42.dp,
+                            contentDescription = user.name
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(start = LeoDimens.SpaceCompact)
+                    ) {
+                        Text(
+                            text = user.resolvedDisplayName,
+                            style = LeoPageTitle,
+                            color = visual.textPrimary,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        user.username?.takeIf { it.isNotBlank() }?.let { username ->
+                            Text(
+                                text = "@$username",
+                                style = LeoCaption,
+                                color = visual.textSecondary
+                            )
+                        }
+                        publicPlaceLabel(user)?.let { place ->
+                            Text(
+                                text = place,
+                                style = LeoCaption,
+                                color = visual.textSecondary,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Spacer(modifier = Modifier.height(LeoDimens.SpaceSm))
+                        androidx.compose.material3.Surface(
+                            onClick = onEditProfile,
+                            shape = RoundedCornerShape(LeoDimens.RadiusChip),
+                            color = visual.primarySoft
+                        ) {
+                            Text(
+                                text = "Editar perfil",
+                                style = LeoCaption,
+                                color = visual.primaryDark,
+                                modifier = Modifier.padding(
+                                    horizontal = LeoDimens.SpaceCompact,
+                                    vertical = LeoDimens.SpaceMicro
+                                )
+                            )
+                        }
+                    }
+                }
+                user.bio?.takeIf { it.isNotBlank() }?.let { bio ->
+                    Text(
+                        text = bio,
+                        style = LeoCaption,
+                        color = visual.textSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = LeoDimens.SpaceSm)
                     )
                 }
+            }
+            Card(
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = LeoDimens.SpaceMd)
+                    .offset(y = 18.dp),
+                shape = RoundedCornerShape(LeoDimens.RadiusCard),
+                colors = CardDefaults.cardColors(containerColor = visual.surface),
+                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            ) {
                 Row(
                     modifier = Modifier
-                        .weight(1f)
-                        .padding(start = LeoDimens.SpaceMd),
+                        .fillMaxWidth()
+                        .padding(vertical = LeoDimens.SpaceCompact),
                     horizontalArrangement = Arrangement.SpaceEvenly
                 ) {
                     ProfileStat(postsCount.toString(), "Publicaciones")
-                    ProfileStat(followersCount.toString(), "Seguidores")
-                    ProfileStat(followingCount.toString(), "Seguidos")
+                    if (friendsCount > 0) {
+                        ProfileStat(friendsCount.toString(), "Amigos")
+                    }
                 }
             }
-            Text(
-                text = user.resolvedDisplayName,
-                style = LeoPageTitle,
-                color = BrandText,
-                modifier = Modifier.padding(top = LeoDimens.SpaceCompact)
-            )
-            user.bio?.takeIf { it.isNotBlank() }?.let {
-                Text(text = it, style = LeoCaption, color = BrandText, modifier = Modifier.padding(top = 4.dp))
-            }
-            user.locationText?.takeIf { it.isNotBlank() }?.let {
-                Text(text = it, style = LeoCaption, color = MutedText, modifier = Modifier.padding(top = 2.dp))
-            }
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = LeoDimens.SpaceCompact),
-                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
-            ) {
-                LeoSecondaryButton(
-                    text = "Editar perfil",
-                    onClick = onEdit,
-                    modifier = Modifier.weight(1f)
-                )
-                LeoPrimaryButton(
-                    text = "Crear",
-                    onClick = onCreate,
-                    icon = Icons.Default.Add,
-                    modifier = Modifier.weight(1f)
-                )
-            }
         }
+        Spacer(modifier = Modifier.height(28.dp))
+    }
+}
+
+private fun publicPlaceLabel(user: User): String? {
+    val city = user.city?.takeIf { it.isNotBlank() }
+    val province = user.province?.takeIf { it.isNotBlank() }
+    return when {
+        city != null && province != null -> "$city, $province"
+        city != null -> city
+        province != null -> province
+        else -> user.locationText?.takeIf { it.isNotBlank() }
     }
 }
 
@@ -434,118 +398,76 @@ private fun ProfileStat(value: String, label: String) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProfilePetChip(pet: Pet, onClick: () -> Unit) {
-    Column(
-        horizontalAlignment = Alignment.CenterHorizontally,
+private fun CompactUseLeoverAsRow(onClick: () -> Unit) {
+    val visual = leoVisual()
+    val active by OperationalContextProvider.active.collectAsState()
+    Card(
         modifier = Modifier
-            .width(76.dp)
-            .clickable(onClick = onClick)
+            .fillMaxWidth()
+            .padding(horizontal = LeoDimens.SpaceMd),
+        shape = RoundedCornerShape(LeoDimens.RadiusCard),
+        colors = CardDefaults.cardColors(containerColor = visual.surface),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        onClick = onClick
     ) {
-        Box(
+        Row(
             modifier = Modifier
-                .size(64.dp)
-                .clip(CircleShape)
-                .border(2.dp, BrandOrangeSoft, CircleShape)
-                .background(BrandOrangeContainer)
+                .fillMaxWidth()
+                .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            PetImage(
-                imageUrl = pet.photoUrl,
-                modifier = Modifier.fillMaxSize(),
-                cornerRadius = 32.dp,
-                contentDescription = pet.name
+            Icon(
+                imageVector = Icons.Default.SwapHoriz,
+                contentDescription = null,
+                tint = visual.primary,
+                modifier = Modifier.size(22.dp)
+            )
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = LeoDimens.SpaceM)
+            ) {
+                Text(
+                    text = "Usar LeoVer como",
+                    style = LeoCardTitle,
+                    color = visual.textPrimary
+                )
+                Text(
+                    text = active.displayName,
+                    style = LeoCaption,
+                    color = visual.textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                contentDescription = null,
+                tint = visual.textSecondary
             )
         }
-        Text(
-            text = pet.name,
-            style = LeoCaption,
-            color = BrandText,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(top = 4.dp)
-        )
-        Text(
-            text = pet.species.name.lowercase().replaceFirstChar { it.titlecase() },
-            style = LeoCaption,
-            color = MutedText,
-            maxLines = 1
-        )
     }
 }
 
+@Preview(showBackground = true, backgroundColor = 0xFFFFFDF8, widthDp = 390, name = "PersonaProfileHeaderPreview")
 @Composable
-private fun ProfilePostsGrid(
-    posts: List<FeedPost>,
-    showPlay: Boolean = false
-) {
-    Column(
-        modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(1.dp)
-    ) {
-        posts.chunked(3).forEach { row ->
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(1.dp)
-            ) {
-                row.forEach { post ->
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .aspectRatio(if (showPlay) 0.75f else 1f)
-                            .background(BrandCream),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        PetImage(
-                            imageUrl = post.imageUrl,
-                            modifier = Modifier.fillMaxSize(),
-                            contentDescription = post.title
-                        )
-                        if (showPlay) {
-                            Icon(Icons.Default.PlayArrow, contentDescription = null, tint = BrandWhite)
-                        }
-                    }
-                }
-                repeat(3 - row.size) {
-                    Spacer(modifier = Modifier.weight(1f))
-                }
-            }
-        }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, name = "SocialProfileEmptyPreview")
-@Composable
-private fun SocialProfileEmptyPreview() {
+private fun PersonaProfileHeaderPreview() {
     ComunidappTheme {
-        LeoEmptyState(
-            title = "Todavía no hay publicaciones",
-            message = "Mostrá tu día a día con tus mascotas.",
-            actionLabel = "Crear tu primera publicación",
-            onAction = {},
-            icon = Icons.Default.PostAdd
-        )
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, name = "SocialProfilePreview")
-@Composable
-private fun SocialProfilePreview() {
-    ComunidappTheme {
-        SocialProfileHeader(
+        PersonaProfileHeader(
             user = User(
                 id = "1",
                 name = "Leonardo",
                 email = "a@b.c",
                 username = "leover",
                 bio = "Amante de los perros",
-                locationText = "Buenos Aires"
+                city = "Palermo",
+                province = "Buenos Aires"
             ),
             postsCount = 12,
-            followersCount = 40,
-            followingCount = 33,
-            onEdit = {},
-            onCreate = {},
-            onMenu = {}
+            friendsCount = 8,
+            onSettings = {}
         )
     }
 }

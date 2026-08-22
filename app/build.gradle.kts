@@ -54,6 +54,15 @@ fun isRemoteHttpsSupabaseUrl(url: String): Boolean =
         url.startsWith("https://", ignoreCase = true) &&
         !isForbiddenLocalHost(url)
 
+// Custom Auth domains — empty/inactive until DNS + Supabase Custom Domain are live.
+// Do not default these to true: auth-staging.leover.com.ar is currently NXDOMAIN.
+val stagingAuthUrl = prop("SUPABASE_STAGING_AUTH_URL")
+val stagingAuthActive = prop("SUPABASE_STAGING_AUTH_ACTIVE").equals("true", ignoreCase = true) &&
+    isRemoteHttpsSupabaseUrl(stagingAuthUrl)
+val productionAuthUrl = prop("SUPABASE_PRODUCTION_AUTH_URL")
+val productionAuthActive = prop("SUPABASE_PRODUCTION_AUTH_ACTIVE").equals("true", ignoreCase = true) &&
+    isRemoteHttpsSupabaseUrl(productionAuthUrl)
+
 /**
  * localDebug APK must not embed emulator-only hosts (10.0.2.2 / localhost / cleartext).
  * Prefer SUPABASE_URL when it is remote HTTPS; otherwise fall back to staging credentials.
@@ -93,6 +102,7 @@ val resolvedLocalUrl = resolvedLocal.url
 val resolvedLocalKey = resolvedLocal.key
 val resolvedLocalEnabled = resolvedLocal.enabled
 val resolvedLocalSource = resolvedLocal.source
+val mapsApiKey = prop("MAPS_API_KEY").ifBlank { "MAPS_API_KEY_MISSING" }
 
 android {
     namespace = "com.comunidapp.app"
@@ -109,6 +119,8 @@ android {
         versionCode = 2
         versionName = "1.1"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        manifestPlaceholders["MAPS_API_KEY"] = mapsApiKey
+        buildConfigField("String", "MAPS_API_KEY", "\"${escapeBc(if (mapsApiKey == "MAPS_API_KEY_MISSING") "" else mapsApiKey)}\"")
     }
 
     flavorDimensions += "environment"
@@ -123,6 +135,9 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(resolvedLocalKey)}\"")
             buildConfigField("String", "LEOVER_ENV", "\"local\"")
             buildConfigField("String", "SUPABASE_CREDENTIAL_SOURCE", "\"${escapeBc(resolvedLocalSource)}\"")
+            buildConfigField("String", "AUTH_DOMAIN", "\"${escapeBc(stagingAuthUrl)}\"")
+            buildConfigField("Boolean", "AUTH_CUSTOM_DOMAIN_ACTIVE", stagingAuthActive.toString())
+            buildConfigField("Boolean", "KLIPY_ENABLED", "false")
         }
         create("staging") {
             dimension = "environment"
@@ -135,6 +150,9 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(stagingKey)}\"")
             buildConfigField("String", "LEOVER_ENV", "\"staging\"")
             buildConfigField("String", "SUPABASE_CREDENTIAL_SOURCE", "\"STAGING\"")
+            buildConfigField("String", "AUTH_DOMAIN", "\"${escapeBc(stagingAuthUrl)}\"")
+            buildConfigField("Boolean", "AUTH_CUSTOM_DOMAIN_ACTIVE", stagingAuthActive.toString())
+            buildConfigField("Boolean", "KLIPY_ENABLED", "false")
         }
         create("production") {
             dimension = "environment"
@@ -146,6 +164,9 @@ android {
             buildConfigField("String", "SUPABASE_ANON_KEY", "\"${escapeBc(productionKey)}\"")
             buildConfigField("String", "LEOVER_ENV", "\"production\"")
             buildConfigField("String", "SUPABASE_CREDENTIAL_SOURCE", "\"PRODUCTION\"")
+            buildConfigField("String", "AUTH_DOMAIN", "\"${escapeBc(productionAuthUrl)}\"")
+            buildConfigField("Boolean", "AUTH_CUSTOM_DOMAIN_ACTIVE", productionAuthActive.toString())
+            buildConfigField("Boolean", "KLIPY_ENABLED", "false")
         }
     }
 
@@ -310,6 +331,22 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.maps.compose)
+    implementation(libs.play.services.maps)
+    implementation(libs.play.services.location)
+    implementation(libs.androidx.camera.core)
+    implementation(libs.androidx.camera.camera2)
+    implementation(libs.androidx.camera.lifecycle)
+    implementation(libs.androidx.camera.view)
+    implementation(libs.androidx.camera.video)
+    implementation(libs.androidx.media3.exoplayer)
+    implementation(libs.androidx.media3.ui)
+    implementation(libs.androidx.media3.transformer)
+    implementation(libs.androidx.media3.effect)
+    implementation("androidx.appcompat:appcompat:1.7.1")
+    implementation("androidx.browser:browser:1.8.0")
+    implementation("com.github.yalantis:ucrop:2.2.10")
+    implementation("com.google.zxing:core:3.5.3")
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
@@ -336,4 +373,46 @@ val copyStagingDebugApk = tasks.register<Copy>("copyStagingDebugApk") {
 afterEvaluate {
     tasks.findByName("assembleLocalDebug")?.finalizedBy(copyLocalDebugApk)
     tasks.findByName("assembleStagingDebug")?.finalizedBy(copyStagingDebugApk)
+
+    val gateTaskNames = setOf("uiRegressionGate", "checkLeoVerUiContract")
+    val requestedGate = gradle.startParameter.taskNames.any { requested ->
+        gateTaskNames.any { requested == it || requested.endsWith(":$it") }
+    }
+    if (requestedGate) {
+        tasks.named<Test>("testLocalDebugUnitTest").configure {
+            filter {
+                includeTestsMatching("com.comunidapp.app.ui.UiRegressionGateTest")
+                includeTestsMatching("com.comunidapp.app.ui.LeoVerDesignSystemContractTest")
+                includeTestsMatching("com.comunidapp.app.ui.LeoVerUx07ContractTest")
+                includeTestsMatching("com.comunidapp.app.ui.LeoVerMapPolicyGateTest")
+                includeTestsMatching("com.comunidapp.app.ui.PersonaBottomSurfacesTest")
+                includeTestsMatching("com.comunidapp.app.ui.VisualDirectionV2PilotTest")
+                includeTestsMatching("com.comunidapp.app.ui.Ux05SocialHomeCommunityProfileSettingsTest")
+                includeTestsMatching("com.comunidapp.app.data.model.CommunityCanonicalUiTest")
+                includeTestsMatching("com.comunidapp.app.domain.ux.CanonicalUiErrorMapperTest")
+                includeTestsMatching("com.comunidapp.app.domain.auth.Auth05SignupOtpOnlyGuardsTest")
+                includeTestsMatching("com.comunidapp.app.domain.onboarding.onb02.Onb02TutorialRoutingTest")
+                includeTestsMatching("com.comunidapp.app.domain.foster.FosterDirectPlacementTest")
+                includeTestsMatching("com.comunidapp.app.domain.auth.LeoVerAuth06ContractTest")
+                includeTestsMatching("com.comunidapp.app.domain.onboarding.onb03.LeoVerOnb03ContractTest")
+                includeTestsMatching("com.comunidapp.app.domain.social.LeoVerOrgSocialQaContractTest")
+                includeTestsMatching("com.comunidapp.app.domain.social.LeoVerPreQaFinalContractTest")
+                includeTestsMatching("com.comunidapp.app.domain.vitacora.import.LeoVerVitacoraImportContractTest")
+                includeTestsMatching("com.comunidapp.app.domain.onboarding.LeoVerAuthOnbRecoveryContractTest")
+            }
+            filter.isFailOnNoMatchingTests = true
+        }
+    }
+}
+
+tasks.register("checkLeoVerUiContract") {
+    group = "verification"
+    description = "LeoVer UI contract + free-only map gate (no emulator)."
+    dependsOn("uiRegressionGate")
+}
+
+tasks.register("uiRegressionGate") {
+    group = "verification"
+    description = "LeoVer UI-01 static UI regression gate (no emulator, no screenshots)."
+    dependsOn("testLocalDebugUnitTest")
 }

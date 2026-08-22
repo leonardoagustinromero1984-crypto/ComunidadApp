@@ -82,6 +82,7 @@ data class CreateFosterHomeInput(
     val zoneText: String,
     val publicLocationText: String? = null,
     val privateAddressText: String? = null,
+    val localityId: String? = null,
     val activate: Boolean = false
 )
 
@@ -98,7 +99,8 @@ data class UpdateFosterHomeInput(
     val observations: String? = null,
     val zoneText: String,
     val publicLocationText: String? = null,
-    val privateAddressText: String? = null
+    val privateAddressText: String? = null,
+    val localityId: String? = null
 )
 
 interface FosterRequestRepository {
@@ -133,6 +135,11 @@ interface FosterPlacementRepository {
         requestId: String,
         initialNotes: String? = null
     ): Result<FosterPlacement>
+    suspend fun createDirectPlacement(
+        petId: String,
+        startsAtMillis: Long,
+        endsAtMillis: Long? = null
+    ): Result<FosterPlacement> = Result.failure(IllegalStateException("DIRECT_PLACEMENT_UNSUPPORTED"))
     suspend fun completePlacement(
         placementId: String,
         reason: com.comunidapp.app.data.model.FosterPlacementEndReason,
@@ -589,6 +596,35 @@ class MockFosterPlacementRepository(
             updatedAt = now
         )
         store.homes.value = store.homes.value.map { if (it.id == home.id) updatedHome else it }
+        placement
+    }.fold({ Result.success(it) }, { M10FosterErrorMapper.failure(it) })
+
+    override suspend fun createDirectPlacement(
+        petId: String,
+        startsAtMillis: Long,
+        endsAtMillis: Long?
+    ): Result<FosterPlacement> = runCatching {
+        val actor = actorUserId() ?: failM10("NOT_AUTHENTICATED")
+        if (petId.isBlank()) failM10("PET_NOT_FOUND")
+        val petName = runCatching {
+            InMemoryDataStore.pets.value.find { it.id == petId }?.name
+        }.getOrNull() ?: petId
+        store.placements.value.find {
+            it.petId == petId && it.fosterUserId == actor && it.status == FosterPlacementStatus.ACTIVE
+        }?.let { return@runCatching it }
+        val placement = FosterPlacement(
+            id = UUID.randomUUID().toString(),
+            fosterRequestId = "",
+            fosterHomeId = actor,
+            petId = petId,
+            petName = petName,
+            fosterUserId = actor,
+            status = FosterPlacementStatus.ACTIVE,
+            startedAt = startsAtMillis,
+            estimatedEndAt = endsAtMillis,
+            vitacoraAccessGranted = false
+        )
+        store.placements.value = listOf(placement) + store.placements.value
         placement
     }.fold({ Result.success(it) }, { M10FosterErrorMapper.failure(it) })
 

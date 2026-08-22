@@ -83,7 +83,7 @@ Social no exige campos de adopción/pérdida.
 - Guardados: solo en menú (privado).
 - Empty compacto + CTA “Crear tu primera publicación”.
 
-**Nota datos:** seguidores/seguidos usan conteo de amigos disponible hasta existir follows.
+**Nota datos:** seguidores/seguidos usan el grafo de follows (conexiones requester/addressee). No hay relación AMIGO. Perfil social: **PUBLIC** o **PRIVATE**; PRIVATE exige aprobación para seguir. Ver `docs/01-producto/D-perfil-visibilidad-public-private.md`.
 
 ---
 

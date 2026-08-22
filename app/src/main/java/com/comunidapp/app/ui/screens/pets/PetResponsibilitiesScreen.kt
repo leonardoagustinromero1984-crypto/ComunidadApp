@@ -1,5 +1,8 @@
 package com.comunidapp.app.ui.screens.pets
 
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -42,7 +45,7 @@ import com.comunidapp.app.domain.pets.PetLinkStatus
 import com.comunidapp.app.domain.pets.PetPrincipalHolder
 import com.comunidapp.app.domain.pets.PetResponsibility
 import com.comunidapp.app.domain.pets.PetResponsibilityRole
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -94,8 +97,9 @@ fun PetResponsibilitiesScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Red de cuidado",
                 showBackButton = true,
                 onBackClick = onNavigateBack

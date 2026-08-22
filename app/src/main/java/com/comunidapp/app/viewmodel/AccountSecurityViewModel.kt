@@ -22,6 +22,8 @@ data class AccountSecurityUiState(
     val confirmPassword: String = "",
     val isChangingPassword: Boolean = false,
     val passwordChangeSuccess: Boolean = false,
+    val canCreatePassword: Boolean = false,
+    val hasGoogleIdentity: Boolean = false,
     val deleteCurrentPassword: String = "",
     val deleteAcknowledged: Boolean = false,
     val deleteConfirmationText: String = "",
@@ -36,6 +38,18 @@ class AccountSecurityViewModel(
 
     private val _uiState = MutableStateFlow(AccountSecurityUiState())
     val uiState: StateFlow<AccountSecurityUiState> = _uiState.asStateFlow()
+
+    init {
+        val methods = authRepository.linkedAuthMethods()
+        val hasPassword = com.comunidapp.app.domain.auth.AuthMethodKind.EMAIL_PASSWORD_OTP in methods
+        val hasGoogle = com.comunidapp.app.domain.auth.AuthMethodKind.GOOGLE in methods
+        _uiState.update {
+            it.copy(
+                canCreatePassword = hasGoogle && !hasPassword,
+                hasGoogleIdentity = hasGoogle
+            )
+        }
+    }
 
     fun onCurrentPasswordChange(value: String) =
         _uiState.update { it.copy(currentPassword = value, errorMessage = null, passwordChangeSuccess = false) }
@@ -63,19 +77,24 @@ class AccountSecurityViewModel(
                 _uiState.update { it.copy(errorMessage = AuthErrorMapper.fromThrowable(err).userMessage) }
                 return
             }
-        if (state.currentPassword.isEmpty()) {
+        if (state.currentPassword.isEmpty() && !state.canCreatePassword) {
             _uiState.update { it.copy(errorMessage = "Ingresá tu contraseña actual.") }
             return
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isChangingPassword = true, errorMessage = null) }
-            authRepository.changePassword(state.currentPassword, state.newPassword)
+            val result = if (state.canCreatePassword) {
+                authRepository.addPassword(state.newPassword)
+            } else {
+                authRepository.changePassword(state.currentPassword, state.newPassword)
+            }
                 .onSuccess {
                     AuthAnalytics.track("password_changed")
                     _uiState.update {
                         it.copy(
                             isChangingPassword = false,
                             passwordChangeSuccess = true,
+                            canCreatePassword = false,
                             currentPassword = "",
                             newPassword = "",
                             confirmPassword = ""

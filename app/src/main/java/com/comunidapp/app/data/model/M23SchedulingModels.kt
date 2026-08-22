@@ -42,7 +42,14 @@ data class M23BookableSlot(
     val modality: M23BookingModality
 )
 data class M23ScheduleDay(val date: LocalDate, val slots: List<M23BookableSlot>)
-data class M23SlotQuery(val providerId: String, val offeringId: String, val from: LocalDate, val to: LocalDate, val zoneId: ZoneId)
+data class M23SlotQuery(
+    val providerId: String,
+    val offeringId: String,
+    val from: LocalDate,
+    val to: LocalDate,
+    val zoneId: ZoneId,
+    val slotIntervalMinutes: Int? = null
+)
 data class M23SlotPage(val days: List<M23ScheduleDay>, val nextDate: LocalDate? = null)
 
 data class M23Booking(

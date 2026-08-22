@@ -14,5 +14,10 @@
     <string name="profile_private_title">Perfil privado</string>
     <string name="profile_private_hint">Si está activo, solo tus amigos pueden ver tu contenido e interactuar con vos.</string>
     <string name="change_photo">Cambiar foto</string>
-    <string name="public_profile_stub">Perfil público (próximamente)</string>
+    <string name="music_search">Buscar música</string>
+    <string name="music_for_you">Para vos</string>
+    <string name="share_send_leover">Enviar por LeoVer</string>
+    <string name="story_expired">Esta historia ya no está disponible</string>
+    <string name="geo_country">País</string>
+
 </resources>

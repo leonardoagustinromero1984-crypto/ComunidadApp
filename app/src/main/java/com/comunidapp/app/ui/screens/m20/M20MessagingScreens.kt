@@ -37,7 +37,9 @@ import com.comunidapp.app.data.model.M20ConversationStatus
 import com.comunidapp.app.data.model.M20DeletedContent
 import com.comunidapp.app.data.model.M20PublicConversation
 import com.comunidapp.app.data.model.M20PublicMessage
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -57,8 +59,9 @@ fun M20ConversationListScreen(
     val state by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Mensajería", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Mensajería", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -156,8 +159,9 @@ fun M20ThreadScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Conversación", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Conversación", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {

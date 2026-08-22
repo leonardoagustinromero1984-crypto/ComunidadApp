@@ -30,7 +30,8 @@ data class PetResponsibility(
     val acceptedAtEpochMs: Long? = null,
     val revokedAtEpochMs: Long? = null,
     val revokeReason: String? = null,
-    val createdAtEpochMs: Long
+    val createdAtEpochMs: Long,
+    val holderDisplayName: String? = null
 )
 
 data class PetAuthorization(

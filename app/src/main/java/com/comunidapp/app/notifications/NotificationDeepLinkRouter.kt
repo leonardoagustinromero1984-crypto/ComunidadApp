@@ -55,9 +55,11 @@ object NotificationDeepLinkRouter {
             NotificationDeepLinkRoute.ORGANIZATION ->
                 if (!orgId.isNullOrBlank()) NavRoutes.manageOrganization(orgId)
                 else NavRoutes.MY_ORGANIZATIONS
-            NotificationDeepLinkRoute.ORGANIZATION_INVITATION ->
-                if (!orgId.isNullOrBlank()) NavRoutes.organizationTeam(orgId)
-                else NavRoutes.MY_ORGANIZATIONS
+            NotificationDeepLinkRoute.ORGANIZATION_INVITATION -> {
+                val invitationId = link.resourceId
+                if (!invitationId.isNullOrBlank()) NavRoutes.orgInvitation(invitationId)
+                else NavRoutes.NOTIFICATIONS
+            }
             NotificationDeepLinkRoute.MODERATION_QUEUE -> NavRoutes.ADMIN_MODERATION
             NotificationDeepLinkRoute.MODERATION_CASE ->
                 if (!id.isNullOrBlank()) NavRoutes.moderationCaseDetail(id)

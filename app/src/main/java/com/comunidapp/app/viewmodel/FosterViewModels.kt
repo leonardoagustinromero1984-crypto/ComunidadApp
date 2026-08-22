@@ -11,6 +11,7 @@ import com.comunidapp.app.data.model.FosterHomeRequest
 import com.comunidapp.app.data.model.FosterHomeRequestStatus
 import com.comunidapp.app.data.model.FosterHomeStatus
 import com.comunidapp.app.data.model.FosterPlacement
+import com.comunidapp.app.data.model.FosterPlacementStatus
 import com.comunidapp.app.data.model.FosterUrgency
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.provider.DataProvider
@@ -27,6 +28,7 @@ import com.comunidapp.app.data.repository.UpdateFosterHomeInput
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -129,11 +131,12 @@ class MyFosterHomeViewModel(
 }
 
 data class FosterHomeFormState(
-    val displayName: String = "",
+    val displayName: String = "Hogar de tránsito",
     val description: String = "",
     val zoneText: String = "",
     val publicLocationText: String = "",
     val privateAddressText: String = "",
+    val localityId: String? = null,
     val capacity: String = "1",
     val speciesDog: Boolean = true,
     val speciesCat: Boolean = false,
@@ -142,7 +145,7 @@ data class FosterHomeFormState(
     val sizeL: Boolean = false,
     val acceptsSpecialNeeds: Boolean = false,
     val acceptsEmergencies: Boolean = false,
-    val activate: Boolean = false,
+    val activate: Boolean = true,
     val submitting: Boolean = false,
     val error: String? = null,
     val editingHomeId: String? = null
@@ -214,29 +217,35 @@ class FosterHomeFormViewModel(
                         acceptedSizes = sizes,
                         acceptsSpecialNeeds = s.acceptsSpecialNeeds,
                         acceptsEmergencies = s.acceptsEmergencies,
-                        zoneText = s.zoneText,
+                        zoneText = s.zoneText.ifBlank { s.publicLocationText }.ifBlank { "Argentina" },
                         publicLocationText = s.publicLocationText.ifBlank { null },
-                        privateAddressText = s.privateAddressText.ifBlank { null }
+                        privateAddressText = s.privateAddressText.ifBlank { null },
+                        localityId = s.localityId
                     )
                 )
             } else {
                 homeRepository.createFosterHome(
                     CreateFosterHomeInput(
-                        displayName = s.displayName,
+                        displayName = s.displayName.ifBlank { "Hogar de tránsito" },
                         description = s.description,
                         totalCapacity = capacity,
                         acceptedSpecies = species,
                         acceptedSizes = sizes,
                         acceptsSpecialNeeds = s.acceptsSpecialNeeds,
                         acceptsEmergencies = s.acceptsEmergencies,
-                        zoneText = s.zoneText,
+                        zoneText = s.zoneText.ifBlank { s.publicLocationText }.ifBlank { "Argentina" },
                         publicLocationText = s.publicLocationText.ifBlank { null },
                         privateAddressText = s.privateAddressText.ifBlank { null },
+                        localityId = s.localityId,
                         activate = s.activate
                     )
                 )
             }
             result.onSuccess {
+                val uid = authRepository.getCurrentUser()?.id
+                if (!uid.isNullOrBlank()) {
+                    runCatching { com.comunidapp.app.domain.context.OperationalContextProvider.refresh(uid) }
+                }
                 _form.value = _form.value.copy(submitting = false)
                 _saved.tryEmit(it.id)
             }.onFailure {
@@ -515,10 +524,18 @@ class FosterPlacementsViewModel(
     private val placementRepository: FosterPlacementRepository = DataProvider.fosterPlacementRepository,
     private val authRepository: AuthRepository = AuthProvider.repository
 ) : ViewModel() {
+    private val uid = authRepository.getCurrentUser()?.id.orEmpty()
     val placements: StateFlow<List<FosterPlacement>> =
-        placementRepository.observeActivePlacementsForUser(
-            authRepository.getCurrentUser()?.id.orEmpty()
-        ).stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+        kotlinx.coroutines.flow.combine(
+            placementRepository.observeActivePlacementsForUser(uid),
+            placementRepository.observePlacementHistory(uid)
+        ) { active, history ->
+            val previous = history.filter {
+                it.status == FosterPlacementStatus.COMPLETED || it.status == FosterPlacementStatus.CANCELLED
+            }
+            (active + previous).distinctBy { it.id }
+        }
+            .stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
 
     companion object {
         fun factory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {

@@ -866,6 +866,18 @@ AL CERRAR
 
 ---
 
+## Addendum 2026-08-16 — geografía Argentina completa
+
+`GEOGRAPHY_SCOPE = ARGENTINA_COMPLETE`. El piloto San Vicente + Almirante Brown es alcance inicial de lanzamiento, densidad y métricas. **No** restringe alta, perfil, Provincia, Localidad, mascotas ni uso general. Catálogo oficial: Georef Argentina (`GEOREF_AR`). UX: Provincia → Localidad. Detalle: `infra/supabase-canonical/seeds/georef-ar/SOURCE.md`.
+
+---
+
+## Addendum 2026-08-16 — visibilidad de perfil social
+
+Decisión vigente: **PUBLIC** y **PRIVATE** solamente. No hay “Solo amigos” / FRIENDS_ONLY. PRIVATE es visibilidad del **perfil social** y, si el perfil es privado, seguir requiere aprobación sobre el grafo de follows existente. No se crea relación AMIGO. PRIVATE no otorga VitaCora, responsabilidad, Health, holders, mensajes, orgs, ubicación precisa ni guardian. Detalle: `docs/01-producto/D-perfil-visibilidad-public-private.md`.
+
+---
+
 ## Addendum REBASE-01 (no reescribe el historial)
 
 La identidad humana y el contexto operativo quedaron reconciliados en **ADR-016** y se elevan a gobierno en **Maestro v1.2**. `AccountType` / `account_type` no es autoridad de producto; **no** se crea `AccountType.TEEN`. Age/protection es dimensión de PERSON, no ActiveContext. M25 checkout permanece fuera de V1. VitaCora sharing y Guardería se implementarán sobre M14 / M22 / M23 / M08 / M20 / M28. Menores, legal/consent/erasure y tutoriales son transversales; **no** hay módulos Teen, Legal ni Consent. Políticas DEFINED_*_PRELAUNCH / NO_SPONSORED_ADS_UNDER_18_V1 alimentan REBASE-03B. Compromiso Comunidad LeoVer: esenciales gratis. Documentos legales = DRAFT PRE-LAUNCH.

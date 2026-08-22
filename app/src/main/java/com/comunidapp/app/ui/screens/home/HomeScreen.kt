@@ -1,7 +1,6 @@
 package com.comunidapp.app.ui.screens.home
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
@@ -30,14 +29,16 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.PostType
+import com.comunidapp.app.domain.social.StoryTrayGrouping
 import com.comunidapp.app.ui.components.CommentsBottomSheet
 import com.comunidapp.app.ui.components.leo.LeoEmptyState
 import com.comunidapp.app.ui.components.leo.LeoSocialPostCard
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.theme.MutedText
+import com.comunidapp.app.ui.theme.VisualDirectionPilot
+import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.viewmodel.HomeViewModel
 import kotlinx.coroutines.launch
 
@@ -50,13 +51,21 @@ fun HomeScreen(
     onNavigateToMessages: () -> Unit = {},
     onNavigateToPublish: () -> Unit = {},
     onNavigateToCreateStory: () -> Unit = {},
+    onOpenStoryViewer: (String) -> Unit = {},
     onNavigateToSumate: () -> Unit = {},
     onNavigateToLostFound: () -> Unit = {},
+    onNavigateToFound: () -> Unit = {},
     onNavigateToComunidad: () -> Unit = {},
+    onNavigateToMyPets: () -> Unit = {},
+    onNavigateToPetDetail: (String) -> Unit = {},
+    onNavigateToAddPet: () -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val posts by viewModel.posts.collectAsState()
-    val nearbyUsers by viewModel.nearbyUsers.collectAsState()
+    val stories by viewModel.stories.collectAsState()
+    val currentUser by viewModel.currentUser.collectAsState()
+    val greetingName by viewModel.greetingName.collectAsState()
+    val avatarDisplayUrl by viewModel.avatarDisplayUrl.collectAsState()
     val likedIds by viewModel.likedPostIds.collectAsState()
     val savedIds by viewModel.savedPostIds.collectAsState()
     val isRefreshing by viewModel.isRefreshing.collectAsState()
@@ -67,10 +76,6 @@ fun HomeScreen(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    var socialTab by remember { mutableStateOf(HomeSocialTab.Feed) }
-    var audience by remember { mutableStateOf(FeedAudience.ForYou) }
-    var exploreQuery by remember { mutableStateOf("") }
-
     LaunchedEffect(actionMessage) {
         actionMessage?.let {
             snackbarHostState.showSnackbar(it)
@@ -78,153 +83,118 @@ fun HomeScreen(
         }
     }
 
+    val storiesTray = stories.filter { it.isActiveStory() }
+    val feedPosts = posts.filter { it.type != PostType.STORY && !it.isExpired() }
+    val ownStories = storiesTray.filter { it.authorId == currentUser?.id }
+    val otherStories = storiesTray.filter { it.authorId != currentUser?.id }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val activeContext by com.comunidapp.app.domain.context.OperationalContextProvider.active.collectAsState()
+    val homeContextLabel = com.comunidapp.app.domain.context.ContextHumanLabels.homeBrandLine(activeContext)
+    var sharePost by remember { mutableStateOf<FeedPost?>(null) }
+    var shareInternal by remember { mutableStateOf<FeedPost?>(null) }
+    val location = currentUser?.locationText?.takeIf { it.isNotBlank() }
+        ?: currentUser?.city?.takeIf { it.isNotBlank() }
+
+    VisualDirectionPilot {
     Scaffold(
-        containerColor = BrandCream,
+        containerColor = leoVisual().background,
         contentWindowInsets = androidx.compose.foundation.layout.WindowInsets(0, 0, 0, 0),
         snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
-            Column {
-                SocialHomeTopBar(
-                    onSearch = onNavigateToSearch,
-                    onNotifications = onNavigateToNotifications,
-                    onMessages = onNavigateToMessages
-                )
-                HomeSocialTabRow(selected = socialTab, onSelect = { socialTab = it })
-            }
+            HomePersonaHeader(
+                greetingName = greetingName,
+                avatarUrl = null,
+                locationText = location,
+                onNotifications = onNavigateToNotifications,
+                onMessages = onNavigateToMessages,
+                contextLabel = homeContextLabel
+            )
         }
     ) { padding ->
-        when (socialTab) {
-            HomeSocialTab.Feed -> {
-                PullToRefreshBox(
-                    isRefreshing = isRefreshing,
-                    onRefresh = viewModel::refresh,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                ) {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = LeoDimens.SpaceMd),
-                        verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
-                    ) {
-                        item {
-                            StoriesRow(
-                                onAddStory = onNavigateToCreateStory,
-                                stories = posts
-                                    .filter { it.type == PostType.STORY && it.isActiveStory() }
-                                    .map { post ->
-                                        StoryUiItem(
-                                            id = post.id,
-                                            name = post.authorName,
-                                            imageUrl = post.imageUrl,
-                                            hasNew = true
-                                        )
-                                    },
-                                modifier = Modifier.padding(top = LeoDimens.SpaceSm)
+        PullToRefreshBox(
+            isRefreshing = isRefreshing,
+            onRefresh = viewModel::refresh,
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                contentPadding = PaddingValues(bottom = LeoDimens.SpaceMd),
+                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+            ) {
+                item(key = "stories") {
+                    StoriesRow(
+                        onAddStory = onNavigateToCreateStory,
+                        onOwnStoryClick = {
+                            if (ownStories.isNotEmpty()) {
+                                onOpenStoryViewer(currentUser?.id.orEmpty())
+                            } else {
+                                onNavigateToCreateStory()
+                            }
+                        },
+                        ownHasActive = ownStories.isNotEmpty(),
+                        ownAvatarUrl = avatarDisplayUrl,
+                        stories = StoryTrayGrouping.groupByAuthor(otherStories).map { tray ->
+                            StoryUiItem(
+                                id = tray.authorId,
+                                name = tray.authorName,
+                                imageUrl = tray.imageUrl,
+                                hasNew = true,
+                                onClick = { onOpenStoryViewer(tray.authorId) }
                             )
                         }
-                        item {
-                            FeedAudienceSelector(selected = audience, onSelect = { audience = it })
+                    )
+                }
+                when {
+                    feedPosts.isEmpty() -> {
+                        item(key = "empty_feed") {
+                            LeoEmptyState(
+                                title = "Tu comunidad empieza acá",
+                                message = "Cuando vos o personas que seguís compartan, las publicaciones aparecen aquí.",
+                                actionLabel = "Crear publicación",
+                                onAction = onNavigateToPublish,
+                                icon = Icons.Default.PostAdd
+                            )
                         }
-                        when {
-                            audience == FeedAudience.Following -> {
-                                item {
-                                    LeoEmptyState(
-                                        title = "Tu feed de siguiendo está vacío",
-                                        message = "Cuando sigas cuentas, sus publicaciones aparecerán aquí.",
-                                        actionLabel = "Explorar",
-                                        onAction = { socialTab = HomeSocialTab.Explore },
-                                        icon = Icons.Default.PostAdd
-                                    )
-                                }
+                    }
+                    else -> {
+                        itemsIndexed(feedPosts, key = { _, p -> p.id }) { index, post ->
+                            LeoSocialPostCard(
+                                post = post,
+                                isLiked = likedIds.contains(post.id),
+                                isSaved = savedIds.contains(post.id),
+                                onAuthorClick = onAuthorClick,
+                                onLikeClick = { viewModel.toggleLike(post.id) },
+                                onCommentClick = { viewModel.openComments(post.id) },
+                                onShareClick = { sharePost = post },
+                                onSaveClick = { viewModel.toggleSave(post.id) },
+                                onReportClick = { viewModel.reportPost(post.id) },
+                                onBlockClick = { viewModel.blockAuthor(post.authorId) },
+                                onSpecialCta = when (post.type) {
+                                    PostType.ADOPTION -> onNavigateToSumate
+                                    PostType.LOST_FOUND, PostType.URGENT -> onNavigateToLostFound
+                                    else -> null
+                                },
+                                modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)
+                            )
+                            if (index == feedPosts.lastIndex && hasMore) {
+                                LaunchedEffect(post.id) { viewModel.loadMore() }
                             }
-                            posts.isEmpty() -> {
-                                item {
-                                    LeoEmptyState(
-                                        title = "Tu comunidad todavía está tranquila",
-                                        message = "Sé la primera persona en compartir una foto o novedad.",
-                                        actionLabel = "Crear publicación",
-                                        onAction = onNavigateToPublish,
-                                        icon = Icons.Default.PostAdd
-                                    )
-                                }
-                            }
-                            else -> {
-                                val feedPosts = posts.filter {
-                                    it.type != PostType.STORY && !it.isExpired()
-                                }
-                                itemsIndexed(feedPosts, key = { _, p -> p.id }) { index, post ->
-                                    LeoSocialPostCard(
-                                        post = post,
-                                        isLiked = likedIds.contains(post.id),
-                                        isSaved = savedIds.contains(post.id),
-                                        onAuthorClick = onAuthorClick,
-                                        onLikeClick = { viewModel.toggleLike(post.id) },
-                                        onCommentClick = { viewModel.openComments(post.id) },
-                                        onShareClick = {
-                                            scope.launch {
-                                                snackbarHostState.showSnackbar("Compartir próximamente")
-                                            }
-                                        },
-                                        onSaveClick = { viewModel.toggleSave(post.id) },
-                                        onReportClick = { viewModel.reportPost(post.id) },
-                                        onBlockClick = { viewModel.blockAuthor(post.authorId) },
-                                        onSpecialCta = when (post.type) {
-                                            PostType.ADOPTION -> onNavigateToSumate
-                                            PostType.LOST_FOUND, PostType.URGENT -> onNavigateToLostFound
-                                            else -> null
-                                        },
-                                        modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)
-                                    )
-                                    if (index == feedPosts.lastIndex && hasMore) {
-                                        LaunchedEffect(post.id) { viewModel.loadMore() }
-                                    }
-                                }
-                                if (!hasMore) {
-                                    item {
-                                        Text(
-                                            text = "Llegaste al final del feed",
-                                            style = LeoCaption,
-                                            color = MutedText,
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(LeoDimens.SpaceMd)
-                                        )
-                                    }
-                                }
+                        }
+                        if (!hasMore) {
+                            item {
+                                Text(
+                                    text = "Llegaste al final del feed",
+                                    style = LeoCaption,
+                                    color = MutedText,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(LeoDimens.SpaceMd)
+                                )
                             }
                         }
                     }
-                }
-            }
-            HomeSocialTab.Reels -> {
-                Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-                    HomeReelsTab(
-                        posts = posts.filter { it.type == PostType.REEL && !it.isExpired() },
-                        onAuthorClick = onAuthorClick
-                    )
-                }
-            }
-            HomeSocialTab.Explore -> {
-                Box(modifier = Modifier.padding(padding).fillMaxSize()) {
-                    val filtered = if (exploreQuery.isBlank()) {
-                        posts
-                    } else {
-                        posts.filter {
-                            it.title.contains(exploreQuery, true) ||
-                                it.content.contains(exploreQuery, true) ||
-                                it.authorName.contains(exploreQuery, true)
-                        }
-                    }
-                    HomeExploreTab(
-                        posts = filtered,
-                        suggestedUsers = nearbyUsers,
-                        searchQuery = exploreQuery,
-                        onSearchChange = { exploreQuery = it },
-                        onOpenSearch = onNavigateToSearch,
-                        onPostClick = { viewModel.openComments(it.id) },
-                        onUserClick = onAuthorClick
-                    )
                 }
             }
         }
@@ -234,21 +204,73 @@ fun HomeScreen(
         CommentsBottomSheet(
             comments = comments,
             onDismiss = viewModel::closeComments,
-            onSendComment = viewModel::sendComment
+            onSendComment = viewModel::sendComment,
+            currentUserId = currentUser?.id,
+            onDeleteOwn = viewModel::deleteOwnComment
         )
+    }
+    sharePost?.let { post ->
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { sharePost = null },
+            title = { Text("Compartir") },
+            text = { Text("Elegí cómo compartir este contenido.") },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    shareInternal = post
+                    sharePost = null
+                }) { Text("Enviar por LeoVer") }
+            },
+            dismissButton = {
+                androidx.compose.material3.TextButton(onClick = {
+                    val kind = when (post.type) {
+                        PostType.REEL -> com.comunidapp.app.domain.social.SocialContentKind.REEL
+                        PostType.STORY -> com.comunidapp.app.domain.social.SocialContentKind.STORY
+                        else -> com.comunidapp.app.domain.social.SocialContentKind.POST
+                    }
+                    val text = com.comunidapp.app.domain.social.SocialShare.shareText(kind, post.authorName, post.id)
+                    val send = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(android.content.Intent.EXTRA_TEXT, text)
+                    }
+                    context.startActivity(android.content.Intent.createChooser(send, "Compartir en LeoVer"))
+                    val clipboard = context.getSystemService(android.content.Context.CLIPBOARD_SERVICE)
+                        as android.content.ClipboardManager
+                    clipboard.setPrimaryClip(
+                        android.content.ClipData.newPlainText(
+                            "LeoVer",
+                            com.comunidapp.app.domain.social.SocialShare.deepLink(kind, post.id)
+                        )
+                    )
+                    sharePost = null
+                }) { Text("Otras apps") }
+            }
+        )
+    }
+    shareInternal?.let { post ->
+        com.comunidapp.app.ui.screens.social.InternalShareSheet(
+            post = post,
+            onDismiss = { shareInternal = null },
+            onShared = { shareInternal = null }
+        )
+    }
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, name = "SocialHomeEmptyPreview")
+@Preview(showBackground = true, backgroundColor = 0xFFFAFBF8, widthDp = 390, name = "SocialHomeEmptyPreview")
 @Composable
 private fun SocialHomeEmptyPreview() {
     ComunidappTheme {
         Column {
-            SocialHomeTopBar(onSearch = {}, onNotifications = {}, onMessages = {})
-            HomeSocialTabRow(selected = HomeSocialTab.Feed, onSelect = {})
+            HomePersonaHeader(
+                greetingName = "Leonardo",
+                avatarUrl = null,
+                locationText = "Buenos Aires",
+                onNotifications = {},
+                onMessages = {}
+            )
             LeoEmptyState(
-                title = "Tu comunidad todavía está tranquila",
-                message = "Sé la primera persona en compartir una foto o novedad.",
+                title = "Tu comunidad empieza acá",
+                message = "Cuando vos o personas que seguís compartan, las publicaciones aparecen aquí.",
                 actionLabel = "Crear publicación",
                 onAction = {},
                 icon = Icons.Default.PostAdd
@@ -257,15 +279,18 @@ private fun SocialHomeEmptyPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, name = "SocialHomeFeedPreview")
+@Preview(showBackground = true, backgroundColor = 0xFFFAFBF8, widthDp = 390, name = "SocialHomeFeedPreview")
 @Composable
 private fun SocialHomeFeedPreview() {
     ComunidappTheme {
         Column {
-            SocialHomeTopBar(onSearch = {}, onNotifications = {}, onMessages = {})
-            HomeSocialTabRow(selected = HomeSocialTab.Feed, onSelect = {})
-            StoriesRow(onAddStory = {})
-            FeedAudienceSelector(selected = FeedAudience.ForYou, onSelect = {})
+            HomePersonaHeader(
+                greetingName = "Leo",
+                avatarUrl = null,
+                locationText = null,
+                onNotifications = {},
+                onMessages = {}
+            )
             LeoSocialPostCard(
                 post = FeedPost(
                     id = "1",

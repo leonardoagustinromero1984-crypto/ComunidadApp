@@ -1,5 +1,9 @@
 package com.comunidapp.app.ui.screens.shelters
 
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -40,7 +44,7 @@ import com.comunidapp.app.data.model.ShelterEventRegistrationStatus
 import com.comunidapp.app.data.model.ShelterEventStatus
 import com.comunidapp.app.data.model.ShelterEventType
 import com.comunidapp.app.data.model.ShelterEventVisibility
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -70,8 +74,9 @@ fun ShelterPublicEmergenciesScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Urgencias públicas", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Urgencias", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -106,8 +111,9 @@ fun ShelterEmergenciesScreen(
     val emergencies by viewModel.emergencies.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Urgencias", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Urgencias", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -140,8 +146,9 @@ fun ShelterEmergencyDetailScreen(
     var resolveNotes by remember { mutableStateOf("") }
     var showResolve by remember { mutableStateOf(false) }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Detalle de urgencia", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Detalle de urgencia", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -244,8 +251,9 @@ fun ShelterEmergencyFormScreen(
     }
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved(it) } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (editEmergencyId == null) "Nueva urgencia" else "Editar urgencia",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -322,8 +330,9 @@ fun ShelterPublicEventsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Eventos públicos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Eventos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -362,8 +371,9 @@ fun ShelterEventsScreen(
     val events by viewModel.events.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Eventos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Eventos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -397,8 +407,9 @@ fun ShelterEventDetailScreen(
     val error by viewModel.error.collectAsState()
     var registerNotes by remember { mutableStateOf("") }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Detalle de evento", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Detalle de evento", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -510,8 +521,9 @@ fun ShelterEventFormScreen(
     }
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved(it) } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (editEventId == null) "Nuevo evento" else "Editar evento",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -535,11 +547,9 @@ fun ShelterEventFormScreen(
                 label = { Text("Cupo (opcional)") },
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
-                publicLocation,
-                { publicLocation = it },
-                label = { Text("Ubicación pública") },
-                modifier = Modifier.fillMaxWidth()
+            V2LocationStringPicker(
+                value = publicLocation,
+                onValueChange = { publicLocation = it }
             )
             OutlinedTextField(
                 privateLocation,
@@ -599,8 +609,9 @@ fun ShelterEventRegistrationsScreen(
     val busy by viewModel.busy.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Inscripciones", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Inscripciones", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -655,8 +666,9 @@ fun ShelterReportsScreen(
         viewModel.exported.collect { lastExportName = it.fileName }
     }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Reportes operativos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Reportes operativos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(

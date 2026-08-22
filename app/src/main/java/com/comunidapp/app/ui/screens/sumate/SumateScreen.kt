@@ -1,55 +1,41 @@
 package com.comunidapp.app.ui.screens.sumate
 
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.HomeWork
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Store
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SnackbarHost
-import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.ui.unit.dp
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.data.model.LostFoundType
-import com.comunidapp.app.ui.components.leo.LeoEmptyState
-import com.comunidapp.app.ui.components.leo.LeoFilterChip
-import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
-import com.comunidapp.app.ui.components.leo.LeoSearchBar
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
-import com.comunidapp.app.ui.screens.adoptions.AdoptionsContent
-import com.comunidapp.app.ui.screens.lostfound.LostFoundContent
-import com.comunidapp.app.ui.screens.sumate.tabs.AdoptionEventsContent
-import com.comunidapp.app.ui.screens.sumate.tabs.FosterHomesContent
+import com.comunidapp.app.ui.components.v2.V2NavRow
+import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandGreen
+import com.comunidapp.app.ui.theme.BrandGreenContainer
+import com.comunidapp.app.ui.theme.BrandGreenDark
+import com.comunidapp.app.ui.theme.BrandOrange
+import com.comunidapp.app.ui.theme.BrandOrangeContainer
+import com.comunidapp.app.ui.theme.BrandOrangeSoft
 import com.comunidapp.app.ui.theme.ComunidappTheme
-import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoDimens
-import com.comunidapp.app.ui.theme.MutedText
+import com.comunidapp.app.ui.theme.UrgentContainer
+import com.comunidapp.app.domain.context.OperationalContext
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.viewmodel.SumateViewModel
-import kotlinx.coroutines.launch
-
-private val sumateCategories = listOf(
-    "Adopciones",
-    "Perdidos",
-    "Encontrados",
-    "Tránsito",
-    "Eventos"
-)
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 @Composable
 fun SumateScreen(
@@ -70,198 +56,120 @@ fun SumateScreen(
     onCreateFound: () -> Unit = {},
     onCreateFoster: () -> Unit = {},
     onCreateEvent: () -> Unit = {},
+    onOpenAdoptions: () -> Unit = {},
+    onOpenLostFound: () -> Unit = {},
+    context: OperationalContext = OperationalContext.Personal,
     viewModel: SumateViewModel = viewModel()
 ) {
-    val selectedCategory by viewModel.selectedCategory.collectAsState()
-    val searchQuery by viewModel.searchQuery.collectAsState()
-    val orgFilter by viewModel.orgFilter.collectAsState()
-    val snackbarHostState = remember { SnackbarHostState() }
-    val scope = rememberCoroutineScope()
-    val activeFilters = if (orgFilter) 1 else 0
-
-    @Suppress("UNUSED_VARIABLE")
-    val preservedRoutes = remember {
+    @Suppress("UNUSED_PARAMETER")
+    val preserved = remember {
         listOf(
+            onAdoptionClick,
             onShelterClick,
+            onNavigateToMap,
             onMyApplications,
             onReceivedApplications,
-            onShelterOps,
             onVeterinaryDirectory,
-            onM17Campaigns,
-            onNavigateToPublish
+            onM16Shelters,
+            onNavigateToPublish,
+            onCreateAdoption,
+            onCreateLost,
+            onCreateFound,
+            onCreateFoster,
+            onCreateEvent,
+            viewModel
         )
     }
 
-    val createLabel = when (selectedCategory) {
-        0 -> "Publicar adopción"
-        1 -> "Reportar mascota perdida"
-        2 -> "Informar mascota encontrada"
-        3 -> "Ofrecer tránsito"
-        4 -> "Crear evento"
-        else -> "Crear"
-    }
-    val onCreate = when (selectedCategory) {
-        0 -> onCreateAdoption
-        1 -> onCreateLost
-        2 -> onCreateFound
-        3 -> onCreateFoster
-        4 -> onCreateEvent
-        else -> onNavigateToPublish
-    }
-
     Scaffold(
-        containerColor = BrandCream,
+        containerColor = BrandBackground,
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        snackbarHost = { SnackbarHost(snackbarHostState) },
         topBar = {
             LeoTopAppBar(
                 title = "Sumate",
-                subtitle = "Encontrá mascotas y causas que necesitan ayuda."
+                subtitle = "Elegí cómo querés ayudar hoy"
             )
         }
     ) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(top = padding.calculateTopPadding())
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(LeoDimens.SpaceMd),
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
         ) {
-            LeoSearchBar(
-                value = searchQuery,
-                onValueChange = viewModel::setSearchQuery,
-                placeholder = "Buscar por zona, nombre o localidad",
-                onFilterClick = {
-                    val next = !orgFilter
-                    viewModel.setOrgFilter(next)
-                    scope.launch {
-                        snackbarHostState.showSnackbar(
-                            if (next) "Filtro: publicado por organizaciones"
-                            else "Filtros limpios"
-                        )
-                    }
+            V2NavRow(
+                title = "Adopciones",
+                description = com.comunidapp.app.domain.qa.PhysicalQaFix01Contracts.PERSON_ADOPTIONS_COPY,
+                icon = Icons.Default.Pets,
+                onClick = onOpenAdoptions,
+                iconTint = BrandOrange,
+                iconContainer = BrandOrangeContainer
+            )
+            V2NavRow(
+                title = "Refugios / ONG",
+                description = if (context.isPersonal) {
+                    "Encontrá refugios y organizaciones cerca"
+                } else {
+                    "Organizaciones que rescatan y cuidan"
                 },
-                activeFiltersCount = activeFilters,
-                modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm)
+                icon = Icons.Default.Store,
+                onClick = if (context.isPersonal) onM16Shelters else onShelterOps,
+                iconTint = BrandGreenDark,
+                iconContainer = BrandGreenContainer
             )
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm),
-                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
-            ) {
-                sumateCategories.forEachIndexed { index, category ->
-                    LeoFilterChip(
-                        label = category,
-                        selected = selectedCategory == index,
-                        onClick = { viewModel.selectCategory(index) }
-                    )
-                }
-            }
-
-            LeoPrimaryButton(
-                text = createLabel,
-                onClick = onCreate,
-                icon = Icons.Default.Add,
-                modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm)
-            )
-
-            if (orgFilter) {
-                Text(
-                    text = "Mostrando orientación a organizaciones. Las fichas se abren desde cada caso.",
-                    style = LeoCaption,
-                    color = MutedText,
-                    modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)
+            if (context.isPersonal) {
+                V2NavRow(
+                    title = "Ofrecer hogar de tránsito",
+                    description = "Quiero colaborar como tránsito",
+                    icon = Icons.Default.HomeWork,
+                    onClick = onCreateFoster,
+                    iconTint = BrandOrangeSoft,
+                    iconContainer = BrandOrangeContainer
+                )
+            } else if (context is OperationalContext.Foster) {
+                V2NavRow(
+                    title = "Hogares de tránsito",
+                    description = "Gestión de tránsitos y solicitudes",
+                    icon = Icons.Default.HomeWork,
+                    onClick = onFosterHomes,
+                    iconTint = BrandOrangeSoft,
+                    iconContainer = BrandOrangeContainer
                 )
             }
-
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f)
-                    .padding(bottom = padding.calculateBottomPadding())
-            ) {
-                when (selectedCategory) {
-                    0 -> AdoptionsContent(
-                        onAdoptionClick = onAdoptionClick,
-                        showPrivateActions = false,
-                        bottomPadding = 0.dp
-                    )
-                    1 -> LostFoundContent(
-                        onNavigateToMap = onNavigateToMap,
-                        lockedType = LostFoundType.LOST,
-                        bottomPadding = 0.dp
-                    )
-                    2 -> LostFoundContent(
-                        onNavigateToMap = onNavigateToMap,
-                        lockedType = LostFoundType.FOUND,
-                        bottomPadding = 0.dp
-                    )
-                    3 -> FosterHomesContent(
-                        onOpenFosterHomes = onFosterHomes,
-                        bottomPadding = 0.dp
-                    )
-                    4 -> AdoptionEventsContent(
-                        onM18Events = onM18Events,
-                        bottomPadding = 0.dp
-                    )
-                }
-            }
-            // RC1.2: sin enlace genérico "Ver organizaciones" al final.
-            // Organizaciones se muestran como autor de casos / filtro / sección contextual.
-            @Suppress("UNUSED_VARIABLE")
-            val orgsEntryPreserved = onM16Shelters
+            V2NavRow(
+                title = "Perdidos / Encontrados",
+                description = "Alertas y avistamientos de mascotas",
+                icon = Icons.Default.Search,
+                onClick = onOpenLostFound,
+                iconTint = UrgentRed,
+                iconContainer = UrgentContainer
+            )
+            V2NavRow(
+                title = "Donaciones",
+                description = "Campañas e insumos para causas reales",
+                icon = Icons.Default.VolunteerActivism,
+                onClick = onM17Campaigns,
+                iconTint = BrandGreen,
+                iconContainer = BrandGreenContainer
+            )
+            V2NavRow(
+                title = "Eventos",
+                description = "Ferias, jornadas y encuentros solidarios",
+                icon = Icons.Default.Event,
+                onClick = onM18Events,
+                iconTint = BrandGreenDark,
+                iconContainer = BrandGreenContainer
+            )
         }
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390)
+@Preview(showBackground = true, backgroundColor = 0xFFFFFDF8, widthDp = 390)
 @Composable
 private fun SumateHubPreview() {
     ComunidappTheme {
-        Column(
-            modifier = Modifier.padding(LeoDimens.SpaceMd),
-            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
-        ) {
-            LeoTopAppBar(
-                title = "Sumate",
-                subtitle = "Encontrá mascotas y causas que necesitan ayuda."
-            )
-            Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)) {
-                LeoFilterChip(label = "Adopciones", selected = true, onClick = {})
-                LeoFilterChip(label = "Perdidos", selected = false, onClick = {})
-            }
-            LeoPrimaryButton(text = "Publicar adopción", onClick = {}, icon = Icons.Default.Add)
-            LeoEmptyState(
-                title = "No encontramos casos con estos filtros",
-                message = "Probá cambiando la categoría, la zona o los filtros.",
-                icon = Icons.Default.Pets
-            )
-        }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, name = "SumateOrganizationAuthorPreview")
-@Composable
-private fun SumateOrganizationAuthorPreview() {
-    ComunidappTheme {
-        Column(Modifier.padding(LeoDimens.SpaceMd)) {
-            Text("Publicado por", style = LeoCaption, color = MutedText)
-            Text("Refugio Patitas del Sur ✓", style = LeoCaption)
-        }
-    }
-}
-
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, name = "SumateOrganizationsContextPreview")
-@Composable
-private fun SumateOrganizationsContextPreview() {
-    ComunidappTheme {
-        LeoEmptyState(
-            title = "No encontramos publicaciones activas",
-            message = "También podés conocer organizaciones de tu zona.",
-            secondaryActionLabel = "Ver organizaciones cercanas",
-            onSecondaryAction = {},
-            icon = Icons.Default.Pets
-        )
+        SumateScreen(onAdoptionClick = {}, onShelterClick = {})
     }
 }

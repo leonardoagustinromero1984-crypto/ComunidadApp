@@ -8,6 +8,12 @@ import com.comunidapp.app.data.mock.InMemoryDataStore
 import com.comunidapp.app.data.remote.supabase.ChatSupabaseDataSource
 import kotlinx.coroutines.flow.Flow
 
+data class ChatPersonHit(
+    val userId: String,
+    val username: String,
+    val displayName: String
+)
+
 interface ChatRepository {
     fun observeConversations(userId: String): Flow<List<Conversation>>
     fun observeMessages(conversationId: String): Flow<List<ChatMessage>>
@@ -19,6 +25,7 @@ interface ChatRepository {
         contextId: String? = null
     ): Result<String>
     suspend fun sendMessage(conversationId: String, sender: User, content: String): Result<String>
+    suspend fun searchPeople(query: String): List<ChatPersonHit> = emptyList()
 }
 
 class MockChatRepository : ChatRepository {

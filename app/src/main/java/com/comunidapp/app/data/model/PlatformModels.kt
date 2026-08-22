@@ -54,6 +54,7 @@ enum class NotificationType {
     FOSTER_REQUEST,
     BOOKING,
     SIGHTING,
+    ORG_INVITE,
     SYSTEM;
 
     companion object {

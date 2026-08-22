@@ -1,11 +1,15 @@
 package com.comunidapp.app.ui.screens.m18
 
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -37,7 +41,8 @@ import com.comunidapp.app.data.model.M18MockOrganizations
 import com.comunidapp.app.data.model.M18PublicEvent
 import com.comunidapp.app.data.model.M18RegistrationStatus
 import com.comunidapp.app.data.repository.M18EventValidators
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -61,6 +66,7 @@ fun M18EventsListScreen(
     onEventClick: (String) -> Unit,
     onManage: () -> Unit,
     onCreate: () -> Unit,
+    canAdminister: Boolean = false,
     viewModel: M18EventsListViewModel = viewModel(factory = M18EventsListViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -68,8 +74,9 @@ fun M18EventsListScreen(
     var query by remember(filter.query) { mutableStateOf(filter.query) }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Eventos comunitarios", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Eventos comunitarios", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -111,8 +118,10 @@ fun M18EventsListScreen(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { viewModel.clearFilters() }) { Text("Limpiar filtros") }
-                OutlinedButton(onClick = onManage) { Text("Administrar") }
-                Button(onClick = onCreate) { Text("Nuevo") }
+                if (canAdminister) {
+                    OutlinedButton(onClick = onManage) { Text("Administrar") }
+                    Button(onClick = onCreate, modifier = Modifier.wrapContentWidth()) { Text("Nuevo") }
+                }
             }
             when (val s = state) {
                 M18EventsListUiState.Loading -> LoadingState()
@@ -182,8 +191,9 @@ fun M18EventDetailScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Detalle evento", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Detalle evento", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {
@@ -292,8 +302,9 @@ fun M18EventOperationsScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Panel operativo",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -382,8 +393,9 @@ fun M18EventManageScreen(
     val message by viewModel.message.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Administrar eventos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Administrar eventos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -456,8 +468,9 @@ fun M18EventEditScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (eventId == null) "Nuevo evento" else "Editar evento",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -497,11 +510,9 @@ fun M18EventEditScreen(
                 label = { Text("Nombre del lugar (público)") },
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
+            V2LocationStringPicker(
                 value = draft.publicLocationText,
-                onValueChange = { viewModel.updateDraft { d -> d.copy(publicLocationText = it) } },
-                label = { Text("Ubicación pública aproximada") },
-                modifier = Modifier.fillMaxWidth()
+                onValueChange = { viewModel.updateDraft { d -> d.copy(publicLocationText = it) } }
             )
             OutlinedTextField(
                 value = draft.petPublicName,

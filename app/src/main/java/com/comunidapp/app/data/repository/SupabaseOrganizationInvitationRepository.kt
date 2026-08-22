@@ -209,4 +209,7 @@ class SupabaseOrganizationInvitationRepository(
             Result.failure(e)
         }
     }
+
+    override suspend fun rejectMine(invitationId: String): Result<Unit> =
+        Result.failure(IllegalStateException("LEGACY_TOKEN_REQUIRED"))
 }

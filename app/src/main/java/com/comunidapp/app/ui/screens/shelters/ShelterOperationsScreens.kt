@@ -12,9 +12,14 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
@@ -29,9 +34,20 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.comunidapp.app.data.model.PetSpecies
+import com.comunidapp.app.domain.publish.LocalDebugDiagnostic
+import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.components.v2.V2FormErrorBanner
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.domain.context.OperationalContext
+import com.comunidapp.app.domain.context.OperationalContextProvider
+import com.comunidapp.app.domain.context.RefugeDestinations
+import com.comunidapp.app.ui.components.leo.LeoEmptyState
 import com.comunidapp.app.data.model.ShelterIntakeType
 import com.comunidapp.app.data.model.ShelterPetEndReason
 import com.comunidapp.app.data.model.ShelterPetPlacementStatus
@@ -39,10 +55,19 @@ import com.comunidapp.app.data.model.ShelterStatus
 import com.comunidapp.app.data.model.ShelterVolunteerRole
 import com.comunidapp.app.data.repository.CreateShelterProfileInput
 import com.comunidapp.app.data.repository.UpdateShelterProfileInput
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
+import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.MySheltersUiState
 import com.comunidapp.app.viewmodel.MySheltersViewModel
 import com.comunidapp.app.viewmodel.ShelterDashboardUiState
@@ -67,48 +92,123 @@ fun ShelterOpsListScreen(
     onPublicSupplyRequests: () -> Unit = {},
     onPublicEmergencies: () -> Unit = {},
     onPublicEvents: () -> Unit = {},
+    onImportPets: (String, String) -> Unit = { _, _ -> },
+    onImportRescuer: () -> Unit = {},
+    onAddPet: () -> Unit = {},
+    operationalHub: com.comunidapp.app.ui.screens.context.OperationalHubActions? = null,
+    showBackButton: Boolean = true,
     viewModel: ShelterPublicListViewModel = viewModel(factory = ShelterPublicListViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
+    val active by OperationalContextProvider.active.collectAsState()
+    val canonical = DataProvider.useSupabase && !DataProvider.useLegacyRemoteModules
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Refugios", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(
+                title = "Gestión",
+                subtitle = when (active) {
+                    is OperationalContext.Rescuer -> "Rescatista"
+                    else -> "Refugio / ONG"
+                },
+                showBackButton = showBackButton,
+                onBackClick = onNavigateBack
+            )
         }
     ) { padding ->
-        Column(Modifier.padding(padding).padding(16.dp)) {
+        Column(
+            Modifier
+                .padding(padding)
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(LeoDimens.SpaceMd)
+        ) {
+            val hub = operationalHub
+            if (hub != null && active is OperationalContext.Foster) {
+                com.comunidapp.app.ui.screens.context.FosterOperationalHub(context = active, actions = hub)
+                Spacer(Modifier.height(LeoDimens.SpaceCompact))
+            } else if (hub != null && active is OperationalContext.Rescuer) {
+                com.comunidapp.app.ui.screens.context.RescuerOperationalHub(context = active, actions = hub)
+                Spacer(Modifier.height(LeoDimens.SpaceCompact))
+            } else if (hub != null && com.comunidapp.app.domain.context.ContextIdentityMapping.isRefugeNav(active)) {
+                com.comunidapp.app.ui.screens.context.RefugeOperationalHub(context = active, actions = hub)
+                Spacer(Modifier.height(LeoDimens.SpaceCompact))
+            }
+            if (canonical) {
+                if (hub == null) {
+                val org = active as? OperationalContext.Organization
+                val rescuer = active is OperationalContext.Rescuer
+                if (org != null || rescuer) {
+                    if (org != null) {
+                        OutlinedButton(onClick = { onImportPets(org.entityId, org.displayName) }, modifier = Modifier.fillMaxWidth()) {
+                            Text("Importar mascotas")
+                        }
+                    } else {
+                        OutlinedButton(onClick = onImportRescuer, modifier = Modifier.fillMaxWidth()) {
+                            Text("Importar mascotas")
+                        }
+                    }
+                    Spacer(Modifier.height(LeoDimens.SpaceCompact))
+                    OutlinedButton(onClick = onAddPet, modifier = Modifier.fillMaxWidth()) {
+                        Text("+ Agregar mascota")
+                    }
+                    Spacer(Modifier.height(LeoDimens.SpaceCompact))
+                }
+                LeoEmptyState(
+                    title = RefugeDestinations.notYetAvailableMessage(),
+                    message = "Podés volver al inicio del refugio o a Perfil. Campañas, insumos, urgencias y eventos todavía no están en esta versión.",
+                    icon = Icons.Default.Dashboard
+                )
+                }
+            } else {
             OutlinedButton(onClick = onMyShelters, modifier = Modifier.fillMaxWidth()) {
                 Text("Mis refugios")
             }
             OutlinedButton(onClick = onPublicCampaigns, modifier = Modifier.fillMaxWidth()) {
-                Text("Campañas públicas")
+                Text("Campañas")
             }
             OutlinedButton(onClick = onPublicSupplyRequests, modifier = Modifier.fillMaxWidth()) {
                 Text("Pedidos de insumos")
             }
             OutlinedButton(onClick = onPublicEmergencies, modifier = Modifier.fillMaxWidth()) {
-                Text("Urgencias públicas")
+                Text("Urgencias")
             }
             OutlinedButton(onClick = onPublicEvents, modifier = Modifier.fillMaxWidth()) {
-                Text("Eventos públicos")
+                Text("Eventos")
             }
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(LeoDimens.SpaceCompact))
             when (val s = state) {
                 ShelterListUiState.Loading -> LoadingState()
                 ShelterListUiState.Empty -> EmptyState(title = "No hay refugios públicos activos.")
                 is ShelterListUiState.Error -> ErrorState(message = s.message, onRetry = viewModel::refresh)
-                is ShelterListUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(s.items, key = { it.id }) { item ->
-                        Column(
-                            Modifier.fillMaxWidth().clickable { onShelterClick(item.id) }.padding(8.dp)
-                        ) {
-                            Text(item.displayName, fontWeight = FontWeight.SemiBold)
-                            Text(item.publicZoneText ?: "Zona no informada")
-                            Text("Disponibilidad: ${item.availability.name} · cupos ~${item.freeSlotsApproximate}")
-                            Text("Especies: ${item.acceptedSpecies.joinToString()}")
-                            if (item.acceptsEmergencies) Text("Acepta emergencias")
+                is ShelterListUiState.Content -> Column(
+                    verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
+                ) {
+                    s.items.forEach { item ->
+                        V2SurfaceCard(onClick = { onShelterClick(item.id) }) {
+                            Text(item.displayName, style = LeoCardTitle, color = BrandText)
+                            Text(
+                                item.publicZoneText ?: "Zona no informada",
+                                style = LeoCaption,
+                                color = BrandTextSecondary
+                            )
+                            Text(
+                                "Disponibilidad: ${item.availability.name} · cupos ~${item.freeSlotsApproximate}",
+                                style = LeoCaption,
+                                color = BrandTextSecondary
+                            )
+                            Text(
+                                "Especies: ${item.acceptedSpecies.joinToString()}",
+                                style = LeoCaption,
+                                color = BrandTextSecondary
+                            )
+                            if (item.acceptsEmergencies) {
+                                Text("Acepta emergencias", style = LeoCaption, color = BrandText)
+                            }
                         }
                     }
                 }
+            }
             }
         }
     }
@@ -119,28 +219,67 @@ fun MySheltersScreen(
     onNavigateBack: () -> Unit,
     onShelterClick: (String) -> Unit,
     onCreate: () -> Unit,
+    onImportPets: (String, String) -> Unit = { _, _ -> },
+    onAddPet: () -> Unit = {},
+    showBackButton: Boolean = true,
     viewModel: MySheltersViewModel = viewModel(factory = MySheltersViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
+    val active by OperationalContextProvider.active.collectAsState()
+    val orgContext = active is OperationalContext.Organization
+    val canonical = DataProvider.useSupabase && !DataProvider.useLegacyRemoteModules
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Mis refugios", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(
+                title = if (orgContext) "Animales" else "Mis refugios",
+                showBackButton = showBackButton,
+                onBackClick = onNavigateBack
+            )
         }
     ) { padding ->
-        Column(Modifier.padding(padding).padding(16.dp)) {
-            Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("Crear refugio") }
-            Spacer(Modifier.height(12.dp))
+        Column(Modifier.padding(padding).padding(LeoDimens.SpaceMd)) {
+            val org = active as? OperationalContext.Organization
+            if (org != null) {
+                OutlinedButton(
+                    onClick = { onImportPets(org.entityId, org.displayName) },
+                    modifier = Modifier.fillMaxWidth()
+                ) { Text("Importar mascotas") }
+                Spacer(Modifier.height(LeoDimens.SpaceCompact))
+                OutlinedButton(onClick = onAddPet, modifier = Modifier.fillMaxWidth()) {
+                    Text("+ Agregar mascota")
+                }
+                Spacer(Modifier.height(LeoDimens.SpaceCompact))
+            }
+            if (!orgContext && !canonical) {
+                Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("Crear refugio") }
+                Spacer(Modifier.height(LeoDimens.SpaceCompact))
+            }
             when (val s = state) {
                 MySheltersUiState.Loading -> LoadingState()
-                MySheltersUiState.Empty -> EmptyState(title = "Sin refugios vinculados.")
+                MySheltersUiState.Empty -> EmptyState(
+                    title = if (orgContext) {
+                        "Todavía no hay animales cargados en este refugio."
+                    } else {
+                        "Sin refugios vinculados."
+                    }
+                )
                 is MySheltersUiState.Error -> ErrorState(message = s.message)
-                is MySheltersUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                is MySheltersUiState.Content -> LazyColumn(
+                    verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
+                ) {
                     items(s.items, key = { it.id }) { item ->
-                        Column(
-                            Modifier.fillMaxWidth().clickable { onShelterClick(item.id) }.padding(8.dp)
-                        ) {
-                            Text("${item.displayName} · ${item.status.name}", fontWeight = FontWeight.SemiBold)
-                            Text("Ocupación ${item.currentOccupancy}+${item.reservedCapacity}/${item.totalCapacity}")
+                        V2SurfaceCard(onClick = { onShelterClick(item.id) }) {
+                            Text(
+                                "${item.displayName} · ${item.status.name}",
+                                style = LeoCardTitle,
+                                color = BrandText
+                            )
+                            Text(
+                                "Ocupación ${item.currentOccupancy}+${item.reservedCapacity}/${item.totalCapacity}",
+                                style = LeoCaption,
+                                color = BrandTextSecondary
+                            )
                         }
                     }
                 }
@@ -162,12 +301,15 @@ fun ShelterOpsFormScreen(
     var capacity by remember { mutableStateOf("10") }
     var zone by remember { mutableStateOf("") }
     var addressRef by remember { mutableStateOf("") }
-    var species by remember { mutableStateOf("DOG,CAT") }
+    var selectedSpecies by remember { mutableStateOf(setOf("DOG", "CAT")) }
     var emergencies by remember { mutableStateOf(false) }
     var activate by remember { mutableStateOf(true) }
     val submitting by viewModel.submitting.collectAsState()
     val error by viewModel.error.collectAsState()
+    val diagnostic by viewModel.diagnostic.collectAsState()
+    val managedOrgs by viewModel.managedOrganizations.collectAsState()
     val existing by viewModel.existing.collectAsState()
+    val clipboard = LocalClipboardManager.current
     LaunchedEffect(existing) {
         existing?.let {
             orgId = it.organizationId
@@ -176,14 +318,15 @@ fun ShelterOpsFormScreen(
             capacity = it.totalCapacity.toString()
             zone = it.publicZoneText.orEmpty()
             addressRef = it.internalAddressRef.orEmpty()
-            species = it.acceptedSpecies.joinToString(",")
+            selectedSpecies = it.acceptedSpecies.toSet()
             emergencies = it.acceptsEmergencies
         }
     }
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved(it) } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (editShelterId == null) "Nuevo refugio" else "Editar refugio",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -195,22 +338,67 @@ fun ShelterOpsFormScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (editShelterId == null) {
-                OutlinedTextField(orgId, { orgId = it }, label = { Text("Organización ID") }, modifier = Modifier.fillMaxWidth())
+                Text("Organización", fontWeight = FontWeight.SemiBold)
+                if (managedOrgs.isEmpty()) {
+                    Text(
+                        "Para crear un refugio necesitás una organización vinculada. Pedí una invitación o creá una organización.",
+                        style = LeoCaption,
+                        color = BrandTextSecondary
+                    )
+                } else {
+                    managedOrgs.forEach { org ->
+                        FilterChip(
+                            selected = orgId == org.id.value,
+                            onClick = { orgId = org.id.value },
+                            label = { Text(org.publicName) }
+                        )
+                    }
+                }
             }
             OutlinedTextField(name, { name = it }, label = { Text("Nombre") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(description, { description = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(capacity, { capacity = it.filter { ch -> ch.isDigit() } }, label = { Text("Capacidad") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(zone, { zone = it }, label = { Text("Zona pública") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(addressRef, { addressRef = it }, label = { Text("Dirección interna (privada)") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(species, { species = it }, label = { Text("Especies (coma)") }, modifier = Modifier.fillMaxWidth())
+            V2LocationStringPicker(value = zone, onValueChange = { zone = it })
+            OutlinedTextField(addressRef, { addressRef = it }, label = { Text("Domicilio") }, modifier = Modifier.fillMaxWidth())
+            Text("Especies", fontWeight = FontWeight.SemiBold)
+            PetSpecies.entries.forEach { entry ->
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Checkbox(
+                        checked = selectedSpecies.contains(entry.name),
+                        onCheckedChange = { checked ->
+                            selectedSpecies = if (checked) {
+                                selectedSpecies + entry.name
+                            } else {
+                                selectedSpecies - entry.name
+                            }
+                        }
+                    )
+                    Text(entry.toDisplayName())
+                }
+            }
             RowCheck("Emergencias", emergencies) { emergencies = it }
             if (editShelterId == null) RowCheck("Activar", activate) { activate = it }
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            error?.let { message ->
+                val diagnosticText = diagnostic
+                V2FormErrorBanner(
+                    title = message,
+                    onCopyDiagnostic = if (
+                        LocalDebugDiagnostic.isCopyEnabled() && !diagnosticText.isNullOrBlank()
+                    ) {
+                        { clipboard.setText(AnnotatedString(diagnosticText)) }
+                    } else {
+                        null
+                    }
+                )
+            }
             Button(
-                enabled = !submitting,
+                enabled = !submitting && (editShelterId != null || orgId.isNotBlank()),
                 onClick = {
                     val caps = capacity.toIntOrNull() ?: 0
-                    val specs = species.split(',').map { it.trim().uppercase() }.filter { it.isNotEmpty() }.toSet()
+                    val specs = selectedSpecies
                     if (editShelterId == null) {
                         viewModel.create(
                             CreateShelterProfileInput(
@@ -254,8 +442,9 @@ fun ShelterOpsDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Refugio", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Refugio", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -296,8 +485,9 @@ fun ShelterDashboardScreen(
     val state by viewModel.uiState.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Panel del refugio", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Panel del refugio", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -356,17 +546,20 @@ fun ShelterOpsPetsScreen(
     onNavigateBack: () -> Unit,
     onIntake: () -> Unit,
     onDetail: (String) -> Unit,
+    onImportPets: () -> Unit = {},
     viewModel: ShelterPetsViewModel
 ) {
     val pets by viewModel.pets.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Mascotas del refugio", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Mascotas del refugio", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
             Button(onClick = onIntake, modifier = Modifier.fillMaxWidth()) { Text("Ingresar mascota") }
+            OutlinedButton(onClick = onImportPets, modifier = Modifier.fillMaxWidth()) { Text("Importar mascotas") }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             if (pets.isEmpty()) EmptyState(title = "Sin alojamientos.")
             else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -406,8 +599,9 @@ fun ShelterIntakeScreen(
     val error by viewModel.error.collectAsState()
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved() } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Ingreso", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Ingreso", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -439,8 +633,9 @@ fun ShelterOpsPetDetailScreen(
     val loading by viewModel.loading.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Alojamiento", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Alojamiento", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {
@@ -477,8 +672,9 @@ fun ShelterOpsVolunteersScreen(
     val list by viewModel.volunteers.collectAsState()
     val error by viewModel.error.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Voluntarios", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Voluntarios", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -519,8 +715,9 @@ fun ShelterVolunteerInviteScreen(
     val error by viewModel.error.collectAsState()
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved() } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Invitar voluntario", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Invitar voluntario", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(

@@ -1,51 +1,56 @@
-package com.comunidapp.app.ui.theme
-
-import androidx.compose.material3.Typography
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.sp
-
-/** Tipografía LeoVer — jerarquía RC1.2 */
-val LeoPageTitle = TextStyle(
-    fontWeight = FontWeight.Bold,
-    fontSize = 26.sp,
-    lineHeight = 34.sp
-)
-val LeoSectionTitle = TextStyle(
-    fontWeight = FontWeight.SemiBold,
-    fontSize = 20.sp,
-    lineHeight = 28.sp
-)
-val LeoCardTitle = TextStyle(
-    fontWeight = FontWeight.SemiBold,
-    fontSize = 17.sp,
-    lineHeight = 24.sp
-)
-val LeoBody = TextStyle(
-    fontWeight = FontWeight.Normal,
-    fontSize = 15.sp,
-    lineHeight = 22.sp
-)
-val LeoCaption = TextStyle(
-    fontWeight = FontWeight.Normal,
-    fontSize = 13.sp,
-    lineHeight = 18.sp
-)
-val LeoNavLabel = TextStyle(
-    fontWeight = FontWeight.Medium,
-    fontSize = 12.sp,
-    lineHeight = 16.sp
-)
-
-val Typography = Typography(
-    headlineLarge = LeoPageTitle.copy(fontSize = 28.sp, lineHeight = 36.sp),
-    headlineMedium = LeoPageTitle,
-    titleLarge = LeoSectionTitle,
-    titleMedium = LeoCardTitle,
-    bodyLarge = LeoBody.copy(fontSize = 16.sp, lineHeight = 24.sp),
-    bodyMedium = LeoBody,
-    bodySmall = LeoCaption,
-    labelLarge = TextStyle(fontWeight = FontWeight.Medium, fontSize = 14.sp, lineHeight = 20.sp),
-    labelMedium = LeoNavLabel,
-    labelSmall = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp)
-)
+package com.comunidapp.app.ui.theme
+
+import androidx.compose.material3.Typography
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import com.comunidapp.app.R
+
+/** Nunito Sans — tipografía principal LeoVer */
+val NunitoSans = FontFamily(
+    Font(R.font.nunito_sans_regular, FontWeight.Normal),
+    Font(R.font.nunito_sans_medium, FontWeight.Medium),
+    Font(R.font.nunito_sans_semibold, FontWeight.SemiBold),
+    Font(R.font.nunito_sans_bold, FontWeight.Bold),
+    Font(R.font.nunito_sans_extrabold, FontWeight.ExtraBold)
+)
+
+private fun nunito(
+    weight: FontWeight,
+    size: Int,
+    lineHeight: Int
+) = TextStyle(
+    fontFamily = NunitoSans,
+    fontWeight = weight,
+    fontSize = size.sp,
+    lineHeight = lineHeight.sp
+)
+
+/** Tipografía LeoVer — jerarquía UI V2 */
+val LeoDisplay = nunito(FontWeight.ExtraBold, 32, 40)
+val LeoPageTitle = nunito(FontWeight.Bold, 26, 34)
+val LeoSectionTitle = nunito(FontWeight.Bold, 20, 28)
+val LeoCardTitle = nunito(FontWeight.Bold, 17, 24)
+val LeoBody = nunito(FontWeight.Normal, 15, 22)
+val LeoSecondary = nunito(FontWeight.Normal, 14, 20)
+val LeoCaption = nunito(FontWeight.Normal, 13, 18)
+val LeoButton = nunito(FontWeight.Bold, 16, 22)
+val LeoChip = nunito(FontWeight.Medium, 13, 18)
+val LeoNavLabel = nunito(FontWeight.SemiBold, 12, 16)
+
+val Typography = Typography(
+    displayMedium = LeoDisplay,
+    headlineLarge = LeoPageTitle.copy(fontSize = 28.sp, lineHeight = 36.sp),
+    headlineMedium = LeoPageTitle,
+    titleLarge = LeoSectionTitle,
+    titleMedium = LeoCardTitle,
+    bodyLarge = LeoBody.copy(fontSize = 16.sp, lineHeight = 24.sp),
+    bodyMedium = LeoBody,
+    bodySmall = LeoCaption,
+    labelLarge = LeoButton,
+    labelMedium = LeoNavLabel,
+    labelSmall = nunito(FontWeight.Medium, 11, 14)
+)
+

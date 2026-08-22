@@ -3,6 +3,7 @@ package com.comunidapp.shared.auth
 /**
  * Configuración pública (URL + anon/publishable).
  * Nunca service_role. Inyectada por el host — no hardcodear en git.
+ * Dev/QA: https://tobqbddfcyitwgbkthhy.supabase.co
  */
 data class SharedSupabaseConfig(
     val url: String,

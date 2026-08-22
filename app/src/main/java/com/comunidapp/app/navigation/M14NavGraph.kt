@@ -54,7 +54,9 @@ fun NavGraphBuilder.m14PassportRoutes(navController: NavHostController) {
             onManagedVerifications = {
                 navController.navigate(NavRoutes.M14_VERIFICATIONS_MANAGED)
             },
-            onPublic = { code -> navController.navigate(NavRoutes.m14Public(code)) }
+            onPublic = { code -> navController.navigate(NavRoutes.m14Public(code)) },
+            onProfessionalAccess = { id -> navController.navigate(NavRoutes.m28PetGrants(id)) },
+            onProposals = { id -> navController.navigate(NavRoutes.m28PetProposals(id)) }
         )
     }
     composable(

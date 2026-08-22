@@ -1,6 +1,5 @@
 package com.comunidapp.app.ui.screens.login
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,11 +7,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -21,17 +21,34 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.R
+import com.comunidapp.app.domain.auth.AuthDeepLinkKind
+import com.comunidapp.app.domain.auth.AuthLinkNoticeStore
+import com.comunidapp.app.domain.auth.findActivity
 import com.comunidapp.app.ui.components.BrandLogo
 import com.comunidapp.app.ui.components.PasswordTextField
+import com.comunidapp.app.ui.components.leo.AuthMethodDivider
+import com.comunidapp.app.ui.components.leo.ContinueWithGoogleButton
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.v2.v2KeepVisibleOnFocus
 import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.VisualDirectionPilot
+import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.viewmodel.LoginViewModel
 
 @Composable
@@ -43,9 +60,22 @@ fun LoginScreen(
     viewModel: LoginViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
+    val linkNotice by AuthLinkNoticeStore.notice.collectAsState()
+    val focusManager = LocalFocusManager.current
+    val linkError = linkNotice
+        ?.takeIf { it.kind == AuthDeepLinkKind.LinkError }
+        ?.userMessage
 
     LaunchedEffect(uiState.isLoggedIn) {
         if (uiState.isLoggedIn) onLoginSuccess()
+    }
+
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) {
+        viewModel.onHostPaused()
+    }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        viewModel.onHostResumed()
     }
 
     LaunchedEffect(uiState.needsEmailVerification) {
@@ -55,34 +85,54 @@ fun LoginScreen(
         }
     }
 
-    Scaffold { padding ->
+    VisualDirectionPilot {
+    Scaffold(containerColor = leoVisual().background) { padding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 32.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = LeoDimens.SpaceLg),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             BrandLogo(widthFraction = 0.82f, height = 150.dp)
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceCompact))
             Text(
                 text = stringResource(R.string.brand_tagline),
                 style = MaterialTheme.typography.bodyMedium,
                 color = BrandText,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(36.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceLg + LeoDimens.SpaceMicro))
+
+            ContinueWithGoogleButton(
+                onClick = {
+                    val activity = context.findActivity()
+                    if (activity != null) viewModel.signInWithGoogle(activity)
+                },
+                enabled = !uiState.isBusy
+            )
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceMd))
+            AuthMethodDivider()
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceMd))
 
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
                 label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .v2KeepVisibleOnFocus(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Email,
+                    imeAction = ImeAction.Next
+                ),
+                keyboardActions = KeyboardActions(
+                    onNext = { focusManager.moveFocus(FocusDirection.Down) }
+                )
             )
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceCompact))
             PasswordTextField(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChange,
@@ -96,8 +146,8 @@ fun LoginScreen(
                 Text("¿Olvidaste tu contraseña?")
             }
 
-            uiState.errorMessage?.let { error ->
-                Spacer(modifier = Modifier.height(8.dp))
+            (uiState.errorMessage ?: linkError)?.let { error ->
+                Spacer(modifier = Modifier.height(LeoDimens.SpaceSm))
                 Text(
                     text = error,
                     color = MaterialTheme.colorScheme.error,
@@ -105,30 +155,27 @@ fun LoginScreen(
                 )
             }
 
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceSection))
 
-            Button(
-                onClick = viewModel::login,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading
-            ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(20.dp),
-                        color = MaterialTheme.colorScheme.onPrimary,
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("Iniciar sesión")
-                }
+            if (uiState.isBusy) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = leoVisual().primary,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                LeoPrimaryButton(
+                    text = "Iniciar sesión",
+                    onClick = viewModel::login
+                )
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceCompact))
+            LeoOutlinedButton(
+                text = "Crear cuenta",
                 onClick = onNavigateToRegister,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Crear cuenta")
-            }
+                enabled = !uiState.isBusy
+            )
         }
+    }
     }
 }

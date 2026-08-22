@@ -2,11 +2,13 @@ package com.comunidapp.app.ui.screens.pets
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
@@ -78,6 +80,7 @@ internal fun PetDetailV2TopBar(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .statusBarsPadding()
             .padding(horizontal = 8.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
@@ -320,11 +323,30 @@ internal fun PetHealthSummary(
     val nextVaccine = pet.vaccinations
         .mapNotNull { it.nextDueDate?.takeIf(String::isNotBlank)?.let { due -> it to due } }
         .minByOrNull { it.second }
+    val administeredVaccines = pet.vaccinations.count {
+        it.date.isNotBlank() || it.name.isNotBlank()
+    }
     val pendingReminders = pet.reminders.count { it.title.isNotBlank() || it.date.isNotBlank() }
     val pendingVaccines = pet.vaccinations.count { !it.nextDueDate.isNullOrBlank() }
     val pendingCount = pendingReminders + pendingVaccines
+    val hasHealthData = pet.sterilized != null ||
+        (pet.weightKg != null && pet.weightKg > 0) ||
+        !pet.lastVetVisit.isNullOrBlank() ||
+        !pet.healthNotes.isNullOrBlank() ||
+        pet.allergies.isNotEmpty() ||
+        pet.medications.isNotEmpty() ||
+        pet.conditions.isNotEmpty() ||
+        administeredVaccines > 0 ||
+        !pet.lastDeworming.isNullOrBlank() ||
+        !pet.lastFleaTreatment.isNullOrBlank()
 
-    PetV2Card {
+    PetV2Card(
+        modifier = if (canOpenHealth) {
+            Modifier.clickable(onClick = onOpenHealth)
+        } else {
+            Modifier
+        }
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(
                 modifier = Modifier
@@ -387,19 +409,44 @@ internal fun PetHealthSummary(
             )
         }
         if (nextVaccine == null && pendingCount == 0) {
+            val healthBits = buildList {
+                pet.sterilized?.let { add("Castración: ${if (it.name == "YES") "Sí" else if (it.name == "NO") "No" else it.name}") }
+                pet.weightKg?.takeIf { it > 0 }?.let { add("Peso: ${it.toString().replace('.', ',')} kg") }
+                if (administeredVaccines > 0) {
+                    add("Vacunas registradas: $administeredVaccines")
+                }
+                pet.allergies.takeIf { it.isNotEmpty() }?.let {
+                    add("Alergias: ${it.joinToString()}")
+                } ?: add("Alergias: Ninguna registrada")
+                pet.conditions.takeIf { it.isNotEmpty() }?.let { add("Condiciones: ${it.joinToString()}") }
+                pet.medications.takeIf { it.isNotEmpty() }?.let { add("Medicación: ${it.joinToString()}") }
+                pet.lastVetVisit?.takeIf { it.isNotBlank() }?.let { add("Última visita: $it") }
+                pet.healthNotes?.takeIf { it.isNotBlank() }?.let { add(it) }
+            }
             Spacer(modifier = Modifier.height(12.dp))
-            Text(
-                text = "Todavía no agregaste información de salud",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold,
-                color = BrandText
-            )
-            Text(
-                text = "Registrá vacunas, cuidados y recordatorios de ${pet.name}.",
-                style = MaterialTheme.typography.bodySmall,
-                color = BrandTextSecondary,
-                modifier = Modifier.padding(top = 4.dp)
-            )
+            if (hasHealthData) {
+                healthBits.forEach { line ->
+                    Text(
+                        text = line,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = BrandText,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+            } else {
+                Text(
+                    text = "Todavía no cargaste información de salud.",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = BrandText
+                )
+                Text(
+                    text = "Registrá vacunas, cuidados y recordatorios de ${pet.name}.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BrandTextSecondary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
         }
         if (canOpenHealth) {
             Spacer(modifier = Modifier.height(8.dp))
@@ -409,7 +456,7 @@ internal fun PetHealthSummary(
                 modifier = Modifier.heightIn(min = 48.dp)
             ) {
                 Text(
-                    text = if (nextVaccine == null && pendingCount == 0) "Agregar información" else "Ver salud",
+                    text = if (hasHealthData) "Ver salud" else "Agregar información",
                     color = BrandGreenDark,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -431,19 +478,19 @@ internal fun PetPassportSummary(
 ) {
     PetV2Card {
         Text(
-            text = "Pasaporte LeoVer",
+            text = "VitaCora",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = BrandText
         )
         Text(
-            text = "La identidad compartible de $petName.",
+            text = "La VitaCora compartible de $petName.",
             style = MaterialTheme.typography.bodyMedium,
             color = BrandTextSecondary,
             modifier = Modifier.padding(top = 6.dp)
         )
         Text(
-            text = "Abrí el pasaporte para ver o compartir su estado.",
+            text = "Abrí VitaCora para ver salud canónica y su estado.",
             style = MaterialTheme.typography.bodySmall,
             color = BrandTextSecondary,
             modifier = Modifier.padding(top = 4.dp)
@@ -453,7 +500,7 @@ internal fun PetPassportSummary(
             contentPadding = PaddingValues(horizontal = 0.dp, vertical = 8.dp),
             modifier = Modifier.heightIn(min = 48.dp)
         ) {
-            Text("Ver pasaporte", color = BrandOrange, fontWeight = FontWeight.SemiBold)
+            Text("Ver VitaCora", color = BrandOrange, fontWeight = FontWeight.SemiBold)
             Icon(
                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                 contentDescription = null,
@@ -557,6 +604,12 @@ internal fun petIdentitySubtitle(pet: Pet): String = buildString {
 }
 
 internal fun petInfoRows(pet: Pet): List<Pair<String, String>> = buildList {
+    pet.publicVitacoraNumber?.let {
+        add("VitaCora" to com.comunidapp.app.domain.vitacora.import.VitacoraNumberQuery.display(it).orEmpty())
+    }
+    pet.organizationExternalPetId?.takeIf { it.isNotBlank() }?.let {
+        add(com.comunidapp.app.domain.vitacora.import.VitacoraImportCopy.ORG_REF_LABEL to it)
+    }
     add("Especie" to pet.species.toDisplayName())
     pet.breed?.takeIf { it.isNotBlank() }?.let { add("Raza" to it) }
     add("Sexo" to pet.sex.toDisplayName())

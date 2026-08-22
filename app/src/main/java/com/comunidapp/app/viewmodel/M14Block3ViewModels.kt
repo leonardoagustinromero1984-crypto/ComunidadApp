@@ -289,7 +289,12 @@ class M14PassportHistoryViewModel(
         viewModelScope.launch {
             runCatching { repository.observeHistory(passportId).first() }
                 .onSuccess {
-                    _items.value = it
+                    _items.value = it.filter { h ->
+                        com.comunidapp.app.domain.vitacora.VitaCoraUserHistoryFilter.isUserFacing(
+                            h.metadataEvent ?: h.reason,
+                            h.toStatus.name
+                        )
+                    }
                     _remotePending.value = false
                 }
                 .onFailure { e ->

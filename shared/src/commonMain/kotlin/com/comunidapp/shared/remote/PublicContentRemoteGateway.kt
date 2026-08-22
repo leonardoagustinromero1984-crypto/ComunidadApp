@@ -19,6 +19,7 @@ import kotlinx.serialization.json.put
 internal data class PublicPetDto(
     @SerialName("public_code") val publicCode: String,
     @SerialName("page_kind") val pageKind: String? = null,
+    val name: String? = null,
     @SerialName("display_name") val displayName: String = "",
     val species: String? = null,
     @SerialName("breed_text") val breedText: String? = null,
@@ -91,34 +92,36 @@ internal class SupabasePublicContentRemoteGateway(
     private val json = Json { ignoreUnknownKeys = true }
 
     override suspend fun getPublicPet(publicCode: String): PublicRpcOutcome<PublicPetDto> =
-        rpcJson("get_public_pet", publicCode) { el ->
+        rpcJson("canon_public_pet", publicCode, codeParam = "p_code") { el ->
             json.decodeFromJsonElement(PublicPetDto.serializer(), el)
         }
 
-    override suspend fun getPublicAdoption(publicCode: String): PublicRpcOutcome<PublicAdoptionDto> =
-        rpcJson("get_public_adoption", publicCode) { el ->
-            json.decodeFromJsonElement(PublicAdoptionDto.serializer(), el)
-        }
+    override suspend fun getPublicAdoption(publicCode: String): PublicRpcOutcome<PublicAdoptionDto> {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = publicCode
+        return PublicRpcOutcome.NotPublic
+    }
 
     override suspend fun getPublicLostCase(publicCode: String): PublicRpcOutcome<PublicLostFoundDto> =
-        rpcJson("get_public_lost_case", publicCode) { el ->
+        rpcJson("canon_public_lost_found", publicCode, codeParam = "p_code") { el ->
             json.decodeFromJsonElement(PublicLostFoundDto.serializer(), el)
         }
 
     override suspend fun getPublicFoundCase(publicCode: String): PublicRpcOutcome<PublicLostFoundDto> =
-        rpcJson("get_public_found_case", publicCode) { el ->
+        rpcJson("canon_public_lost_found", publicCode, codeParam = "p_code") { el ->
             json.decodeFromJsonElement(PublicLostFoundDto.serializer(), el)
         }
 
     private suspend fun <T> rpcJson(
         function: String,
         publicCode: String,
+        codeParam: String = "p_public_code",
         decode: (JsonObject) -> T
     ): PublicRpcOutcome<T> = try {
         val element = client.postgrest.rpc(
             function = function,
             parameters = buildJsonObject {
-                put("p_public_code", publicCode)
+                put(codeParam, publicCode)
             }
         ).decodeAs<JsonObject>()
         PublicRpcOutcome.Ok(decode(element))
@@ -187,7 +190,7 @@ internal fun publicPhotoRef(photoUrl: String?): MediaRef? =
 internal fun PublicPetDto.toSafeContent(): PublicContent.Pet =
     PublicContent.Pet(
         publicCode = publicCode,
-        displayName = displayName.ifBlank { "Mascota" },
+        displayName = displayName.ifBlank { name?.takeIf { it.isNotBlank() } ?: "Mascota" },
         species = species?.takeIf { it.isNotBlank() },
         breedText = breedText?.takeIf { it.isNotBlank() },
         sex = sex?.takeIf { it.isNotBlank() },

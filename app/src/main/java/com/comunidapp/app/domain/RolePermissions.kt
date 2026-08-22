@@ -2,18 +2,7 @@ package com.comunidapp.app.domain
 
 import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.User
-
-enum class AppMode {
-    PERSONA,
-    SOLIDARIO,
-    NEGOCIO
-}
-
-fun AccountType.toAppMode(): AppMode = when (this) {
-    AccountType.PERSON -> AppMode.PERSONA
-    AccountType.SHELTER, AccountType.FOSTER_HOME -> AppMode.SOLIDARIO
-    AccountType.VET, AccountType.SHOP, AccountType.TRAINER, AccountType.WALKER -> AppMode.NEGOCIO
-}
+import com.comunidapp.app.domain.context.OperationalContext
 
 /**
  * Facade de permisos alineada al Documento Funcional §20.
@@ -21,50 +10,164 @@ fun AccountType.toAppMode(): AppMode = when (this) {
  */
 object RolePermissions {
 
-    fun canAccessSumate(accountType: AccountType): Boolean =
-        accountType.toAppMode() != AppMode.NEGOCIO
+    fun canAccessSumate(context: OperationalContext): Boolean =
+        context is OperationalContext.Personal ||
+            context is OperationalContext.Organization ||
+            context is OperationalContext.Foster ||
+            context is OperationalContext.Rescuer
 
-    fun canAccessComunidad(accountType: AccountType): Boolean =
-        accountType.toAppMode() != AppMode.NEGOCIO
+    fun canAccessComunidad(context: OperationalContext): Boolean =
+        context is OperationalContext.Personal
+
+    fun canPublishAdoption(context: OperationalContext): Boolean =
+        context is OperationalContext.Organization ||
+            context is OperationalContext.Rescuer ||
+            context is OperationalContext.Foster
+
+    fun canPublishLostFound(context: OperationalContext): Boolean =
+        context is OperationalContext.Personal ||
+            context is OperationalContext.Organization ||
+            context is OperationalContext.Foster ||
+            context is OperationalContext.Rescuer
+
+    fun canPublishFosterHome(context: OperationalContext): Boolean =
+        context is OperationalContext.Personal ||
+            context is OperationalContext.Foster ||
+            context is OperationalContext.Rescuer
+
+    fun canPublishShelterNeeds(context: OperationalContext): Boolean =
+        context is OperationalContext.Organization ||
+            context is OperationalContext.Rescuer
+
+    fun canPublishEvent(context: OperationalContext): Boolean =
+        context is OperationalContext.Organization ||
+            context is OperationalContext.Rescuer
+
+    fun canPublishDonation(context: OperationalContext): Boolean =
+        context is OperationalContext.Personal || context is OperationalContext.Organization
+
+    fun canPublishPromo(context: OperationalContext): Boolean =
+        context is OperationalContext.Provider ||
+            context is OperationalContext.Veterinary ||
+            context is OperationalContext.Shop
+
+    fun canPublishQuestion(context: OperationalContext): Boolean =
+        context is OperationalContext.Personal ||
+            (context is OperationalContext.Provider && context.category == "TRAINING")
+
+    fun canManagePets(context: OperationalContext): Boolean =
+        context is OperationalContext.Personal ||
+            context is OperationalContext.Foster ||
+            context is OperationalContext.Organization ||
+            context is OperationalContext.Rescuer
+
+    fun businessPanelTitle(context: OperationalContext): String = when (context) {
+        is OperationalContext.Veterinary -> "Mi perfil profesional"
+        is OperationalContext.Shop -> "Mi negocio"
+        is OperationalContext.Provider -> "Mi perfil profesional"
+        is OperationalContext.Organization ->
+            if (context.organizationType.equals("SHELTER", ignoreCase = true)) "Mi organización"
+            else "Mi negocio"
+        else -> "Mi negocio"
+    }
+
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canAccessSumate(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canAccessSumate(OperationalContext.Personal)
+    }
+
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canAccessComunidad(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canAccessComunidad(OperationalContext.Personal)
+    }
 
     fun canManagePets(user: User): Boolean =
         ModulePermissions.canCreatePetProfile(user)
 
-    fun canManagePets(accountType: AccountType): Boolean =
-        ModulePermissions.canCreatePetProfile(accountType)
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canManagePets(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canManagePets(OperationalContext.Personal)
+    }
 
     fun canPublishAdoption(user: User): Boolean =
         ModulePermissions.canPublishAdoption(user)
 
-    fun canPublishAdoption(accountType: AccountType): Boolean =
-        ModulePermissions.canPublishAdoption(accountType)
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canPublishAdoption(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canPublishAdoption(OperationalContext.Personal)
+    }
 
     fun canPublishLostFound(user: User): Boolean =
         ModulePermissions.canPublishLostFound(user)
 
-    fun canPublishLostFound(accountType: AccountType): Boolean =
-        ModulePermissions.canPublishLostFound(accountType)
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canPublishLostFound(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canPublishLostFound(OperationalContext.Personal)
+    }
 
-    fun canPublishFosterHome(accountType: AccountType): Boolean =
-        ModulePermissions.canPublishFosterHome(accountType)
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canPublishFosterHome(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canPublishFosterHome(OperationalContext.Personal)
+    }
 
-    fun canPublishShelterNeeds(accountType: AccountType): Boolean =
-        ModulePermissions.canPublishShelterNeeds(accountType)
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canPublishShelterNeeds(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canPublishShelterNeeds(OperationalContext.Personal)
+    }
 
-    fun canPublishEvent(accountType: AccountType): Boolean =
-        ModulePermissions.canPublishEvent(accountType)
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canPublishEvent(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canPublishEvent(OperationalContext.Personal)
+    }
 
-    fun canPublishDonation(accountType: AccountType): Boolean =
-        ModulePermissions.canPublishDonation(accountType)
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canPublishDonation(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canPublishDonation(OperationalContext.Personal)
+    }
 
-    fun canPublishPromo(accountType: AccountType): Boolean =
-        ModulePermissions.canPublishPromo(accountType)
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canPublishPromo(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canPublishPromo(OperationalContext.Personal)
+    }
 
-    fun canPublishQuestion(accountType: AccountType): Boolean =
-        ModulePermissions.canPublishQuestion(accountType)
+    @Deprecated("AccountType is LEGACY. Identity is PERSON; use OperationalContext.")
+    fun canPublishQuestion(accountType: AccountType): Boolean {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return canPublishQuestion(OperationalContext.Personal)
+    }
 
     fun canCreateCampaigns(user: User): Boolean =
         ModulePermissions.canCreateCampaigns(user)
+
+    fun canCreateCampaigns(context: OperationalContext): Boolean =
+        context is OperationalContext.Organization ||
+            context is OperationalContext.Veterinary ||
+            context is OperationalContext.Shop ||
+            context is OperationalContext.Rescuer
+
+    fun canCreateCampaignsForContext(context: OperationalContext): Boolean =
+        canCreateCampaigns(context)
 
     fun canManageMultiplePets(user: User): Boolean =
         ModulePermissions.canManageMultiplePets(user)
@@ -73,11 +176,10 @@ object RolePermissions {
         // D-M02-08 / D-M02-03: AccountType y modules no conceden. Ver PermissionRepository.
         false
 
-    fun businessPanelTitle(accountType: AccountType): String = when (accountType) {
-        AccountType.VET -> "Mi consultorio"
-        AccountType.SHOP -> "Mi tienda"
-        AccountType.TRAINER -> "Mi servicio"
-        AccountType.WALKER -> "Mi perfil profesional"
-        else -> "Mi negocio"
+    @Deprecated("AccountType is LEGACY. Use OperationalContext.")
+    fun businessPanelTitle(accountType: AccountType): String {
+        @Suppress("UNUSED_PARAMETER")
+        val ignored = accountType
+        return businessPanelTitle(OperationalContext.Personal)
     }
 }

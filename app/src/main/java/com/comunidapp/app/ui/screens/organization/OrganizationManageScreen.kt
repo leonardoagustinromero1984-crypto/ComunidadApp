@@ -2,28 +2,35 @@ package com.comunidapp.app.ui.screens.organization
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Groups
+import androidx.compose.material.icons.filled.HomeWork
+import androidx.compose.material.icons.filled.Storefront
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.domain.organization.OrganizationContextMode
-import com.comunidapp.app.domain.organization.OrganizationContextProvider
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.domain.context.ContextHumanLabels
+import com.comunidapp.app.domain.context.ContextIdentityMapping
+import com.comunidapp.app.domain.context.OperationalContextProvider
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.v2.V2NavRow
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoPageTitle
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.MutedText
 import com.comunidapp.app.viewmodel.OrganizationManageViewModel
 
 @Composable
@@ -35,11 +42,13 @@ fun OrganizationManageScreen(
     viewModel: OrganizationManageViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val contextState by OrganizationContextProvider.state.collectAsState()
+    val active by OperationalContextProvider.active.collectAsState()
+    val refuge = ContextIdentityMapping.isRefugeNav(active)
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = uiState.organization?.publicName ?: "Organización",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -63,58 +72,44 @@ fun OrganizationManageScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(16.dp),
+                    .padding(16.dp)
+                    .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 Text(
-                    text = "@${uiState.organization?.slug?.value.orEmpty()}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    ContextHumanLabels.homeBrandLine(active),
+                    style = LeoCaption,
+                    color = MutedText
                 )
                 Text(
-                    text = if (contextState.mode == OrganizationContextMode.ORGANIZATION) {
-                        "Contexto activo: organización"
-                    } else {
-                        "Contexto activo: perfil personal"
-                    },
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.SemiBold
+                    if (refuge) "Refugio" else "Organización",
+                    style = LeoPageTitle,
+                    color = BrandText
                 )
-                Spacer(modifier = Modifier.height(8.dp))
-                Button(
+                V2NavRow(
+                    title = if (refuge) "Perfil del refugio" else "Editar perfil institucional",
+                    description = "Nombre, contacto y datos públicos",
+                    icon = Icons.Default.Storefront,
                     onClick = {
                         viewModel.activateContext()
                         onEditProfile()
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text("Editar perfil institucional")
-                }
-                if (uiState.canManageMembers || uiState.canInvite) {
-                    OutlinedButton(
-                        onClick = onManageTeam,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Text("Equipo e invitaciones")
                     }
+                )
+                if (uiState.canManageMembers || uiState.canInvite) {
+                    V2NavRow(
+                        title = "Equipo e invitaciones",
+                        description = "Quién opera esta organización",
+                        icon = Icons.Default.Groups,
+                        onClick = onManageTeam
+                    )
                 }
                 if (uiState.canManageBranches) {
-                    OutlinedButton(
-                        onClick = onManageBranches,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Text("Sucursales")
-                    }
-                }
-                OutlinedButton(
-                    onClick = { viewModel.usePersonalContext() },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text("Usar perfil personal")
+                    V2NavRow(
+                        title = "Sucursales",
+                        description = "Sedes",
+                        icon = Icons.Default.HomeWork,
+                        onClick = onManageBranches
+                    )
                 }
             }
         }

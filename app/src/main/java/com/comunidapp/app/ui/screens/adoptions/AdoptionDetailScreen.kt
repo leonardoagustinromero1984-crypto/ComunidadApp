@@ -37,11 +37,19 @@ import com.comunidapp.app.data.model.AdoptionStatus
 import com.comunidapp.app.data.model.InterviewStatus
 import com.comunidapp.app.ui.components.AdoptionCard
 import com.comunidapp.app.ui.components.AdoptionStatusBadge
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.ageDisplay
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoSectionTitle
 import com.comunidapp.app.viewmodel.AdoptionDetailUiState
 import com.comunidapp.app.viewmodel.AdoptionDetailViewModel
 import com.comunidapp.app.viewmodel.MyAdoptionsViewModel
@@ -64,8 +72,9 @@ fun AdoptionDetailScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = title,
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -91,7 +100,7 @@ fun AdoptionDetailScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(state.message)
-                    Button(onClick = viewModel::load) { Text("Reintentar") }
+                    LeoPrimaryButton(text = "Reintentar", onClick = viewModel::load)
                 }
             }
             is AdoptionDetailUiState.Content -> {
@@ -108,19 +117,20 @@ fun AdoptionDetailScreen(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(220.dp),
-                        cornerRadius = 12.dp,
+                        cornerRadius = 16.dp,
                         contentDescription = adoption.name
                     )
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = adoption.displayTitle,
-                        style = MaterialTheme.typography.headlineMedium,
+                        style = LeoSectionTitle,
+                        color = BrandText,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
                         text = adoption.shelterName,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = LeoCaption,
+                        color = BrandTextSecondary
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     AdoptionStatusBadge(status = adoption.status)
@@ -134,12 +144,14 @@ fun AdoptionDetailScreen(
                     Spacer(modifier = Modifier.height(16.dp))
                     Text(
                         text = "Descripción",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = LeoSectionTitle,
+                        color = BrandText,
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
                         text = adoption.description,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = LeoCaption,
+                        color = BrandText,
                         modifier = Modifier.padding(top = 8.dp)
                     )
                     if (adoption.requirements.isNotBlank()) {
@@ -164,28 +176,28 @@ fun AdoptionDetailScreen(
                         if (adoption.status != AdoptionStatus.CLOSED &&
                             adoption.status != AdoptionStatus.ADOPTED
                         ) {
-                            OutlinedButton(
+                            LeoOutlinedButton(
+                                text = "Editar publicación",
                                 onClick = { onEdit(adoption.id) },
-                                modifier = Modifier.fillMaxWidth(),
                                 enabled = !state.actionInFlight
-                            ) { Text("Editar publicación") }
+                            )
                         }
                         when (adoption.status) {
                             AdoptionStatus.PUBLISHED -> {
                                 Spacer(modifier = Modifier.height(8.dp))
-                                OutlinedButton(
+                                LeoOutlinedButton(
+                                    text = "Pausar",
                                     onClick = { confirmAction = ConfirmAction.Pause },
-                                    modifier = Modifier.fillMaxWidth(),
                                     enabled = !state.actionInFlight
-                                ) { Text("Pausar") }
+                                )
                             }
                             AdoptionStatus.PAUSED, AdoptionStatus.DRAFT -> {
                                 Spacer(modifier = Modifier.height(8.dp))
-                                OutlinedButton(
+                                LeoOutlinedButton(
+                                    text = "Publicar / reanudar",
                                     onClick = { confirmAction = ConfirmAction.Resume },
-                                    modifier = Modifier.fillMaxWidth(),
                                     enabled = !state.actionInFlight
-                                ) { Text("Publicar / reanudar") }
+                                )
                             }
                             else -> Unit
                         }
@@ -193,34 +205,34 @@ fun AdoptionDetailScreen(
                             adoption.status != AdoptionStatus.ADOPTED
                         ) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            OutlinedButton(
+                            LeoOutlinedButton(
+                                text = "Cerrar publicación",
                                 onClick = { confirmAction = ConfirmAction.Close },
-                                modifier = Modifier.fillMaxWidth(),
                                 enabled = !state.actionInFlight
-                            ) { Text("Cerrar publicación") }
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Button(
+                            LeoPrimaryButton(
+                                text = "Proceso / finalizar adopción",
                                 onClick = { onProcess(adoption.id) },
-                                modifier = Modifier.fillMaxWidth(),
                                 enabled = !state.actionInFlight
-                            ) { Text("Proceso / finalizar adopción") }
+                            )
                         }
                     } else if (adoption.status == AdoptionStatus.PUBLISHED) {
                         Spacer(modifier = Modifier.height(24.dp))
-                        Button(
-                            onClick = { onApply(adoption.id) },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Quiero adoptar") }
+                        LeoPrimaryButton(
+                            text = "Quiero adoptar",
+                            onClick = { onApply(adoption.id) }
+                        )
                         Spacer(modifier = Modifier.height(8.dp))
-                        OutlinedButton(
+                        LeoOutlinedButton(
+                            text = "Enviar mensaje al publicador",
                             onClick = {
                                 adoption.publisherId?.let { id ->
                                     onMessagePublisher(id, adoption.shelterName)
                                 }
                             },
-                            modifier = Modifier.fillMaxWidth(),
                             enabled = !adoption.publisherId.isNullOrBlank()
-                        ) { Text("Enviar mensaje al publicador") }
+                        )
                     }
                 }
             }
@@ -264,6 +276,7 @@ fun MyAdoptionsScreen(
     onCreateAdoption: () -> Unit = {},
     onEditAdoption: (String) -> Unit = {},
     onReceivedApplications: () -> Unit = {},
+    showReceivedApplications: Boolean = true,
     onProcess: (String) -> Unit = {},
     viewModel: MyAdoptionsViewModel = viewModel()
 ) {
@@ -354,8 +367,9 @@ fun MyAdoptionsScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Mis adopciones",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -376,16 +390,12 @@ fun MyAdoptionsScreen(
                 )
             }
             item {
-                Button(
-                    onClick = onCreateAdoption,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Nueva publicación") }
+                LeoPrimaryButton(text = "Nueva publicación", onClick = onCreateAdoption)
             }
-            item {
-                OutlinedButton(
-                    onClick = onReceivedApplications,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Ver postulaciones recibidas") }
+            if (showReceivedApplications) {
+                item {
+                    LeoOutlinedButton(text = "Ver postulaciones recibidas", onClick = onReceivedApplications)
+                }
             }
             item {
                 Text(

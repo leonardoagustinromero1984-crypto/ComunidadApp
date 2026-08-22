@@ -13,6 +13,17 @@ interface FileLocalMetadataReader {
 
 interface FileBytesReader {
     suspend fun readBytes(uriString: String): AppResult<ByteArray>
+
+    suspend fun materializeForUpload(uriString: String): AppResult<java.io.File> {
+        return when (val bytes = readBytes(uriString)) {
+            is AppResult.Failure -> bytes
+            is AppResult.Success -> {
+                val file = java.io.File.createTempFile("leover_up_", ".bin")
+                file.writeBytes(bytes.data)
+                AppResult.Success(file)
+            }
+        }
+    }
 }
 
 class AndroidContentFileMetadataReader(
@@ -20,6 +31,18 @@ class AndroidContentFileMetadataReader(
 ) : FileLocalMetadataReader {
     override suspend fun read(uriString: String): AppResult<FileLocalMetadata> = try {
         val uri = Uri.parse(uriString)
+        if (uri.scheme == "file") {
+            val file = uri.path?.let { java.io.File(it) }?.takeIf { it.exists() }
+                ?: error("FILENAME_REQUIRED")
+            return AppResult.Success(
+                FileLocalMetadata(
+                    originalFilename = file.name.ifBlank { "avatar.jpg" },
+                    declaredMimeType = "image/jpeg",
+                    sizeBytes = file.length().takeIf { it > 0L } ?: error("SIZE_INVALID"),
+                    sourceUriString = uriString
+                )
+            )
+        }
         var name: String? = null
         var size: Long? = null
         contentResolver.query(
@@ -60,11 +83,31 @@ class AndroidFileBytesReader(
     private val contentResolver: ContentResolver
 ) : FileBytesReader {
     override suspend fun readBytes(uriString: String): AppResult<ByteArray> = try {
-        val bytes = contentResolver.openInputStream(Uri.parse(uriString))
-            ?.use { it.readBytes() }
-            ?: error("FILE_READ_FAILED")
+        val uri = Uri.parse(uriString)
+        val bytes = if (uri.scheme == "file") {
+            uri.path?.let { java.io.File(it).takeIf { file -> file.exists() }?.readBytes() }
+        } else {
+            contentResolver.openInputStream(uri)?.use { it.readBytes() }
+        } ?: error("FILE_READ_FAILED")
         if (bytes.isEmpty()) error("SIZE_INVALID")
         AppResult.Success(bytes)
+    } catch (throwable: Throwable) {
+        AppResult.Failure(AppErrorMapper.fromThrowable(throwable))
+    }
+
+    override suspend fun materializeForUpload(uriString: String): AppResult<java.io.File> = try {
+        val uri = Uri.parse(uriString)
+        if (uri.scheme == "file") {
+            val file = uri.path?.let { java.io.File(it) }?.takeIf { it.exists() }
+                ?: error("FILE_READ_FAILED")
+            return AppResult.Success(file)
+        }
+        val out = java.io.File.createTempFile("leover_up_", ".bin")
+        contentResolver.openInputStream(uri)?.use { input ->
+            out.outputStream().use { output -> input.copyTo(output) }
+        } ?: error("FILE_READ_FAILED")
+        if (out.length() <= 0L) error("SIZE_INVALID")
+        AppResult.Success(out)
     } catch (throwable: Throwable) {
         AppResult.Failure(AppErrorMapper.fromThrowable(throwable))
     }

@@ -20,6 +20,7 @@ import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.ProfilePrivacy
 import com.comunidapp.app.domain.authorization.AuthorizationService
+import com.comunidapp.app.domain.user.ProfileAvatarResolver
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -49,6 +50,7 @@ data class ProfileUiState(
     val canViewSupportStaff: Boolean = false,
     val canViewAudit: Boolean = false,
     val canViewObservability: Boolean = false,
+    val avatarDisplayUrl: String? = null,
     val errorMessage: String? = null
 )
 
@@ -102,6 +104,7 @@ class ProfileViewModel(
                     ProfileUiState(
                         isLoading = false,
                         user = user,
+                        avatarDisplayUrl = ProfileAvatarResolver.httpOrLocalUrl(user),
                         pets = core.pets,
                         posts = core.posts.filter { it.authorId == authUser.id },
                         friends = friends,
@@ -138,6 +141,15 @@ class ProfileViewModel(
                             com.comunidapp.app.domain.authorization.PermissionCode.OBSERVABILITY_VIEW
                         )
                     )
+                }
+            }
+        }
+        .flatMapLatest { state ->
+            flow {
+                emit(state)
+                val signed = ProfileAvatarResolver.displayUrl(state.user)
+                if (signed != null && signed != state.avatarDisplayUrl) {
+                    emit(state.copy(avatarDisplayUrl = signed))
                 }
             }
         }

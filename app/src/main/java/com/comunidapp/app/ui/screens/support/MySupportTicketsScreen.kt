@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.ui.screens.moderation.AdministrativePhaseHost
+import com.comunidapp.app.ui.theme.VisualDirectionPilot
 import com.comunidapp.app.viewmodel.moderation.AdministrativeScreenPhase
 import com.comunidapp.app.viewmodel.support.MySupportTicketsViewModel
 
@@ -36,6 +37,7 @@ fun MySupportTicketsScreen(
     LaunchedEffect(uiState.phase) {
         if (uiState.phase == AdministrativeScreenPhase.AccessDenied) onNavigateBack()
     }
+    VisualDirectionPilot {
     AdministrativePhaseHost(
         title = "Soporte",
         phase = uiState.phase,
@@ -75,5 +77,6 @@ fun MySupportTicketsScreen(
                 }
             }
         }
+    }
     }
 }

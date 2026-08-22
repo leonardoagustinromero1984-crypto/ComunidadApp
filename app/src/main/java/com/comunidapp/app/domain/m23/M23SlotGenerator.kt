@@ -42,7 +42,9 @@ object M23SlotGenerator {
         val windows = rules.filter { it.providerId == query.providerId && it.offeringId == query.offeringId && it.status.name == "ACTIVE" && it.dayOfWeek == date.dayOfWeek }
             .map { it.startTime to it.endTime } + relevantExceptions.filter { it.type == M23ExceptionType.SPECIAL_OPENING && it.startTime != null && it.endTime != null }.map { it.startTime!! to it.endTime!! }
         return windows.flatMap { (start, end) ->
-            val duration = rules.firstOrNull { it.providerId == query.providerId && it.offeringId == query.offeringId && it.dayOfWeek == date.dayOfWeek }?.slotDurationMinutes ?: 30
+            val duration = query.slotIntervalMinutes
+                ?: rules.firstOrNull { it.providerId == query.providerId && it.offeringId == query.offeringId && it.dayOfWeek == date.dayOfWeek }?.slotDurationMinutes
+                ?: com.comunidapp.app.domain.schedule.AppointmentSlotPolicy.DEFAULT_INTERVAL_MINUTES
             generateSequence(start) { it.plusMinutes(duration.toLong()).takeIf { next -> !next.plusMinutes(duration.toLong()).isAfter(end) } }
                 .map { time ->
                     val begins = LocalDateTime.of(date, time).atZone(query.zoneId).toInstant()

@@ -1,6 +1,5 @@
 package com.comunidapp.app.ui.screens.login
 
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -14,13 +13,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -38,10 +33,20 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.repository.AuthProvider
-import com.comunidapp.app.domain.auth.EmailMasking
+import com.comunidapp.app.domain.auth.AuthDeepLinkKind
+import com.comunidapp.app.domain.auth.AuthLinkNoticeStore
 import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.PasswordTextField
+import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.components.v2.v2KeepVisibleOnFocus
+import com.comunidapp.app.ui.theme.BrandOrange
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.VisualDirectionPilot
+import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.viewmodel.EmailVerificationViewModel
 import com.comunidapp.app.viewmodel.ForgotPasswordViewModel
 
@@ -58,9 +63,11 @@ fun ForgotPasswordScreen(
         if (uiState.resetSuccess) onResetSuccess()
     }
 
+    VisualDirectionPilot {
     Scaffold(
+        containerColor = leoVisual().background,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Recuperar contraseña",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -79,7 +86,7 @@ fun ForgotPasswordScreen(
                 imageVector = Icons.Default.Lock,
                 contentDescription = null,
                 modifier = Modifier.size(64.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = BrandOrange
             )
             Spacer(modifier = Modifier.height(16.dp))
             Text(
@@ -91,7 +98,7 @@ fun ForgotPasswordScreen(
                     "Ingresá el código que recibiste con tu nueva contraseña."
                 },
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = BrandTextSecondary,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -100,7 +107,9 @@ fun ForgotPasswordScreen(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
                 label = { Text("Email") },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .v2KeepVisibleOnFocus(),
                 singleLine = true,
                 enabled = !uiState.emailSent || !isRemoteBackend,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
@@ -108,35 +117,27 @@ fun ForgotPasswordScreen(
 
             if (!uiState.emailSent) {
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = viewModel::sendResetEmail,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text(if (isRemoteBackend) "Enviar link por email" else "Enviar código")
-                    }
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = BrandOrange,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    LeoPrimaryButton(
+                        text = if (isRemoteBackend) "Enviar link por email" else "Enviar código",
+                        onClick = viewModel::sendResetEmail
+                    )
                 }
             } else if (isRemoteBackend) {
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(onClick = onNavigateBack, modifier = Modifier.fillMaxWidth()) {
-                    Text("Volver al login")
-                }
+                LeoPrimaryButton(text = "Volver al login", onClick = onNavigateBack)
             } else {
                 uiState.mockToken?.let { token ->
                     Spacer(modifier = Modifier.height(12.dp))
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.primaryContainer
-                        )
-                    ) {
-                        Column(modifier = Modifier.padding(12.dp)) {
-                            Text(text = "Código demo:", style = MaterialTheme.typography.labelMedium)
-                            Text(text = token, style = MaterialTheme.typography.titleLarge)
-                        }
+                    V2SurfaceCard {
+                        Text(text = "Código demo:", style = MaterialTheme.typography.labelMedium, color = BrandText)
+                        Text(text = token, style = MaterialTheme.typography.titleLarge, color = BrandText)
                     }
                 }
                 Spacer(modifier = Modifier.height(16.dp))
@@ -144,7 +145,9 @@ fun ForgotPasswordScreen(
                     value = uiState.token,
                     onValueChange = viewModel::onTokenChange,
                     label = { Text("Código") },
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .v2KeepVisibleOnFocus(),
                     singleLine = true
                 )
                 Spacer(modifier = Modifier.height(12.dp))
@@ -160,16 +163,14 @@ fun ForgotPasswordScreen(
                     label = "Confirmar contraseña"
                 )
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = viewModel::resetPassword,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isLoading
-                ) {
-                    if (uiState.isLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text("Restablecer contraseña")
-                    }
+                if (uiState.isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = BrandOrange,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    LeoPrimaryButton(text = "Restablecer contraseña", onClick = viewModel::resetPassword)
                 }
             }
 
@@ -178,6 +179,7 @@ fun ForgotPasswordScreen(
                 Text(text = error, color = MaterialTheme.colorScheme.error)
             }
         }
+    }
     }
 }
 
@@ -189,21 +191,38 @@ fun EmailVerificationScreen(
     viewModel: EmailVerificationViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val isRemoteBackend = AuthProvider.isRemoteBackendEnabled
+    val linkNotice by AuthLinkNoticeStore.notice.collectAsState()
     var otpCode by remember { mutableStateOf("") }
+    var linkError by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(email) {
         viewModel.checkVerification(email)
+    }
+
+    LaunchedEffect(linkNotice) {
+        val notice = linkNotice ?: return@LaunchedEffect
+        if (notice.kind == AuthDeepLinkKind.LinkError) {
+            linkError = notice.userMessage ?: "El enlace venció o ya fue utilizado."
+        } else if (
+            notice.kind == AuthDeepLinkKind.EmailConfirmation ||
+            notice.kind == AuthDeepLinkKind.SessionCallback
+        ) {
+            viewModel.checkVerification(email)
+        }
     }
 
     LaunchedEffect(uiState.isVerified) {
         if (uiState.isVerified) onVerified()
     }
 
+    val visibleError = uiState.errorMessage ?: linkError
+
+    VisualDirectionPilot {
     Scaffold(
+        containerColor = leoVisual().background,
         topBar = {
-            ComunidappTopBar(
-                title = "Confirmar email",
+            LeoTopAppBar(
+                title = "Verificá tu correo",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -213,41 +232,23 @@ fun EmailVerificationScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 32.dp, vertical = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Default.Email,
                 contentDescription = null,
                 modifier = Modifier.size(72.dp),
-                tint = MaterialTheme.colorScheme.primary
+                tint = BrandOrange
             )
             Spacer(modifier = Modifier.height(24.dp))
-            Text(text = "Confirmá tu email", style = MaterialTheme.typography.headlineSmall)
+            Text(text = "Verificá tu correo", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Enviamos un link de confirmación a:",
+                text = "Te enviamos un código de verificación a $email. Ingresalo para confirmar tu cuenta.",
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center
-            )
-            Text(
-                text = EmailMasking.mask(email),
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.primary,
-                textAlign = TextAlign.Center
-            )
-            Spacer(modifier = Modifier.height(16.dp))
-            Text(
-                text = if (isRemoteBackend) {
-                    "${EmailOtpValidators.PROMPT_MESSAGE}. " +
-                        "Si el link no abre la app, este código es la forma más confiable de confirmar."
-                } else {
-                    "Modo demo: ${EmailOtpValidators.PROMPT_MESSAGE} o tocá \"Ya confirmé con el link\"."
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = BrandTextSecondary,
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -258,61 +259,62 @@ fun EmailVerificationScreen(
                     val sanitized = EmailOtpValidators.sanitizeInput(value)
                     if (sanitized != otpCode) {
                         viewModel.clearOtpFeedback()
+                        linkError = null
                     }
                     otpCode = sanitized
                 },
-                label = { Text("Código") },
-                modifier = Modifier.fillMaxWidth(),
+                label = { Text("Código de verificación") },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .v2KeepVisibleOnFocus(),
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
                 supportingText = {
-                    Text("Solo números · ${EmailOtpValidators.MIN_LENGTH}–${EmailOtpValidators.MAX_LENGTH} dígitos")
+                    Text("Solo números")
                 }
             )
             Spacer(modifier = Modifier.height(16.dp))
 
-            Button(
-                onClick = { viewModel.confirmWithOtp(email, otpCode) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading && EmailOtpValidators.isValid(otpCode)
-            ) {
-                if (uiState.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text("Confirmar con código")
-                }
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = BrandOrange,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                LeoPrimaryButton(
+                    text = "Verificar",
+                    onClick = { viewModel.confirmWithOtp(email, otpCode) },
+                    enabled = EmailOtpValidators.isValid(otpCode)
+                )
             }
             Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = { viewModel.confirmVerification(email) },
-                modifier = Modifier.fillMaxWidth(),
+            LeoOutlinedButton(
+                text = if (uiState.resendCooldownSeconds > 0) {
+                    "Reenviar en ${uiState.resendCooldownSeconds}s"
+                } else {
+                    "Reenviar código"
+                },
+                onClick = { viewModel.resendVerification(email) },
+                enabled = !uiState.isLoading && uiState.resendCooldownSeconds == 0
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            androidx.compose.material3.TextButton(
+                onClick = onNavigateBack,
                 enabled = !uiState.isLoading
             ) {
-                Text("Ya confirmé con el link")
-            }
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedButton(
-                onClick = { viewModel.resendVerification(email) },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !uiState.isLoading && uiState.resendCooldownSeconds == 0
-            ) {
-                Text(
-                    if (uiState.resendCooldownSeconds > 0) {
-                        "Reenviar en ${uiState.resendCooldownSeconds}s"
-                    } else {
-                        "Reenviar email"
-                    }
-                )
+                Text("Cambiar correo")
             }
 
             uiState.successMessage?.let { msg ->
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(text = msg, color = MaterialTheme.colorScheme.primary)
+                Text(text = msg, color = BrandOrange)
             }
-            uiState.errorMessage?.let { error ->
+            visibleError?.let { error ->
                 Spacer(modifier = Modifier.height(12.dp))
                 Text(text = error, color = MaterialTheme.colorScheme.error)
             }
         }
+    }
     }
 }

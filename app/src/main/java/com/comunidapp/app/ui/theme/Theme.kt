@@ -12,18 +12,21 @@ import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
 
 /**
- * Tema claro LeoVer — paleta pastel interna (decisión definitiva 2026-08-05).
+ * Tema claro LeoVer — paleta oficial UI-01.
  *
- * Predominio: BrandOrangeSoft (#FFA64D).
- * Apoyo: BrandGreen (#49B749).
- * BrandOrange / BrandGreenDark: solo acentos puntuales (tertiary / onSecondaryContainer).
- * Logo, launcher y splash: no se alteran aquí.
+ * Background: BrandBackground (#FAFBF8). Surface: BrandWhite.
+ * Primary UI green: BrandGreen (#49B749). Orange is scarce accent only.
+ * Cream (#FFF8E1) is an accent only (surfaceVariant), never a full-screen default.
+ * ProfileGreen is profile/context-only; do not replace BrandGreen.
+ * Logo foreground artwork is not recoloured here.
+ *
+ * Prefer [LeoVerTheme] tokens in new screens instead of literal hex colors.
  */
 private val LightColorScheme = lightColorScheme(
-    primary = BrandOrangeSoft,
-    onPrimary = BrandText,
-    primaryContainer = BrandOrangeContainer,
-    onPrimaryContainer = BrandText,
+    primary = BrandGreen,
+    onPrimary = BrandWhite,
+    primaryContainer = BrandGreenContainer,
+    onPrimaryContainer = BrandGreenDark,
     secondary = BrandGreen,
     onSecondary = BrandText,
     secondaryContainer = BrandGreenContainer,
@@ -32,7 +35,7 @@ private val LightColorScheme = lightColorScheme(
     onTertiary = BrandText,
     tertiaryContainer = BrandOrangeContainer,
     onTertiaryContainer = BrandOrange,
-    background = BrandCream,
+    background = BrandBackground,
     onBackground = BrandText,
     surface = BrandWhite,
     onSurface = BrandText,
@@ -79,17 +82,20 @@ fun ComunidappTheme(
     if (!view.isInEditMode) {
         SideEffect {
             val window = (view.context as Activity).window
-            window.statusBarColor = BrandCream.toArgb()
-            window.navigationBarColor = BrandCream.toArgb()
+            window.statusBarColor = BrandBackground.toArgb()
+            window.navigationBarColor = BrandBackground.toArgb()
             val controller = WindowCompat.getInsetsController(window, view)
             controller.isAppearanceLightStatusBars = true
             controller.isAppearanceLightNavigationBars = true
         }
     }
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+    VisualDirectionPilot {
+        MaterialTheme(
+            colorScheme = colorScheme,
+            typography = Typography,
+            shapes = LeoShapes,
+            content = content
+        )
+    }
 }

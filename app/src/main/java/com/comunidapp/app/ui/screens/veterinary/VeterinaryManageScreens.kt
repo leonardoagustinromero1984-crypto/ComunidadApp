@@ -19,10 +19,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.VeterinaryClinicStatus
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.VeterinaryClinicHoursViewModel
 import com.comunidapp.app.viewmodel.VeterinaryClinicManageActionsViewModel
 import com.comunidapp.app.viewmodel.VeterinaryClinicProfessionalsViewModel
@@ -55,8 +57,9 @@ fun VeterinaryClinicServicesScreen(
     val state by viewModel.uiState.collectAsState()
     val submitting by viewModel.submitting.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Servicios", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Servicios", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
@@ -103,8 +106,9 @@ fun VeterinaryClinicManageHubScreen(
     val error by viewModel.error.collectAsState()
     val message by viewModel.message.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Gestionar veterinaria",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -159,8 +163,9 @@ private fun ManageListScaffold(
     state: VeterinaryManageListUiState
 ) {
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = title, showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = title, showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {

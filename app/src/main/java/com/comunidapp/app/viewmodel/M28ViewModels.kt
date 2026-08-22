@@ -39,7 +39,7 @@ class M28PetGrantsViewModel(
             _ui.value = M28GrantsUiState.Loading
             repository.listGrantsForResponsible(petId)
                 .onSuccess { _ui.value = M28GrantsUiState.Content(it) }
-                .onFailure { _ui.value = M28GrantsUiState.Error(it.message ?: "Error") }
+                .onFailure { _ui.value = M28GrantsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
         }
     }
 
@@ -57,14 +57,14 @@ class M28PetGrantsViewModel(
                 )
             )
             repository.grantAccess(input).onSuccess { refresh() }
-                .onFailure { _ui.value = M28GrantsUiState.Error(it.message ?: "Error") }
+                .onFailure { _ui.value = M28GrantsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
         }
     }
 
     fun revoke(grantId: String) {
         viewModelScope.launch {
             repository.revokeAccess(grantId).onSuccess { refresh() }
-                .onFailure { _ui.value = M28GrantsUiState.Error(it.message ?: "Error") }
+                .onFailure { _ui.value = M28GrantsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
         }
     }
 
@@ -98,7 +98,7 @@ class M28PassportProposalsViewModel(
             _ui.value = M28ProposalsUiState.Loading
             repository.listProposalsForResponsible(petId, actorId)
                 .onSuccess { _ui.value = M28ProposalsUiState.Content(it) }
-                .onFailure { _ui.value = M28ProposalsUiState.Error(it.message ?: "Error") }
+                .onFailure { _ui.value = M28ProposalsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
         }
     }
 
@@ -106,7 +106,7 @@ class M28PassportProposalsViewModel(
         viewModelScope.launch {
             repository.decideProposal(proposalId, decision, note, actorId)
                 .onSuccess { refresh() }
-                .onFailure { _ui.value = M28ProposalsUiState.Error(it.message ?: "Error") }
+                .onFailure { _ui.value = M28ProposalsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
         }
     }
 
@@ -140,7 +140,7 @@ class M28ClinicCareViewModel(
                 ),
                 actorId
             ).getOrElse {
-                _message.value = it.message
+                _message.value = com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)
                 return@launch
             }
             val updated = repository.updateCareDraft(
@@ -151,12 +151,12 @@ class M28ClinicCareViewModel(
                 ),
                 actorId
             ).getOrElse {
-                _message.value = it.message
+                _message.value = com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)
                 return@launch
             }
             repository.finalizeCare(updated.id, actorId)
                 .onSuccess { _message.value = "Atención finalizada" }
-                .onFailure { _message.value = it.message }
+                .onFailure { _message.value = com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it) }
         }
     }
 

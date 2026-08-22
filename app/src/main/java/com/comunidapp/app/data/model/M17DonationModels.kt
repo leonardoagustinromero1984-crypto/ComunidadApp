@@ -95,6 +95,7 @@ data class M17DonationCampaign(
 
 data class M17PublicCampaign(
     val id: String,
+    val organizationId: String? = null,
     val title: String,
     val description: String,
     val organizationDisplayName: String,
@@ -257,6 +258,7 @@ object M17PrivacySanitizer {
         summary: M17CampaignFinancialSummary
     ): M17PublicCampaign = M17PublicCampaign(
         id = campaign.id,
+        organizationId = campaign.organizationId,
         title = scrubPublicText(campaign.title),
         description = scrubPublicText(campaign.description),
         organizationDisplayName = scrubPublicText(campaign.organizationDisplayName),

@@ -91,6 +91,7 @@ data class M18CommunityEvent(
 
 data class M18PublicEvent(
     val id: String,
+    val organizationId: String? = null,
     val title: String,
     val description: String,
     val organizationDisplayName: String,
@@ -315,6 +316,7 @@ object M18PrivacySanitizer {
             (summary.availableSpots > 0 || summary.isWaitlistOpen)
         return M18PublicEvent(
             id = event.id,
+            organizationId = event.organizationId,
             title = scrubPublicText(event.title),
             description = scrubPublicText(event.description),
             organizationDisplayName = scrubPublicText(event.organizationDisplayName),

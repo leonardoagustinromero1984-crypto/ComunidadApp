@@ -1,4 +1,4 @@
-package com.comunidapp.app.ui.screens.publish
+﻿package com.comunidapp.app.ui.screens.publish
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -20,7 +20,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -33,6 +32,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.DonationType
@@ -40,9 +42,20 @@ import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
-import com.comunidapp.app.ui.components.ComunidappTopBar
-import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.components.v2.V2FormErrorBanner
+import com.comunidapp.app.ui.components.v2.V2FormImagePreview
+import com.comunidapp.app.ui.components.v2.V2FormScaffold
+import com.comunidapp.app.ui.components.v2.V2FormTextField
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.components.v2.splitUserFacingFormError
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.PublishViewModel
 
 @Composable
@@ -77,91 +90,16 @@ fun PublishReelScreen(
     onPublishSuccess: () -> Unit,
     viewModel: PublishViewModel = viewModel()
 ) {
-    var description by remember { mutableStateOf("") }
-    var location by remember { mutableStateOf("") }
-    var petId by remember { mutableStateOf("") }
-    var videoUri by remember { mutableStateOf<android.net.Uri?>(null) }
-    val formState by viewModel.formState.collectAsState()
-
-    val pickVideoLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> videoUri = uri }
-
-    LaunchedEffect(formState.isSuccess) {
-        if (formState.isSuccess) {
-            viewModel.resetFormState()
-            onPublishSuccess()
-        }
-    }
-
-    PublishFormScaffold(
-        title = "Nuevo Reel",
+    com.comunidapp.app.ui.screens.social.ReelComposerScreen(
         onNavigateBack = onNavigateBack,
-        isLoading = formState.isLoading,
-        errorMessage = formState.errorMessage,
-        onSubmit = {
-            viewModel.publishReel(
-                description = description,
-                location = location,
-                videoUri = videoUri,
-                petId = petId.trim().ifBlank { null }
-            )
-        }
-    ) {
-        Text(
-            text = "Video obligatorio · se publica en Feed y en Reels.",
-            style = MaterialTheme.typography.bodyMedium
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        videoUri?.let {
-            Text(
-                text = "Video seleccionado",
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        OutlinedButton(
-            onClick = {
-                pickVideoLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)
-                )
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (videoUri == null) "Elegir video" else "Cambiar video")
-        }
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
-            value = description,
-            onValueChange = { description = it },
-            label = { Text("Descripción") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
-            value = location,
-            onValueChange = { location = it },
-            label = { Text("Ubicación (opcional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
-            value = petId,
-            onValueChange = { petId = it },
-            label = { Text("ID de mascota (opcional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
-        )
-    }
+        onPublishSuccess = onPublishSuccess,
+        viewModel = viewModel
+    )
 }
 
 /**
- * Flujo social directo de Historia (RC1.2).
- * Origen típico: `HOME_STORY_PLUS` — al tocar `+` en Tu historia abre selector de medio,
- * sin hub intermedio ni pantalla “Próximamente”.
+ * Flujo social directo de Historia.
+ * Cámara real o galería (Photo Picker). Nunca abre galería al tocar Cámara.
  */
 @Composable
 fun PublishStoryScreen(
@@ -171,189 +109,14 @@ fun PublishStoryScreen(
     autoOpenPicker: Boolean = false,
     viewModel: PublishViewModel = viewModel()
 ) {
-    var text by remember { mutableStateOf("") }
-    var petId by remember { mutableStateOf("") }
-    var mediaUri by remember { mutableStateOf<android.net.Uri?>(null) }
-    var isVideo by remember { mutableStateOf(false) }
-    var pickerOpened by remember { mutableStateOf(false) }
-    var showDiscardConfirm by remember { mutableStateOf(false) }
-    val formState by viewModel.formState.collectAsState()
-
-    val pickMediaLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri == null) {
-            // Canceló galería: volver al origen (Inicio si HOME_STORY_PLUS).
-            if (mediaUri == null) onNavigateBack()
-        } else {
-            mediaUri = uri
-            isVideo = uri.toString().contains("video", ignoreCase = true)
-        }
-    }
-
-    fun openGallery() {
-        pickMediaLauncher.launch(
-            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo)
-        )
-    }
-
-    fun openCameraPreferred() {
-        // Photo Picker moderno: en muchos dispositivos incluye acceso a cámara sin permisos extra.
-        pickMediaLauncher.launch(
-            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-        )
-    }
-
-    fun requestClose() {
-        val dirty = mediaUri != null || text.isNotBlank()
-        if (dirty) {
-            showDiscardConfirm = true
-        } else {
-            onNavigateBack()
-        }
-    }
-
-    LaunchedEffect(autoOpenPicker) {
-        if (autoOpenPicker && !pickerOpened && mediaUri == null) {
-            pickerOpened = true
-            openGallery()
-        }
-    }
-
-    LaunchedEffect(formState.isSuccess) {
-        if (formState.isSuccess) {
-            viewModel.resetFormState()
-            onPublishSuccess()
-        }
-    }
-
-    androidx.activity.compose.BackHandler { requestClose() }
-
-    if (showDiscardConfirm) {
-        androidx.compose.material3.AlertDialog(
-            onDismissRequest = { showDiscardConfirm = false },
-            title = { Text("¿Descartar historia?") },
-            text = { Text("Se perderá el contenido que agregaste.") },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        showDiscardConfirm = false
-                        onNavigateBack()
-                    }
-                ) { Text("Descartar") }
-            },
-            dismissButton = {
-                TextButton(onClick = { showDiscardConfirm = false }) { Text("Seguir") }
-            }
-        )
-    }
-
-    Scaffold(
-        topBar = {
-            ComunidappTopBar(
-                title = "Tu historia",
-                showBackButton = true,
-                onBackClick = { requestClose() }
-            )
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            @Suppress("UNUSED_VARIABLE")
-            val trackedOrigin = origin
-            Text(
-                text = "Imagen o video · se publica 24 horas.",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-
-            mediaUri?.let { uri ->
-                if (!isVideo) {
-                    PetImage(
-                        imageUrl = uri.toString(),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(220.dp),
-                        cornerRadius = 8.dp,
-                        contentDescription = "Vista previa historia"
-                    )
-                } else {
-                    Text("Video seleccionado", color = MaterialTheme.colorScheme.primary)
-                }
-                Spacer(modifier = Modifier.height(8.dp))
-            }
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                OutlinedButton(
-                    onClick = { openGallery() },
-                    modifier = Modifier.weight(1f)
-                ) { Text("Galería") }
-                OutlinedButton(
-                    onClick = { openCameraPreferred() },
-                    modifier = Modifier.weight(1f)
-                ) { Text("Cámara") }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = text,
-                onValueChange = { text = it },
-                label = { Text("Texto (opcional)") },
-                modifier = Modifier.fillMaxWidth(),
-                minLines = 2
-            )
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
-                value = petId,
-                onValueChange = { petId = it },
-                label = { Text("Mascota asociada (opcional)") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-
-            formState.errorMessage?.let {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(it, color = MaterialTheme.colorScheme.error)
-                Text(
-                    text = "Podés cambiar el medio o reintentar. No quedás atrapado.",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-            Button(
-                onClick = {
-                    viewModel.publishStory(
-                        text = text,
-                        mediaUri = mediaUri,
-                        petId = petId.trim().ifBlank { null },
-                        isVideo = isVideo
-                    )
-                },
-                enabled = !formState.isLoading && mediaUri != null,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (formState.isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp))
-                } else {
-                    Text("Tu historia")
-                }
-            }
-            TextButton(onClick = { requestClose() }, modifier = Modifier.fillMaxWidth()) {
-                Text("Cancelar")
-            }
-        }
-    }
+    com.comunidapp.app.ui.screens.social.StoryComposerScreen(
+        onNavigateBack = onNavigateBack,
+        onPublishSuccess = onPublishSuccess,
+        origin = origin,
+        autoOpenPicker = autoOpenPicker,
+        viewModel = viewModel
+    )
 }
-
 @Composable
 fun PublishQuestionScreen(
     onNavigateBack: () -> Unit,
@@ -412,40 +175,30 @@ private fun PublishFeedTypeScreen(
         errorMessage = formState.errorMessage,
         onSubmit = { onSubmit(title, content, location, imageUri) }
     ) {
-        OutlinedTextField(
+        V2FormTextField(
             value = title,
             onValueChange = { title = it },
-            label = { Text("Título") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            label = "Título",
+            imeAction = ImeAction.Next
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(
             value = content,
             onValueChange = { content = it },
-            label = { Text("Contenido") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 4
+            label = "Contenido",
+            singleLine = false,
+            minLines = 4,
+            maxLines = 8,
+            imeAction = ImeAction.Default
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2LocationStringPicker(
             value = location,
-            onValueChange = { location = it },
-            label = { Text("Ubicación (opcional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            onValueChange = { location = it }
         )
-        Spacer(modifier = Modifier.height(12.dp))
         imageUri?.let { uri ->
-            PetImage(
+            V2FormImagePreview(
                 imageUrl = uri.toString(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp),
-                cornerRadius = 8.dp,
                 contentDescription = "Imagen de la publicación"
             )
-            Spacer(modifier = Modifier.height(8.dp))
         }
         OutlinedButton(
             onClick = {
@@ -496,15 +249,10 @@ fun PublishAdoptionScreen(
         }
     ) {
         imageUri?.let { uri ->
-            PetImage(
+            V2FormImagePreview(
                 imageUrl = uri.toString(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp),
-                cornerRadius = 8.dp,
                 contentDescription = "Foto del animal"
             )
-            Spacer(modifier = Modifier.height(8.dp))
         }
         OutlinedButton(
             onClick = {
@@ -516,43 +264,34 @@ fun PublishAdoptionScreen(
         ) {
             Text(if (imageUri == null) "Agregar foto (obligatoria)" else "Cambiar foto")
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(
             value = name,
             onValueChange = { name = it },
-            label = { Text("Nombre del animal") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            label = "Nombre del animal",
+            imeAction = ImeAction.Next
         )
-        Spacer(modifier = Modifier.height(12.dp))
         SpeciesChipRow(selected = species, onSelect = { species = it })
-        Spacer(modifier = Modifier.height(8.dp))
         SexChipRow(selected = sex, onSelect = { sex = it })
-        Spacer(modifier = Modifier.height(8.dp))
         SizeChipRow(selected = size, onSelect = { size = it })
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(
             value = ageYears.toString(),
             onValueChange = { ageYears = it.toIntOrNull() ?: 0 },
-            label = { Text("Edad (años)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            label = "Edad (años)",
+            imeAction = ImeAction.Next,
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2LocationStringPicker(
             value = location,
-            onValueChange = { location = it },
-            label = { Text("Zona") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            onValueChange = { location = it }
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(
             value = description,
             onValueChange = { description = it },
-            label = { Text("Descripción") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3
+            label = "Descripción",
+            singleLine = false,
+            minLines = 3,
+            maxLines = 6,
+            imeAction = ImeAction.Default
         )
     }
 }
@@ -562,6 +301,7 @@ fun PublishLostFoundScreen(
     onNavigateBack: () -> Unit,
     onPublishSuccess: () -> Unit,
     initialType: LostFoundType = LostFoundType.LOST,
+    prefillPetId: String? = null,
     viewModel: PublishViewModel = viewModel()
 ) {
     var type by remember { mutableStateOf(initialType) }
@@ -571,6 +311,8 @@ fun PublishLostFoundScreen(
     var description by remember { mutableStateOf("") }
     var contactInfo by remember { mutableStateOf("") }
     var imageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var boundPetId by remember { mutableStateOf(prefillPetId) }
+    var existingPhotoUrl by remember { mutableStateOf<String?>(null) }
     val formState by viewModel.formState.collectAsState()
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
@@ -582,46 +324,74 @@ fun PublishLostFoundScreen(
             onPublishSuccess()
         }
     }
+    LaunchedEffect(prefillPetId) {
+        val id = prefillPetId?.trim().orEmpty()
+        if (id.isBlank()) return@LaunchedEffect
+        val pet = DataProvider.petRepository.fetchPetById(id) ?: DataProvider.petRepository.getPetById(id)
+        if (pet != null) {
+            boundPetId = pet.id
+            petName = pet.name
+            species = pet.species
+            existingPhotoUrl = pet.photoUrl
+            val home = pet.locationText?.trim().orEmpty()
+            if (home.isNotBlank() && location.isBlank()) {
+                location = home
+            }
+            if (description.isBlank()) {
+                description = buildString {
+                    append("Se perdió ${pet.name}.")
+                    append(" Sexo: ${pet.sex.toDisplayName()}.")
+                    pet.breed?.takeIf { it.isNotBlank() }?.let { append(" Raza: $it.") }
+                    pet.color?.takeIf { it.isNotBlank() }?.let { append(" Color: $it.") }
+                    pet.description?.takeIf { it.isNotBlank() }?.let { append(" $it") }
+                }.trim()
+            }
+        }
+    }
 
     PublishFormScaffold(
-        title = "Perdido / Encontrado",
+        title = if (type == LostFoundType.LOST) "Animal perdido" else "Animal encontrado",
         onNavigateBack = onNavigateBack,
         isLoading = formState.isLoading,
         errorMessage = formState.errorMessage,
+        diagnosticText = formState.diagnosticText,
         onSubmit = {
-            viewModel.publishLostFound(type, petName, species, location, description, contactInfo, imageUri)
+            viewModel.publishLostFound(
+                type,
+                petName,
+                species,
+                location,
+                description,
+                contactInfo,
+                imageUri,
+                petId = boundPetId,
+                hasExistingPhoto = !existingPhotoUrl.isNullOrBlank()
+            )
         }
     ) {
         com.comunidapp.app.ui.components.ContextualFirstVisitHelp(
             helpId = com.comunidapp.app.domain.onboarding.ContextualHelpId.ALERTS,
-            message = com.comunidapp.app.ui.components.ContextualHelpMessages.ALERTS,
-            modifier = Modifier.padding(bottom = 8.dp)
+            message = com.comunidapp.app.ui.components.ContextualHelpMessages.ALERTS
         )
-        imageUri?.let { uri ->
-            PetImage(
-                imageUrl = uri.toString(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(160.dp),
-                cornerRadius = 8.dp,
-                contentDescription = "Foto de la mascota"
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-        }
-        OutlinedButton(
+        Text(
+            text = "La foto se publica completa. Revisala antes de enviar.",
+            style = LeoCaption
+        )
+        V2FormImagePreview(
+            imageUrl = imageUri?.toString() ?: existingPhotoUrl,
+            contentDescription = "Vista previa de la foto"
+        )
+        LeoOutlinedButton(
+            text = if (imageUri == null) "Agregar foto" else "Cambiar foto",
             onClick = {
                 pickImageLauncher.launch(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                 )
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text(if (imageUri == null) "Agregar foto (obligatoria)" else "Cambiar foto")
-        }
-        Spacer(modifier = Modifier.height(12.dp))
+            }
+        )
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
+            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
         ) {
             FilterChip(
                 selected = type == LostFoundType.LOST,
@@ -634,39 +404,32 @@ fun PublishLostFoundScreen(
                 label = { Text("Encontrado") }
             )
         }
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        SpeciesChipRow(selected = species, onSelect = { species = it })
+        V2FormTextField(
             value = petName,
             onValueChange = { petName = it },
-            label = { Text("Nombre (opcional)") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            label = "Nombre (opcional)",
+            imeAction = ImeAction.Next
         )
-        Spacer(modifier = Modifier.height(8.dp))
-        SpeciesChipRow(selected = species, onSelect = { species = it })
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2LocationStringPicker(
             value = location,
-            onValueChange = { location = it },
-            label = { Text("Zona") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            onValueChange = { location = it }
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(
             value = description,
             onValueChange = { description = it },
-            label = { Text("Descripción") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3
+            label = "Descripción",
+            singleLine = false,
+            minLines = 3,
+            maxLines = 6,
+            imeAction = ImeAction.Default
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(
             value = contactInfo,
             onValueChange = { contactInfo = it },
-            label = { Text("Contacto") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            label = "Contacto",
+            imeAction = ImeAction.Done,
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
         )
     }
 }
@@ -678,39 +441,28 @@ private fun PublishFormScaffold(
     isLoading: Boolean,
     errorMessage: String?,
     onSubmit: () -> Unit,
-    content: @Composable () -> Unit
+    diagnosticText: String? = null,
+    content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit
 ) {
-    Scaffold(
-        topBar = {
-            ComunidappTopBar(title = title, showBackButton = true, onBackClick = onNavigateBack)
-        }
-    ) { padding ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            content()
-            errorMessage?.let {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(text = it, color = MaterialTheme.colorScheme.error)
-            }
-            Spacer(modifier = Modifier.height(24.dp))
-            Button(
-                onClick = onSubmit,
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isLoading
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                } else {
-                    Text("Publicar")
-                }
-            }
+    val split = splitUserFacingFormError(errorMessage)
+    val retryable = errorMessage?.contains("No pudimos publicar", ignoreCase = true) == true
+    val clipboard = LocalClipboardManager.current
+    val copyDiagnostic = diagnosticText?.takeIf { it.isNotBlank() }?.let { text ->
+        {
+            clipboard.setText(AnnotatedString(text))
         }
     }
+    V2FormScaffold(
+        title = title,
+        onNavigateBack = onNavigateBack,
+        isLoading = isLoading,
+        onSubmit = onSubmit,
+        errorTitle = split?.first,
+        errorMessage = split?.second,
+        onRetry = if (retryable) onSubmit else null,
+        onCopyDiagnostic = copyDiagnostic,
+        content = content
+    )
 }
 
 @Composable
@@ -793,41 +545,37 @@ fun PublishFosterScreen(
             viewModel.publishFosterHome(location, capacity, species.toList(), notes, contactInfo)
         }
     ) {
-        OutlinedTextField(
+        V2LocationStringPicker(
             value = location,
-            onValueChange = { location = it },
-            label = { Text("Zona") },
-            modifier = Modifier.fillMaxWidth()
+            onValueChange = { location = it }
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(
             value = capacity.toString(),
             onValueChange = { capacity = it.toIntOrNull() ?: 1 },
-            label = { Text("Capacidad") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            label = "Capacidad",
+            imeAction = ImeAction.Next,
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
         )
-        Spacer(modifier = Modifier.height(8.dp))
         SpeciesChipRow(
             selected = species.firstOrNull() ?: PetSpecies.DOG,
             onSelect = { selected ->
                 species = if (species.contains(selected)) species - selected else species + selected
             }
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(
             value = notes,
             onValueChange = { notes = it },
-            label = { Text("Notas") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3
+            label = "Notas",
+            singleLine = false,
+            minLines = 3,
+            maxLines = 6,
+            imeAction = ImeAction.Default
         )
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(
             value = contactInfo,
             onValueChange = { contactInfo = it },
-            label = { Text("Contacto") },
-            modifier = Modifier.fillMaxWidth()
+            label = "Contacto",
+            imeAction = ImeAction.Done
         )
     }
 }
@@ -861,15 +609,24 @@ fun PublishEventScreen(
             viewModel.publishEvent(title, date, location, description, contactInfo)
         }
     ) {
-        OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Título") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = date, onValueChange = { date = it }, label = { Text("Fecha") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = location, onValueChange = { location = it }, label = { Text("Zona") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = contactInfo, onValueChange = { contactInfo = it }, label = { Text("Contacto") }, modifier = Modifier.fillMaxWidth())
+        V2FormTextField(value = title, onValueChange = { title = it }, label = "Título")
+        V2FormTextField(value = date, onValueChange = { date = it }, label = "Fecha")
+        V2LocationStringPicker(value = location, onValueChange = { location = it })
+        V2FormTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = "Descripción",
+            singleLine = false,
+            minLines = 3,
+            maxLines = 6,
+            imeAction = ImeAction.Default
+        )
+        V2FormTextField(
+            value = contactInfo,
+            onValueChange = { contactInfo = it },
+            label = "Contacto",
+            imeAction = ImeAction.Done
+        )
     }
 }
 
@@ -908,13 +665,24 @@ fun PublishDonationScreen(
             )
         }
     ) {
-        OutlinedTextField(value = title, onValueChange = { title = it }, label = { Text("Título") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = location, onValueChange = { location = it }, label = { Text("Zona") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = goal, onValueChange = { goal = it }, label = { Text("Meta ($, opcional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+        V2FormTextField(value = title, onValueChange = { title = it }, label = "Título")
+        V2FormTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = "Descripción",
+            singleLine = false,
+            minLines = 3,
+            maxLines = 6,
+            imeAction = ImeAction.Default
+        )
+        V2LocationStringPicker(value = location, onValueChange = { location = it })
+        V2FormTextField(
+            value = goal,
+            onValueChange = { goal = it },
+            label = "Meta ($, opcional)",
+            imeAction = ImeAction.Done,
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+        )
     }
 }
 
@@ -948,22 +716,37 @@ fun PublishShelterScreen(
             viewModel.publishShelter(name, location, description, phone, email, needs)
         }
     ) {
-        OutlinedTextField(value = name, onValueChange = { name = it }, label = { Text("Nombre del refugio") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = location, onValueChange = { location = it }, label = { Text("Zona") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = description, onValueChange = { description = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth(), minLines = 3)
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = phone, onValueChange = { phone = it }, label = { Text("Teléfono") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("Email") }, modifier = Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(12.dp))
-        OutlinedTextField(
+        V2FormTextField(value = name, onValueChange = { name = it }, label = "Nombre del refugio")
+        V2LocationStringPicker(value = location, onValueChange = { location = it })
+        V2FormTextField(
+            value = description,
+            onValueChange = { description = it },
+            label = "Descripción",
+            singleLine = false,
+            minLines = 3,
+            maxLines = 6,
+            imeAction = ImeAction.Default
+        )
+        V2FormTextField(
+            value = phone,
+            onValueChange = { phone = it },
+            label = "Teléfono",
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Phone
+        )
+        V2FormTextField(
+            value = email,
+            onValueChange = { email = it },
+            label = "Email",
+            keyboardType = androidx.compose.ui.text.input.KeyboardType.Email
+        )
+        V2FormTextField(
             value = needs,
             onValueChange = { needs = it },
-            label = { Text("Necesidades (una por línea: ítem|cantidad)") },
-            modifier = Modifier.fillMaxWidth(),
-            minLines = 3
+            label = "Necesidades (una por línea: ítem|cantidad)",
+            singleLine = false,
+            minLines = 3,
+            maxLines = 6,
+            imeAction = ImeAction.Default
         )
     }
 }
@@ -973,7 +756,7 @@ fun PublishShelterScreen(
 private fun StoryMediaPickerEntryPreview() {
     Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Tu historia", style = MaterialTheme.typography.titleMedium)
-        Text("Imagen o video · se publica 24 horas.")
+        Text("Imagen o video Â· se publica 24 horas.")
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("Galería") }
             OutlinedButton(onClick = {}, modifier = Modifier.weight(1f)) { Text("Cámara") }

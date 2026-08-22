@@ -110,15 +110,20 @@ class SearchViewModel(
                     it.locationText?.contains(text, ignoreCase = true) == true
                 )
         }
-        val pets = ProfilePrivacy.filterVisiblePets(
-            petRepository.observePets().first().filter {
-                it.name.contains(text, ignoreCase = true) ||
-                    it.description.contains(text, ignoreCase = true)
+        val localPets = ProfilePrivacy.filterVisiblePets(
+            petRepository.observePets().first().filter { pet ->
+                val number = com.comunidapp.app.domain.vitacora.import.VitacoraNumberQuery.parse(text)
+                pet.name.contains(text, ignoreCase = true) ||
+                    pet.description.contains(text, ignoreCase = true) ||
+                    (number != null && pet.publicVitacoraNumber == number) ||
+                    pet.organizationExternalPetId?.contains(text, ignoreCase = true) == true
             },
             usersById,
             currentUser?.id,
             friendIds
         )
+        val numbered = DataProvider.vitacoraImportRepository.searchByPublicNumber(text).getOrDefault(emptyList())
+        val pets = (localPets + numbered).distinctBy { it.id }
         val adoptions = adoptionRepository.observeAdoptionPosts().first().filter {
             it.name.contains(text, ignoreCase = true) ||
                 it.location.contains(text, ignoreCase = true) ||

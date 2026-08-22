@@ -13,6 +13,8 @@ enum class FileAssetPurpose {
     ORGANIZATION_DOCUMENT,
     ORGANIZATION_VERIFICATION_DOCUMENT,
     POST_MEDIA,
+    STORY_MEDIA,
+    REEL_MEDIA,
     ADOPTION_MEDIA,
     LOST_FOUND_MEDIA,
     SERVICE_PROFILE_MEDIA,
@@ -72,6 +74,10 @@ object FilePurposePolicy {
 
     private val IMAGE_EXT = setOf("jpg", "jpeg", "png", "webp")
     private val IMAGE_MIME = setOf("image/jpeg", "image/png", "image/webp")
+    private val STORY_EXT = IMAGE_EXT + setOf("mp4", "mov", "m4v", "webm")
+    private val STORY_MIME = IMAGE_MIME + setOf(
+        "video/mp4", "video/quicktime", "video/3gpp", "video/webm"
+    )
     private val DOC_EXT = setOf("pdf", "jpg", "jpeg", "png", "webp")
     private val DOC_MIME = setOf(
         "application/pdf",
@@ -233,6 +239,36 @@ object FilePurposePolicy {
             requiresRetention = false,
             logicalBucket = FileLogicalBucket.PUBLIC_MEDIA,
             pathTemplate = "posts/{postId}/{assetId}/{safeFilename}"
+        ),
+        FileAssetPurpose.STORY_MEDIA to FilePurposeSpec(
+            purpose = FileAssetPurpose.STORY_MEDIA,
+            sensitivity = FileSensitivityClass.PUBLIC_ELIGIBLE,
+            allowedExtensions = STORY_EXT,
+            allowedMimeTypes = STORY_MIME,
+            maxSizeBytes = 80 * MIB,
+            maxCountPerResource = 1,
+            allowedVisibilities = PUBLICISH,
+            allowedOwnerKinds = setOf(FileOwnerKind.USER, FileOwnerKind.ORGANIZATION),
+            requiresProcessing = true,
+            allowsPublicUrl = true,
+            requiresRetention = true,
+            logicalBucket = FileLogicalBucket.PUBLIC_MEDIA,
+            pathTemplate = "stories/{storyId}/{assetId}/{safeFilename}"
+        ),
+        FileAssetPurpose.REEL_MEDIA to FilePurposeSpec(
+            purpose = FileAssetPurpose.REEL_MEDIA,
+            sensitivity = FileSensitivityClass.PUBLIC_ELIGIBLE,
+            allowedExtensions = STORY_EXT,
+            allowedMimeTypes = STORY_MIME,
+            maxSizeBytes = 80 * MIB,
+            maxCountPerResource = 1,
+            allowedVisibilities = PUBLICISH,
+            allowedOwnerKinds = setOf(FileOwnerKind.USER, FileOwnerKind.ORGANIZATION),
+            requiresProcessing = true,
+            allowsPublicUrl = true,
+            requiresRetention = false,
+            logicalBucket = FileLogicalBucket.PUBLIC_MEDIA,
+            pathTemplate = "reels/{reelId}/{assetId}/{safeFilename}"
         ),
         FileAssetPurpose.ADOPTION_MEDIA to FilePurposeSpec(
             purpose = FileAssetPurpose.ADOPTION_MEDIA,

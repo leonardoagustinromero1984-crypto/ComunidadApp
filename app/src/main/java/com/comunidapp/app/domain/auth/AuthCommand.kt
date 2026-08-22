@@ -9,12 +9,18 @@ data class SignInCommand(
     val password: String
 )
 
+/** Same operation from Login and Crear cuenta. Provider is not a product role. */
+data class SignInWithGoogleCommand(
+    val source: String
+)
+
 data class SignUpCommand(
     val name: String,
     val email: String,
     val password: String,
     val confirmPassword: String,
     val username: String,
+    val birthDate: String,
     val acceptedTerms: Boolean,
     val acceptedPrivacy: Boolean,
     val termsVersion: String,

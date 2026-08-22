@@ -44,7 +44,12 @@ import com.comunidapp.app.data.model.M16PublicShelter
 import com.comunidapp.app.data.model.M16ShelterOperationalStatus
 import com.comunidapp.app.data.model.M16ShelterService
 import com.comunidapp.app.data.model.M16ShelterVerificationFilter
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.data.model.visibleLabel
+import com.comunidapp.app.domain.verification.VerificationDisplayPolicy
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -64,7 +69,7 @@ import com.comunidapp.app.viewmodel.m16DayLabel
 fun M16SheltersListScreen(
     onNavigateBack: () -> Unit,
     onShelterClick: (String) -> Unit,
-    onManage: () -> Unit,
+    onManage: (() -> Unit)? = null,
     viewModel: M16SheltersListViewModel = viewModel(factory = M16SheltersListViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -72,8 +77,9 @@ fun M16SheltersListScreen(
     var query by remember(filter.query) { mutableStateOf(filter.query) }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Refugios",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -111,8 +117,10 @@ fun M16SheltersListScreen(
                 onSpecies = viewModel::setSpecies,
                 onClear = viewModel::clearFilters
             )
-            Button(onClick = onManage, modifier = Modifier.fillMaxWidth()) {
-                Text("Administrar refugio (mock)")
+            onManage?.let { manage ->
+                Button(onClick = manage, modifier = Modifier.fillMaxWidth()) {
+                    Text("Administrar refugio")
+                }
             }
             when (val s = state) {
                 M16SheltersListUiState.Loading -> LoadingState()
@@ -187,6 +195,7 @@ private fun M16ListFilterRow(
                 label = { Text("Cerrados") }
             )
         }
+        if (VerificationDisplayPolicy.FILTERS_VISIBLE) {
         Text("Verificación", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             FilterChip(
@@ -205,6 +214,7 @@ private fun M16ListFilterRow(
                 label = { Text("No verificados") }
             )
         }
+        }
         Text("Servicio", style = MaterialTheme.typography.labelMedium)
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
@@ -219,7 +229,7 @@ private fun M16ListFilterRow(
                 FilterChip(
                     selected = filter.service == service,
                     onClick = { onService(if (filter.service == service) null else service) },
-                    label = { Text(service.name) }
+                    label = { Text(service.visibleLabel()) }
                 )
             }
         }
@@ -227,7 +237,7 @@ private fun M16ListFilterRow(
             value = filter.species.orEmpty(),
             onValueChange = { onSpecies(it) },
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Especie (DOG, CAT…)") },
+            label = { Text("Especie") },
             singleLine = true
         )
         OutlinedButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
@@ -266,8 +276,9 @@ fun M16ShelterDetailScreen(
     val shelter by viewModel.shelter.collectAsState()
     val message by viewModel.message.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Detalle del refugio",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -350,13 +361,26 @@ private fun M16PublicShelterDetailContent(
     onM17Hub?.let { hub ->
         Spacer(Modifier.height(16.dp))
         OutlinedButton(onClick = hub, modifier = Modifier.fillMaxWidth()) {
-            Text("Campañas, bienes y voluntariado")
+            Text("Campañas")
         }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = hub, modifier = Modifier.fillMaxWidth()) {
+            Text("Voluntariado")
+        }
+        Spacer(Modifier.height(8.dp))
+        OutlinedButton(onClick = hub, modifier = Modifier.fillMaxWidth()) {
+            Text("Donar / Ayudar")
+        }
+        Text(
+            "LeoVer no procesa pagos. Si el refugio publicó un alias o CBU, la transferencia se hace por fuera. 0% de comisión.",
+            style = MaterialTheme.typography.bodySmall,
+            modifier = Modifier.padding(top = 8.dp)
+        )
     }
     onM18Events?.let { events ->
         Spacer(Modifier.height(8.dp))
         OutlinedButton(onClick = events, modifier = Modifier.fillMaxWidth()) {
-            Text("Eventos comunitarios")
+            Text("Eventos")
         }
     }
 }
@@ -427,8 +451,9 @@ fun M16ShelterManageScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Administrar refugio",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -512,11 +537,9 @@ private fun M16NoProfileContent(
         label = { Text("Nombre público") },
         modifier = Modifier.fillMaxWidth()
     )
-    OutlinedTextField(
+    V2LocationStringPicker(
         value = draft.publicZoneText,
-        onValueChange = { v -> onDraftChange { it.copy(publicZoneText = v) } },
-        label = { Text("Zona pública") },
-        modifier = Modifier.fillMaxWidth()
+        onValueChange = { v -> onDraftChange { it.copy(publicZoneText = v) } }
     )
     OutlinedTextField(
         value = draft.totalCapacity,
@@ -582,11 +605,9 @@ private fun M16ProfileManageContent(
         modifier = Modifier.fillMaxWidth(),
         enabled = !isTerminal
     )
-    OutlinedTextField(
+    V2LocationStringPicker(
         value = draft.publicZoneText,
         onValueChange = { v -> onDraftChange { it.copy(publicZoneText = v) } },
-        label = { Text("Zona pública") },
-        modifier = Modifier.fillMaxWidth(),
         enabled = !isTerminal
     )
     Button(onClick = onSavePublic, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
@@ -711,7 +732,7 @@ private fun M16ProfileManageContent(
                         }
                     }
                 },
-                label = { Text(service.name) },
+                label = { Text(service.visibleLabel()) },
                 enabled = !isTerminal
             )
         }

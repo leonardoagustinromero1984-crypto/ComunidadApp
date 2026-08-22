@@ -11,6 +11,7 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.FriendRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.ProfilePrivacy
+import com.comunidapp.app.domain.social.FriendshipErrorMapper
 import com.comunidapp.app.domain.user.toBridgeUser
 import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.Job
@@ -63,12 +64,25 @@ class SearchFriendsViewModel(
             _uiState.update { it.copy(isSearching = true) }
             delay(300)
             val currentUser = authRepository.getCurrentUser() ?: return@launch
+            val normalized = com.comunidapp.app.domain.user.PersonSearchQuery.normalize(query)
+            if (normalized.length < 2) {
+                _uiState.update { it.copy(results = emptyList(), isSearching = false) }
+                return@launch
+            }
             val connections = friendRepository.observeConnections(currentUser.id).first()
             val friendIds = ProfilePrivacy.friendIdsFor(currentUser.id, connections)
-            val users = userRepository.searchPublicProfiles(currentUser.id, query)
-                .getOrDefault(emptyList())
-                .map { it.toBridgeUser() }
-                .filter { it.id !in friendIds }
+            val search = userRepository.searchPublicProfiles(currentUser.id, normalized)
+            val users = search.getOrElse {
+                _uiState.update {
+                    it.copy(
+                        isSearching = false,
+                        results = emptyList(),
+                        message = "No pudimos buscar usuarios. Intentá de nuevo."
+                    )
+                }
+                return@launch
+            }.map { it.toBridgeUser() }
+                .filter { it.id !in friendIds && it.id != currentUser.id }
                 .take(20)
             val items = users.map { user ->
                 val pending = connections.any {
@@ -128,7 +142,10 @@ class SearchFriendsViewModel(
                             results = state.results.map {
                                 if (it.user.id == userId) it.copy(actionState = FriendActionState.NONE) else it
                             },
-                            message = error.message ?: "No se pudo enviar la solicitud"
+                            message = FriendshipErrorMapper.userMessage(
+                                error,
+                                FriendshipErrorMapper.Operation.SEND
+                            )
                         )
                     }
                 }

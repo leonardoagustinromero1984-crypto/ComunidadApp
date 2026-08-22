@@ -105,7 +105,20 @@ object FileValidationRules {
         val spec = FilePurposePolicy.spec(purpose)
         if (spec.maxSizeBytes <= 0L) return fileFailure("PURPOSE_NOT_CONFIGURED")
         if (sizeBytes <= 0L) return fileFailure("SIZE_INVALID")
-        if (sizeBytes > spec.maxSizeBytes) return fileFailure("SIZE_EXCEEDED")
+        val mimeGuess = detectedMimeType ?: declaredMimeType
+        val sourceReject = com.comunidapp.app.domain.media.MediaIngestionPolicy.rejectSource(
+            sizeBytes,
+            mimeGuess
+        )
+        if (sourceReject != null) return fileFailure(sourceReject)
+        val willNormalize = com.comunidapp.app.domain.media.MediaIngestionPolicy.normalizesBeforeUpload(
+            purpose,
+            mimeGuess
+        )
+        if (!willNormalize && sizeBytes > spec.maxSizeBytes) return fileFailure("SIZE_EXCEEDED")
+        if (willNormalize && com.comunidapp.app.domain.media.MediaIngestionPolicy.isHeic(mimeGuess)) {
+            return Result.success(Unit)
+        }
         val ext = FileNameSanitizer.extensionOf(safeFilename)
             ?: return fileFailure("EXTENSION_REQUIRED")
         if (ext in FileNameSanitizer.DANGEROUS_EXTENSIONS) {
@@ -131,10 +144,22 @@ object FileValidationRules {
         return Result.success(Unit)
     }
 
+    fun validateProcessedSize(
+        purpose: FileAssetPurpose,
+        sizeBytes: Long,
+        mime: String? = null
+    ): Result<Unit> {
+        val max = com.comunidapp.app.domain.media.MediaIngestionPolicy.processedMaxBytes(purpose, mime)
+        if (sizeBytes <= 0L) return fileFailure("SIZE_INVALID")
+        if (sizeBytes > max) return fileFailure("SIZE_EXCEEDED")
+        return Result.success(Unit)
+    }
+
     fun mimeMatchesExtension(mime: String, ext: String): Boolean = when (mime) {
         "image/jpeg" -> ext == "jpg" || ext == "jpeg"
         "image/png" -> ext == "png"
         "image/webp" -> ext == "webp"
+        "image/heic", "image/heif" -> ext == "heic" || ext == "heif"
         "application/pdf" -> ext == "pdf"
         else -> false
     }

@@ -2,48 +2,59 @@ package com.comunidapp.app.ui.screens.publish
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Campaign
+import androidx.compose.material.icons.filled.Event
+import androidx.compose.material.icons.filled.HomeWork
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.PlayCircle
+import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material.icons.filled.WatchLater
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
-import androidx.compose.material3.Text
-import com.comunidapp.app.data.model.AccountType
-import com.comunidapp.app.ui.components.leo.LeoFeatureCard
+import com.comunidapp.app.domain.context.OperationalContext
+import com.comunidapp.app.domain.publish.ContextPublishMatrix
+import com.comunidapp.app.domain.publish.PublishAction
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
-import com.comunidapp.app.ui.theme.BrandCream
-import com.comunidapp.app.ui.theme.BrandOrangeContainer
-import com.comunidapp.app.ui.theme.BrandOrangeSoft
-import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.components.v2.V2NavRow
 import com.comunidapp.app.ui.theme.ComunidappTheme
-import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoDimens
-import com.comunidapp.app.ui.theme.LeoPageTitle
-import com.comunidapp.app.ui.theme.MutedText
+import com.comunidapp.app.ui.theme.VisualDirectionPilot
+import com.comunidapp.app.ui.theme.leoVisual
 
-data class PublishOption(
+private data class PublishVisual(
     val icon: ImageVector,
-    val title: String,
-    val description: String,
+    val tint: Color,
+    val container: Color,
     val onClick: () -> Unit
 )
 
+private data class PublishOption(
+    val icon: ImageVector,
+    val title: String,
+    val description: String,
+    val onClick: () -> Unit,
+    val iconTint: Color,
+    val iconContainer: Color
+)
+
 /**
- * Creador social rápido (hub Publicar).
- * Casos estructurados (adopción, perdidos, tránsito, eventos) se crean desde Sumate.
+ * Hub Publicar — capacidades según [OperationalContext], no identidad humana.
+ * No inventa PostTypes; solo presenta rutas ya cableadas.
  */
 @Composable
 fun PublishScreen(
-    accountType: AccountType,
+    context: OperationalContext,
     onNavigateToGeneral: () -> Unit,
     onNavigateToReel: () -> Unit = {},
     onNavigateToStory: () -> Unit = {},
@@ -53,54 +64,38 @@ fun PublishScreen(
     onNavigateToPromo: () -> Unit = {},
     onNavigateToAdoption: () -> Unit = {},
     onNavigateToLostFound: () -> Unit = {},
+    onNavigateToFound: () -> Unit = {},
     onNavigateToUrgent: () -> Unit = {},
     onNavigateToFoster: () -> Unit = {},
     onNavigateToEvent: () -> Unit = {},
     onNavigateToDonation: () -> Unit = {},
-    onNavigateToShelter: () -> Unit = {}
+    onNavigateToShelter: () -> Unit = {},
+    onNavigateToProviderFicha: () -> Unit = {},
+    onNavigateToCampaign: () -> Unit = {}
 ) {
-    @Suppress("UNUSED_PARAMETER", "UNUSED_VARIABLE")
-    val preservedStructuredRoutes = remember(accountType) {
-        listOf(
-            onNavigateToQuestion,
-            onNavigateToPromo,
-            onNavigateToAdoption,
-            onNavigateToLostFound,
-            onNavigateToUrgent,
-            onNavigateToFoster,
-            onNavigateToEvent,
-            onNavigateToDonation,
-            onNavigateToShelter
-        )
+    val visual = leoVisual()
+    val options = ContextPublishMatrix.optionsFor(context).map { spec ->
+        val (icon, tint, container, click) = when (spec.action) {
+            PublishAction.SOCIAL_POST -> PublishVisual(Icons.Default.Image, visual.textPrimary, visual.borderSoft.copy(alpha = 0.45f), onNavigateToGeneral)
+            PublishAction.REEL -> PublishVisual(Icons.Default.PlayCircle, visual.textPrimary, visual.borderSoft.copy(alpha = 0.45f), onNavigateToReel)
+            PublishAction.STORY -> PublishVisual(Icons.Default.WatchLater, visual.accent, visual.accentSoft, onNavigateToStory)
+            PublishAction.UPDATE_PROVIDER_FICHA -> PublishVisual(Icons.Default.Storefront, visual.primary, visual.primarySoft, onNavigateToProviderFicha)
+            PublishAction.ORGANIZATION_NEED -> PublishVisual(Icons.Default.HomeWork, visual.primaryDark, visual.secondarySoft, onNavigateToShelter)
+            PublishAction.CAMPAIGN -> PublishVisual(Icons.Default.Campaign, visual.primary, visual.primarySoft, onNavigateToCampaign)
+            PublishAction.DONATION -> PublishVisual(Icons.Default.VolunteerActivism, visual.primary, visual.secondarySoft, onNavigateToDonation)
+            PublishAction.EVENT -> PublishVisual(Icons.Default.Event, visual.accent, visual.accentSoft, onNavigateToEvent)
+        }
+        PublishOption(icon, spec.title, spec.description, click, tint, container)
     }
 
-    val socialOptions = listOf(
-        PublishOption(
-            icon = Icons.Default.Image,
-            title = "Publicación",
-            description = "Foto, video o texto · descripción · mascota opcional · ubicación opcional",
-            onClick = onNavigateToGeneral
-        ),
-        PublishOption(
-            icon = Icons.Default.PlayCircle,
-            title = "Reel",
-            description = "Video corto vertical para el feed y la pestaña Reels",
-            onClick = onNavigateToReel
-        ),
-        PublishOption(
-            icon = Icons.Default.WatchLater,
-            title = "Historia",
-            description = "Imagen o video efímero · vigente 24 horas",
-            onClick = onNavigateToStory
-        )
-    )
-
+    VisualDirectionPilot {
     Scaffold(
-        containerColor = BrandCream,
+        containerColor = leoVisual().background,
+        contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             LeoTopAppBar(
                 title = "Publicar",
-                subtitle = "Creá contenido social en segundos",
+                subtitle = "Elegí el tipo de publicación",
                 showBackButton = showBackButton,
                 onBackClick = onNavigateBack
             )
@@ -112,34 +107,29 @@ fun PublishScreen(
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
                 .padding(LeoDimens.SpaceMd),
-            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
         ) {
-            Text(text = "Crear ahora", style = LeoPageTitle, color = BrandText)
-            Text(
-                text = "Elegí el formato. Los casos de ayuda se publican desde Sumate.",
-                style = LeoCaption,
-                color = MutedText
-            )
-            socialOptions.forEach { option ->
-                LeoFeatureCard(
+            options.forEach { option ->
+                V2NavRow(
                     title = option.title,
                     description = option.description,
                     icon = option.icon,
                     onClick = option.onClick,
-                    containerColor = BrandOrangeContainer,
-                    iconTint = BrandOrangeSoft
+                    iconTint = option.iconTint,
+                    iconContainer = option.iconContainer
                 )
             }
         }
     }
+    }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, name = "CreateContentSheetPreview")
+@Preview(showBackground = true, backgroundColor = 0xFFFAFBF8, widthDp = 390, name = "CreateContentSheetPreview")
 @Composable
 private fun CreateContentSheetPreview() {
     ComunidappTheme {
         PublishScreen(
-            accountType = AccountType.PERSON,
+            context = OperationalContext.Personal,
             onNavigateToGeneral = {},
             showBackButton = true
         )

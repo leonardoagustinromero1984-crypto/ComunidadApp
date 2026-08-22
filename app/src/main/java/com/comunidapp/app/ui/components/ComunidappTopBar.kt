@@ -5,7 +5,7 @@ import androidx.compose.runtime.Composable
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 
 /**
- * App bar LeoVer — fondo crema, texto BrandText (sin barra naranja completa).
+ * App bar LeoVer — fondo #FFFDF8, texto BrandText (sin barra naranja completa).
  * Delega en [LeoTopAppBar] para mantener compatibilidad de call-sites.
  */
 @Composable

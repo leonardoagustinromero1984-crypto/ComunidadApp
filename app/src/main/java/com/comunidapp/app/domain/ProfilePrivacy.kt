@@ -25,6 +25,7 @@ object ProfilePrivacy {
         } ?: return ProfileRelation.LOCKED
 
         return when (link.status) {
+            // Accepted follow (existing connection graph). Not an AMIGO relationship.
             FriendConnectionStatus.ACCEPTED -> ProfileRelation.FRIENDS
             FriendConnectionStatus.PENDING -> {
                 if (link.requesterId == viewerId) ProfileRelation.PENDING_OUTGOING

@@ -72,7 +72,11 @@ data class Organization(
     val coverPath: String? = null,
     val createdByUserId: String,
     val createdAtEpochMs: Long? = null,
-    val updatedAtEpochMs: Long? = null
+    val updatedAtEpochMs: Long? = null,
+    val timezone: String? = null,
+    val addressLine: String? = null,
+    val administrativeAreaId: String? = null,
+    val localityId: String? = null
 )
 
 /**
@@ -172,7 +176,8 @@ object OrganizationValidators {
         description: String? = null,
         countryCode: String? = null,
         province: String? = null,
-        city: String? = null
+        city: String? = null,
+        homeLocalityId: String? = null
     ): Result<ValidatedOrganizationDraft> {
         val public = publicName.trim()
         if (public.length < NAME_MIN) {
@@ -221,7 +226,8 @@ object OrganizationValidators {
                 description = desc,
                 countryCode = cc,
                 province = province?.trim()?.ifBlank { null },
-                city = city?.trim()?.ifBlank { null }
+                city = city?.trim()?.ifBlank { null },
+                homeLocalityId = homeLocalityId?.trim()?.ifBlank { null }
             )
         )
     }
@@ -293,7 +299,8 @@ data class ValidatedOrganizationDraft(
     val description: String?,
     val countryCode: String?,
     val province: String? = null,
-    val city: String? = null
+    val city: String? = null,
+    val homeLocalityId: String? = null
 )
 
 /**

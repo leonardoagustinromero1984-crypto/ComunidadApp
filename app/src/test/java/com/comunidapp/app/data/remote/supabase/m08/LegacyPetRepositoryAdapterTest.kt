@@ -153,28 +153,29 @@ class LegacyPetRepositoryAdapterTest {
         val result = adapter.createPet(samplePet())
         assertTrue(result.isSuccess)
         assertEquals(1, fake.createCalls)
-        assertEquals(1, fake.profileCalls)
-        assertEquals(1, fake.healthCalls)
+        // createPetWithPrincipal is atomic: profile/health are not follow-up RPCs.
+        assertEquals(0, fake.profileCalls)
+        assertEquals(0, fake.healthCalls)
     }
 
     @Test
     fun s07_createPet_profileFail_partialException_keepsPet() = runTest {
         fake.forceProfileFail = true
         val result = adapter.createPet(samplePet())
-        assertTrue(result.isFailure)
-        val ex = result.exceptionOrNull() as PetCreatePartialException
-        assertEquals("profile", ex.failedStage)
-        assertTrue(fake.pets.containsKey(ex.petId))
+        assertTrue(result.isSuccess)
+        val petId = result.getOrThrow()
+        assertTrue(fake.pets.containsKey(petId))
+        assertEquals(0, fake.profileCalls)
     }
 
     @Test
     fun s08_createPet_healthFail_partialException_noDelete() = runTest {
         fake.forceHealthFail = true
         val result = adapter.createPet(samplePet())
-        assertTrue(result.isFailure)
-        val ex = result.exceptionOrNull() as PetCreatePartialException
-        assertEquals("health", ex.failedStage)
-        assertTrue(fake.pets.containsKey(ex.petId))
+        assertTrue(result.isSuccess)
+        val petId = result.getOrThrow()
+        assertTrue(fake.pets.containsKey(petId))
+        assertEquals(0, fake.healthCalls)
     }
 
     @Test
@@ -246,6 +247,37 @@ class LegacyPetRepositoryAdapterTest {
         assertEquals("asset-1", updated.avatarFileAssetId)
         assertEquals("https://legacy", fake.pets[id]?.photoUrl)
         assertEquals(1, fake.avatarCalls)
+    }
+
+    @Test
+    fun existingPetWithoutPhoto_uploadPersistsAvatarAsset() = runTest {
+        val id = adapter.createPet(samplePet()).getOrThrow()
+        assertNull(fake.pets[id]?.avatarFileAssetId)
+        val updated = adapter.setPetAvatarAsset(id, "asset-new").getOrThrow()
+        assertEquals("asset-new", updated.avatarFileAssetId)
+        assertEquals("asset-new", fake.pets[id]?.avatarFileAssetId)
+        assertNull(fake.pets[id]?.photoUrl)
+    }
+
+    @Test
+    fun existingPetWithPhoto_textOnlyUpdatePreservesAvatar() = runTest {
+        val id = adapter.createPet(samplePet()).getOrThrow()
+        adapter.setPetAvatarAsset(id, "asset-keep").getOrThrow()
+        val result = adapter.updatePet(
+            samplePet(id = id).copy(name = "Luna editada", description = "Solo texto")
+        )
+        assertTrue(result.isSuccess)
+        assertEquals("asset-keep", fake.pets[id]?.avatarFileAssetId)
+    }
+
+    @Test
+    fun existingPet_replacePhotoPersistsNewAsset() = runTest {
+        val id = adapter.createPet(samplePet()).getOrThrow()
+        adapter.setPetAvatarAsset(id, "asset-old").getOrThrow()
+        val updated = adapter.setPetAvatarAsset(id, "asset-new").getOrThrow()
+        assertEquals("asset-new", updated.avatarFileAssetId)
+        assertEquals("asset-new", fake.pets[id]?.avatarFileAssetId)
+        assertNull(fake.pets[id]?.photoUrl)
     }
 
     @Test

@@ -10,6 +10,10 @@ import com.comunidapp.app.ui.screens.m17.M17CampaignEditScreen
 import com.comunidapp.app.ui.screens.m17.M17CampaignManageScreen
 import com.comunidapp.app.ui.screens.m17.M17CampaignsListScreen
 import com.comunidapp.app.ui.screens.m17.M17HubScreen
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.comunidapp.app.domain.RolePermissions
+import com.comunidapp.app.domain.context.OperationalContextProvider
 import java.nio.charset.StandardCharsets
 
 /** M17 donaciones — rutas Bloque 1 (fundación local/mock). */
@@ -21,11 +25,13 @@ fun NavGraphBuilder.m17DonationRoutes(navController: NavHostController) {
         )
     }
     composable(NavRoutes.M17_CAMPAIGNS) {
+        val context by OperationalContextProvider.active.collectAsState()
         M17CampaignsListScreen(
             onNavigateBack = { navController.popBackStack() },
             onCampaignClick = { id -> navController.navigate(NavRoutes.m17CampaignDetail(id)) },
             onManage = { navController.navigate(NavRoutes.M17_CAMPAIGNS_MANAGE) },
-            onCreate = { navController.navigate(NavRoutes.M17_CAMPAIGNS_CREATE) }
+            onCreate = { navController.navigate(NavRoutes.M17_CAMPAIGNS_CREATE) },
+            canAdminister = RolePermissions.canCreateCampaigns(context)
         )
     }
     composable(

@@ -4,7 +4,7 @@ import com.comunidapp.app.data.model.FeedPost
 import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
+import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.util.Date
 import java.util.Locale
@@ -13,12 +13,13 @@ import java.util.concurrent.TimeUnit
 private val isoFormatter: DateTimeFormatter = DateTimeFormatter.ISO_LOCAL_DATE
 private val displayFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("dd/MM/yyyy", Locale.getDefault())
 
+/** Material DatePicker uses UTC midnight millis for a calendar date. */
 fun isoDateFromMillis(millis: Long): String =
-    Instant.ofEpochMilli(millis).atZone(ZoneId.systemDefault()).toLocalDate().format(isoFormatter)
+    Instant.ofEpochMilli(millis).atZone(ZoneOffset.UTC).toLocalDate().format(isoFormatter)
 
 fun millisFromIsoDate(isoDate: String): Long? = runCatching {
     LocalDate.parse(isoDate, isoFormatter)
-        .atStartOfDay(ZoneId.systemDefault())
+        .atStartOfDay(ZoneOffset.UTC)
         .toInstant()
         .toEpochMilli()
 }.getOrNull()

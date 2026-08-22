@@ -44,7 +44,16 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.comunidapp.app.domain.location.ForegroundLocation
+import com.comunidapp.app.domain.map.LeoVerGeoPoint
+import com.comunidapp.app.domain.map.LeoVerMapCameraState
+import com.comunidapp.app.domain.map.LeoVerMapMarker
+import com.comunidapp.app.ui.components.v2.V2LocationCityProvincePicker
+import com.comunidapp.app.ui.map.LeoVerMap
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,6 +82,7 @@ import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandGreen
 import com.comunidapp.app.ui.theme.BrandOrange
@@ -100,9 +110,24 @@ fun LostFoundMapScreen(
     val ui by viewModel.uiState.collectAsState()
     val alerts by viewModel.alerts.collectAsState()
     val context = LocalContext.current
-    var showZonePicker by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    var showLocationPicker by remember { mutableStateOf(false) }
+    var fallbackProvince by remember { mutableStateOf("") }
+    var fallbackCity by remember { mutableStateOf("") }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     val selected = alerts.find { it.post.id == ui.selectedAlertId }
+
+    fun applyGps() {
+        scope.launch {
+            val point = ForegroundLocation.current(context)
+            if (point != null) {
+                viewModel.setLocationPermission(true)
+                viewModel.setDeviceLocation(point.latitude, point.longitude)
+            } else {
+                viewModel.setDeviceLocation(null, null, disabled = true)
+            }
+        }
+    }
 
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -110,32 +135,31 @@ fun LostFoundMapScreen(
         val granted = result[Manifest.permission.ACCESS_COARSE_LOCATION] == true ||
             result[Manifest.permission.ACCESS_FINE_LOCATION] == true
         viewModel.setLocationPermission(granted)
-        if (!granted) {
-            showZonePicker = true
+        if (granted) {
+            applyGps()
         } else {
-            // Sin FusedLocationProvider: pedimos zona manual o usamos catálogo.
-            showZonePicker = true
+            showLocationPicker = true
         }
     }
 
     fun requestLocation() {
-        val fine = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION)
-        val coarse = ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_COARSE_LOCATION)
-        if (fine == PackageManager.PERMISSION_GRANTED || coarse == PackageManager.PERMISSION_GRANTED) {
+        if (ForegroundLocation.hasForegroundPermission(context)) {
             viewModel.setLocationPermission(true)
-            showZonePicker = true
+            applyGps()
         } else {
-            permissionLauncher.launch(
-                arrayOf(
-                    Manifest.permission.ACCESS_COARSE_LOCATION,
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                )
-            )
+            permissionLauncher.launch(ForegroundLocation.permissions)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (ForegroundLocation.hasForegroundPermission(context)) {
+            viewModel.setLocationPermission(true)
+            applyGps()
         }
     }
 
     Scaffold(
-        containerColor = BrandCream,
+        containerColor = BrandBackground,
         topBar = {
             LeoTopAppBar(
                 title = "Mapa de alertas",
@@ -188,7 +212,7 @@ fun LostFoundMapScreen(
                     onClick = { viewModel.setTypeFilter(AlertMapTypeFilter.FOUND) },
                     label = { Text("Encontradas") }
                 )
-                listOf(5, 10, 25, 50).forEach { km ->
+                listOf(1, 5, 10, 25).forEach { km ->
                     FilterChip(
                         selected = ui.distanceKm == km,
                         onClick = { viewModel.setDistanceKm(km) },
@@ -225,14 +249,16 @@ fun LostFoundMapScreen(
                     )
                 }
             }
-            TextButton(onClick = { showZonePicker = true }) {
-                Text(
-                    if (ui.selectedZone != null || ui.zoneQuery.isNotBlank()) {
-                        "Zona: ${ui.selectedZone?.label ?: ui.zoneQuery}"
-                    } else {
-                        "Elegir una zona"
-                    }
-                )
+            if (!ui.locationPermissionGranted) {
+                TextButton(onClick = { showLocationPicker = true }) {
+                    Text(
+                        if (ui.selectedZone != null || ui.zoneQuery.isNotBlank()) {
+                            "Ubicación: ${ui.selectedZone?.label ?: ui.zoneQuery}"
+                        } else {
+                            "Elegir provincia y localidad"
+                        }
+                    )
+                }
             }
 
             when {
@@ -242,8 +268,8 @@ fun LostFoundMapScreen(
                         message = "Probá de nuevo o elegí otra zona.",
                         actionLabel = "Reintentar",
                         onAction = viewModel::retry,
-                        secondaryActionLabel = "Elegir otra zona",
-                        onSecondaryAction = { showZonePicker = true },
+                        secondaryActionLabel = "Elegir provincia y localidad",
+                        onSecondaryAction = { showLocationPicker = true },
                         icon = Icons.Default.Pets
                     )
                 }
@@ -255,55 +281,64 @@ fun LostFoundMapScreen(
                 !ui.locationPermissionGranted && ui.selectedZone == null && ui.zoneQuery.isBlank() -> {
                     LeoEmptyState(
                         title = "Usá tu ubicación para ver alertas cercanas",
-                        message = "También podés elegir manualmente una localidad o zona.",
+                        message = "También podés elegir provincia y localidad.",
                         actionLabel = "Permitir ubicación",
                         onAction = { requestLocation() },
-                        secondaryActionLabel = "Elegir una zona",
-                        onSecondaryAction = { showZonePicker = true },
+                        secondaryActionLabel = "Elegir provincia y localidad",
+                        onSecondaryAction = { showLocationPicker = true },
                         icon = Icons.Default.MyLocation
                     )
                 }
                 ui.locationDisabled && ui.selectedZone == null -> {
                     LeoEmptyState(
                         title = "La ubicación del dispositivo está desactivada",
-                        message = "Podés activarla en configuración o elegir una zona manualmente.",
+                        message = "Podés activarla en configuración o elegir provincia y localidad.",
                         actionLabel = "Abrir configuración",
                         onAction = {
                             context.startActivity(
                                 Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS)
                             )
                         },
-                        secondaryActionLabel = "Elegir una zona",
-                        onSecondaryAction = { showZonePicker = true },
+                        secondaryActionLabel = "Elegir provincia y localidad",
+                        onSecondaryAction = { showLocationPicker = true },
                         icon = Icons.Default.MyLocation
-                    )
-                }
-                alerts.isEmpty() -> {
-                    LeoEmptyState(
-                        title = "No hay alertas activas en esta zona",
-                        message = "Mové el mapa, ampliá la distancia o revisá más tarde.",
-                        actionLabel = "Ampliar búsqueda",
-                        onAction = viewModel::expandSearch,
-                        secondaryActionLabel = "Reportar mascota perdida",
-                        onSecondaryAction = onReportLost,
-                        icon = Icons.Default.Pets
-                    )
-                    LeoOutlinedButton(
-                        text = "Informar mascota encontrada",
-                        onClick = onReportFound,
-                        modifier = Modifier.padding(bottom = padding.calculateBottomPadding())
                     )
                 }
                 else -> {
                     if (ui.viewMode == AlertMapViewMode.MAP) {
-                        AlertMapCanvas(
-                            items = alerts.filter { it.onMap },
-                            onMarkerClick = { viewModel.selectAlert(it) },
+                        val mapItems = alerts.filter { it.onMap }
+                        val markers = mapItems.mapNotNull { item ->
+                            val lat = item.displayLatitude ?: return@mapNotNull null
+                            val lng = item.displayLongitude ?: return@mapNotNull null
+                            val position = LeoVerGeoPoint.parseOrNull(lat, lng) ?: return@mapNotNull null
+                            LeoVerMapMarker(
+                                id = item.post.id,
+                                position = position,
+                                title = item.post.petName ?: item.post.species.toDisplayName(),
+                                subtitle = if (item.post.type == LostFoundType.LOST) "Perdida" else "Encontrada",
+                                distanceKm = item.distanceKm
+                            )
+                        }
+                        val cameraCenter = LeoVerGeoPoint.parseOrNull(ui.anchorLatitude, ui.anchorLongitude)
+                            ?: LeoVerMapCameraState.ARGENTINA_FALLBACK
+                        LeoVerMap(
+                            markers = markers,
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .weight(1f)
+                                .weight(1f),
+                            camera = LeoVerMapCameraState(center = cameraCenter, zoom = 14f),
+                            userLocation = LeoVerGeoPoint.parseOrNull(ui.anchorLatitude, ui.anchorLongitude),
+                            showUserLocation = ui.locationPermissionGranted &&
+                                ForegroundLocation.hasForegroundPermission(context),
+                            onMarkerClick = { marker -> viewModel.selectAlert(marker.id) }
                         )
-                        if (alerts.none { it.onMap }) {
+                        if (alerts.isEmpty()) {
+                            Text(
+                                text = "No hay alertas activas cerca. Ampliá la distancia o publicá un aviso.",
+                                style = LeoCaption,
+                                color = MutedText
+                            )
+                        } else if (alerts.none { it.onMap }) {
                             Text(
                                 text = "Hay alertas en lista sin coordenadas GPS. Cambiá a Lista para verlas.",
                                 style = LeoCaption,
@@ -333,7 +368,7 @@ fun LostFoundMapScreen(
         ModalBottomSheet(
             onDismissRequest = { viewModel.selectAlert(null) },
             sheetState = sheetState,
-            containerColor = BrandCream
+            containerColor = BrandBackground
         ) {
             AlertPreviewCard(
                 item = item,
@@ -345,24 +380,35 @@ fun LostFoundMapScreen(
         }
     }
 
-    if (showZonePicker) {
+    if (showLocationPicker) {
         AlertDialog(
-            onDismissRequest = { showZonePicker = false },
-            title = { Text("Elegir una zona") },
+            onDismissRequest = { showLocationPicker = false },
+            title = { Text("Provincia y localidad") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    viewModel.zoneOptions().forEach { zone ->
-                        TextButton(
-                            onClick = {
-                                viewModel.selectZone(zone)
-                                showZonePicker = false
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    V2LocationCityProvincePicker(
+                        city = fallbackCity,
+                        province = fallbackProvince,
+                        includeZone = false,
+                        onCityChange = { fallbackCity = it },
+                        onProvinceChange = { fallbackProvince = it },
+                        onLocalityIdChange = { localityId ->
+                            viewModel.setZoneQuery(
+                                listOf(fallbackCity, fallbackProvince).filter { it.isNotBlank() }.joinToString(", ")
+                            )
+                            val nodes = com.comunidapp.app.data.provider.DataProvider.locationCatalogRepository.nodes.value
+                            val node = nodes.firstOrNull { it.id == localityId }
+                            val lat = node?.centroidLat
+                            val lng = node?.centroidLng
+                            if (lat != null && lng != null) {
+                                viewModel.setDeviceLocation(lat, lng)
                             }
-                        ) { Text(zone.label) }
-                    }
+                        }
+                    )
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showZonePicker = false }) { Text("Cerrar") }
+                TextButton(onClick = { showLocationPicker = false }) { Text("Listo") }
             }
         )
     }
@@ -561,7 +607,7 @@ fun LostFoundDetailScreen(
     val alerts by viewModel.alerts.collectAsState()
     val item = alerts.find { it.post.id == postId }
     Scaffold(
-        containerColor = BrandCream,
+        containerColor = BrandBackground,
         topBar = {
             LeoTopAppBar(
                 title = "Detalle de alerta",
@@ -603,7 +649,7 @@ fun LostFoundDetailScreen(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA)
+@Preview(showBackground = true, backgroundColor = 0xFFFFFDF8)
 @Composable
 private fun AlertMapPreview() {
     ComunidappTheme {

@@ -72,4 +72,42 @@ class ProfileSessionGateTest {
         assertTrue(path.startsWith("users/$uid/avatar/"))
         assertTrue(!path.contains(".."))
     }
+
+    @Test
+    fun canonicalPersonWithoutLocality_requiresOnboarding() {
+        val user = com.comunidapp.app.data.model.User(
+            id = "u1",
+            name = "Leo",
+            email = "leo@email.com",
+            username = "leonardo",
+            displayName = "Leo",
+            birthDate = "1990-01-15",
+            homeLocalityId = null,
+            onboardingStatus = "COMPLETED"
+        )
+        assertEquals(ProfileGate.ProfileSetupRequired, ProfileSessionGate.evaluate(user))
+        assertEquals(ProfileSetupStatus.IN_PROGRESS, OnboardingCompleteness.statusFor(user))
+    }
+
+    @Test
+    fun canonicalPersonWithLocality_skipsOnboardingOnSecondLogin() {
+        val user = com.comunidapp.app.data.model.User(
+            id = "u1",
+            name = "Leo",
+            email = "leo@email.com",
+            username = "leonardo",
+            displayName = "Leo",
+            birthDate = "1990-01-15",
+            homeLocalityId = "loc-ar-loc-san-vicente",
+            onboardingStatus = "IN_PROGRESS"
+        )
+        assertEquals(ProfileGate.ProfileReady, ProfileSessionGate.evaluate(user))
+        assertTrue(OnboardingCompleteness.isComplete(user))
+    }
+
+    @Test
+    fun mockCompletedProfileWithoutCanonicalBirthDate_staysReady() {
+        val gate = ProfileSessionGate.evaluate(com.comunidapp.app.data.mock.MockData.currentUser)
+        assertEquals(ProfileGate.ProfileReady, gate)
+    }
 }

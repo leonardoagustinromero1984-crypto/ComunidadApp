@@ -19,6 +19,7 @@ data class AdoptionPost(
     val description: String,
     val requirements: String = "",
     val status: AdoptionStatus = AdoptionStatus.PUBLISHED,
+    val publicCode: String? = null,
     val publishedAt: Long? = null,
     val createdAt: Long? = null,
     val updatedAt: Long? = null

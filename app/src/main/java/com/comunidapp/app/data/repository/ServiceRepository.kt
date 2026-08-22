@@ -35,6 +35,10 @@ interface ServiceRepository {
     ): Result<Unit>
     suspend fun createFosterRequest(request: FosterRequest): Result<String>
     suspend fun expressEventInterest(eventId: String, userId: String): Result<Unit>
+    suspend fun refreshDirectory(
+        nearLat: Double? = null,
+        nearLng: Double? = null
+    ): Result<Unit> = Result.success(Unit)
 }
 
 class MockServiceRepository : ServiceRepository {

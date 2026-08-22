@@ -20,8 +20,12 @@ import com.comunidapp.app.data.repository.CreateShelterProfileInput
 import com.comunidapp.app.data.repository.ShelterPetRepository
 import com.comunidapp.app.data.repository.ShelterProfileRepository
 import com.comunidapp.app.data.repository.ShelterVolunteerRepository
+import com.comunidapp.app.data.repository.OrganizationRepository
 import com.comunidapp.app.data.repository.UpdateShelterProfileInput
+import com.comunidapp.app.domain.organization.Organization
+import com.comunidapp.app.domain.publish.LocalDebugDiagnostic
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -106,18 +110,29 @@ class MySheltersViewModel(
 
 class ShelterFormViewModel(
     private val editId: String? = null,
-    private val repo: ShelterProfileRepository = DataProvider.shelterProfileRepository
+    private val repo: ShelterProfileRepository = DataProvider.shelterProfileRepository,
+    private val auth: AuthRepository = AuthProvider.repository,
+    private val organizationRepository: OrganizationRepository = DataProvider.organizationRepository
 ) : ViewModel() {
     private val _submitting = MutableStateFlow(false)
     val submitting = _submitting.asStateFlow()
     private val _error = MutableStateFlow<String?>(null)
     val error = _error.asStateFlow()
+    private val _diagnostic = MutableStateFlow<String?>(null)
+    val diagnostic = _diagnostic.asStateFlow()
     private val _saved = MutableSharedFlow<String>(extraBufferCapacity = 1)
     val saved = _saved.asSharedFlow()
     private val _existing = MutableStateFlow<ShelterProfile?>(null)
     val existing = _existing.asStateFlow()
+    private val _managedOrganizations = MutableStateFlow<List<Organization>>(emptyList())
+    val managedOrganizations = _managedOrganizations.asStateFlow()
 
     init {
+        viewModelScope.launch {
+            _managedOrganizations.value = runCatching {
+                organizationRepository.getMyOrganizations()
+            }.getOrDefault(emptyList())
+        }
         if (!editId.isNullOrBlank()) {
             viewModelScope.launch {
                 repo.getShelterById(editId).onSuccess { _existing.value = it }
@@ -130,13 +145,49 @@ class ShelterFormViewModel(
 
     fun create(input: CreateShelterProfileInput) {
         if (_submitting.value) return
+        if (input.organizationId.isBlank()) {
+            _error.value = "Elegí una organización de la que ya formes parte"
+            return
+        }
+        if (_managedOrganizations.value.none { it.id.value == input.organizationId }) {
+            _error.value = "Solo podés crear un refugio en una organización vinculada"
+            return
+        }
         viewModelScope.launch {
             _submitting.value = true
             _error.value = null
+            _diagnostic.value = null
+            val uid = auth.getCurrentUser()?.id.orEmpty()
+            val already = runCatching {
+                repo.observeMyShelters(uid).first()
+                    .find { it.organizationId == input.organizationId }
+            }.getOrNull()
+            if (already != null) {
+                _error.value = "Esta organización ya tiene un refugio. No se creó otro."
+                _submitting.value = false
+                return@launch
+            }
             repo.createShelter(input)
                 .onSuccess { _saved.tryEmit(it.id) }
-                .onFailure {
-                    _error.value = M11ShelterErrorMapper.userMessage(M11ShelterErrorMapper.codeOf(it))
+                .onFailure { err ->
+                    val recovered = runCatching {
+                        repo.observeMyShelters(uid).first()
+                            .find { it.organizationId == input.organizationId }
+                    }.getOrNull()
+                    if (recovered != null) {
+                        _saved.tryEmit(recovered.id)
+                    } else {
+                        val code = M11ShelterErrorMapper.codeOf(err)
+                        _error.value = M11ShelterErrorMapper.userMessage(code)
+                        _diagnostic.value = LocalDebugDiagnostic.forOperation(
+                            operation = "shelter_create",
+                            error = err,
+                            extra = mapOf(
+                                "rpc" to "m11_create_shelter_profile",
+                                "code" to code
+                            )
+                        )
+                    }
                 }
             _submitting.value = false
         }
@@ -147,10 +198,20 @@ class ShelterFormViewModel(
         viewModelScope.launch {
             _submitting.value = true
             _error.value = null
+            _diagnostic.value = null
             repo.updateShelter(input)
                 .onSuccess { _saved.tryEmit(it.id) }
-                .onFailure {
-                    _error.value = M11ShelterErrorMapper.userMessage(M11ShelterErrorMapper.codeOf(it))
+                .onFailure { err ->
+                    val code = M11ShelterErrorMapper.codeOf(err)
+                    _error.value = M11ShelterErrorMapper.userMessage(code)
+                    _diagnostic.value = LocalDebugDiagnostic.forOperation(
+                        operation = "shelter_update",
+                        error = err,
+                        extra = mapOf(
+                            "rpc" to "m11_update_shelter_profile",
+                            "code" to code
+                        )
+                    )
                 }
             _submitting.value = false
         }

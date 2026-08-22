@@ -39,8 +39,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.AdoptionApplication
 import com.comunidapp.app.data.model.AdoptionApplicationStatus
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.AdoptionApplyUiState
 import com.comunidapp.app.viewmodel.AdoptionApplyViewModel
 import com.comunidapp.app.viewmodel.AdoptionApplicationDetailViewModel
@@ -67,8 +71,9 @@ fun AdoptionApplyScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Postularme",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -87,7 +92,7 @@ fun AdoptionApplyScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(state.message)
-                    Button(onClick = viewModel::load) { Text("Reintentar") }
+                    LeoPrimaryButton(text = "Reintentar", onClick = viewModel::load)
                 }
             }
             is AdoptionApplyUiState.Ready -> {
@@ -208,8 +213,9 @@ fun MyAdoptionApplicationsScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Mis postulaciones",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -236,7 +242,7 @@ fun MyAdoptionApplicationsScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(state.message)
-                        Button(onClick = viewModel::refresh) { Text("Reintentar") }
+                        LeoPrimaryButton(text = "Reintentar", onClick = viewModel::refresh)
                     }
                 }
                 is MyApplicationsUiState.Content -> LazyColumn(
@@ -329,8 +335,9 @@ fun ReceivedAdoptionApplicationsScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Postulaciones recibidas",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -381,7 +388,7 @@ fun ReceivedAdoptionApplicationsScreen(
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(state.message)
-                        Button(onClick = viewModel::refresh) { Text("Reintentar") }
+                        LeoPrimaryButton(text = "Reintentar", onClick = viewModel::refresh)
                     }
                 }
                 is ReceivedApplicationsUiState.Content -> LazyColumn(
@@ -494,8 +501,9 @@ fun AdoptionApplicationDetailScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Detalle de postulación",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -514,7 +522,7 @@ fun AdoptionApplicationDetailScreen(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(state.message)
-                    Button(onClick = viewModel::load) { Text("Reintentar") }
+                    LeoPrimaryButton(text = "Reintentar", onClick = viewModel::load)
                 }
             }
             is ApplicationDetailUiState.Content -> {

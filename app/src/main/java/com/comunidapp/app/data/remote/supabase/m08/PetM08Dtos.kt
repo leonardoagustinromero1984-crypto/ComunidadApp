@@ -43,7 +43,12 @@ data class PetM08Row(
     @SerialName("deceased_at") val deceasedAt: String? = null,
     @SerialName("archived_at") val archivedAt: String? = null,
     @SerialName("microchip_normalized") val microchipNormalized: String? = null,
-    @SerialName("avatar_file_asset_id") val avatarFileAssetId: String? = null
+    @SerialName("avatar_file_asset_id") val avatarFileAssetId: String? = null,
+    val allergies: List<String> = emptyList(),
+    val medications: List<String> = emptyList(),
+    val conditions: List<String> = emptyList(),
+    @SerialName("public_code") val publicCode: String? = null,
+    @SerialName("public_vitacora_number") val publicVitacoraNumber: Long? = null
 )
 
 @Serializable
@@ -88,7 +93,9 @@ data class AccessiblePetM08Row(
     @SerialName("can_manage_health") val canManageHealth: Boolean = false,
     @SerialName("can_manage_media") val canManageMedia: Boolean = false,
     @SerialName("can_archive") val canArchive: Boolean = false,
-    @SerialName("can_mark_deceased") val canMarkDeceased: Boolean = false
+    @SerialName("can_mark_deceased") val canMarkDeceased: Boolean = false,
+    @SerialName("public_code") val publicCode: String? = null,
+    @SerialName("public_vitacora_number") val publicVitacoraNumber: Long? = null
 )
 
 @Serializable
@@ -121,7 +128,13 @@ data class CreatePetWithPrincipalParams(
     @SerialName("p_size") val size: String,
     @SerialName("p_description") val description: String,
     @SerialName("p_organization_id") val organizationId: String? = null,
-    @SerialName("p_microchip_id") val microchipId: String? = null
+    @SerialName("p_microchip_id") val microchipId: String? = null,
+    @SerialName("p_birth_precision") val birthPrecision: String = "UNKNOWN",
+    @SerialName("p_birth_date") val birthDate: String? = null,
+    @SerialName("p_birth_year") val birthYear: Int? = null,
+    @SerialName("p_birth_month") val birthMonth: Int? = null,
+    @SerialName("p_estimated_age_months") val estimatedAgeMonths: Int? = null,
+    @SerialName("p_estimated_as_of") val estimatedAsOf: String? = null
 )
 
 @Serializable
@@ -151,7 +164,10 @@ data class UpdatePetHealthParams(
     @SerialName("p_sterilized") val sterilized: String? = null,
     @SerialName("p_last_vet_visit") val lastVetVisit: String? = null,
     @SerialName("p_health_notes") val healthNotes: String? = null,
-    @SerialName("p_weight_kg") val weightKg: Float? = null
+    @SerialName("p_weight_kg") val weightKg: Float? = null,
+    @SerialName("p_allergies") val allergies: List<String> = emptyList(),
+    @SerialName("p_medications") val medications: List<String> = emptyList(),
+    @SerialName("p_conditions") val conditions: List<String> = emptyList()
 )
 
 @Serializable
@@ -256,7 +272,8 @@ data class PetResponsibilityM08Row(
     @SerialName("created_by") val createdBy: String,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("accepted_at") val acceptedAt: String? = null,
-    val reason: String? = null
+    val reason: String? = null,
+    @SerialName("display_name") val displayName: String? = null
 )
 
 @Serializable

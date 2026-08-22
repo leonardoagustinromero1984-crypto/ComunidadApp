@@ -7,12 +7,13 @@
     <color name="brand_orange_soft">#FFFFA64D</color>
     <color name="brand_green">#FF49B749</color>
     <color name="brand_green_dark">#FF247A3D</color>
-    <color name="brand_cream">#FFFFF6EA</color>
+    <color name="brand_background">#FFFAFBF8</color>
+    <color name="brand_cream">#FFFFF8E1</color>
     <color name="brand_text">#FF2F3A37</color>
     <!-- Aliases legacy → tokens oficiales -->
     <color name="leover_orange">@color/brand_orange</color>
     <color name="leover_orange_dark">@color/brand_orange_soft</color>
     <color name="leover_green">@color/brand_green</color>
     <color name="leover_green_dark">@color/brand_green_dark</color>
-    <color name="leover_background">@color/brand_cream</color>
+    <color name="leover_background">@color/brand_background</color>
 </resources>

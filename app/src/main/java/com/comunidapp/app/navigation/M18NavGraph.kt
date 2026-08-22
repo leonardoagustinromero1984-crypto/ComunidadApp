@@ -10,16 +10,22 @@ import com.comunidapp.app.ui.screens.m18.M18EventEditScreen
 import com.comunidapp.app.ui.screens.m18.M18EventManageScreen
 import com.comunidapp.app.ui.screens.m18.M18EventOperationsScreen
 import com.comunidapp.app.ui.screens.m18.M18EventsListScreen
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import com.comunidapp.app.domain.RolePermissions
+import com.comunidapp.app.domain.context.OperationalContextProvider
 import java.nio.charset.StandardCharsets
 
 /** M18 eventos — rutas Bloque 1 (fundación local/mock). */
 fun NavGraphBuilder.m18EventRoutes(navController: NavHostController) {
     composable(NavRoutes.M18_EVENTS) {
+        val context by OperationalContextProvider.active.collectAsState()
         M18EventsListScreen(
             onNavigateBack = { navController.popBackStack() },
             onEventClick = { id -> navController.navigate(NavRoutes.m18EventDetail(id)) },
             onManage = { navController.navigate(NavRoutes.M18_EVENTS_MANAGE) },
-            onCreate = { navController.navigate(NavRoutes.M18_EVENTS_CREATE) }
+            onCreate = { navController.navigate(NavRoutes.M18_EVENTS_CREATE) },
+            canAdminister = RolePermissions.canPublishEvent(context)
         )
     }
     composable(

@@ -74,7 +74,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 
 import com.comunidapp.app.data.model.ProfileRelation
 
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 
 import com.comunidapp.app.ui.components.FeedPostCard
 
@@ -109,10 +111,10 @@ fun UserPublicProfileScreen(
 
 
     Scaffold(
-
+        containerColor = BrandBackground,
         topBar = {
 
-            ComunidappTopBar(
+            LeoTopAppBar(
 
                 title = uiState.user?.name ?: "Perfil",
 
@@ -232,7 +234,7 @@ fun UserPublicProfileScreen(
 
                             Text(
 
-                                text = user.accountType.toDisplayName(),
+                                text = "Persona",
 
                                 style = MaterialTheme.typography.labelLarge,
 
@@ -541,7 +543,7 @@ private fun FriendActionSection(
 
                 ) {
 
-                    Text("Enviar solicitud de amistad")
+                    Text("Solicitar seguir")
 
                 }
 
@@ -647,7 +649,7 @@ private fun privateProfileHint(relation: ProfileRelation): String = when (relati
 
     ProfileRelation.LOCKED ->
 
-        "Enviá una solicitud de amistad para ver sus mascotas, publicaciones e historias."
+        "Solicitá seguir esta cuenta para ver su perfil social."
 
     ProfileRelation.PENDING_OUTGOING ->
 
@@ -655,7 +657,7 @@ private fun privateProfileHint(relation: ProfileRelation): String = when (relati
 
     ProfileRelation.PENDING_INCOMING ->
 
-        "Te enviaron una solicitud de amistad."
+        "Te enviaron una solicitud para seguirte."
 
     else -> ""
 

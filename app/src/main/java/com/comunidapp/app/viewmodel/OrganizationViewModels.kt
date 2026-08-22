@@ -72,14 +72,17 @@ data class CreateOrganizationUiState(
     val publicName: String = "",
     val legalName: String = "",
     val slug: String = "",
-    val type: OrganizationType = OrganizationType.SHELTER,
+    val category: com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory =
+        com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.VETERINARY,
     val typeDescription: String = "",
     val city: String = "",
     val province: String = "",
-    val countryCode: String = "",
+    val countryCode: String = "AR",
+    val localityId: String? = null,
     val isSaving: Boolean = false,
     val errorMessage: String? = null,
-    val createdOrganizationId: String? = null
+    val createdOrganizationId: String? = null,
+    val typeLocked: Boolean = false
 )
 
 class CreateOrganizationViewModel(
@@ -98,8 +101,31 @@ class CreateOrganizationViewModel(
     fun onSlugChange(value: String) =
         _uiState.update { it.copy(slug = value, errorMessage = null) }
 
-    fun onTypeChange(value: OrganizationType) =
-        _uiState.update { it.copy(type = value, errorMessage = null) }
+    fun applyEntry(preselect: String?, welfare: Boolean) {
+        if (welfare) {
+            _uiState.update {
+                it.copy(
+                    category = com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.SHELTER_NGO,
+                    typeLocked = true
+                )
+            }
+            return
+        }
+        if (preselect.isNullOrBlank()) return
+        val fromCategory = runCatching {
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.valueOf(preselect)
+        }.getOrNull()
+        val fromKind = runCatching {
+            com.comunidapp.app.domain.onboarding.onb02.OrganizationKindOption.valueOf(preselect)
+        }.getOrNull()?.let {
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.fromOrganizationKind(it)
+        }
+        val category = fromCategory ?: fromKind ?: return
+        _uiState.update { it.copy(category = category, typeLocked = true) }
+    }
+
+    fun onCategoryChange(value: com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory) =
+        _uiState.update { it.copy(category = value, errorMessage = null) }
 
     fun onTypeDescriptionChange(value: String) =
         _uiState.update { it.copy(typeDescription = value, errorMessage = null) }
@@ -108,22 +134,56 @@ class CreateOrganizationViewModel(
         _uiState.update { it.copy(city = value, errorMessage = null) }
 
     fun onProvinceChange(value: String) =
-        _uiState.update { it.copy(province = value, errorMessage = null) }
+        _uiState.update { it.copy(province = value, countryCode = "AR", errorMessage = null) }
 
-    fun onCountryCodeChange(value: String) =
-        _uiState.update { it.copy(countryCode = value.uppercase(), errorMessage = null) }
+    fun onLocalityIdChange(value: String?) =
+        _uiState.update { it.copy(localityId = value, errorMessage = null) }
 
     fun submit() {
         val state = _uiState.value
+        val mappedType = when (state.category) {
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.VETERINARY ->
+                OrganizationType.VETERINARY_CLINIC
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.SHELTER_NGO ->
+                OrganizationType.SHELTER
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.SHOP ->
+                OrganizationType.PET_SHOP
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.BOARDING,
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.DAYCARE ->
+                OrganizationType.OTHER
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.GROOMING,
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.WALKING_CARE,
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.TRAINING,
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.BRAND,
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.PET_FRIENDLY,
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.OTHER_SERVICE ->
+                OrganizationType.OTHER
+        }
+        val typeDescription = when (state.category) {
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.BOARDING,
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.DAYCARE -> "Guardería"
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.GROOMING -> "Peluquería"
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.WALKING_CARE -> "Paseos y cuidado"
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.TRAINING ->
+                "Educación / Adiestramiento"
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.BRAND -> "Empresa o marca"
+            com.comunidapp.app.domain.onboarding.onb02.ProductOrganizationCategory.OTHER_SERVICE ->
+                state.typeDescription.ifBlank { "Otro servicio" }
+            else -> state.typeDescription.ifBlank { state.category.visibleLabel }
+        }
+        val slug = state.slug.ifBlank {
+            com.comunidapp.app.domain.organization.OrganizationCreatePolicy.generateInternalSlug(state.publicName)
+        }
         val draft = OrganizationValidators.validateCreate(
-            legalName = state.legalName,
+            legalName = "",
             publicName = state.publicName,
-            type = state.type,
-            typeDescription = state.typeDescription.ifBlank { null },
-            slugRaw = state.slug,
-            countryCode = state.countryCode.ifBlank { null },
-            province = state.province.ifBlank { null },
-            city = state.city.ifBlank { null }
+            type = mappedType,
+            typeDescription = typeDescription,
+            slugRaw = slug,
+            countryCode = null,
+            province = null,
+            city = null,
+            homeLocalityId = null
         ).getOrElse { error ->
             val message = (error as? OrganizationValidationException)?.error?.userMessage
                 ?: error.message
@@ -136,6 +196,18 @@ class CreateOrganizationViewModel(
             _uiState.update { it.copy(isSaving = true, errorMessage = null) }
             organizationRepository.createOrganization(draft)
                 .onSuccess { org ->
+                    runCatching {
+                        val uid = AuthProvider.repository.getCurrentUser()?.id
+                        val created = com.comunidapp.app.domain.context.NewContextActivation.contextForOrganization(
+                            organizationId = org.id.value,
+                            publicName = org.publicName,
+                            typeOrCapability = org.typeDescription ?: org.type.name
+                        )
+                        if (!uid.isNullOrBlank()) {
+                            com.comunidapp.app.domain.context.OperationalContextProvider.refresh(uid)
+                        }
+                        com.comunidapp.app.domain.context.OperationalContextProvider.activateNewlyCreated(created)
+                    }
                     _uiState.update {
                         it.copy(isSaving = false, createdOrganizationId = org.id.value)
                     }
@@ -144,7 +216,7 @@ class CreateOrganizationViewModel(
                     _uiState.update {
                         it.copy(
                             isSaving = false,
-                            errorMessage = error.message ?: "No se pudo crear la organización"
+                            errorMessage = com.comunidapp.app.domain.ux.CanonicalUiErrorMapper.userMessage(error)
                         )
                     }
                 }
@@ -286,6 +358,11 @@ class EditOrganizationViewModel(
 
     fun onLogoSelected(uri: android.net.Uri?) =
         _uiState.update { it.copy(pendingLogoUri = uri, errorMessage = null) }
+
+    fun onPhotoCropFailed(code: String) =
+        _uiState.update {
+            it.copy(errorMessage = com.comunidapp.app.domain.files.FileUiErrorMapper.message(code))
+        }
 
     fun save() {
         val state = _uiState.value

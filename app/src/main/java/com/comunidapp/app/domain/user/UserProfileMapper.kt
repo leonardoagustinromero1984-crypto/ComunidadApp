@@ -93,9 +93,6 @@ object UserProfileMapper {
         else -> AccountStatus.ACTIVE
     }
 
-    fun parseVisibility(raw: String?): ProfileVisibility = when (raw?.uppercase()) {
-        "PUBLIC" -> ProfileVisibility.PUBLIC
-        "FRIENDS" -> ProfileVisibility.FRIENDS
-        else -> ProfileVisibility.PRIVATE
-    }
+    fun parseVisibility(raw: String?): ProfileVisibility =
+        SocialProfileVisibility.fromRaw(raw)
 }

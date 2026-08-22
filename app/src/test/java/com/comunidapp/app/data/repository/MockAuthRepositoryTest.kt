@@ -69,6 +69,7 @@ class MockAuthRepositoryTest {
             password = "password1",
             consent = demoConsent,
             username = "nueva_user",
+            birthDate = "1990-01-15",
             accountType = com.comunidapp.app.data.model.AccountType.SHELTER
         )
         assertTrue(first.isSuccess)
@@ -78,7 +79,7 @@ class MockAuthRepositoryTest {
         assertEquals(LegalDocumentConfig.terms.version, saved?.termsVersion)
         assertEquals(LegalDocumentConfig.privacy.version, saved?.privacyVersion)
 
-        val dup = repo.register("Otra", email, "password1", demoConsent, "otra_user")
+        val dup = repo.register("Otra", email, "password1", demoConsent, "otra_user", "1990-01-15")
         assertTrue(dup.isFailure)
         assertEquals(
             AuthErrorCode.EMAIL_ALREADY_REGISTERED.name,
@@ -105,17 +106,48 @@ class MockAuthRepositoryTest {
 
         repo.verifyEmailOtp(email, "123456")
         assertTrue(repo.isEmailVerified(email))
+        assertEquals(email, repo.getCurrentUser()?.email)
         val login = repo.login(email, "password1")
         assertTrue(login.isSuccess)
     }
 
     @Test
-    fun verifyEmailOtp_accepts_eight_digits_complete() = runBlocking {
+    fun unverified_signup_stays_pending_and_resend_does_not_duplicate() = runBlocking {
+        val email = "pendingotp@email.com"
+        val first = repo.register("P", email, "password1", demoConsent, "pendingotp_user")
+        assertTrue(first.isSuccess)
+        assertFalse(repo.isEmailVerified(email))
+        assertNull(repo.getCurrentUser())
+        assertTrue(repo.sendEmailVerification(email).isSuccess)
+        assertFalse(repo.isEmailVerified(email))
+        assertNull(repo.getCurrentUser())
+        val duplicate = repo.register("P", email, "password1", demoConsent, "pendingotp_user2")
+        assertTrue(duplicate.isFailure)
+        assertEquals(
+            AuthErrorCode.EMAIL_ALREADY_REGISTERED.name,
+            (duplicate.exceptionOrNull() as AuthException).code
+        )
+        assertFalse(repo.isEmailVerified(email))
+        assertNull(repo.getCurrentUser())
+    }
+
+    @Test
+    fun verifyEmailOtp_accepts_six_digits_complete() = runBlocking {
         val email = "otp8@email.com"
         repo.register("O", email, "password1", demoConsent, "otp8_user")
-        val result = repo.verifyEmailOtp(email, "  87654321  ")
+        val result = repo.verifyEmailOtp(email, "  876543  ")
         assertTrue(result.isSuccess)
         assertTrue(repo.isEmailVerified(email))
+    }
+
+    @Test
+    fun verifyEmailOtp_accepts_eight_digits() = runBlocking {
+        val email = "otp8digits@email.com"
+        repo.register("O", email, "password1", demoConsent, "otp8d_user")
+        val result = repo.verifyEmailOtp(email, "12345678")
+        assertTrue(result.isSuccess)
+        assertTrue(repo.isEmailVerified(email))
+        assertEquals(email, repo.getCurrentUser()?.email)
     }
 
     @Test
@@ -124,7 +156,8 @@ class MockAuthRepositoryTest {
         repo.register("O", email, "password1", demoConsent, "otpbad_user")
         assertTrue(repo.verifyEmailOtp(email, "12345").isFailure)
         assertTrue(repo.verifyEmailOtp(email, "12345678901").isFailure)
-        assertFalse(repo.isEmailVerified(email))
+        assertTrue(repo.verifyEmailOtp(email, "1234567").isSuccess)
+        assertTrue(repo.isEmailVerified(email))
     }
 
     @Test

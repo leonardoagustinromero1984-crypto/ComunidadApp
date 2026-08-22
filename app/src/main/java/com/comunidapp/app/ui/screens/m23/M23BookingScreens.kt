@@ -20,7 +20,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M23BookingStatus
 import com.comunidapp.app.data.model.M23BookingStatusFilter
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -190,7 +192,7 @@ fun M23ManageBookingsScreen(
 
 @Composable
 private fun M23Scaffold(title: String, onBack: () -> Unit, content: @Composable () -> Unit) =
-    Scaffold(topBar = { ComunidappTopBar(title, showBackButton = true, onBackClick = onBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title, showBackButton = true, onBackClick = onBack) }) { padding ->
         Column(
             Modifier.padding(padding).padding(16.dp).fillMaxSize(),
             verticalArrangement = Arrangement.spacedBy(12.dp)

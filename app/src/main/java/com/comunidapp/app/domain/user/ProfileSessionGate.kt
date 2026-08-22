@@ -47,7 +47,10 @@ object ProfileSessionGate {
     }
 
     fun evaluate(user: com.comunidapp.app.data.model.User): ProfileGate {
-        val profile = UserProfileMapper.toUserProfile(user)
+        val profile = UserProfileMapper.toUserProfile(
+            user,
+            setupStatus = OnboardingCompleteness.statusFor(user)
+        )
         return evaluate(profile.setupStatus, profile.accountStatus, profile.username)
     }
 }

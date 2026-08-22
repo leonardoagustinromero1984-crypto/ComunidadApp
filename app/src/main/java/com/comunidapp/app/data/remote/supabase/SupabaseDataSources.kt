@@ -7,6 +7,7 @@ import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.Pet
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.query.Order
+import kotlinx.serialization.json.JsonElement
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
@@ -213,12 +214,12 @@ class LostFoundSupabaseDataSource {
 
     suspend fun fetchLostFound(): List<LostFoundPost> {
         return try {
-            supabase.from(SupabaseTables.LOST_FOUND)
+            val element: JsonElement = supabase.from(SupabaseTables.LOST_FOUND)
                 .select {
                     order("created_at", Order.DESCENDING)
                 }
-                .decodeList<LostFoundRow>()
-                .map(::parseLostFound)
+                .decodeAs()
+            SupabaseRowDecoding.decodeRows<LostFoundRow>(element).map(::parseLostFound)
         } catch (_: Exception) {
             emptyList()
         }

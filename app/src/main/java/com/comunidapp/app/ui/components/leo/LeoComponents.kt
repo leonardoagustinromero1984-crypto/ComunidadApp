@@ -60,7 +60,7 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.Pets
 import com.comunidapp.app.ui.theme.ComunidappTheme
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.ui.theme.BrandGreen
 import com.comunidapp.app.ui.theme.BrandGreenContainer
 import com.comunidapp.app.ui.theme.BrandGreenDark
@@ -68,6 +68,7 @@ import com.comunidapp.app.ui.theme.BrandOrangeContainer
 import com.comunidapp.app.ui.theme.BrandOrangeSoft
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandWhite
+import com.comunidapp.app.ui.theme.LeoButton
 import com.comunidapp.app.ui.theme.LeoCardTitle
 import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoDimens
@@ -87,14 +88,14 @@ fun LeoTopAppBar(
 ) {
     Column(
         modifier = Modifier
-            .background(BrandCream)
+            .background(leoVisual().background)
             .windowInsetsPadding(WindowInsets.statusBars)
     ) {
         TopAppBar(
             title = {
                 Text(
                     text = title,
-                    style = LeoSectionTitle,
+                    style = LeoPageTitle,
                     color = BrandText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -114,10 +115,10 @@ fun LeoTopAppBar(
             actions = actions,
             windowInsets = WindowInsets(0, 0, 0, 0),
             colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = BrandCream,
-                titleContentColor = BrandText,
-                navigationIconContentColor = BrandText,
-                actionIconContentColor = BrandText
+                containerColor = leoVisual().background,
+                titleContentColor = leoVisual().textPrimary,
+                navigationIconContentColor = leoVisual().textPrimary,
+                actionIconContentColor = leoVisual().textPrimary
             )
         )
         if (!subtitle.isNullOrBlank()) {
@@ -170,20 +171,21 @@ fun LeoPrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    icon: ImageVector? = null
+    icon: ImageVector? = null,
+    fillMaxWidth: Boolean = true
 ) {
     Button(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier
-            .fillMaxWidth()
+            .then(if (fillMaxWidth) Modifier.fillMaxWidth() else Modifier)
             .heightIn(min = LeoDimens.ButtonPrimaryHeight),
         shape = RoundedCornerShape(LeoDimens.RadiusCard),
         colors = ButtonDefaults.buttonColors(
-            containerColor = BrandOrangeSoft,
-            contentColor = BrandText,
-            disabledContainerColor = BrandOrangeContainer,
-            disabledContentColor = MutedText
+            containerColor = leoVisual().primary,
+            contentColor = leoVisual().onPrimary,
+            disabledContainerColor = leoVisual().primarySoft,
+            disabledContentColor = leoVisual().textSecondary
         ),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
     ) {
@@ -191,7 +193,7 @@ fun LeoPrimaryButton(
             Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(modifier = Modifier.width(LeoDimens.SpaceSm))
         }
-        Text(text)
+        Text(text, style = LeoButton)
     }
 }
 
@@ -210,12 +212,12 @@ fun LeoSecondaryButton(
             .heightIn(min = LeoDimens.ButtonSecondaryHeight),
         shape = RoundedCornerShape(LeoDimens.RadiusCard),
         colors = ButtonDefaults.buttonColors(
-            containerColor = BrandGreenContainer,
-            contentColor = BrandGreenDark
+            containerColor = leoVisual().secondarySoft,
+            contentColor = leoVisual().primaryDark
         ),
         elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
     ) {
-        Text(text)
+        Text(text, style = LeoButton)
     }
 }
 
@@ -233,9 +235,70 @@ fun LeoOutlinedButton(
             .fillMaxWidth()
             .heightIn(min = LeoDimens.ButtonSecondaryHeight),
         shape = RoundedCornerShape(LeoDimens.RadiusCard),
-        colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandText)
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = leoVisual().textPrimary)
     ) {
-        Text(text)
+        Text(text, style = LeoButton)
+    }
+}
+
+@Composable
+fun ContinueWithGoogleButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true
+) {
+    val visual = leoVisual()
+    OutlinedButton(
+        onClick = onClick,
+        enabled = enabled,
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = LeoDimens.ButtonSecondaryHeight),
+        shape = RoundedCornerShape(LeoDimens.RadiusCard),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = visual.surface,
+            contentColor = visual.textPrimary
+        ),
+        border = androidx.compose.foundation.BorderStroke(1.dp, visual.borderSoft)
+    ) {
+        Row(
+            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center
+        ) {
+            androidx.compose.foundation.Image(
+                painter = androidx.compose.ui.res.painterResource(com.comunidapp.app.R.drawable.ic_google_g),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp)
+            )
+            Spacer(Modifier.size(LeoDimens.SpaceS))
+            Text("Continuar con Google", style = LeoButton)
+        }
+    }
+}
+
+@Composable
+fun AuthMethodDivider(
+    modifier: Modifier = Modifier
+) {
+    val visual = leoVisual()
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = androidx.compose.ui.Alignment.CenterVertically
+    ) {
+        androidx.compose.material3.HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = visual.borderSoft
+        )
+        Text(
+            text = "o",
+            style = LeoCaption,
+            color = visual.textSecondary,
+            modifier = Modifier.padding(horizontal = LeoDimens.SpaceS)
+        )
+        androidx.compose.material3.HorizontalDivider(
+            modifier = Modifier.weight(1f),
+            color = visual.borderSoft
+        )
     }
 }
 
@@ -251,9 +314,9 @@ fun LeoCard(
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = shape,
-        colors = CardDefaults.cardColors(containerColor = BrandWhite),
+        colors = CardDefaults.cardColors(containerColor = leoVisual().surface),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, NeutralBorder)
+        border = androidx.compose.foundation.BorderStroke(1.dp, leoVisual().borderSoft)
     ) {
         Column(modifier = Modifier.padding(LeoDimens.SpaceMd), content = content)
     }
@@ -314,6 +377,13 @@ fun LeoFeatureCard(
     }
 }
 
+/**
+ * Legacy Community tile. Do not use on Comunidad — use [com.comunidapp.app.ui.components.leo.LeoVerProviderCard].
+ */
+@Deprecated(
+    message = "Use canonical LeoVer UI component",
+    level = DeprecationLevel.ERROR
+)
 @Composable
 fun LeoServiceTile(
     title: String,
@@ -379,10 +449,10 @@ fun LeoFilterChip(
         modifier = modifier.heightIn(min = LeoDimens.ChipHeight),
         shape = RoundedCornerShape(LeoDimens.RadiusChip),
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = BrandOrangeContainer,
-            selectedLabelColor = BrandText,
-            containerColor = BrandWhite,
-            labelColor = MutedText
+            selectedContainerColor = leoVisual().primary,
+            selectedLabelColor = leoVisual().onPrimary,
+            containerColor = leoVisual().surface,
+            labelColor = leoVisual().textSecondary
         )
     )
 }
@@ -407,19 +477,19 @@ fun LeoSearchBar(
             modifier = Modifier
                 .weight(1f)
                 .heightIn(min = LeoDimens.SearchBarHeight),
-            placeholder = { Text(placeholder, color = MutedText) },
+            placeholder = { Text(placeholder, color = leoVisual().textSecondary) },
             leadingIcon = {
-                Icon(Icons.Default.Search, contentDescription = null, tint = MutedText)
+                Icon(Icons.Default.Search, contentDescription = null, tint = leoVisual().textSecondary)
             },
             singleLine = true,
             shape = RoundedCornerShape(LeoDimens.RadiusField),
             colors = OutlinedTextFieldDefaults.colors(
-                focusedContainerColor = BrandWhite,
-                unfocusedContainerColor = BrandWhite,
-                focusedBorderColor = BrandOrangeSoft,
-                unfocusedBorderColor = NeutralBorder,
-                focusedTextColor = BrandText,
-                unfocusedTextColor = BrandText
+                focusedContainerColor = leoVisual().surface,
+                unfocusedContainerColor = leoVisual().surface,
+                focusedBorderColor = leoVisual().primary,
+                unfocusedBorderColor = leoVisual().borderSoft,
+                focusedTextColor = leoVisual().textPrimary,
+                unfocusedTextColor = leoVisual().textPrimary
             )
         )
         if (onFilterClick != null) {
@@ -660,7 +730,7 @@ fun LeoPersonCard(
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390)
+@Preview(showBackground = true, backgroundColor = 0xFFFFFDF8, widthDp = 390)
 @Composable
 private fun LeoComponentsPreview() {
     ComunidappTheme {

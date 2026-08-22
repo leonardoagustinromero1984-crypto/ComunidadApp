@@ -29,9 +29,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.ui.components.AdoptionCard
-import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.AdoptionListUiState
 import com.comunidapp.app.viewmodel.AdoptionsViewModel
 
@@ -40,15 +44,27 @@ fun AdoptionsScreen(
     onAdoptionClick: (String) -> Unit,
     onMyApplications: () -> Unit = {},
     onReceivedApplications: () -> Unit = {},
+    showReceivedApplications: Boolean = true,
+    showBackButton: Boolean = false,
+    onNavigateBack: () -> Unit = {},
     viewModel: AdoptionsViewModel = viewModel()
 ) {
     Scaffold(
-        topBar = { ComunidappTopBar(title = "Adopciones") }
+        containerColor = BrandBackground,
+        topBar = {
+            LeoTopAppBar(
+                title = "Adopciones",
+                subtitle = "Encontrá tu próximo compañero",
+                showBackButton = showBackButton,
+                onBackClick = onNavigateBack
+            )
+        }
     ) { padding ->
         AdoptionsContent(
             onAdoptionClick = onAdoptionClick,
             onMyApplications = onMyApplications,
             onReceivedApplications = onReceivedApplications,
+            showReceivedApplications = showReceivedApplications,
             topPadding = padding.calculateTopPadding(),
             bottomPadding = padding.calculateBottomPadding(),
             viewModel = viewModel
@@ -62,6 +78,7 @@ fun AdoptionsContent(
     onMyApplications: () -> Unit = {},
     onReceivedApplications: () -> Unit = {},
     showPrivateActions: Boolean = true,
+    showReceivedApplications: Boolean = true,
     topPadding: Dp = 0.dp,
     bottomPadding: Dp = 0.dp,
     viewModel: AdoptionsViewModel = viewModel()
@@ -74,36 +91,35 @@ fun AdoptionsContent(
             .fillMaxSize()
             .padding(top = topPadding)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Column(modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)) {
             if (showPrivateActions) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
                 ) {
                     OutlinedButton(
                         onClick = onMyApplications,
                         modifier = Modifier.weight(1f)
                     ) { Text("Mis postulaciones") }
-                    OutlinedButton(
-                        onClick = onReceivedApplications,
-                        modifier = Modifier.weight(1f)
-                    ) { Text("Recibidas") }
+                    if (showReceivedApplications) {
+                        OutlinedButton(
+                            onClick = onReceivedApplications,
+                            modifier = Modifier.weight(1f)
+                        ) { Text("Recibidas") }
+                    }
                 }
             }
-            OutlinedTextField(
+            V2LocationStringPicker(
                 value = filters.location,
-                onValueChange = viewModel::onLocationChange,
-                label = { Text("Filtrar por zona") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                onValueChange = viewModel::onLocationChange
             )
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(vertical = LeoDimens.SpaceSm),
+                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
             ) {
                 PetSex.entries.forEach { sex ->
                     FilterChip(
@@ -152,11 +168,11 @@ fun AdoptionsContent(
             is AdoptionListUiState.Content -> LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    bottom = bottomPadding + 8.dp
+                    start = LeoDimens.SpaceMd,
+                    end = LeoDimens.SpaceMd,
+                    bottom = bottomPadding + LeoDimens.SpaceSm
                 ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
             ) {
                 items(state.posts, key = { it.id }) { post ->
                     AdoptionCard(post = post, onClick = { onAdoptionClick(post.id) })

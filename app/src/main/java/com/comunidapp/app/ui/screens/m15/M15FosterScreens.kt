@@ -27,7 +27,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -52,8 +55,9 @@ fun M15FosterHubScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Hogares de tránsito",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -105,8 +109,9 @@ fun M15FosterHomesListScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Hogares disponibles",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -155,8 +160,9 @@ fun M15FosterHomeDetailScreen(
     val listing by viewModel.listing.collectAsState()
     val message by viewModel.message.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Detalle del hogar",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -166,7 +172,7 @@ fun M15FosterHomeDetailScreen(
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             listing?.let { home ->
                 Text(home.displayName, style = MaterialTheme.typography.titleLarge)
-                Text("Zona: ${home.zoneText}")
+                Text("Zona: ${com.comunidapp.app.domain.ux.HumanLocationLabel.visible(home.zoneText)}")
                 Text("Disponibilidad: ${home.availabilityStatus}")
                 Text("Cupos: ${home.freeSlots}/${home.totalCapacity}")
                 home.description?.let { Text(it) }
@@ -196,8 +202,9 @@ fun M15MyFosterHomeScreen(
     var zone by remember { mutableStateOf("") }
     var capacity by remember { mutableStateOf("1") }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Mi hogar de tránsito",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -226,11 +233,9 @@ fun M15MyFosterHomeScreen(
                     label = { Text("Nombre del hogar") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                OutlinedTextField(
+                V2LocationStringPicker(
                     value = zone,
-                    onValueChange = { zone = it },
-                    label = { Text("Zona") },
-                    modifier = Modifier.fillMaxWidth()
+                    onValueChange = { zone = it }
                 )
                 OutlinedTextField(
                     value = capacity,
@@ -275,8 +280,9 @@ fun M15FosterRequestFormScreen(
         if (submitted) onSubmitted()
     }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Solicitar tránsito",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -316,8 +322,9 @@ fun M15FosterRequestsScreen(
     val requests by viewModel.received.collectAsState()
     val message by viewModel.message.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Solicitudes recibidas",
                 showBackButton = true,
                 onBackClick = onNavigateBack

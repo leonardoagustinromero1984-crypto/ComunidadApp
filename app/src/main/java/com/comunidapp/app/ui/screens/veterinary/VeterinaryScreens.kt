@@ -32,16 +32,19 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.data.model.VeterinaryClinicStatus
 import com.comunidapp.app.data.model.VeterinaryServiceCategory
 import com.comunidapp.app.data.model.VeterinarySpecialty
 import com.comunidapp.app.data.model.VeterinaryVerificationStatus
 import com.comunidapp.app.data.repository.CreateVeterinaryClinicDraftInput
 import com.comunidapp.app.data.repository.UpdateVeterinaryClinicDraftInput
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.ManagedVeterinaryClinicsUiState
 import com.comunidapp.app.viewmodel.ManagedVeterinaryClinicsViewModel
 import com.comunidapp.app.viewmodel.VeterinaryClinicDetailUiState
@@ -64,8 +67,9 @@ fun VeterinaryDirectoryScreen(
     var zone by remember { mutableStateOf(filter.zoneText.orEmpty()) }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Veterinarias",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -74,7 +78,7 @@ fun VeterinaryDirectoryScreen(
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             OutlinedButton(onClick = onMyClinics, modifier = Modifier.fillMaxWidth()) {
-                Text("Mis veterinarias (borrador local)")
+                Text("Veterinarias vinculadas")
             }
             OutlinedButton(onClick = onMyAppointments, modifier = Modifier.fillMaxWidth()) {
                 Text("Mis turnos")
@@ -90,15 +94,12 @@ fun VeterinaryDirectoryScreen(
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
-            OutlinedTextField(
+            V2LocationStringPicker(
                 value = zone,
                 onValueChange = {
                     zone = it
                     viewModel.setZone(it.takeIf { s -> s.isNotBlank() })
-                },
-                label = { Text("Zona") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                }
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Checkbox(
@@ -160,19 +161,8 @@ fun VeterinaryDirectoryScreen(
                         ) {
                             Text(item.displayName, fontWeight = FontWeight.SemiBold)
                             Text(item.publicZoneText)
-                            Text("Verificación: ${item.verificationStatus.name}")
-                            if (item.specialties.isNotEmpty()) {
-                                Text("Especialidades: ${item.specialties.take(3).joinToString { it.name }}")
-                            }
-                            if (item.serviceCategories.isNotEmpty()) {
-                                Text("Servicios: ${item.serviceCategories.take(3).joinToString { it.name }}")
-                            }
                             if (item.offersEmergencyCare) Text("Guardia / emergencias")
                             if (item.isOpen24Hours) Text("Abierta 24 horas")
-                            Text(
-                                "Logo: ${item.logoAssetRef ?: "placeholder"}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
                         }
                     }
                 }
@@ -196,8 +186,9 @@ fun VeterinaryClinicDetailScreen(
     val hours by viewModel.openingHours.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Detalle veterinaria",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -221,7 +212,6 @@ fun VeterinaryClinicDetailScreen(
                 ) {
                     Text(clinic.displayName, style = MaterialTheme.typography.headlineSmall)
                     Text(clinic.publicZoneText)
-                    Text("Verificación: ${clinic.verificationStatus.name}")
                     clinic.description?.let { Text(it) }
                     if (clinic.offersEmergencyCare) Text("Ofrece guardia / emergencias")
                     if (clinic.isOpen24Hours) Text("Abierta 24 horas")
@@ -242,27 +232,19 @@ fun VeterinaryClinicDetailScreen(
                     Spacer(Modifier.height(8.dp))
                     Text("Profesionales", fontWeight = FontWeight.SemiBold)
                     professionals.forEach { p ->
-                        Text("${p.displayName} · ${p.verificationStatus.name}")
-                        Text("Especialidades: ${p.specialties.joinToString { it.name }}")
+                        Text(p.displayName)
                         if (p.publicContactEnabled) {
-                            Text("Contacto: ${p.publicPhone ?: "—"} / ${p.publicEmail ?: "—"}")
-                        } else {
-                            Text("Contacto público deshabilitado")
+                            p.publicPhone?.takeIf { it.isNotBlank() }?.let { Text("Teléfono: $it") }
                         }
                     }
                     Spacer(Modifier.height(8.dp))
                     Text("Servicios", fontWeight = FontWeight.SemiBold)
                     services.filter { it.active }.forEach { svc ->
-                        Text("${svc.name} (${svc.category.name})")
+                        Text(svc.name)
                     }
                     Spacer(Modifier.height(8.dp))
                     Text("Contacto de la clínica", fontWeight = FontWeight.SemiBold)
-                    Text("Tel: ${clinic.publicPhone ?: "no informado"}")
-                    Text("Email: ${clinic.publicEmail ?: "no informado"}")
-                    clinic.websiteUrl?.let { Text("Web: $it") }
-                    clinic.socialLinks.forEach { (k, v) -> Text("$k: $v") }
-                    Text("Logo: ${clinic.logoAssetRef ?: "placeholder"}")
-                    Text("Portada: ${clinic.coverAssetRef ?: "—"}")
+                    clinic.publicPhone?.takeIf { it.isNotBlank() }?.let { Text(it) }
                 }
             }
         }
@@ -280,9 +262,10 @@ fun ManagedVeterinaryClinicsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
-                title = "Mis veterinarias",
+            LeoTopAppBar(
+                title = "Perfil profesional",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -290,13 +273,11 @@ fun ManagedVeterinaryClinicsScreen(
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
             Text(
-                "Persistencia remota: pendiente Bloque 2. Los borradores son solo locales.",
-                style = MaterialTheme.typography.bodySmall
+                "Tu perfil profesional veterinario está activo. " +
+                    "Las veterinarias vinculadas aparecen acá cuando formes parte de una.",
+                style = MaterialTheme.typography.bodyMedium
             )
-            Spacer(Modifier.height(8.dp))
-            Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
-                Text("Nuevo borrador local")
-            }
+            Spacer(Modifier.height(12.dp))
             Spacer(Modifier.height(12.dp))
             when (val s = state) {
                 ManagedVeterinaryClinicsUiState.Loading -> LoadingState()
@@ -370,8 +351,9 @@ fun VeterinaryClinicDraftScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (clinicId.isNullOrBlank()) "Borrador veterinaria" else "Editar borrador",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -389,7 +371,7 @@ fun VeterinaryClinicDraftScreen(
                 .verticalScroll(rememberScrollState())
         ) {
             Text(
-                "Solo borrador local. La persistencia remota se implementará en el Bloque 2.",
+                "Completá los datos de la veterinaria para vincularla a tu perfil profesional.",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(8.dp))
@@ -413,11 +395,9 @@ fun VeterinaryClinicDraftScreen(
                 label = { Text("Descripción") },
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
+            V2LocationStringPicker(
                 value = zone,
-                onValueChange = { zone = it },
-                label = { Text("Zona pública") },
-                modifier = Modifier.fillMaxWidth()
+                onValueChange = { zone = it }
             )
             OutlinedTextField(
                 value = phone,
@@ -484,7 +464,7 @@ fun VeterinaryClinicDraftScreen(
                 enabled = !submitting,
                 modifier = Modifier.fillMaxWidth()
             ) {
-                Text(if (submitting) "Guardando…" else "Guardar borrador local")
+                Text(if (submitting) "Guardando…" else "Guardar")
             }
         }
     }

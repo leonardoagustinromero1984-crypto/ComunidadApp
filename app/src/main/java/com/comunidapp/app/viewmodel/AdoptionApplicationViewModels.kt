@@ -111,6 +111,18 @@ class AdoptionApplyViewModel(
                                 )
                             )
                         }
+                    } else {
+                        val saved = com.comunidapp.app.data.local.AdoptionApplicantProfileStore.get(userId.orEmpty())
+                        if (saved != null) {
+                            _form.update {
+                                it.copy(
+                                    housingType = saved.householdSummary,
+                                    hasOtherPets = saved.hasYard,
+                                    previousExperience = saved.experienceSummary,
+                                    contactPhone = saved.availabilitySummary
+                                )
+                            }
+                        }
                     }
                 }
                 .onFailure { e ->
@@ -181,6 +193,17 @@ class AdoptionApplyViewModel(
                     contactPhone = current.contactPhone.ifBlank { null }
                 )
             ).onSuccess {
+                authRepository.getCurrentUser()?.id?.let { personId ->
+                    com.comunidapp.app.data.local.AdoptionApplicantProfileStore.save(
+                        com.comunidapp.app.domain.adoption.AdoptionApplicantProfile(
+                            personId = personId,
+                            householdSummary = current.housingType,
+                            hasYard = current.hasOtherPets,
+                            experienceSummary = current.previousExperience,
+                            availabilitySummary = current.contactPhone
+                        )
+                    )
+                }
                 _form.update { it.copy(submitting = false, submitted = true) }
                 _events.tryEmit("Postulación enviada")
             }.onFailure { e ->

@@ -425,6 +425,7 @@ data class AdoptionRow(
     val description: String,
     val requirements: String? = null,
     val status: String = AdoptionStatus.PUBLISHED.name,
+    @SerialName("public_code") val publicCode: String? = null,
     @SerialName("published_at") val publishedAt: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null
@@ -443,6 +444,7 @@ data class LostFoundRow(
     val description: String,
     @SerialName("contact_info") val contactInfo: String,
     val status: String = LostFoundStatus.ACTIVE.name,
+    @SerialName("public_code") val publicCode: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
     @SerialName("created_at") val createdAt: String? = null,
@@ -467,6 +469,7 @@ fun parseAdoption(row: AdoptionRow): AdoptionPost = AdoptionPost(
     description = row.description,
     requirements = row.requirements.orEmpty(),
     status = AdoptionStatus.fromString(row.status),
+    publicCode = row.publicCode,
     publishedAt = row.publishedAt.toEpochMillis(),
     createdAt = row.createdAt.toEpochMillis(),
     updatedAt = row.updatedAt.toEpochMillis()
@@ -517,6 +520,7 @@ fun com.comunidapp.app.data.remote.supabase.m09.AdoptionPublicationRow.toAdoptio
         description = description,
         requirements = requirements.orEmpty(),
         status = AdoptionStatus.fromString(status),
+        publicCode = publicCode,
         publishedAt = publishedAt.toEpochMillis(),
         createdAt = createdAt.toEpochMillis(),
         updatedAt = updatedAt.toEpochMillis()
@@ -541,6 +545,7 @@ fun parseLostFound(row: LostFoundRow): LostFoundPost {
         description = row.description,
         contactInfo = row.contactInfo,
         status = LostFoundStatus.fromString(row.status),
+        publicCode = row.publicCode,
         date = displayDate,
         latitude = row.latitude,
         longitude = row.longitude,

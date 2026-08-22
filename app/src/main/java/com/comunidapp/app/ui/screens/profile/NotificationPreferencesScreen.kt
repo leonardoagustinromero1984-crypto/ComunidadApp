@@ -43,7 +43,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.notifications.NotificationCategory
 import com.comunidapp.app.notifications.NotificationPermissionCoordinator
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.VisualDirectionPilot
+import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.viewmodel.NotificationPreferencesUiState
 import com.comunidapp.app.viewmodel.NotificationPreferencesViewModel
 import com.comunidapp.app.viewmodel.PreferenceUiStatus
@@ -70,9 +72,11 @@ fun NotificationPreferencesScreen(
         showPermissionRationale = false
     }
 
+    VisualDirectionPilot {
     Scaffold(
+        containerColor = leoVisual().background,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Preferencias de avisos",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -185,6 +189,7 @@ fun NotificationPreferencesScreen(
             }
             Spacer(modifier = Modifier.height(24.dp))
         }
+    }
     }
 }
 

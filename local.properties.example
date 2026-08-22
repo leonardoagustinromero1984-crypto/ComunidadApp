@@ -35,17 +35,37 @@ SUPABASE_ANON_KEY=<LOCAL_ANON_KEY>
 # ---------------------------------------------------------------------------
 # STAGING (HTTPS remoto). Usado también como fallback de localDebug.
 # Nunca localhost, 127.0.0.1 ni 10.0.2.2. Nunca service_role.
+# API/database/storage stay on SUPABASE_STAGING_URL until Custom Domain is live.
 # ---------------------------------------------------------------------------
-SUPABASE_STAGING_URL=https://<STAGING_PROJECT_REF>.supabase.co
+SUPABASE_STAGING_URL=https://tobqbddfcyitwgbkthhy.supabase.co
 SUPABASE_STAGING_PUBLISHABLE_KEY=<STAGING_PUBLISHABLE_KEY>
 # SUPABASE_STAGING_ANON_KEY=<STAGING_ANON_KEY>
 
+# Custom Auth domain (official apex: leover.com.ar). DNS is NOT live yet.
+# Leave inactive until Cloudflare CNAME + Supabase Custom Domain are verified.
+# Intended host: https://auth-staging.leover.com.ar
+# Google redirect then: https://auth-staging.leover.com.ar/auth/v1/callback
+# Keep the technical callback during transition:
+#   https://<STAGING_PROJECT_REF>.supabase.co/auth/v1/callback
+# SUPABASE_STAGING_AUTH_URL=https://auth-staging.leover.com.ar
+# SUPABASE_STAGING_AUTH_ACTIVE=false
+
 # ---------------------------------------------------------------------------
-# PRODUCTION futura (placeholders ficticios; no habilita despliegue)
+# PRODUCTION futura (placeholders; no habilita despliegue ni Auth branding)
+# Intended Auth host when Production exists: https://auth.leover.com.ar
+# Do not set AUTH_ACTIVE until that Custom Domain is verified.
 # ---------------------------------------------------------------------------
 SUPABASE_PRODUCTION_URL=https://<PRODUCTION_PROJECT_REF>.supabase.co
 SUPABASE_PRODUCTION_PUBLISHABLE_KEY=<PRODUCTION_PUBLISHABLE_KEY>
 # SUPABASE_PRODUCTION_ANON_KEY=<PRODUCTION_ANON_KEY>
+# SUPABASE_PRODUCTION_AUTH_URL=https://auth.leover.com.ar
+# SUPABASE_PRODUCTION_AUTH_ACTIVE=false
+
+# ---------------------------------------------------------------------------
+# Maps SDK for Android (rendering only). Never Places / Geocoding / Routes.
+# Restrict the key to the app package + signing cert. Do not commit the real key.
+# ---------------------------------------------------------------------------
+# MAPS_API_KEY=<MAPS_SDK_ANDROID_KEY>
 
 # Secrets de Edge Functions (FCM push) NO van en este archivo.
 # Ver: supabase/.env.example y docs/leover-push-fcm-setup.md

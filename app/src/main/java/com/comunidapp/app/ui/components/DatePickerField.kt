@@ -10,6 +10,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
@@ -22,6 +23,9 @@ import androidx.compose.ui.Modifier
 import com.comunidapp.app.ui.util.formatDisplayDate
 import com.comunidapp.app.ui.util.isoDateFromMillis
 import com.comunidapp.app.ui.util.millisFromIsoDate
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneOffset
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -31,7 +35,8 @@ fun DatePickerField(
     onDateSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    placeholder: String = "Seleccionar fecha"
+    placeholder: String = "Seleccionar fecha",
+    historicalOnly: Boolean = false
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val displayValue = isoDate.takeIf { it.isNotBlank() }?.let { formatDisplayDate(it) }.orEmpty()
@@ -54,8 +59,28 @@ fun DatePickerField(
     )
 
     if (showDialog) {
-        val initialMillis = millisFromIsoDate(isoDate) ?: System.currentTimeMillis()
-        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+        val todayUtcMillis = remember {
+            LocalDate.now().atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
+        }
+        val initialMillis = millisFromIsoDate(isoDate) ?: todayUtcMillis
+        val selectable = remember(historicalOnly) {
+            if (!historicalOnly) {
+                object : SelectableDates {}
+            } else {
+                object : SelectableDates {
+                    override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                        val selected = Instant.ofEpochMilli(utcTimeMillis)
+                            .atZone(ZoneOffset.UTC)
+                            .toLocalDate()
+                        return !selected.isAfter(LocalDate.now())
+                    }
+                }
+            }
+        }
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialMillis,
+            selectableDates = selectable
+        )
 
         DatePickerDialog(
             onDismissRequest = { showDialog = false },

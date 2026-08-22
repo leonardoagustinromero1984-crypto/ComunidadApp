@@ -83,6 +83,9 @@ class M14PetPassportViewModel(
     val messageIsError: StateFlow<Boolean> = _messageIsError.asStateFlow()
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
+    private val _historyPreview = MutableStateFlow<List<com.comunidapp.app.data.model.M14PassportHistory>>(emptyList())
+    val historyPreview: StateFlow<List<com.comunidapp.app.data.model.M14PassportHistory>> =
+        _historyPreview.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -90,6 +93,20 @@ class M14PetPassportViewModel(
         }
         viewModelScope.launch {
             passportRepository.observePassportForPet(petId).collect { _passport.value = it }
+        }
+        viewModelScope.launch {
+            runCatching {
+                passportRepository.observeHistory(petId).first()
+            }.onSuccess { items ->
+                _historyPreview.value = items
+                    .filter { h ->
+                        com.comunidapp.app.domain.vitacora.VitaCoraUserHistoryFilter.isUserFacing(
+                            h.metadataEvent ?: h.reason,
+                            h.toStatus.name
+                        )
+                    }
+                    .take(3)
+            }
         }
     }
 
@@ -132,7 +149,7 @@ class M14PetPassportViewModel(
             result.onSuccess { created ->
                 // observePassportForPet is a one-shot cold flow; apply create result directly.
                 _passport.value = created
-                _message.value = "Pasaporte creado"
+                _message.value = "VitaCora lista"
             }.onFailure { e ->
                 val code = M14ErrorMapper.codeOf(e)
                 if (code == "PASSPORT_ALREADY_EXISTS") {
@@ -161,12 +178,12 @@ class M14PetPassportViewModel(
     }
 
     fun activate() = runPassportAction(
-        successMessage = "Pasaporte activado",
+        successMessage = "VitaCora activa",
         failureFallbackCode = "PASSPORT_ACTIVATE_FAILED"
     ) { id -> passportRepository.activatePassport(id) }
 
     fun setPublicRedacted() = runPassportAction(
-        successMessage = "Pasaporte visible en modo público resumido",
+        successMessage = "VitaCora visible en modo público resumido",
         failureFallbackCode = "PASSPORT_UPDATE_FAILED"
     ) { id ->
         passportRepository.updatePassport(

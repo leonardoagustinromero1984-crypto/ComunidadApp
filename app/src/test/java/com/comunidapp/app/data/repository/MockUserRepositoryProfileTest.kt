@@ -37,6 +37,13 @@ class MockUserRepositoryProfileTest {
     }
 
     @Test
+    fun same_username_owned_by_self_is_available() = runTest {
+        val me = repo.getUser(MockData.currentUser.id)!!
+        assertTrue(repo.isUsernameAvailable(me.username!!, me.id).getOrThrow())
+        assertFalse(repo.isUsernameAvailable(me.username!!, "someone-else").getOrThrow())
+    }
+
+    @Test
     fun updateMyProfile_doesNotChangeUsernameOrAccountType() = runTest {
         val before = repo.getUser(MockData.currentUser.id)!!
         repo.updateMyProfile(

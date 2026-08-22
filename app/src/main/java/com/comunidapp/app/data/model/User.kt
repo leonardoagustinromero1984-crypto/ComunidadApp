@@ -7,6 +7,7 @@ data class User(
     val id: String,
     val name: String,
     val email: String,
+    /** LEGACY persistido. No es identidad ni autoridad de permisos. */
     val accountType: AccountType = AccountType.PERSON,
     val profileImageUrl: String? = null,
     val bio: String? = null,
@@ -32,7 +33,10 @@ data class User(
     val locale: String? = null,
     val timezone: String? = null,
     val onboardingStatus: String = "NOT_STARTED",
-    val accountStatus: String = "ACTIVE"
+    val accountStatus: String = "ACTIVE",
+    val birthDate: String? = null,
+    val ageBand: String? = null,
+    val homeLocalityId: String? = null
 ) {
     val resolvedModules: Set<LeoverModule>
         get() = resolveActiveModules(accountType, activeModules)

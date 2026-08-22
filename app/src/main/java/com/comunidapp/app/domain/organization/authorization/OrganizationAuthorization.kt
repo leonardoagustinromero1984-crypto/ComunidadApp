@@ -200,7 +200,9 @@ object OrganizationAuthorizationService {
         ) {
             return OrganizationAuthorizationDecision.Denied("missing:remove")
         }
-        if (target.role == OrganizationRoleCode.OWNER && ownerCount <= 1) {
+        if (target.role == OrganizationRoleCode.OWNER && ownerCount <= 1 ||
+            MembershipDisplay.isAdministrator(target.role) && ownerCount <= 1
+        ) {
             return OrganizationAuthorizationDecision.Denied("last_owner_protected")
         }
         // ADMIN no puede remover OWNER

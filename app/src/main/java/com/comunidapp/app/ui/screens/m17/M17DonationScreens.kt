@@ -1,5 +1,8 @@
 package com.comunidapp.app.ui.screens.m17
 
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -21,6 +24,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -28,6 +32,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Checkbox
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -36,7 +41,8 @@ import com.comunidapp.app.data.model.M17CampaignType
 import com.comunidapp.app.data.model.M17MockOrganizations
 import com.comunidapp.app.data.model.M17PublicCampaign
 import com.comunidapp.app.data.repository.M17DonationValidators
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -56,6 +62,7 @@ fun M17CampaignsListScreen(
     onCampaignClick: (String) -> Unit,
     onManage: () -> Unit,
     onCreate: () -> Unit,
+    canAdminister: Boolean = false,
     viewModel: M17CampaignsListViewModel = viewModel(factory = M17CampaignsListViewModel.factory())
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -63,8 +70,9 @@ fun M17CampaignsListScreen(
     var query by remember(filter.query) { mutableStateOf(filter.query) }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Campañas solidarias", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Campañas solidarias", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -93,8 +101,10 @@ fun M17CampaignsListScreen(
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 OutlinedButton(onClick = { viewModel.clearFilters() }) { Text("Limpiar filtros") }
-                OutlinedButton(onClick = onManage) { Text("Administrar") }
-                Button(onClick = onCreate) { Text("Nueva") }
+                if (canAdminister) {
+                    OutlinedButton(onClick = onManage) { Text("Administrar") }
+                    Button(onClick = onCreate, modifier = Modifier.wrapContentWidth()) { Text("Nueva") }
+                }
             }
             when (val s = state) {
                 M17CampaignsListUiState.Loading -> LoadingState()
@@ -152,8 +162,9 @@ fun M17CampaignDetailScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Detalle campaña", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Detalle campaña", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {
@@ -203,6 +214,42 @@ fun M17CampaignDetailScreen(
                     ) {
                         Text("Contribución de prueba — pagos reales aún no habilitados")
                     }
+                    Text("Quiero colaborar", fontWeight = FontWeight.SemiBold)
+                    var goods by remember { mutableStateOf(false) }
+                    var supplies by remember { mutableStateOf(false) }
+                    var transport by remember { mutableStateOf(false) }
+                    var volunteer by remember { mutableStateOf(false) }
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(checked = goods, onCheckedChange = { goods = it })
+                        Text("Bienes")
+                    }
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(checked = supplies, onCheckedChange = { supplies = it })
+                        Text("Insumos")
+                    }
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(checked = transport, onCheckedChange = { transport = it })
+                        Text("Traslado")
+                    }
+                    Row(verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                        Checkbox(checked = volunteer, onCheckedChange = { volunteer = it })
+                        Text("Voluntariado")
+                    }
+                    Button(
+                        onClick = {
+                            val kinds = buildList {
+                                if (goods) add("bienes")
+                                if (supplies) add("insumos")
+                                if (transport) add("traslado")
+                                if (volunteer) add("voluntariado")
+                            }
+                            viewModel.offerHelp(kinds)
+                        },
+                        enabled = goods || supplies || transport || volunteer,
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Confirmar colaboración")
+                    }
                     message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
                 }
             }
@@ -222,8 +269,9 @@ fun M17CampaignManageScreen(
     val message by viewModel.message.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Administrar campañas", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Administrar campañas", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -298,8 +346,9 @@ fun M17CampaignEditScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (campaignId == null) "Nueva campaña" else "Editar campaña",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -333,11 +382,9 @@ fun M17CampaignEditScreen(
                 label = { Text("Objetivo (unidades principales)") },
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
+            V2LocationStringPicker(
                 value = draft.publicLocationText,
-                onValueChange = { viewModel.updateDraft { d -> d.copy(publicLocationText = it) } },
-                label = { Text("Ubicación pública aproximada") },
-                modifier = Modifier.fillMaxWidth()
+                onValueChange = { viewModel.updateDraft { d -> d.copy(publicLocationText = it) } }
             )
             OutlinedTextField(
                 value = draft.petPublicName,

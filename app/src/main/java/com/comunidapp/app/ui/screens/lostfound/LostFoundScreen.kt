@@ -2,10 +2,8 @@ package com.comunidapp.app.ui.screens.lostfound
 
 import android.content.Intent
 import android.net.Uri
-import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -18,8 +16,6 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -36,7 +32,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -48,9 +43,20 @@ import com.comunidapp.app.data.model.LostFoundSighting
 import com.comunidapp.app.data.model.LostFoundStatus
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.PetSpecies
-import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandGreen
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.viewmodel.LostFoundViewModel
 
 @Composable
@@ -73,9 +79,11 @@ fun LostFoundScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Perdidos / Encontrados",
+                subtitle = "Alertas activas cerca de vos",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -136,12 +144,9 @@ fun LostFoundContent(
                         modifier = Modifier.fillMaxWidth(),
                         minLines = 2
                     )
-                    OutlinedTextField(
+                    V2LocationStringPicker(
                         value = sightingLocation,
-                        onValueChange = { sightingLocation = it },
-                        label = { Text("Ubicación") },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true
+                        onValueChange = { sightingLocation = it }
                     )
                 }
             },
@@ -173,20 +178,17 @@ fun LostFoundContent(
             .fillMaxSize()
             .padding(top = topPadding)
     ) {
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-            OutlinedTextField(
+        Column(modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)) {
+            V2LocationStringPicker(
                 value = filters.location,
-                onValueChange = viewModel::onLocationChange,
-                label = { Text("Filtrar por zona") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
+                onValueChange = viewModel::onLocationChange
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .horizontalScroll(rememberScrollState())
-                    .padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    .padding(vertical = LeoDimens.SpaceSm),
+                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
             ) {
                 if (lockedType == null) {
                     FilterChip(
@@ -236,21 +238,15 @@ fun LostFoundContent(
             ) {
                 Text("Ver mapa de alertas")
             }
-            OutlinedButton(
-                onClick = onNavigateToM13Sightings,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Avistamientos y coincidencias")
-            }
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                bottom = bottomPadding + 8.dp
+                start = LeoDimens.SpaceMd,
+                end = LeoDimens.SpaceMd,
+                bottom = bottomPadding + LeoDimens.SpaceSm
             ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
         ) {
             items(posts, key = { it.id }) { post ->
                 val context = LocalContext.current
@@ -302,105 +298,102 @@ fun LostFoundCard(
     onOpenM13StructuredSighting: (() -> Unit)? = null
 ) {
     val badgeText = if (post.type == LostFoundType.LOST) "PERDIDO" else "ENCONTRADO"
+    val badgeColor = if (post.type == LostFoundType.LOST) UrgentRed else BrandGreen
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = badgeText,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = FontWeight.Bold,
-                color = if (post.type == LostFoundType.LOST) {
-                    MaterialTheme.colorScheme.error
-                } else {
-                    MaterialTheme.colorScheme.tertiary
-                },
-                modifier = Modifier.padding(bottom = 8.dp)
+    V2SurfaceCard {
+        Text(
+            text = badgeText,
+            style = LeoCaption,
+            fontWeight = FontWeight.Bold,
+            color = badgeColor,
+            modifier = Modifier.padding(bottom = LeoDimens.SpaceSm)
+        )
+        post.photoUrl?.let { url ->
+            PetImage(
+                imageUrl = url,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp),
+                cornerRadius = 8.dp,
+                contentDescription = post.petName
             )
-            post.photoUrl?.let { url ->
-                PetImage(
-                    imageUrl = url,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(140.dp),
-                    cornerRadius = 8.dp,
-                    contentDescription = post.petName
-                )
-                androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(8.dp))
-            }
+            androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(LeoDimens.SpaceSm))
+        }
+        Text(
+            text = post.petName ?: "${post.species.toDisplayName()} sin nombre",
+            style = LeoCardTitle,
+            color = BrandText,
+            fontWeight = FontWeight.Bold
+        )
+        Text(
+            text = "Por: ${post.authorName} · ${post.date}",
+            style = LeoCaption,
+            color = BrandTextSecondary
+        )
+        if (post.status == LostFoundStatus.RESOLVED) {
             Text(
-                text = post.petName ?: "${post.species.toDisplayName()} sin nombre",
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                text = "Resuelto",
+                style = LeoCaption,
+                color = BrandGreen,
+                modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
             )
-            Text(
-                text = "Por: ${post.authorName} · ${post.date}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (post.status == LostFoundStatus.RESOLVED) {
-                Text(
-                    text = "Resuelto",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            Text(
-                text = post.description,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-            Text(
-                text = "📍 ${post.location}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.secondary,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            Text(
-                text = "Contacto: ${post.contactInfo}",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            if (post.status == LostFoundStatus.ACTIVE) {
-                Row(
-                    modifier = Modifier.padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    onOpenMap?.let { open ->
-                        OutlinedButton(onClick = open) { Text("Abrir en mapa") }
-                    }
-                    onReportSighting?.let { report ->
-                        OutlinedButton(onClick = report) { Text("Avistamiento rápido") }
-                    }
-                    onOpenM13StructuredSighting?.let { open ->
-                        OutlinedButton(onClick = open) { Text("Registrar avistamiento") }
-                    }
-                    onOpenM13Matches?.let { open ->
-                        OutlinedButton(onClick = open) { Text("Coincidencias") }
-                    }
-                    onMarkResolved?.let { resolve ->
-                        Button(onClick = resolve) { Text("Marcar resuelta") }
-                    }
+        }
+        Text(
+            text = post.description,
+            style = MaterialTheme.typography.bodyMedium,
+            color = BrandText,
+            modifier = Modifier.padding(top = LeoDimens.SpaceSm)
+        )
+        Text(
+            text = "📍 ${post.location}",
+            style = LeoCaption,
+            color = BrandTextSecondary,
+            modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
+        )
+        Text(
+            text = "Contacto: ${post.contactInfo}",
+            style = LeoCaption,
+            color = BrandText,
+            modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
+        )
+        if (post.status == LostFoundStatus.ACTIVE) {
+            Row(
+                modifier = Modifier.padding(top = LeoDimens.SpaceSm),
+                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+            ) {
+                onOpenMap?.let { open ->
+                    OutlinedButton(onClick = open) { Text("Abrir en mapa") }
+                }
+                onReportSighting?.let { report ->
+                    OutlinedButton(onClick = report) { Text("Avistamiento rápido") }
+                }
+                onOpenM13StructuredSighting?.let { open ->
+                    OutlinedButton(onClick = open) { Text("Registrar avistamiento") }
+                }
+                onOpenM13Matches?.let { open ->
+                    OutlinedButton(onClick = open) { Text("Coincidencias") }
+                }
+                onMarkResolved?.let { resolve ->
+                    Button(onClick = resolve) { Text("Marcar resuelta") }
                 }
             }
-            if (sightings.isNotEmpty()) {
+        }
+        if (sightings.isNotEmpty()) {
+            Text(
+                text = "Avistamientos (${sightings.size})",
+                style = LeoCardTitle,
+                color = BrandText,
+                fontWeight = FontWeight.SemiBold,
+                modifier = Modifier.padding(top = LeoDimens.SpaceCompact)
+            )
+            sightings.take(5).forEach { sighting ->
                 Text(
-                    text = "Avistamientos (${sightings.size})",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 12.dp)
+                    text = "• ${sighting.reporterName}: ${sighting.note}" +
+                        (sighting.locationText?.let { " ($it)" }.orEmpty()),
+                    style = LeoCaption,
+                    color = BrandTextSecondary,
+                    modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
                 )
-                sightings.take(5).forEach { sighting ->
-                    Text(
-                        text = "• ${sighting.reporterName}: ${sighting.note}" +
-                            (sighting.locationText?.let { " ($it)" }.orEmpty()),
-                        style = MaterialTheme.typography.bodySmall,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
-                }
             }
         }
     }

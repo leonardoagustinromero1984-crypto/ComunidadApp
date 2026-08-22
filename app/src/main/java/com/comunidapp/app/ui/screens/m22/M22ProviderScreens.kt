@@ -23,7 +23,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M22ProviderStatus
 import com.comunidapp.app.data.model.M22PublicProviderListing
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -40,7 +42,7 @@ import com.comunidapp.app.viewmodel.M22ViewModelFactories
 @Composable
 fun M22HubScreen(onNavigateBack: () -> Unit, onOpenCatalog: () -> Unit, onOpenManage: () -> Unit, viewModel: M22HubViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Prestadores y servicios", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Prestadores y servicios", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (val s = state) {
                 M22HubUiState.Loading -> LoadingState()
@@ -60,7 +62,7 @@ fun M22HubScreen(onNavigateBack: () -> Unit, onOpenCatalog: () -> Unit, onOpenMa
 @Composable
 fun M22CatalogScreen(onNavigateBack: () -> Unit, onProviderClick: (String) -> Unit, viewModel: M22CatalogViewModel = viewModel(factory = M22ViewModelFactories.catalog())) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Catálogo de servicios", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Catálogo de servicios", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (val s = state) {
                 M22CatalogUiState.Loading -> LoadingState()
@@ -83,7 +85,7 @@ fun M22ProviderDetailScreen(
     viewModel: M22DetailViewModel = viewModel(factory = M22ViewModelFactories.detail(providerId))
 ) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Prestador", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Prestador", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (val s = state) {
                 M22DetailUiState.Loading -> LoadingState()
@@ -108,7 +110,7 @@ fun M22ProviderDetailScreen(
 @Composable
 fun M22ManageScreen(onNavigateBack: () -> Unit, viewModel: M22ManageViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Mis prestadores", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Mis prestadores", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (val s = state) {
                 M22ManageUiState.Loading -> LoadingState()

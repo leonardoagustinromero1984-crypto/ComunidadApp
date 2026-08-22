@@ -1,7 +1,12 @@
 package com.comunidapp.app.ui.screens.onboarding
 
+import com.comunidapp.app.ui.components.DatePickerField
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,6 +31,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -38,9 +44,13 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.user.ProfileVisibility
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.v2.V2FormImagePreview
+import com.comunidapp.app.ui.components.v2.V2LocationCityProvincePicker
+import com.comunidapp.app.ui.media.LeoVerAvatarCropKind
+import com.comunidapp.app.ui.media.rememberLeoVerAvatarCropLauncher
 import com.comunidapp.app.viewmodel.OnboardingStep
 import com.comunidapp.app.viewmodel.ProfileOnboardingUiState
 import com.comunidapp.app.viewmodel.ProfileOnboardingViewModel
@@ -48,9 +58,19 @@ import com.comunidapp.app.viewmodel.ProfileOnboardingViewModel
 @Composable
 fun ProfileOnboardingScreen(
     onComplete: () -> Unit,
-    viewModel: ProfileOnboardingViewModel = viewModel()
+    sessionUserId: String,
+    viewModel: ProfileOnboardingViewModel = viewModel(key = sessionUserId)
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val cropPhoto = rememberLeoVerAvatarCropLauncher(
+        kind = LeoVerAvatarCropKind.PERSON,
+        onCropped = viewModel::onCroppedPhoto,
+        onCancel = viewModel::cancelPhotoEditor,
+        onError = viewModel::onPhotoCropFailed
+    )
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri -> uri?.let(cropPhoto) }
 
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
@@ -60,10 +80,15 @@ fun ProfileOnboardingScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Configurá tu perfil",
-                showBackButton = uiState.step != OnboardingStep.IDENTITY,
+                showBackButton = when (uiState.step) {
+                    OnboardingStep.IDENTITY -> false
+                    OnboardingStep.LOCATION_PRIVACY -> uiState.identityRequired
+                    OnboardingStep.AVATAR_SUMMARY -> true
+                },
                 onBackClick = viewModel::goBack
             )
         }
@@ -83,7 +108,7 @@ fun ProfileOnboardingScreen(
                 when (uiState.step) {
                     OnboardingStep.IDENTITY -> IdentityStep(uiState, viewModel)
                     OnboardingStep.LOCATION_PRIVACY -> LocationPrivacyStep(uiState, viewModel)
-                    OnboardingStep.AVATAR_SUMMARY -> AvatarSummaryStep(uiState, viewModel)
+                    OnboardingStep.AVATAR_SUMMARY -> AvatarSummaryStep(uiState, viewModel, pickImageLauncher)
                 }
 
                 uiState.errorMessage?.let { error ->
@@ -93,13 +118,41 @@ fun ProfileOnboardingScreen(
                         color = MaterialTheme.colorScheme.error,
                         style = MaterialTheme.typography.bodySmall
                     )
+                    if (uiState.photoUploadFailed) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        if (uiState.pendingImageUri != null) {
+                            OutlinedButton(
+                                onClick = viewModel::retryPhotoUpload,
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = !uiState.isSubmitting
+                            ) {
+                                Text("Reintentar foto")
+                            }
+                        }
+                        TextButton(
+                            onClick = {
+                                pickImageLauncher.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            },
+                            enabled = !uiState.isSubmitting
+                        ) {
+                            Text("Cambiar foto")
+                        }
+                        TextButton(
+                            onClick = viewModel::skipPhotoAndContinue,
+                            enabled = !uiState.isSubmitting
+                        ) {
+                            Text("Continuar sin foto")
+                        }
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
                 Button(
                     onClick = viewModel::goNext,
                     modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isSubmitting
+                    enabled = !uiState.isSubmitting && !uiState.photoUploadFailed && !uiState.isProcessingPhoto
                 ) {
                     if (uiState.isSubmitting) {
                         CircularProgressIndicator(
@@ -159,48 +212,78 @@ private fun IdentityStep(
     )
     Spacer(modifier = Modifier.height(4.dp))
     Text(
-        text = "Tu nombre de usuario es único y te permite que otros te encuentren en LeoVer.",
+        text = if (uiState.usernameLocked) {
+            "Tu usuario ya está definido. Completá solo lo que falta."
+        } else {
+            "Tu nombre de usuario es único y te permite que otros te encuentren en LeoVer."
+        },
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(16.dp))
-    OutlinedTextField(
-        value = uiState.displayName,
-        onValueChange = viewModel::onDisplayNameChange,
-        label = { Text("Nombre para mostrar") },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        enabled = !uiState.isSubmitting,
-        isError = uiState.fieldErrors.containsKey("displayName"),
-        supportingText = {
-            uiState.fieldErrors["displayName"]?.let { Text(it) }
-        }
-    )
-    Spacer(modifier = Modifier.height(12.dp))
-    OutlinedTextField(
-        value = uiState.username,
-        onValueChange = viewModel::onUsernameChange,
-        label = { Text("Nombre de usuario") },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        enabled = !uiState.isSubmitting,
-        isError = uiState.fieldErrors.containsKey("username"),
-        supportingText = {
-            when {
-                uiState.fieldErrors["username"] != null -> Text(uiState.fieldErrors["username"]!!)
-                uiState.checkingUsername -> Text("Verificando disponibilidad…")
-                uiState.usernameAvailable == true -> Text("Usuario disponible")
+    if (!uiState.displayNamePresent) {
+        OutlinedTextField(
+            value = uiState.displayName,
+            onValueChange = viewModel::onDisplayNameChange,
+            label = { Text("Nombre para mostrar") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !uiState.isSubmitting,
+            isError = uiState.fieldErrors.containsKey("displayName"),
+            supportingText = {
+                uiState.fieldErrors["displayName"]?.let { Text(it) }
             }
-        },
-        trailingIcon = {
-            if (uiState.checkingUsername) {
-                CircularProgressIndicator(
-                    modifier = Modifier.size(20.dp),
-                    strokeWidth = 2.dp
-                )
+        )
+        Spacer(modifier = Modifier.height(12.dp))
+    } else {
+        SummaryRow("Nombre para mostrar", uiState.displayName)
+        Spacer(modifier = Modifier.height(12.dp))
+    }
+    if (uiState.usernameLocked) {
+        SummaryRow("Usuario", "@${uiState.username}")
+    } else {
+        OutlinedTextField(
+            value = uiState.username,
+            onValueChange = viewModel::onUsernameChange,
+            label = { Text("Nombre de usuario") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            enabled = !uiState.isSubmitting,
+            isError = uiState.fieldErrors.containsKey("username"),
+            supportingText = {
+                when {
+                    uiState.fieldErrors["username"] != null -> Text(uiState.fieldErrors["username"]!!)
+                    uiState.checkingUsername -> Text("Verificando disponibilidad…")
+                    uiState.usernameAvailable == true -> Text("Usuario disponible")
+                }
+            },
+            trailingIcon = {
+                if (uiState.checkingUsername) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(20.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
             }
+        )
+    }
+    if (uiState.needsBirthDate) {
+        Spacer(modifier = Modifier.height(12.dp))
+        DatePickerField(
+            label = "Fecha de nacimiento",
+            isoDate = uiState.birthDate,
+            onDateSelected = viewModel::onBirthDateChange,
+            enabled = !uiState.isSubmitting,
+            historicalOnly = true
+        )
+        uiState.fieldErrors["birthDate"]?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodySmall
+            )
         }
-    )
+    }
 }
 
 @Composable
@@ -219,40 +302,40 @@ private fun LocationPrivacyStep(
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
     Spacer(modifier = Modifier.height(16.dp))
-    OutlinedTextField(
-        value = uiState.city,
-        onValueChange = viewModel::onCityChange,
-        label = { Text("Ciudad (opcional)") },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        enabled = !uiState.isSubmitting
-    )
-    Spacer(modifier = Modifier.height(12.dp))
-    OutlinedTextField(
-        value = uiState.province,
-        onValueChange = viewModel::onProvinceChange,
-        label = { Text("Provincia (opcional)") },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
-        enabled = !uiState.isSubmitting
-    )
-    Spacer(modifier = Modifier.height(12.dp))
-    OutlinedTextField(
-        value = uiState.countryCode,
-        onValueChange = viewModel::onCountryCodeChange,
-        label = { Text("País (código ISO, ej. AR)") },
-        modifier = Modifier.fillMaxWidth(),
-        singleLine = true,
+    V2LocationCityProvincePicker(
+        city = uiState.city,
+        province = uiState.province,
+        onCityChange = viewModel::onCityChange,
+        onProvinceChange = viewModel::onProvinceChange,
+        onLocalityIdChange = viewModel::onHomeLocalityIdChange,
+        initialLocalityId = uiState.homeLocalityId,
         enabled = !uiState.isSubmitting,
-        isError = uiState.fieldErrors.containsKey("countryCode"),
-        supportingText = {
-            uiState.fieldErrors["countryCode"]?.let { Text(it) }
-        }
+        includeZone = false
     )
+    uiState.fieldErrors["province"]?.let { message ->
+        Spacer(modifier = Modifier.height(8.dp))
+        Text(text = message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+    }
     Spacer(modifier = Modifier.height(20.dp))
-    Text("Visibilidad del perfil", style = MaterialTheme.typography.titleSmall)
+    Text("Visibilidad del perfil social", style = MaterialTheme.typography.titleSmall)
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = if (uiState.profileVisibility == ProfileVisibility.PRIVATE) {
+            "Solo los seguidores que apruebes pueden ver tu perfil social privado."
+        } else {
+            "Cualquier persona puede ver tu perfil social y el contenido que publiques como público."
+        },
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    Spacer(modifier = Modifier.height(4.dp))
+    Text(
+        text = "Esta configuración no modifica la privacidad de VitaCora ni la información de tus mascotas.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
     Spacer(modifier = Modifier.height(8.dp))
-    ProfileVisibility.entries.forEach { visibility ->
+    com.comunidapp.app.domain.user.SocialProfileVisibility.selectable.forEach { visibility ->
         VisibilityOption(
             visibility = visibility,
             selected = uiState.profileVisibility == visibility,
@@ -276,14 +359,6 @@ private fun LocationPrivacyStep(
         onCheckedChange = viewModel::onShowPhoneChange,
         enabled = !uiState.isSubmitting
     )
-    Spacer(modifier = Modifier.height(12.dp))
-    PrivacyToggle(
-        title = "Permitir solicitudes de amistad",
-        hint = "Otros usuarios podrán enviarte solicitudes.",
-        checked = uiState.allowFriendRequests,
-        onCheckedChange = viewModel::onAllowFriendRequestsChange,
-        enabled = !uiState.isSubmitting
-    )
 }
 
 @Composable
@@ -293,11 +368,7 @@ private fun VisibilityOption(
     onSelect: () -> Unit,
     enabled: Boolean
 ) {
-    val label = when (visibility) {
-        ProfileVisibility.PUBLIC -> "Público"
-        ProfileVisibility.FRIENDS -> "Solo amigos"
-        ProfileVisibility.PRIVATE -> "Privado"
-    }
+    val label = com.comunidapp.app.domain.user.SocialProfileVisibility.label(visibility)
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -345,11 +416,9 @@ private fun PrivacyToggle(
 @Composable
 private fun AvatarSummaryStep(
     uiState: ProfileOnboardingUiState,
-    viewModel: ProfileOnboardingViewModel
+    viewModel: ProfileOnboardingViewModel,
+    pickImageLauncher: ActivityResultLauncher<PickVisualMediaRequest>
 ) {
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> viewModel.onImageSelected(uri) }
 
     Text(
         text = "Foto y resumen",
@@ -374,6 +443,17 @@ private fun AvatarSummaryStep(
             cornerRadius = 56.dp,
             contentDescription = uiState.displayName
         )
+        if (uiState.pendingImageUri != null) {
+            Spacer(modifier = Modifier.height(12.dp))
+            V2FormImagePreview(
+                imageUrl = uiState.pendingImageUri.toString(),
+                contentDescription = "Vista previa de la foto"
+            )
+        }
+        if (uiState.isProcessingPhoto) {
+            Spacer(modifier = Modifier.height(12.dp))
+            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
+        }
         Spacer(modifier = Modifier.height(12.dp))
         OutlinedButton(
             onClick = {
@@ -381,9 +461,18 @@ private fun AvatarSummaryStep(
                     PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
                 )
             },
-            enabled = !uiState.isSubmitting
+            enabled = !uiState.isSubmitting && !uiState.isProcessingPhoto
         ) {
             Text("Elegir foto (opcional)")
+        }
+        if (uiState.pendingImageUri != null) {
+            Spacer(modifier = Modifier.height(8.dp))
+            TextButton(
+                onClick = { viewModel.onImageSelected(null); viewModel.cancelPhotoEditor() },
+                enabled = !uiState.isSubmitting
+            ) {
+                Text("Quitar foto")
+            }
         }
     }
     Spacer(modifier = Modifier.height(20.dp))
@@ -400,19 +489,15 @@ private fun AvatarSummaryStep(
     Spacer(modifier = Modifier.height(8.dp))
     SummaryRow("Nombre", uiState.displayName)
     SummaryRow("Usuario", "@${uiState.username}")
-    val location = listOf(uiState.city, uiState.province, uiState.countryCode)
-        .filter { it.isNotBlank() }
-        .joinToString(", ")
+            val location = listOf(uiState.city, uiState.province)
+                .filter { it.isNotBlank() }
+                .joinToString(", ")
     if (location.isNotBlank()) {
         SummaryRow("Ubicación", location)
     }
     SummaryRow(
         "Visibilidad",
-        when (uiState.profileVisibility) {
-            ProfileVisibility.PUBLIC -> "Público"
-            ProfileVisibility.FRIENDS -> "Solo amigos"
-            ProfileVisibility.PRIVATE -> "Privado"
-        }
+        com.comunidapp.app.domain.user.SocialProfileVisibility.label(uiState.profileVisibility)
     )
 }
 

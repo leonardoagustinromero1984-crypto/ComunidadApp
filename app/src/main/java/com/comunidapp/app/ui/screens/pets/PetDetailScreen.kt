@@ -19,6 +19,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -26,8 +27,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.PetClinicalRecord
 import com.comunidapp.app.ui.components.ageDisplay
@@ -55,6 +59,7 @@ fun PetDetailScreen(
     viewModel: PetDetailViewModel = viewModel()
 ) {
     val pet by viewModel.pet.collectAsState()
+    val photoDisplayUrl by viewModel.photoDisplayUrl.collectAsState()
     val isPetLoading by viewModel.isPetLoading.collectAsState()
     val petLoadError by viewModel.petLoadError.collectAsState()
     val statusReasonCode by viewModel.statusReasonCode.collectAsState()
@@ -81,6 +86,17 @@ fun PetDetailScreen(
     var showAdminMenu by remember { mutableStateOf(false) }
     var deceasedReason by remember { mutableStateOf("") }
     val healthEditable = access?.canManageHealth == true || canManage
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.loadPet()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
 
     LaunchedEffect(deleteSuccess) {
         if (deleteSuccess) {
@@ -252,12 +268,15 @@ fun PetDetailScreen(
                         .padding(bottom = 28.dp)
                 ) {
                     PetHero(
-                        imageUrl = data.photoUrl,
+                        imageUrl = photoDisplayUrl ?: data.photoUrl,
                         petName = data.name
                     )
                     Spacer(modifier = Modifier.height(18.dp))
                     PetIdentityBlock(
-                        name = data.name,
+                        name = com.comunidapp.app.domain.vitacora.import.VitacoraNumberQuery.petTitle(
+                            data.name,
+                            data.publicVitacoraNumber
+                        ),
                         subtitle = petIdentitySubtitle(data),
                         ageLabel = data.ageDisplay().takeIf { it.isNotBlank() },
                         status = data.status,
@@ -316,7 +335,7 @@ fun PetDetailScreen(
                         OutlinedButton(
                             onClick = { onNavigateToM28Proposals(data.id) },
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                        ) { Text("Propuestas Pasaporte") }
+                        ) { Text("Propuestas VitaCora") }
                         OutlinedButton(
                             onClick = { onNavigateToM28Grants(data.id) },
                             modifier = Modifier.fillMaxWidth().padding(top = 8.dp)

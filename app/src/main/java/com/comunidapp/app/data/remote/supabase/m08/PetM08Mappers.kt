@@ -38,7 +38,7 @@ object PetM08Mappers {
         name = name,
         photoUrl = photoUrl,
         species = enumValueOrDefault(species, PetSpecies.OTHER),
-        sex = enumValueOrDefault(sex, PetSex.UNKNOWN),
+        sex = parsePetSex(sex),
         ageYears = ageYears,
         ageMonths = ageMonths,
         size = enumValueOrDefault(size, PetSize.MEDIUM),
@@ -62,6 +62,9 @@ object PetM08Mappers {
         lastVetVisit = lastVetVisit,
         healthNotes = healthNotes,
         weightKg = weightKg,
+        allergies = allergies,
+        medications = medications,
+        conditions = conditions,
         color = color,
         breed = breed,
         personality = personality,
@@ -84,7 +87,9 @@ object PetM08Mappers {
         archivedAt = archivedAt.toEpochMillis(),
         avatarFileAssetId = avatarFileAssetId,
         microchipNormalized = microchipNormalized
-            ?: MicrochipNormalizer.normalizeOrNull(microchipId)
+            ?: MicrochipNormalizer.normalizeOrNull(microchipId),
+        publicCode = publicCode,
+        publicVitacoraNumber = publicVitacoraNumber
     )
 
     fun AccessiblePetM08Row.toPet(): Pet = toPetM08Row().toPet()
@@ -131,7 +136,7 @@ object PetM08Mappers {
     fun Pet.toUpdateProfileParams(): UpdatePetProfileParams = UpdatePetProfileParams(
         petId = id,
         name = name.trim(),
-        species = species.name,
+        species = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toRpcCode(species.name),
         breed = breed,
         sex = sex.name,
         size = size.name,
@@ -157,19 +162,43 @@ object PetM08Mappers {
         sterilized = sterilized?.name,
         lastVetVisit = lastVetVisit,
         healthNotes = healthNotes,
-        weightKg = weightKg
+        weightKg = weightKg,
+        allergies = allergies,
+        medications = medications,
+        conditions = conditions
     )
 
-    fun Pet.toCreateParams(organizationId: String? = null): CreatePetWithPrincipalParams =
-        CreatePetWithPrincipalParams(
+    fun Pet.toCreateParams(organizationId: String? = null): CreatePetWithPrincipalParams {
+        val birth = if (birthPrecision != "UNKNOWN" || !birthDate.isNullOrBlank()) {
+            com.comunidapp.app.domain.pets.PetBirth(
+                precision = runCatching {
+                    com.comunidapp.app.domain.pets.PetBirthPrecision.valueOf(birthPrecision)
+                }.getOrDefault(com.comunidapp.app.domain.pets.PetBirthPrecision.UNKNOWN),
+                birthDate = birthDate?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() },
+                birthYear = birthYear,
+                birthMonth = birthMonth,
+                estimatedAgeMonths = estimatedAgeMonths,
+                estimatedAsOf = estimatedAsOf?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() }
+            )
+        } else {
+            com.comunidapp.app.domain.pets.PetBirth.estimatedFromDisplayAge(ageYears, ageMonths)
+        }
+        return CreatePetWithPrincipalParams(
             name = name.trim(),
-            species = species.name,
+            species = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toRpcCode(species.name),
             sex = sex.name,
             size = size.name,
             description = description,
             organizationId = organizationId?.takeIf { it.isNotBlank() },
-            microchipId = microchipId
+            microchipId = microchipId,
+            birthPrecision = birth.precision.name,
+            birthDate = birth.birthDate?.toString(),
+            birthYear = birth.birthYear,
+            birthMonth = birth.birthMonth,
+            estimatedAgeMonths = birth.estimatedAgeMonths,
+            estimatedAsOf = birth.estimatedAsOf?.toString()
         )
+    }
 
     fun PetM08Row.toAggregate(): PetAggregate {
         val principal = when {
@@ -246,7 +275,8 @@ object PetM08Mappers {
             acceptedAtEpochMs = acceptedAt.toEpochMillis(),
             revokedAtEpochMs = revokedAt.toEpochMillis(),
             revokeReason = reason,
-            createdAtEpochMs = createdAt.toEpochMillis() ?: 0L
+            createdAtEpochMs = createdAt.toEpochMillis() ?: 0L,
+            holderDisplayName = displayName
         )
     }
 
@@ -323,7 +353,9 @@ object PetM08Mappers {
         deceasedAt = deceasedAt,
         archivedAt = archivedAt,
         microchipNormalized = microchipNormalized,
-        avatarFileAssetId = avatarFileAssetId
+        avatarFileAssetId = avatarFileAssetId,
+        publicCode = publicCode,
+        publicVitacoraNumber = publicVitacoraNumber
     )
 
     private fun PetM08Row.principalPersonHint(): String? = ownerId
@@ -336,6 +368,16 @@ object PetM08Mappers {
                 PetPrincipalHolder.Organization(OrganizationId(organizationId))
             else -> PetPrincipalHolder.Person("unknown")
         }
+
+    private fun parsePetSex(raw: String?): PetSex {
+        val n = raw?.trim()?.uppercase().orEmpty()
+        return when (n) {
+            "MALE", "MACHO" -> PetSex.MALE
+            "FEMALE", "HEMBRA" -> PetSex.FEMALE
+            "UNKNOWN", "" -> PetSex.UNKNOWN
+            else -> enumValueOrDefault(raw, PetSex.UNKNOWN)
+        }
+    }
 
     private fun lifecycleStatusOf(raw: String): PetLifecycleStatus =
         runCatching { PetLifecycleStatus.valueOf(raw.trim().uppercase()) }

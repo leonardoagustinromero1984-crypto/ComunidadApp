@@ -158,8 +158,11 @@ data class OrganizationTeamUiState(
     val canRemove: Boolean = false,
     val canTransferOwnership: Boolean = false,
     val ownerCount: Int = 0,
-    val inviteEmail: String = "",
+    val personQuery: String = "",
+    val personHits: List<com.comunidapp.app.domain.organization.PersonSearchHit> = emptyList(),
+    val selectedPerson: com.comunidapp.app.domain.organization.PersonSearchHit? = null,
     val inviteRole: OrganizationRoleCode = OrganizationRoleCode.MEMBER,
+    val selectedPermissions: Set<String> = emptySet(),
     val isInviting: Boolean = false,
     val lastInviteTokenHint: String? = null,
     val errorMessage: String? = null,
@@ -239,8 +242,49 @@ class OrganizationTeamViewModel(
         }
     }
 
-    fun onInviteEmailChange(value: String) =
-        _uiState.update { it.copy(inviteEmail = value, errorMessage = null) }
+    fun onInviteEmailChange(value: String) = Unit
+
+    fun onPersonQueryChange(value: String) {
+        _uiState.update { it.copy(personQuery = value, errorMessage = null) }
+        if (value.trim().length < 2) {
+            _uiState.update { it.copy(personHits = emptyList()) }
+            return
+        }
+        viewModelScope.launch {
+            val hits = when (val repo = invitationRepository) {
+                is com.comunidapp.app.data.repository.CanonicalOrganizationInvitationRepository ->
+                    repo.searchPersons(value.trim())
+                else -> userRepository.searchUsers(
+                    value.trim(),
+                    authRepository.getCurrentUser()?.id.orEmpty()
+                ).map {
+                    com.comunidapp.app.domain.organization.PersonSearchHit(
+                        userId = it.id,
+                        displayName = it.displayName ?: it.name,
+                        username = it.username.orEmpty()
+                    )
+                }
+            }
+            _uiState.update { it.copy(personHits = hits) }
+        }
+    }
+
+    fun selectPerson(hit: com.comunidapp.app.domain.organization.PersonSearchHit) {
+        _uiState.update {
+            it.copy(selectedPerson = hit, personQuery = hit.displayName, personHits = emptyList())
+        }
+    }
+
+    fun togglePermission(code: String) {
+        _uiState.update { state ->
+            val next = if (code in state.selectedPermissions) {
+                state.selectedPermissions - code
+            } else {
+                state.selectedPermissions + code
+            }
+            state.copy(selectedPermissions = next)
+        }
+    }
 
     fun onInviteRoleChange(value: OrganizationRoleCode) =
         _uiState.update { it.copy(inviteRole = value, errorMessage = null) }
@@ -248,37 +292,36 @@ class OrganizationTeamViewModel(
     fun inviteMember() {
         val state = _uiState.value
         if (!state.canInvite || state.isInviting) return
-        val email = state.inviteEmail.trim()
-        if (email.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Ingresá un email") }
+        val person = state.selectedPerson
+        if (person == null) {
+            _uiState.update { it.copy(errorMessage = "Elegí una persona de LeoVer") }
             return
         }
-        if (!OrganizationInvitationRules.canInviteRole(state.inviteRole)) {
+        if (!com.comunidapp.app.domain.organization.OrgInvitePolicy.canInviteRole(state.inviteRole)) {
             _uiState.update { it.copy(errorMessage = "No se puede invitar a ese rol") }
             return
         }
         viewModelScope.launch {
             _uiState.update { it.copy(isInviting = true, errorMessage = null) }
             val authUser = authRepository.getCurrentUser() ?: return@launch
-            val token = OrganizationInvitationToken.fromSecureRandom(
-                UUID.randomUUID().toString().replace("-", "") + UUID.randomUUID().toString()
-            )
             invitationRepository.create(
                 CreateOrganizationInvitationCommand(
                     organizationId = OrganizationId(organizationId),
                     invitedRole = state.inviteRole,
                     invitedByUserId = authUser.id,
-                    targetEmailHint = email,
-                    expiresAtEpochMs = System.currentTimeMillis() + 7L * 86_400_000L,
-                    token = token
+                    targetUserId = person.userId,
+                    permissionCodes = com.comunidapp.app.domain.organization.OrgInvitePolicy
+                        .normalizeMemberPermissions(state.selectedPermissions),
+                    expiresAtEpochMs = System.currentTimeMillis() + 7L * 86_400_000L
                 )
-            ).onSuccess { invitation ->
+            ).onSuccess {
                 _uiState.update {
                     it.copy(
                         isInviting = false,
-                        inviteEmail = "",
-                        successMessage = "Invitación enviada",
-                        lastInviteTokenHint = invitation.token?.fingerprint()
+                        selectedPerson = null,
+                        personQuery = "",
+                        selectedPermissions = emptySet(),
+                        successMessage = "Invitación enviada"
                     )
                 }
                 refresh()
@@ -286,7 +329,11 @@ class OrganizationTeamViewModel(
                 _uiState.update {
                     it.copy(
                         isInviting = false,
-                        errorMessage = error.message ?: "No se pudo invitar"
+                        errorMessage = when (error.message) {
+                            "ALREADY_MEMBER" -> "Esa persona ya forma parte del equipo"
+                            "PENDING_INVITE_EXISTS" -> "Ya hay una invitación pendiente"
+                            else -> error.message ?: "No se pudo invitar"
+                        }
                     )
                 }
             }

@@ -4,22 +4,29 @@ enum class ServiceCategory {
     VET,
     TRAINER,
     WALKER,
-    SHOP;
+    SHOP,
+    DAYCARE,
+    GROOMING,
+    CAREGIVER,
+    PET_FRIENDLY;
 
     fun toCommunityCategory(): CommunityCategory = when (this) {
         VET -> CommunityCategory.VET
         TRAINER -> CommunityCategory.TRAINER
         WALKER -> CommunityCategory.WALKER
         SHOP -> CommunityCategory.SHOP
+        DAYCARE -> CommunityCategory.DAYCARE
+        GROOMING -> CommunityCategory.GROOMING
+        CAREGIVER -> CommunityCategory.CAREGIVER
+        PET_FRIENDLY -> CommunityCategory.PET_FRIENDLY
     }
 
     companion object {
-        fun fromAccountType(accountType: AccountType): ServiceCategory? = when (accountType) {
-            AccountType.VET -> VET
-            AccountType.TRAINER -> TRAINER
-            AccountType.WALKER -> WALKER
-            AccountType.SHOP -> SHOP
-            else -> null
+        @Deprecated("AccountType is LEGACY. Never derive service category from account type.")
+        fun fromAccountType(accountType: AccountType): ServiceCategory? {
+            @Suppress("UNUSED_PARAMETER")
+            val ignored = accountType
+            return null
         }
 
         fun fromCommunityCategory(category: CommunityCategory): ServiceCategory? = when (category) {
@@ -27,6 +34,10 @@ enum class ServiceCategory {
             CommunityCategory.TRAINER -> TRAINER
             CommunityCategory.WALKER -> WALKER
             CommunityCategory.SHOP -> SHOP
+            CommunityCategory.DAYCARE -> DAYCARE
+            CommunityCategory.GROOMING -> GROOMING
+            CommunityCategory.CAREGIVER -> CAREGIVER
+            CommunityCategory.PET_FRIENDLY -> PET_FRIENDLY
             else -> null
         }
 
@@ -48,7 +59,18 @@ data class ServiceProfile(
     val scheduleText: String? = null,
     val priceFrom: Double? = null,
     val acceptsBookings: Boolean = true,
-    val active: Boolean = true
+    val slotIntervalMinutes: Int = 30,
+    val active: Boolean = true,
+    val provinceId: String? = null,
+    val localityId: String? = null,
+    val localityIds: List<String> = emptyList(),
+    val rating: Double? = null,
+    val reviewCount: Int? = null,
+    val distanceKm: Double? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val geoIsPublicPremises: Boolean = false,
+    val weeklyHours: List<com.comunidapp.app.domain.schedule.WeeklyHoursDay> = emptyList()
 ) {
     fun toCommunityListing(): CommunityListing = CommunityListing(
         id = id,

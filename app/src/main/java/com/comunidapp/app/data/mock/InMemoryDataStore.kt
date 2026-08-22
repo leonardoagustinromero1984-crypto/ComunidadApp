@@ -104,11 +104,16 @@ object InMemoryDataStore {
     private val _products = MutableStateFlow<List<ShopProduct>>(emptyList())
     private val _payments = MutableStateFlow<List<PaymentIntent>>(emptyList())
     private val _clinicalRecords = MutableStateFlow<List<PetClinicalRecord>>(emptyList())
-    private val storeScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private val storeScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    val activeStories: StateFlow<List<FeedPost>> = _feedPosts
+        .map { posts -> posts.filter { it.isActiveStory() } }
+        .stateIn(storeScope, SharingStarted.Eagerly, MockData.feedPosts.filter { it.isActiveStory() })
 
     fun touchFeed() {
         _feedPosts.update { it.toList() }
     }
+
+    fun touchStories() = touchFeed()
 
     fun addFeedPost(post: FeedPost) {
         _feedPosts.update { listOf(post) + it }
@@ -234,6 +239,26 @@ object InMemoryDataStore {
         _feedPosts.update { posts ->
             posts.map { post ->
                 if (post.id == postId) post.copy(commentCount = post.commentCount + 1) else post
+            }
+        }
+        return Result.success(Unit)
+    }
+
+    fun deleteOwnComment(commentId: String): Result<Unit> {
+        var postId: String? = null
+        _comments.update { map ->
+            map.mapValues { (id, list) ->
+                val next = list.filterNot { it.id == commentId }
+                if (next.size != list.size) postId = id
+                next
+            }
+        }
+        postId?.let { target ->
+            _feedPosts.update { posts ->
+                posts.map { post ->
+                    if (post.id == target) post.copy(commentCount = (post.commentCount - 1).coerceAtLeast(0))
+                    else post
+                }
             }
         }
         return Result.success(Unit)

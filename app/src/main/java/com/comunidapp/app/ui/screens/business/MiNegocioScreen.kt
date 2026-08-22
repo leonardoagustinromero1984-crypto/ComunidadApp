@@ -13,11 +13,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -35,16 +33,34 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.BookingStatus
 import com.comunidapp.app.data.model.PaymentIntent
 import com.comunidapp.app.data.model.PaymentIntentStatus
 import com.comunidapp.app.data.model.ServiceBooking
 import com.comunidapp.app.data.model.ShopProduct
+import androidx.compose.foundation.layout.height
+import com.comunidapp.app.domain.map.LeoVerGeoPoint
+import com.comunidapp.app.domain.map.LeoVerMapCameraState
+import com.comunidapp.app.domain.map.LeoVerMapPolicy
+import com.comunidapp.app.domain.schedule.ProviderWeeklySchedule
+import com.comunidapp.app.ui.components.leo.LeoVerWeeklyHoursEditor
+import com.comunidapp.app.ui.map.LeoVerMap
 import com.comunidapp.app.domain.RolePermissions
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.domain.canonical.CanonicalProviderWrite
+import com.comunidapp.app.domain.schedule.AppointmentSlotPolicy
 import com.comunidapp.app.ui.components.PetImage
-import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.leo.LeoValidationSummary
+import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.LeoSectionTitle
 import com.comunidapp.app.viewmodel.MiNegocioViewModel
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -59,10 +75,9 @@ fun MiNegocioScreen(
     val user by viewModel.currentUser.collectAsState()
     val bookings by viewModel.bookings.collectAsState()
     val products by viewModel.products.collectAsState()
-    val payments by viewModel.payments.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    val accountType = user?.accountType
-    val title = accountType?.let { RolePermissions.businessPanelTitle(it) } ?: "Mi negocio"
+    val activeContext by com.comunidapp.app.domain.context.OperationalContextProvider.active.collectAsState()
+    val title = RolePermissions.businessPanelTitle(activeContext)
 
     LaunchedEffect(uiState.message) {
         uiState.message?.let {
@@ -72,7 +87,13 @@ fun MiNegocioScreen(
     }
 
     Scaffold(
-        topBar = { ComunidappTopBar(title = title) },
+        containerColor = BrandBackground,
+        topBar = {
+            LeoTopAppBar(
+                title = title,
+                subtitle = "Tu ficha y agenda en Comunidad"
+            )
+        },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         if (user == null) {
@@ -80,11 +101,11 @@ fun MiNegocioScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(24.dp),
+                    .padding(LeoDimens.SpaceSection),
                 verticalArrangement = Arrangement.Center,
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Text("Iniciá sesión para ver tu negocio")
+                Text("Iniciá sesión para ver tu negocio", color = BrandText)
             }
             return@Scaffold
         }
@@ -92,46 +113,37 @@ fun MiNegocioScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = padding.calculateBottomPadding() + 8.dp
+                start = LeoDimens.SpaceMd,
+                end = LeoDimens.SpaceMd,
+                top = padding.calculateTopPadding() + LeoDimens.SpaceSm,
+                bottom = padding.calculateBottomPadding() + LeoDimens.SpaceSm
             ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
         ) {
             item {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-                ) {
+                V2SurfaceCard {
                     Column(
-                        modifier = Modifier.padding(20.dp),
+                        modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
                         PetImage(
-                            imageUrl = user!!.profileImageUrl ?: uiState.profile?.photoUrl,
+                            imageUrl = uiState.profile?.photoUrl ?: user?.profileImageUrl,
                             modifier = Modifier.size(88.dp),
-                            contentDescription = user!!.name
+                            contentDescription = uiState.name.ifBlank { title }
                         )
                         Text(
-                            text = user!!.name,
-                            style = MaterialTheme.typography.headlineSmall,
+                            text = uiState.name.ifBlank { title },
+                            style = LeoSectionTitle,
+                            color = BrandText,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(top = 12.dp)
+                            modifier = Modifier.padding(top = LeoDimens.SpaceCompact)
                         )
                         Text(
-                            text = user!!.accountType.toDisplayName(),
-                            style = MaterialTheme.typography.labelLarge,
-                            color = MaterialTheme.colorScheme.primary,
-                            modifier = Modifier.padding(top = 4.dp)
+                            text = com.comunidapp.app.domain.context.ContextHumanLabels.shortLabel(activeContext),
+                            style = LeoCaption,
+                            color = BrandTextSecondary,
+                            modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
                         )
-                        OutlinedButton(
-                            onClick = onNavigateToEditProfile,
-                            modifier = Modifier.padding(top = 16.dp)
-                        ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                            Text(" Editar perfil", modifier = Modifier.padding(start = 4.dp))
-                        }
                     }
                 }
             }
@@ -139,13 +151,14 @@ fun MiNegocioScreen(
             item {
                 Text(
                     text = "Ficha en Comunidad",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = LeoSectionTitle,
+                    color = BrandText,
                     fontWeight = FontWeight.SemiBold
                 )
                 Text(
-                    text = "Publicá tu negocio para aparecer en el directorio y recibir turnos.",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = "Publicá tu negocio para aparecer en el directorio. Si habilitás turnos online, también podrán reservarte desde LeoVer.",
+                    style = LeoCaption,
+                    color = BrandTextSecondary
                 )
             }
             item {
@@ -157,11 +170,9 @@ fun MiNegocioScreen(
                 )
             }
             item {
-                OutlinedTextField(
+                V2LocationStringPicker(
                     value = uiState.location,
-                    onValueChange = viewModel::updateLocation,
-                    label = { Text("Ubicación") },
-                    modifier = Modifier.fillMaxWidth()
+                    onValueChange = viewModel::updateLocation
                 )
             }
             item {
@@ -177,17 +188,38 @@ fun MiNegocioScreen(
                 OutlinedTextField(
                     value = uiState.contactInfo,
                     onValueChange = viewModel::updateContact,
-                    label = { Text("Contacto (tel / email / IG)") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = { Text("Teléfono de contacto") },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true
                 )
             }
             item {
-                OutlinedTextField(
-                    value = uiState.scheduleText,
-                    onValueChange = viewModel::updateSchedule,
-                    label = { Text("Horarios") },
-                    modifier = Modifier.fillMaxWidth()
+                LeoVerWeeklyHoursEditor(
+                    schedule = ProviderWeeklySchedule(uiState.weeklyHours),
+                    onChange = { viewModel.updateWeeklyHours(it.days) }
                 )
+            }
+            item {
+                val storage = uiState.profile?.category?.let { CanonicalProviderWrite.storageCategory(it) }.orEmpty()
+                val fixed = LeoVerMapPolicy.isFixedPublicPremisesCategory(storage)
+                if (fixed) {
+                    Text("Ubicación en el mapa", fontWeight = FontWeight.SemiBold)
+                    Text("Mové el mapa y tocá para confirmar el pin. Esa coordenada es la autoridad geográfica.")
+                    LeoVerMap(
+                        markers = emptyList(),
+                        modifier = Modifier.fillMaxWidth().height(220.dp),
+                        camera = LeoVerMapCameraState.cameraOrFallback(uiState.pinLat, uiState.pinLng),
+                        pinMode = true,
+                        onMapClick = { point ->
+                            viewModel.updateMapPin(point.latitude, point.longitude, publicPremises = true)
+                        }
+                    )
+                    if (uiState.pinLat != null) {
+                        Text("Ubicación confirmada")
+                    }
+                } else if (storage.isNotBlank()) {
+                    Text("Los servicios móviles no publican la coordenada del domicilio.")
+                }
             }
             item {
                 OutlinedTextField(
@@ -203,8 +235,20 @@ fun MiNegocioScreen(
                         checked = uiState.acceptsBookings,
                         onCheckedChange = viewModel::updateAcceptsBookings
                     )
-                    Text("Aceptar turnos online")
+                    Text("¿Aceptás turnos online?")
                 }
+            }
+            if (uiState.acceptsBookings) {
+                item {
+                    Text("Intervalo de turnos", fontWeight = FontWeight.SemiBold)
+                    com.comunidapp.app.ui.components.leo.LeoVerIntervalChipRow(
+                        selectedMinutes = uiState.slotIntervalMinutes,
+                        onSelect = viewModel::updateSlotInterval
+                    )
+                }
+            }
+            item {
+                LeoValidationSummary(summary = uiState.missingRequirements)
             }
             item {
                 Button(
@@ -216,13 +260,14 @@ fun MiNegocioScreen(
                 }
             }
 
-            if (accountType == AccountType.SHOP) {
+            if (activeContext is com.comunidapp.app.domain.context.OperationalContext.Shop) {
                 item {
                     Text(
                         text = "Catálogo de productos",
-                        style = MaterialTheme.typography.titleMedium,
+                        style = LeoSectionTitle,
+                        color = BrandText,
                         fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 8.dp)
+                        modifier = Modifier.padding(top = LeoDimens.SpaceSm)
                     )
                 }
                 item {
@@ -262,8 +307,8 @@ fun MiNegocioScreen(
                     item {
                         Text(
                             text = "Todavía no cargaste productos.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = LeoCaption,
+                            color = BrandTextSecondary
                         )
                     }
                 } else {
@@ -273,45 +318,23 @@ fun MiNegocioScreen(
                 }
             }
 
-            item {
-                Text(
-                    text = "Pagos",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-            }
-            if (payments.isEmpty()) {
-                item {
-                    Text(
-                        text = "No hay intenciones de pago todavía.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            } else {
-                items(payments, key = { it.id }) { payment ->
-                    PaymentCard(
-                        payment = payment,
-                        onMarkPaid = { viewModel.markPaymentPaid(payment.id) }
-                    )
-                }
-            }
+            // V1: no customer checkout / generic "Pagos" in daycare operations.
 
             item {
                 Text(
                     text = "Agenda de turnos",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = LeoSectionTitle,
+                    color = BrandText,
                     fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.padding(top = LeoDimens.SpaceSm)
                 )
             }
             if (bookings.isEmpty()) {
                 item {
                     Text(
                         text = "Todavía no tenés turnos solicitados.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = LeoCaption,
+                        color = BrandTextSecondary
                     )
                 }
             } else {
@@ -330,19 +353,18 @@ fun MiNegocioScreen(
 
 @Composable
 private fun ProductCard(product: ShopProduct) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = product.name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "$${product.price.toInt()} · Stock: ${product.stock}",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+    V2SurfaceCard {
+        Text(
+            text = product.name,
+            style = LeoCardTitle,
+            color = BrandText,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "$${product.price.toInt()} · Stock: ${product.stock}",
+            style = LeoCaption,
+            color = BrandTextSecondary
+        )
     }
 }
 
@@ -351,21 +373,21 @@ private fun PaymentCard(
     payment: PaymentIntent,
     onMarkPaid: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = "$${payment.amount.toInt()} ${payment.currency}",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "Estado: ${payment.status.name} · ${payment.provider}",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            if (payment.status != PaymentIntentStatus.PAID) {
-                TextButton(onClick = onMarkPaid) { Text("Marcar pagado") }
-            }
+    V2SurfaceCard {
+        Text(
+            text = "$${payment.amount.toInt()} ${payment.currency}",
+            style = LeoCardTitle,
+            color = BrandText,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = "Estado: ${payment.status.name} · ${payment.provider}",
+            style = LeoCaption,
+            color = BrandTextSecondary,
+            modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
+        )
+        if (payment.status != PaymentIntentStatus.PAID) {
+            TextButton(onClick = onMarkPaid) { Text("Marcar pagado") }
         }
     }
 }
@@ -380,43 +402,44 @@ private fun BookingCard(
     val dateLabel = remember(booking.scheduledAt) {
         SimpleDateFormat("dd/MM HH:mm", Locale.getDefault()).format(Date(booking.scheduledAt))
     }
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    V2SurfaceCard {
+        Text(
+            text = booking.clientName,
+            style = LeoCardTitle,
+            color = BrandText,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = dateLabel,
+            style = LeoCaption,
+            color = BrandText
+        )
+        Text(
+            text = "Estado: ${booking.status.name} · Pago: ${booking.paymentStatus.name}",
+            style = LeoCaption,
+            color = BrandTextSecondary,
+            modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
+        )
+        if (booking.notes.isNotBlank()) {
             Text(
-                text = booking.clientName,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
+                text = booking.notes,
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
             )
-            Text(
-                text = dateLabel,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = "Estado: ${booking.status.name} · Pago: ${booking.paymentStatus.name}",
-                style = MaterialTheme.typography.labelMedium,
-                modifier = Modifier.padding(top = 4.dp)
-            )
-            if (booking.notes.isNotBlank()) {
-                Text(
-                    text = booking.notes,
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
+        }
+        Row(
+            modifier = Modifier.padding(top = LeoDimens.SpaceSm),
+            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceMicro)
+        ) {
+            if (booking.status == BookingStatus.PENDING) {
+                TextButton(onClick = onConfirm) { Text("Confirmar") }
             }
-            Row(
-                modifier = Modifier.padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(4.dp)
-            ) {
-                if (booking.status == BookingStatus.PENDING) {
-                    TextButton(onClick = onConfirm) { Text("Confirmar") }
-                }
-                if (booking.status == BookingStatus.CONFIRMED) {
-                    TextButton(onClick = onComplete) { Text("Completar") }
-                }
-                if (booking.status == BookingStatus.PENDING || booking.status == BookingStatus.CONFIRMED) {
-                    TextButton(onClick = onCancel) { Text("Cancelar") }
-                }
+            if (booking.status == BookingStatus.CONFIRMED) {
+                TextButton(onClick = onComplete) { Text("Completar") }
+            }
+            if (booking.status == BookingStatus.PENDING || booking.status == BookingStatus.CONFIRMED) {
+                TextButton(onClick = onCancel) { Text("Cancelar") }
             }
         }
     }

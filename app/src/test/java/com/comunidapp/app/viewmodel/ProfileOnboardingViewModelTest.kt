@@ -116,6 +116,7 @@ class ProfileOnboardingViewModelTest {
 
         vm.onDisplayNameChange("María Test")
         vm.onUsernameChange("maria.nueva")
+        vm.onBirthDateChange("1990-01-15")
         advanceTimeBy(401)
         advanceUntilIdle()
 
@@ -125,8 +126,9 @@ class ProfileOnboardingViewModelTest {
         advanceUntilIdle()
         assertEquals(OnboardingStep.LOCATION_PRIVACY, vm.uiState.value.step)
 
-        vm.onCityChange("Buenos Aires")
-        vm.onProvinceChange("CABA")
+        vm.onCityChange("Adrogué")
+        vm.onProvinceChange("Buenos Aires")
+        vm.onHomeLocalityIdChange("loc-ar-loc-adrogué")
         vm.onCountryCodeChange("AR")
         vm.goNext()
         advanceUntilIdle()
@@ -141,5 +143,47 @@ class ProfileOnboardingViewModelTest {
         val profile = userRepo.getUser(MockData.currentUser.id)
         assertEquals("maria.nueva", profile?.username)
         assertEquals("COMPLETED", profile?.onboardingStatus)
+        assertEquals("loc-ar-loc-adrogué", profile?.homeLocalityId)
+    }
+
+    @Test
+    fun existing_signup_username_skips_identity_and_is_not_reasked() = runTest(testDispatcher) {
+        MockUserStore.upsert(
+            MockData.currentUser.copy(
+                username = "leonardo",
+                displayName = "Leonardo",
+                onboardingStatus = "IN_PROGRESS",
+                birthDate = "1990-01-15",
+                homeLocalityId = null
+            )
+        )
+        authRepo.login(MockData.currentUser.email, MockAuthDatabase.DEMO_PASSWORD)
+        val vm = ProfileOnboardingViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+
+        assertEquals(OnboardingStep.LOCATION_PRIVACY, vm.uiState.value.step)
+        assertTrue(vm.uiState.value.usernameLocked)
+        assertEquals("leonardo", vm.uiState.value.username)
+        vm.onUsernameChange("otro.user")
+        assertEquals("leonardo", vm.uiState.value.username)
+    }
+
+    @Test
+    fun location_step_requires_province_and_locality() = runTest(testDispatcher) {
+        MockUserStore.upsert(
+            MockData.currentUser.copy(
+                username = "leonardo",
+                displayName = "Leonardo",
+                onboardingStatus = "IN_PROGRESS",
+                birthDate = "1990-01-15"
+            )
+        )
+        authRepo.login(MockData.currentUser.email, MockAuthDatabase.DEMO_PASSWORD)
+        val vm = ProfileOnboardingViewModel(authRepo, userRepo)
+        advanceUntilIdle()
+        vm.goNext()
+        advanceUntilIdle()
+        assertEquals(OnboardingStep.LOCATION_PRIVACY, vm.uiState.value.step)
+        assertTrue(vm.uiState.value.fieldErrors.containsKey("province"))
     }
 }

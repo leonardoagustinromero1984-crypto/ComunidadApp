@@ -43,6 +43,21 @@ insert into public.role_assignment_history (
 4. Verificar: `select public.get_my_platform_roles();` con sesión del operador.
 5. Auditar la operación (fecha, operador, ticket).
 
+## Compatibilidad M02 / 018
+
+Sigue vigente sobre `018_platform_roles_permissions.sql`:
+
+- `public.ensure_default_user_role(uuid)`
+- `public.user_has_active_role(uuid, text)`
+- `public.has_permission(text)` — exige sesión (`auth.uid()`); en SQL de operador verificar permisos por join a `user_role_assignments` + `role_permissions`
+- `public.assign_platform_role(...)` **no** sirve para el primer SUPERADMIN: requiere un actor autenticado ya administrador
+
+El primer SUPERADMIN sigue siendo el insert manual de arriba.
+
+Para la limpieza selectiva QA (`scripts/dev-clean-qa-data.sql`) el UUID se pasa por GUC de sesión `leover.qa_clean.real_admin_user_id`. **No** hardcodear email ni UUID en el repositorio.
+
+Hasta que exista al menos un ADMIN/SUPERADMIN real, **no** eliminar el ADMIN QA `@test.local`.
+
 ## Prohibiciones
 
 - No versionar email, UUID ni secretos.

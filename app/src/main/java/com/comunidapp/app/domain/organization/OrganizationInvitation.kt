@@ -6,6 +6,7 @@ enum class OrganizationInvitationStatus {
     PENDING,
     ACCEPTED,
     DECLINED,
+    REJECTED,
     REVOKED,
     EXPIRED
 }
@@ -39,6 +40,10 @@ data class OrganizationInvitation(
     val invitedByUserId: String,
     val targetUserId: String? = null,
     val targetEmailHint: String? = null,
+    val permissionCodes: List<String> = emptyList(),
+    val organizationName: String? = null,
+    val organizationCapability: String? = null,
+    val inviterName: String? = null,
     val expiresAtEpochMs: Long,
     val acceptedAtEpochMs: Long? = null,
     val revokedAtEpochMs: Long? = null,
@@ -52,8 +57,9 @@ data class CreateOrganizationInvitationCommand(
     val invitedByUserId: String,
     val targetUserId: String? = null,
     val targetEmailHint: String? = null,
+    val permissionCodes: List<String> = emptyList(),
     val expiresAtEpochMs: Long,
-    val token: OrganizationInvitationToken
+    val token: OrganizationInvitationToken? = null
 )
 
 object OrganizationInvitationRules {

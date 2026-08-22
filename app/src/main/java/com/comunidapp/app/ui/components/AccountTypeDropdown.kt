@@ -15,6 +15,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.comunidapp.app.data.model.AccountType
 
+@Deprecated("AccountType is LEGACY. Do not collect exclusive human identity.")
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AccountTypeDropdown(

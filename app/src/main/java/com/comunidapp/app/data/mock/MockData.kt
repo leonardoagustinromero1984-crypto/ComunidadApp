@@ -500,12 +500,16 @@ object MockData {
             contactInfo = listing.contactInfo,
             photoUrl = listing.photoUrl,
             tags = listing.tags,
-            scheduleText = "Lun a Vie 9–18 hs",
+            scheduleText = null,
             priceFrom = when (category) {
                 ServiceCategory.VET -> 15000.0
                 ServiceCategory.TRAINER -> 12000.0
                 ServiceCategory.WALKER -> 5000.0
-                ServiceCategory.SHOP -> null
+                ServiceCategory.SHOP,
+                ServiceCategory.DAYCARE,
+                ServiceCategory.GROOMING,
+                ServiceCategory.CAREGIVER,
+                ServiceCategory.PET_FRIENDLY -> null
             },
             acceptsBookings = category != ServiceCategory.SHOP
         )

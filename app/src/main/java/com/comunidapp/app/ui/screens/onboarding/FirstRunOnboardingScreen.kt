@@ -40,9 +40,13 @@ import com.comunidapp.app.domain.onboarding.OnboardingIntent
 import com.comunidapp.app.domain.onboarding.OnboardingIntentRoutes
 import com.comunidapp.app.domain.onboarding.OnboardingStep
 import com.comunidapp.app.ui.components.BrandLogo
-import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.FirstRunOnboardingNavEffect
 import com.comunidapp.app.viewmodel.FirstRunOnboardingViewModel
 
@@ -79,9 +83,10 @@ fun FirstRunOnboardingScreen(
     val showBack = step != OnboardingStep.WELCOME && step != OnboardingStep.COMPLETION
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
             if (step != OnboardingStep.WELCOME) {
-                ComunidappTopBar(
+                LeoTopAppBar(
                     title = "LeoVer",
                     showBackButton = showBack,
                     onBackClick = viewModel::onBack
@@ -95,9 +100,9 @@ fun FirstRunOnboardingScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 24.dp)
+                    .padding(horizontal = LeoDimens.SpaceSection)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
+                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceMd)
             ) {
                 if (uiState.persistFailed) {
                     Text(
@@ -247,6 +252,7 @@ private fun IntentStep(
         OnboardingIntent.FOUND_ANIMAL to "Encontré un animal",
         OnboardingIntent.ADOPT to "Quiero adoptar",
         OnboardingIntent.OFFER_FOSTER to "Quiero ofrecer tránsito",
+        OnboardingIntent.OFFER_SERVICE to "Quiero ofrecer un servicio",
         OnboardingIntent.ORGANIZATION to "Participo en un refugio u organización",
         OnboardingIntent.VOLUNTEER to "Quiero ayudar como voluntario",
         OnboardingIntent.EXPLORE to "Solo quiero explorar"
@@ -306,13 +312,9 @@ private fun MinimalSetupStep(
             modifier = Modifier.fillMaxWidth(),
             singleLine = true
         )
-        OutlinedTextField(
+        V2LocationStringPicker(
             value = zone,
-            onValueChange = onZoneChange,
-            label = { Text("Localidad o zona general") },
-            placeholder = { Text("San Vicente, Buenos Aires") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            onValueChange = onZoneChange
         )
         error?.let {
             Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)

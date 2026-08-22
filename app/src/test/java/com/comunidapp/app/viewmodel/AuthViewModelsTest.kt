@@ -56,6 +56,7 @@ class AuthViewModelsTest {
         vm.onUsernameChange(username)
         advanceTimeBy(500)
         advanceUntilIdle()
+        vm.onBirthDateChange("1990-01-15")
         vm.onEmailChange(email)
         vm.onPasswordChange(password)
         vm.onConfirmPasswordChange(confirm)
@@ -132,6 +133,28 @@ class AuthViewModelsTest {
     }
 
     @Test
+    fun register_success_without_verified_session_goes_to_verification() = runTest(dispatcher) {
+        val vm = RegisterViewModel(repo, userRepo)
+        fillValidForm(vm, "ana7@email.com", "ana_lopez7")
+        vm.register()
+        advanceUntilIdle()
+        assertEquals("ana7@email.com", vm.uiState.value.registeredEmail)
+        assertNull(vm.uiState.value.errorMessage)
+        assertFalse(repo.getCurrentUser()?.emailVerified == true && repo.getCurrentUser()?.email == "ana7@email.com")
+    }
+
+    @Test
+    fun register_existing_confirmed_email_does_not_succeed() = runTest(dispatcher) {
+        val vm = RegisterViewModel(repo, userRepo)
+        fillValidForm(vm, MockData.currentUser.email, "ana_existente")
+        vm.register()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.registeredEmail)
+        assertTrue(vm.uiState.value.offerResendConfirmation)
+        assertTrue(vm.uiState.value.errorMessage.orEmpty().contains("iniciá sesión"))
+    }
+
+    @Test
     fun register_double_submit_ignored_while_loading() = runTest(dispatcher) {
         val vm = RegisterViewModel(repo, userRepo)
         fillValidForm(vm, "ana6@email.com", "ana_lopez6")
@@ -171,7 +194,8 @@ class AuthViewModelsTest {
             email = "unverified@email.com",
             password = "password1",
             consent = com.comunidapp.app.domain.auth.ConsentMetadata.forRegistration(),
-            username = "unverified_user"
+            username = "unverified_user",
+            birthDate = "1990-01-15"
         )
         val vm = LoginViewModel(repo)
         vm.onEmailChange("unverified@email.com")
@@ -197,7 +221,7 @@ class AuthViewModelsTest {
     }
 
     @Test
-    fun email_verification_otp_eight_digits_succeeds() = runTest(dispatcher) {
+    fun email_verification_otp_six_digits_succeeds() = runTest(dispatcher) {
         val email = "otpvm@email.com"
         repo.register(
             "O",
@@ -207,9 +231,71 @@ class AuthViewModelsTest {
             "otpvm_user"
         )
         val vm = EmailVerificationViewModel(repo)
-        vm.confirmWithOtp(email, "12345678")
+        vm.confirmWithOtp(email, "123456")
         advanceUntilIdle()
         assertTrue(vm.uiState.value.isVerified)
+        assertNull(vm.uiState.value.errorMessage)
+        assertEquals(email, repo.getCurrentUser()?.email)
+    }
+
+    @Test
+    fun email_verification_otp_eight_digits_succeeds() = runTest(dispatcher) {
+        val email = "otp8vm@email.com"
+        repo.register(
+            "O",
+            email,
+            "password1",
+            com.comunidapp.app.domain.auth.ConsentMetadata.forRegistration(),
+            "otp8vm_user"
+        )
+        val vm = EmailVerificationViewModel(repo)
+        vm.confirmWithOtp(email, "87654321")
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.isVerified)
+        assertNull(vm.uiState.value.errorMessage)
+        assertEquals(email, repo.getCurrentUser()?.email)
+    }
+
+    @Test
+    fun email_verification_invalid_otp_keeps_pending_state() = runTest(dispatcher) {
+        val email = "otpinvalid@email.com"
+        repo.register(
+            "O",
+            email,
+            "password1",
+            com.comunidapp.app.domain.auth.ConsentMetadata.forRegistration(),
+            "otpinvalid_user"
+        )
+        repo.verifyEmailOtpOverride = Result.failure(
+            com.comunidapp.app.domain.auth.AuthErrorMapper.toException(
+                com.comunidapp.app.domain.auth.AuthErrorCode.OTP_INVALID,
+                "Invalid OTP token"
+            )
+        )
+        val vm = EmailVerificationViewModel(repo)
+        vm.confirmWithOtp(email, "12345678")
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.isVerified)
+        assertEquals("El código no es válido. Revisalo e intentá de nuevo.", vm.uiState.value.errorMessage)
+        assertFalse(repo.isEmailVerified(email))
+        assertNull(repo.getCurrentUser())
+    }
+
+    @Test
+    fun email_verification_resend_stays_on_verification_screen() = runTest(dispatcher) {
+        val email = "otpresend@email.com"
+        repo.register(
+            "O",
+            email,
+            "password1",
+            com.comunidapp.app.domain.auth.ConsentMetadata.forRegistration(),
+            "otpresend_user"
+        )
+        val vm = EmailVerificationViewModel(repo)
+        vm.resendVerification(email)
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.isVerified)
+        assertEquals("Te enviamos un nuevo código.", vm.uiState.value.successMessage)
         assertNull(vm.uiState.value.errorMessage)
     }
 
@@ -229,6 +315,10 @@ class AuthViewModelsTest {
         assertFalse(vm.uiState.value.isVerified)
         assertNotNull(vm.uiState.value.errorMessage)
         assertFalse(vm.uiState.value.errorMessage!!.contains("12345"))
+        vm.confirmWithOtp(email, "12345678901")
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.isVerified)
+        assertFalse(repo.isEmailVerified(email))
     }
 
     @Test
@@ -239,6 +329,24 @@ class AuthViewModelsTest {
         assertNotNull(vm.uiState.value.errorMessage)
         vm.clearOtpFeedback()
         assertNull(vm.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun email_verification_resend_rate_limit_is_usable() = runTest(dispatcher) {
+        repo.sendEmailVerificationOverride = Result.failure(
+            com.comunidapp.app.domain.auth.AuthErrorMapper.toException(
+                com.comunidapp.app.domain.auth.AuthErrorCode.RATE_LIMITED,
+                "over_email_send_rate_limit"
+            )
+        )
+        val vm = EmailVerificationViewModel(repo)
+        vm.resendVerification("rate@email.com")
+        advanceUntilIdle()
+        assertEquals(
+            "Esperá un momento antes de solicitar otro código.",
+            vm.uiState.value.errorMessage
+        )
+        assertFalse(vm.uiState.value.isVerified)
     }
 
     @Test

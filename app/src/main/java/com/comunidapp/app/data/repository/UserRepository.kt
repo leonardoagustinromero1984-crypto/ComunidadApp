@@ -46,6 +46,8 @@ interface UserRepository {
         command: UpdateMyProfileCommand
     ): Result<UserProfile> = Result.failure(UnsupportedOperationException("updateMyProfile"))
 
+    suspend fun setPersonAvatar(assetId: String): Result<Unit> = Result.success(Unit)
+
     suspend fun getPublicProfile(
         viewerId: String,
         targetUserId: String
@@ -179,7 +181,34 @@ class MockUserRepository : UserRepository {
         userId: String,
         command: CompleteOnboardingCommand
     ): Result<UserProfile> {
-        val existing = getUser(userId) ?: return Result.failure(IllegalStateException("not found"))
+        val existing = getUser(userId)
+        if (existing == null) {
+            UsernameValidators.validate(command.username).getOrElse {
+                return Result.failure(it)
+            }
+            val personAge = com.comunidapp.app.domain.user.PersonAgeRules
+                .validateSignupBirthDate(command.birthDate.orEmpty())
+                .getOrElse { return Result.failure(it) }
+            val created = User(
+                id = userId,
+                name = command.displayName.trim(),
+                email = "",
+                emailVerified = true,
+                username = UsernameValidators.normalize(command.username),
+                displayName = command.displayName.trim(),
+                birthDate = personAge.birthDate.toString(),
+                ageBand = personAge.band.name,
+                city = command.city?.trim()?.ifBlank { null },
+                province = command.province?.trim()?.ifBlank { null },
+                countryCode = command.countryCode?.trim()?.uppercase()?.ifBlank { null },
+                homeLocalityId = command.homeLocalityId?.trim()?.ifBlank { null },
+                onboardingStatus = ProfileSetupStatus.COMPLETED.name,
+                accountStatus = AccountStatus.ACTIVE.name
+            )
+            MockUserStore.upsert(created)
+            privacyByUser.update { it + (userId to command.privacy) }
+            return getOwnProfile(userId)
+        }
         UsernameValidators.validate(command.username).getOrElse {
             return Result.failure(it)
         }
@@ -190,7 +219,7 @@ class MockUserRepository : UserRepository {
             return Result.failure(IllegalArgumentException("DISPLAY_NAME_INVALID"))
         }
         if (command.avatarPath != null &&
-            !command.avatarPath.startsWith("users/$userId/avatar/")
+            !isAcceptableAvatarRef(userId, command.avatarPath)
         ) {
             return Result.failure(IllegalArgumentException("AVATAR_PATH_INVALID"))
         }
@@ -207,6 +236,8 @@ class MockUserRepository : UserRepository {
             timezone = command.timezone,
             locationText = listOfNotNull(command.city, command.province)
                 .joinToString(", ").ifBlank { existing.locationText },
+            homeLocalityId = command.homeLocalityId?.trim()?.ifBlank { null }
+                ?: existing.homeLocalityId,
             profilePrivate = command.privacy.profilePrivate,
             phonePublic = command.privacy.showPhone,
             onboardingStatus = ProfileSetupStatus.COMPLETED.name,
@@ -223,7 +254,7 @@ class MockUserRepository : UserRepository {
     ): Result<UserProfile> {
         val existing = getUser(userId) ?: return Result.failure(IllegalStateException("not found"))
         if (command.avatarPath != null &&
-            !command.avatarPath.startsWith("users/$userId/avatar/")
+            !isAcceptableAvatarRef(userId, command.avatarPath)
         ) {
             return Result.failure(IllegalArgumentException("AVATAR_PATH_INVALID"))
         }
@@ -243,6 +274,8 @@ class MockUserRepository : UserRepository {
             locale = command.locale ?: existing.locale,
             timezone = command.timezone ?: existing.timezone,
             avatarPath = command.avatarPath ?: existing.avatarPath,
+            homeLocalityId = command.homeLocalityId?.trim()?.ifBlank { null }
+                ?: existing.homeLocalityId,
             locationText = listOfNotNull(
                 command.city?.trim()?.ifBlank { null } ?: existing.city,
                 command.province?.trim()?.ifBlank { null } ?: existing.province
@@ -267,12 +300,7 @@ class MockUserRepository : UserRepository {
             if (target.profilePrivate) ProfileVisibility.PRIVATE else ProfileVisibility.PUBLIC
         )
         val isSelf = viewerId == targetUserId
-        val canView = when {
-            isSelf -> true
-            privacy.profileVisibility == ProfileVisibility.PUBLIC -> true
-            privacy.profileVisibility == ProfileVisibility.PRIVATE -> false
-            else -> false // FRIENDS sin grafo mock completo → denegar
-        }
+        val canView = isSelf || privacy.profileVisibility == ProfileVisibility.PUBLIC
         if (!canView) return Result.success(null)
         val profile = UserProfileMapper.toUserProfile(target, privacy = privacy)
         return Result.success(UserProfileMapper.toPublicUserProfile(profile))
@@ -323,5 +351,20 @@ class MockUserRepository : UserRepository {
             )
         )
         return Result.success(Unit)
+    }
+
+    override suspend fun setPersonAvatar(assetId: String): Result<Unit> {
+        val user = MockUserStore.allUsers().firstOrNull() ?: return Result.success(Unit)
+        MockUserStore.upsert(user.copy(avatarPath = assetId))
+        return Result.success(Unit)
+    }
+
+    private fun isAcceptableAvatarRef(userId: String, ref: String): Boolean {
+        if (ref.isBlank()) return false
+        if (com.comunidapp.app.domain.user.ProfileAvatarResolver.isUuid(ref)) return true
+        return ref.startsWith("users/$userId/avatar/") ||
+            ref.startsWith("users/$userId/avatars/") ||
+            ref.startsWith("file://") ||
+            ref.startsWith("content://")
     }
 }

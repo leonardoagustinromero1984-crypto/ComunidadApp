@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.ui.unit.dp
+import com.comunidapp.app.domain.map.LeoVerGeoPoint
+import com.comunidapp.app.domain.map.LeoVerMapCameraState
+import com.comunidapp.app.domain.map.LeoVerMapMarker
+import com.comunidapp.app.ui.map.LeoVerMap
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -27,9 +30,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.domain.schedule.ProviderWeeklySchedule
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.leo.LeoVerHoursDisplay
+import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoSectionTitle
 import com.comunidapp.app.viewmodel.ServiceDetailViewModel
 
 @Composable
@@ -51,8 +63,9 @@ fun ServiceDetailScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = uiState.service?.name ?: "Servicio",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -81,73 +94,129 @@ fun ServiceDetailScreen(
                     imageUrl = service.photoUrl,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(180.dp),
-                    cornerRadius = 12.dp,
+                        .height(220.dp),
+                    cornerRadius = 16.dp,
                     contentDescription = service.name
                 )
             }
             item {
-                Text(
-                    text = service.name,
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = "📍 ${service.location}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.secondary
-                )
-                Text(
-                    text = service.description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                service.scheduleText?.let {
+                val public = com.comunidapp.app.domain.business.PublicCommercialProfileMapper.fromService(service)
+                V2SurfaceCard {
                     Text(
-                        text = "Horarios: $it",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = public.name,
+                        style = LeoSectionTitle,
+                        color = BrandText,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = public.categoryLabel,
+                        style = LeoCaption,
+                        color = BrandTextSecondary,
+                        modifier = Modifier.padding(top = 4.dp)
+                    )
+                    public.location?.let {
+                        Text(
+                            text = it,
+                            style = LeoCaption,
+                            color = BrandTextSecondary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                    public.description?.let {
+                        Text(
+                            text = it,
+                            style = LeoCaption,
+                            color = BrandText,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                    }
+                    LeoVerHoursDisplay(
+                        schedule = ProviderWeeklySchedule(public.hours),
                         modifier = Modifier.padding(top = 8.dp)
                     )
+                    service.distanceKm?.let {
+                        Text(
+                            text = "%.1f km".format(it),
+                            style = LeoCaption,
+                            color = BrandTextSecondary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                    service.priceFrom?.takeIf { it.isFinite() }?.let {
+                        Text(
+                            text = "Desde $${it.toInt()}",
+                            style = LeoCaption,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandText,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                    public.phone?.let {
+                        Text(
+                            text = it,
+                            style = LeoCaption,
+                            color = BrandText,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
+                    if (public.bookingsEnabled) {
+                        Text(
+                            text = "Turnos online disponibles",
+                            style = LeoCaption,
+                            color = BrandText,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
-                service.priceFrom?.let {
-                    Text(
-                        text = "Desde $${it.toInt()}",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(top = 4.dp)
+            }
+            if (service.geoIsPublicPremises && service.latitude != null && service.longitude != null) {
+                val mapPoint = LeoVerGeoPoint.parseOrNull(service.latitude, service.longitude)
+                if (mapPoint != null) {
+                item {
+                    LeoVerMap(
+                        markers = listOf(
+                            LeoVerMapMarker(
+                                id = service.id,
+                                position = mapPoint,
+                                title = service.name
+                            )
+                        ),
+                        modifier = Modifier.fillMaxWidth().height(180.dp),
+                        camera = LeoVerMapCameraState.cameraOrFallback(
+                            service.latitude,
+                            service.longitude,
+                            zoom = 15f
+                        ),
+                        interactive = true
                     )
                 }
-                service.contactInfo?.let {
-                    Text(
-                        text = "Contacto: $it",
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(top = 4.dp)
-                    )
                 }
             }
             item {
-                Button(
-                    onClick = { onChatClick(service.ownerId, service.name) },
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Enviar mensaje")
-                }
+                LeoPrimaryButton(
+                    text = "Enviar mensaje",
+                    onClick = { onChatClick(service.ownerId, service.name) }
+                )
             }
             if (service.acceptsBookings) {
                 item {
-                    Text(
-                        text = "Pedir turno",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    Text(
-                        text = "Elegí día y horario. El profesional confirma y gestiona el cobro fuera de la app.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    V2SurfaceCard {
+                        Text(
+                            text = "Pedir turno",
+                            style = LeoSectionTitle,
+                            color = BrandText,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = "Elegí día y horario. El profesional confirma y gestiona el cobro fuera de la app.",
+                            style = LeoCaption,
+                            color = BrandTextSecondary,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
                 }
                 item {
-                    Text("Día", style = MaterialTheme.typography.labelLarge)
+                    Text("Día", style = LeoCaption, color = BrandText, fontWeight = FontWeight.SemiBold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(0 to "Hoy", 1 to "Mañana", 2 to "Pasado").forEach { (offset, label) ->
                             FilterChip(
@@ -159,7 +228,7 @@ fun ServiceDetailScreen(
                     }
                 }
                 item {
-                    Text("Horario", style = MaterialTheme.typography.labelLarge)
+                    Text("Horario", style = LeoCaption, color = BrandText, fontWeight = FontWeight.SemiBold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(9, 10, 12, 16, 18).forEach { hour ->
                             FilterChip(
@@ -180,20 +249,19 @@ fun ServiceDetailScreen(
                     )
                 }
                 item {
-                    Button(
+                    LeoPrimaryButton(
+                        text = if (uiState.isSubmitting) "Enviando…" else "Solicitar turno",
                         onClick = viewModel::requestBooking,
-                        enabled = !uiState.isSubmitting,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (uiState.isSubmitting) "Enviando…" else "Solicitar turno")
-                    }
+                        enabled = !uiState.isSubmitting
+                    )
                 }
             }
 
             item {
                 Text(
                     text = "Reseñas",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = LeoSectionTitle,
+                    color = BrandText,
                     fontWeight = FontWeight.SemiBold,
                     modifier = Modifier.padding(top = 8.dp)
                 )
@@ -202,22 +270,24 @@ fun ServiceDetailScreen(
                 item {
                     Text(
                         text = "Todavía no hay reseñas para este servicio.",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = LeoCaption,
+                        color = BrandTextSecondary
                     )
                 }
             } else {
                 items(reviews, key = { it.id }) { review ->
-                    Column(modifier = Modifier.fillMaxWidth()) {
+                    V2SurfaceCard {
                         Text(
                             text = "${review.authorName} · ${"★".repeat(review.rating.coerceIn(1, 5))}",
-                            style = MaterialTheme.typography.titleSmall,
-                            fontWeight = FontWeight.SemiBold
+                            style = LeoCaption,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandText
                         )
                         if (review.comment.isNotBlank()) {
                             Text(
                                 text = review.comment,
-                                style = MaterialTheme.typography.bodyMedium,
+                                style = LeoCaption,
+                                color = BrandText,
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
@@ -225,19 +295,30 @@ fun ServiceDetailScreen(
                 }
             }
             item {
-                Text(
-                    text = "Dejá tu reseña",
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold
-                )
-                Text("Calificación", style = MaterialTheme.typography.labelLarge)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    (1..5).forEach { rating ->
-                        FilterChip(
-                            selected = uiState.reviewRating == rating,
-                            onClick = { viewModel.updateReviewRating(rating) },
-                            label = { Text("$rating") }
-                        )
+                V2SurfaceCard {
+                    Text(
+                        text = "Dejá tu reseña",
+                        style = LeoCaption,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BrandText
+                    )
+                    Text(
+                        text = "Calificación",
+                        style = LeoCaption,
+                        color = BrandTextSecondary,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        modifier = Modifier.padding(top = 4.dp)
+                    ) {
+                        (1..5).forEach { rating ->
+                            FilterChip(
+                                selected = uiState.reviewRating == rating,
+                                onClick = { viewModel.updateReviewRating(rating) },
+                                label = { Text("$rating") }
+                            )
+                        }
                     }
                 }
             }
@@ -251,13 +332,11 @@ fun ServiceDetailScreen(
                 )
             }
             item {
-                Button(
+                LeoPrimaryButton(
+                    text = if (uiState.isSubmittingReview) "Enviando…" else "Publicar reseña",
                     onClick = viewModel::submitReview,
-                    enabled = !uiState.isSubmittingReview,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (uiState.isSubmittingReview) "Enviando…" else "Publicar reseña")
-                }
+                    enabled = !uiState.isSubmittingReview
+                )
             }
         }
     }

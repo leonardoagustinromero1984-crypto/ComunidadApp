@@ -9,6 +9,7 @@ import com.comunidapp.app.ui.screens.m25.*
 import java.net.URLDecoder
 import java.nio.charset.StandardCharsets
 
+/** KEEP_FOR_FUTURE / DISABLE_FROM_PRODUCT: Maestro v1.1 saca checkout de V1. No borrar datos. */
 fun NavGraphBuilder.m25MarketplaceRoutes(navController: NavHostController) {
     composable(NavRoutes.M25_HUB) {
         M25HubScreen(

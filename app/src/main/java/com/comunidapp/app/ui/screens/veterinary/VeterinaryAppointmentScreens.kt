@@ -38,10 +38,12 @@ import com.comunidapp.app.data.model.VeterinaryAppointmentTimelineStep
 import com.comunidapp.app.data.model.VeterinaryReminderDeliveryStatus
 import com.comunidapp.app.data.model.VeterinaryReminderSchedule
 import com.comunidapp.app.data.repository.CreateVeterinaryAvailabilityRuleInput
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.MyVeterinaryAppointmentsViewModel
 import com.comunidapp.app.viewmodel.VeterinaryAppointmentDetailUiState
 import com.comunidapp.app.viewmodel.VeterinaryAppointmentDetailViewModel
@@ -169,8 +171,9 @@ fun VeterinaryBookAppointmentScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Solicitar turno",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -303,8 +306,9 @@ fun MyVeterinaryAppointmentsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Mis turnos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Mis turnos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -359,8 +363,9 @@ fun VeterinaryAppointmentDetailScreen(
     var reason by remember { mutableStateOf("") }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Detalle del turno", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Detalle del turno", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -442,8 +447,9 @@ fun VeterinaryManagedAgendaScreen(
     val message by viewModel.message.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Agenda de turnos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Agenda de turnos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -515,8 +521,9 @@ fun VeterinaryAppointmentManagementScreen(
     var reason by remember { mutableStateOf("") }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Gestionar turno", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Gestionar turno", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -617,8 +624,9 @@ fun VeterinaryScheduleSettingsScreen(
     val message by viewModel.message.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Configuración de agenda", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Configuración de agenda", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -725,8 +733,9 @@ fun VeterinaryAvailabilityRulesScreen(
     var serviceId by remember { mutableStateOf("") }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Disponibilidad", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Disponibilidad", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(

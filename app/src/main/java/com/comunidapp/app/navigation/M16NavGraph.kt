@@ -1,10 +1,13 @@
 package com.comunidapp.app.navigation
 
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.comunidapp.app.domain.context.OperationalContextProvider
 import com.comunidapp.app.ui.screens.m16.M16ShelterDetailScreen
 import com.comunidapp.app.ui.screens.m16.M16ShelterManageScreen
 import com.comunidapp.app.ui.screens.m16.M16SheltersListScreen
@@ -13,10 +16,15 @@ import java.nio.charset.StandardCharsets
 /** M16 refugios — rutas Bloque 1 (fundación local). */
 fun NavGraphBuilder.m16ShelterRoutes(navController: NavHostController) {
     composable(NavRoutes.M16_SHELTERS) {
+        val context by OperationalContextProvider.active.collectAsState()
         M16SheltersListScreen(
             onNavigateBack = { navController.popBackStack() },
             onShelterClick = { id -> navController.navigate(NavRoutes.m16ShelterDetail(id)) },
-            onManage = { navController.navigate(NavRoutes.M16_SHELTERS_MANAGE) }
+            onManage = if (context.isPersonal) {
+                null
+            } else {
+                { navController.navigate(NavRoutes.M16_SHELTERS_MANAGE) }
+            }
         )
     }
     composable(

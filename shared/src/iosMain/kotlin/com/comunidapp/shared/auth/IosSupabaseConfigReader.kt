@@ -9,6 +9,7 @@ import platform.Foundation.NSBundle
 internal object IosSupabaseConfigReader {
     fun read(): SharedSupabaseConfig? {
         val bundle = NSBundle.mainBundle
+        // Host Info.plist must point at canonical Staging. Never service_role.
         val url = bundle.objectForInfoDictionaryKey("SUPABASE_URL") as? String
         val key = bundle.objectForInfoDictionaryKey("SUPABASE_ANON_KEY") as? String
         if (url.isNullOrBlank() || key.isNullOrBlank()) return null

@@ -17,8 +17,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.PublicOrganizationViewModel
 
 @Composable
@@ -29,8 +31,9 @@ fun PublicOrganizationScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Organización",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -78,7 +81,7 @@ fun PublicOrganizationScreen(
                         text = "${org.type.name} · ${org.verificationStatus.name}",
                         style = MaterialTheme.typography.labelLarge
                     )
-                    listOfNotNull(org.city, org.province, org.countryCode)
+                    listOfNotNull(org.city, org.province)
                         .takeIf { it.isNotEmpty() }
                         ?.let { parts ->
                             Spacer(modifier = Modifier.height(8.dp))

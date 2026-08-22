@@ -25,8 +25,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.organization.OrganizationBranch
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.OrganizationBranchesViewModel
 
 @Composable
@@ -37,8 +40,9 @@ fun OrganizationBranchesScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Sucursales",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -83,11 +87,10 @@ fun OrganizationBranchesScreen(
                                     label = { Text("Dirección") },
                                     modifier = Modifier.fillMaxWidth()
                                 )
-                                OutlinedTextField(
+                                V2LocationStringPicker(
                                     value = uiState.city,
                                     onValueChange = viewModel::onCityChange,
-                                    label = { Text("Ciudad") },
-                                    modifier = Modifier.fillMaxWidth()
+                                    includeZone = false
                                 )
                                 OutlinedTextField(
                                     value = uiState.phone,

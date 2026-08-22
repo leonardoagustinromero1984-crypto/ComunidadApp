@@ -35,8 +35,12 @@ import com.comunidapp.app.data.model.AdoptionDocumentType
 import com.comunidapp.app.data.model.AdoptionFollowUpStatus
 import com.comunidapp.app.data.model.AdoptionInterviewType
 import com.comunidapp.app.data.model.AdoptionWelfareStatus
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.AdoptionAgreementViewModel
 import com.comunidapp.app.viewmodel.AdoptionDocumentsViewModel
 import com.comunidapp.app.viewmodel.AdoptionFinalizeViewModel
@@ -59,8 +63,9 @@ fun AdoptionProcessScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Proceso de adopción",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -75,7 +80,7 @@ fun AdoptionProcessScreen(
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Text(state.message)
-                Button(onClick = viewModel::load) { Text("Reintentar") }
+                LeoPrimaryButton(text = "Reintentar", onClick = viewModel::load)
             }
             is AdoptionProcessUiState.Content -> {
                 val s = state.snapshot
@@ -153,14 +158,15 @@ fun AdoptionInterviewsScreen(
         )
     }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Entrevistas", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Entrevistas", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             message?.let { Text(it) }
             if (!applicationId.isNullOrBlank()) {
-                Button(onClick = { showSchedule = true }, Modifier.fillMaxWidth()) { Text("Agendar") }
+                LeoPrimaryButton(text = "Agendar", onClick = { showSchedule = true })
             }
             if (interviews.isEmpty()) Text("No hay entrevistas.")
             interviews.forEach { item ->
@@ -187,8 +193,9 @@ fun AdoptionInterviewDetailScreen(
     val error by viewModel.error.collectAsState()
     val notFound by viewModel.notFound.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Entrevista", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Entrevista", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {
@@ -221,8 +228,9 @@ fun AdoptionDocumentsScreen(
     val applicationId by viewModel.applicationId.collectAsState()
     var ref by remember { mutableStateOf("m05://adoption-doc/demo") }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Documentación", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Documentación", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -275,8 +283,9 @@ fun AdoptionAgreementScreen(
         "Acuerdo interno LeoVer: el adoptante se compromete al cuidado responsable de la mascota."
     }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Acuerdo de adopción", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Acuerdo de adopción", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -334,8 +343,9 @@ fun AdoptionFinalizeScreen(
         )
     }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Finalizar adopción", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Finalizar adopción", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val state = uiState) {
@@ -373,8 +383,9 @@ fun AdoptionFollowUpScreen(
     val checks by viewModel.checks.collectAsState()
     val message by viewModel.message.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Seguimiento", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Seguimiento", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -414,8 +425,9 @@ fun AdoptionFollowUpCheckDetailScreen(
     val error by viewModel.error.collectAsState()
     val notFound by viewModel.notFound.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Control", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Control", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {

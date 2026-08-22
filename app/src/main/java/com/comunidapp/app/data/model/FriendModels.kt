@@ -7,7 +7,12 @@ enum class FriendConnectionStatus {
 
     companion object {
         fun fromString(value: String?): FriendConnectionStatus =
-            entries.find { it.name == value } ?: PENDING
+            when (value?.trim()?.uppercase()) {
+                "ACCEPTED" -> ACCEPTED
+                "REJECTED", "DECLINED", "BLOCKED" -> REJECTED
+                "PENDING" -> PENDING
+                else -> entries.find { it.name.equals(value, ignoreCase = true) } ?: PENDING
+            }
     }
 }
 

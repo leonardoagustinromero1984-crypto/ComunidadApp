@@ -1,7 +1,9 @@
 export type PublicPet = {
   public_code: string;
-  page_kind: "pet_passport";
-  display_name: string;
+  name?: string | null;
+  page_kind?: "pet" | "pet_passport";
+  display_name?: string;
+  locality_id?: string | null;
   species?: string | null;
   breed_text?: string | null;
   sex?: string | null;
@@ -46,7 +48,8 @@ export type PublicAdoption = {
 
 export type PublicLostFoundCase = {
   public_code: string;
-  case_type: "LOST" | "FOUND";
+  kind?: "LOST" | "FOUND";
+  case_type?: "LOST" | "FOUND";
   pet_name?: string | null;
   species?: string | null;
   description?: string | null;

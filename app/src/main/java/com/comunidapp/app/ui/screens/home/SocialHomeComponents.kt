@@ -30,11 +30,11 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.outlined.Chat
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Notifications
+import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Search
@@ -66,10 +66,10 @@ import com.comunidapp.app.ui.components.leo.LeoFilterChip
 import com.comunidapp.app.ui.components.leo.LeoSearchBar
 import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandOrange
-import com.comunidapp.app.ui.theme.BrandOrangeContainer
 import com.comunidapp.app.ui.theme.BrandOrangeSoft
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandWhite
+import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoCardTitle
@@ -81,48 +81,89 @@ enum class HomeSocialTab { Feed, Reels, Explore }
 enum class FeedAudience { ForYou, Following }
 
 @Composable
-fun SocialHomeTopBar(
-    onSearch: () -> Unit,
+fun HomePersonaHeader(
+    greetingName: String?,
+    @Suppress("UNUSED_PARAMETER") avatarUrl: String?,
+    @Suppress("UNUSED_PARAMETER") locationText: String?,
     onNotifications: () -> Unit,
-    onMessages: () -> Unit,
+    onMessages: () -> Unit = {},
+    contextLabel: String? = null,
     modifier: Modifier = Modifier
 ) {
     Surface(
         modifier = modifier
             .fillMaxWidth()
             .windowInsetsPadding(WindowInsets.statusBars),
-        color = BrandWhite,
+        color = leoVisual().background,
         shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp)
-                .padding(horizontal = LeoDimens.SpaceMd),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(R.drawable.leover_logo_horizontal),
-                contentDescription = stringResource(R.string.brand_name),
+            Column(
                 modifier = Modifier
-                    .height(28.dp)
-                    .width(120.dp),
-                contentScale = ContentScale.Fit
-            )
-            Row {
-                IconButton(onClick = onSearch) {
-                    Icon(Icons.Default.Search, contentDescription = "Buscar", tint = BrandText)
-                }
-                IconButton(onClick = onNotifications) {
-                    Icon(Icons.Default.Notifications, contentDescription = "Notificaciones", tint = BrandText)
-                }
-                IconButton(onClick = onMessages) {
-                    Icon(Icons.AutoMirrored.Filled.Chat, contentDescription = "Mensajes", tint = BrandText)
-                }
+                    .weight(1f)
+                    .padding(end = LeoDimens.SpaceS)
+            ) {
+                Text(
+                    text = contextLabel?.takeIf { it.isNotBlank() } ?: "LeoVer",
+                    style = LeoCardTitle,
+                    color = leoVisual().textPrimary,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = if (!greetingName.isNullOrBlank()) "Hola, $greetingName" else "Tu comunidad",
+                    style = LeoCaption,
+                    color = leoVisual().textSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+            IconButton(
+                onClick = onMessages,
+                modifier = Modifier.size(LeoDimens.TouchMin)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Outlined.Chat,
+                    contentDescription = "Mensajes",
+                    tint = leoVisual().textPrimary
+                )
+            }
+            IconButton(
+                onClick = onNotifications,
+                modifier = Modifier.size(LeoDimens.TouchMin)
+            ) {
+                Icon(
+                    Icons.Outlined.Notifications,
+                    contentDescription = "Notificaciones",
+                    tint = leoVisual().textPrimary
+                )
             }
         }
     }
+}
+
+@Composable
+fun SocialHomeTopBar(
+    onSearch: () -> Unit,
+    onNotifications: () -> Unit,
+    onMessages: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    HomePersonaHeader(
+        greetingName = null,
+        avatarUrl = null,
+        locationText = null,
+        onNotifications = onNotifications,
+        modifier = modifier
+    )
+    @Suppress("UNUSED_PARAMETER")
+    val unused = onSearch to onMessages
 }
 
 @Composable
@@ -180,6 +221,9 @@ fun FeedAudienceSelector(
 @Composable
 fun StoriesRow(
     onAddStory: () -> Unit,
+    onOwnStoryClick: () -> Unit,
+    ownHasActive: Boolean,
+    ownAvatarUrl: String?,
     modifier: Modifier = Modifier,
     stories: List<StoryUiItem> = emptyList()
 ) {
@@ -189,13 +233,34 @@ fun StoriesRow(
         horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
     ) {
         item {
-            StoryBubble(
-                label = "Tu historia",
-                imageUrl = null,
-                isAdd = true,
-                hasNew = false,
-                onClick = onAddStory
-            )
+            Box {
+                StoryBubble(
+                    label = "Tu historia",
+                    imageUrl = ownAvatarUrl,
+                    isAdd = !ownHasActive,
+                    hasNew = ownHasActive,
+                    onClick = onOwnStoryClick
+                )
+                if (ownHasActive) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(end = 4.dp, bottom = 18.dp)
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(leoVisual().accent)
+                            .clickable(onClick = onAddStory),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            Icons.Default.Add,
+                            contentDescription = "Agregar historia",
+                            tint = BrandText,
+                            modifier = Modifier.size(14.dp)
+                        )
+                    }
+                }
+            }
         }
         items(stories, key = { it.id }) { story ->
             StoryBubble(
@@ -237,16 +302,18 @@ private fun StoryBubble(
                     .size(64.dp)
                     .border(
                         width = 2.dp,
-                        brush = if (hasNew || isAdd) {
-                            Brush.linearGradient(listOf(BrandOrangeSoft, BrandOrange))
+                        brush = if (isAdd) {
+                            Brush.linearGradient(listOf(BrandOrange, BrandOrange))
+                        } else if (hasNew) {
+                            Brush.linearGradient(listOf(leoVisual().primarySoft, leoVisual().primary))
                         } else {
-                            Brush.linearGradient(listOf(NeutralBorder, NeutralBorder))
+                            Brush.linearGradient(listOf(leoVisual().borderSoft, leoVisual().borderSoft))
                         },
                         shape = CircleShape
                     )
                     .padding(3.dp)
                     .clip(CircleShape)
-                    .background(BrandCream),
+                    .background(leoVisual().surface),
                 contentAlignment = Alignment.Center
             ) {
                 if (imageUrl != null) {
@@ -257,7 +324,7 @@ private fun StoryBubble(
                         contentDescription = label
                     )
                 } else {
-                    Icon(Icons.Default.Pets, null, tint = BrandOrangeSoft)
+                    Icon(Icons.Default.Pets, null, tint = leoVisual().accent)
                 }
             }
             if (isAdd) {
@@ -266,7 +333,7 @@ private fun StoryBubble(
                         .align(Alignment.BottomEnd)
                         .size(22.dp)
                         .clip(CircleShape)
-                        .background(BrandOrangeSoft),
+                        .background(leoVisual().accent),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(Icons.Default.Add, contentDescription = "Agregar historia", tint = BrandText, modifier = Modifier.size(14.dp))
@@ -491,7 +558,7 @@ fun HomeExploreTab(
 @Composable
 private fun StoriesRowPreview() {
     ComunidappTheme {
-        StoriesRow(onAddStory = {})
+        StoriesRow(onAddStory = {}, onOwnStoryClick = {}, ownHasActive = false, ownAvatarUrl = null)
     }
 }
 
@@ -503,7 +570,7 @@ private fun HomeReelsPreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, heightDp = 700, name = "HomeExplorePreview")
+@Preview(showBackground = true, backgroundColor = 0xFFFFFDF8, widthDp = 390, heightDp = 700, name = "HomeExplorePreview")
 @Composable
 private fun HomeExplorePreview() {
     ComunidappTheme {

@@ -20,6 +20,10 @@ import com.comunidapp.app.notifications.NotificationChannelRegistry
 import com.comunidapp.app.notifications.NotificationPendingNavigationStore
 import com.comunidapp.app.notifications.PushTokenRegistrar
 import com.comunidapp.app.ui.theme.ComunidappTheme
+import com.comunidapp.app.data.remote.supabase.SupabaseAuthConfig
+import com.comunidapp.app.domain.auth.AuthDeepLinkKind
+import com.comunidapp.app.domain.auth.AuthDeepLinkParser
+import com.comunidapp.app.domain.auth.AuthLinkNoticeStore
 import com.comunidapp.app.viewmodel.SessionState
 import com.comunidapp.app.viewmodel.SessionViewModel
 import io.github.jan.supabase.auth.handleDeeplinks
@@ -42,9 +46,9 @@ class MainActivity : ComponentActivity() {
                 val sessionState by sessionViewModel.sessionState.collectAsState()
                 keepSplashScreen = sessionState == SessionState.Loading
                 LaunchedEffect(Unit) {
-                    pendingDeepLinkKind?.let { kind ->
-                        pendingDeepLinkKind = null
-                        sessionViewModel.onAuthDeepLink(kind)
+                    AuthLinkNoticeStore.notice.collect { notice ->
+                        notice ?: return@collect
+                        sessionViewModel.onAuthDeepLink(notice.kind, notice.userMessage)
                     }
                 }
                 LaunchedEffect(sessionState) {
@@ -84,9 +88,40 @@ class MainActivity : ComponentActivity() {
     private fun handleAuthDeepLink(intent: Intent?) {
         if (!AppConfigProvider.featureFlags().useSupabase || intent == null) return
         val data = intent.data ?: return
-        if (data.scheme != com.comunidapp.app.data.remote.supabase.SupabaseAuthConfig.SCHEME) return
-        val kind = com.comunidapp.app.domain.auth.AuthDeepLinkParser.consumeOnce(data.toString())
-        supabase.handleDeeplinks(intent)
+        if (data.scheme != SupabaseAuthConfig.SCHEME) return
+        if (data.host != null && data.host != SupabaseAuthConfig.HOST) return
+        val uri = data.toString()
+        if (AuthDeepLinkParser.isForbiddenCallback(uri)) {
+            AuthLinkNoticeStore.publish(
+                AuthDeepLinkKind.LinkError,
+                "No pudimos abrir ese enlace. Ingresá el código de verificación o reenviá uno nuevo."
+            )
+            return
+        }
+        val kind = AuthDeepLinkParser.consumeOnce(uri) ?: return
+        val errorMessage = AuthDeepLinkParser.userMessageFor(uri)
+        if (kind == AuthDeepLinkKind.SessionCallback) {
+            com.comunidapp.app.domain.auth.GoogleAuthTrace.event("GOOGLE-CALLBACK")
+        }
+        if (kind == AuthDeepLinkKind.LinkError) {
+            AuthLinkNoticeStore.publish(
+                AuthDeepLinkKind.LinkError,
+                errorMessage ?: "El enlace venció o ya fue utilizado."
+            )
+            return
+        }
+        val handled = runCatching { supabase.handleDeeplinks(intent) }
+        if (handled.isFailure) {
+            AuthLinkNoticeStore.publish(
+                AuthDeepLinkKind.LinkError,
+                AuthDeepLinkParser.messageForAuthCallbackError(
+                    handled.exceptionOrNull()?.javaClass?.simpleName.orEmpty(),
+                    ""
+                )
+            )
+            return
+        }
+        AuthLinkNoticeStore.publish(kind)
         pendingDeepLinkKind = kind
     }
 

@@ -23,7 +23,8 @@ fun PetImage(
     imageUrl: String?,
     modifier: Modifier = Modifier,
     cornerRadius: Dp = 8.dp,
-    contentDescription: String? = null
+    contentDescription: String? = null,
+    contentScale: ContentScale = ContentScale.Crop
 ) {
     Box(
         modifier = modifier
@@ -43,7 +44,7 @@ fun PetImage(
                 model = imageUrl,
                 contentDescription = contentDescription,
                 modifier = Modifier.fillMaxSize(),
-                contentScale = ContentScale.Crop
+                contentScale = contentScale
             )
         }
     }

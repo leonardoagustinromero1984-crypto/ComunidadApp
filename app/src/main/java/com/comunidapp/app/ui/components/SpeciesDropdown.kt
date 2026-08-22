@@ -22,9 +22,12 @@ fun SpeciesDropdown(
     onSelected: (PetSpecies) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    label: String = "Especie / tipo de animal"
+    label: String = "Especie / tipo de animal",
+    options: List<PetSpecies> = PetSpecies.entries,
+    labels: Map<PetSpecies, String> = emptyMap()
 ) {
     var expanded by remember { mutableStateOf(false) }
+    val visible = options.ifEmpty { PetSpecies.entries }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -32,7 +35,7 @@ fun SpeciesDropdown(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = selected.toDisplayName(),
+            value = labels[selected] ?: selected.toDisplayName(),
             onValueChange = {},
             readOnly = true,
             enabled = enabled,
@@ -46,9 +49,9 @@ fun SpeciesDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            PetSpecies.entries.forEach { species ->
+            visible.forEach { species ->
                 DropdownMenuItem(
-                    text = { Text(species.toDisplayName()) },
+                    text = { Text(labels[species] ?: species.toDisplayName()) },
                     onClick = {
                         onSelected(species)
                         expanded = false

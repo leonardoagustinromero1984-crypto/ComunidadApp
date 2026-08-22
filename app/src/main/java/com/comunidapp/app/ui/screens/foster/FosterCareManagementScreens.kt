@@ -41,10 +41,12 @@ import com.comunidapp.app.data.model.FosterHelpType
 import com.comunidapp.app.data.model.FosterPlacementEndReason
 import com.comunidapp.app.data.model.FosterPlacementStatus
 import com.comunidapp.app.data.model.FosterUrgency
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.FosterCarePanelUiState
 import com.comunidapp.app.viewmodel.FosterCompleteUiState
 import com.comunidapp.app.viewmodel.FosterCompleteViewModel
@@ -73,8 +75,9 @@ fun FosterPlacementManagementScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Gestión del tránsito",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -142,8 +145,9 @@ fun FosterExpensesScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Gastos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Gastos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -197,8 +201,9 @@ fun FosterExpenseFormScreen(
         viewModel.saved.collect { onSaved() }
     }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Nuevo gasto", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Nuevo gasto", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -261,8 +266,9 @@ fun FosterEvolutionScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Evolución", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Evolución", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -318,8 +324,9 @@ fun FosterEvolutionFormScreen(
     val error by viewModel.error.collectAsState()
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved() } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Nueva evolución", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Nueva evolución", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -382,8 +389,9 @@ fun FosterHelpScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Pedidos de ayuda", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Pedidos de ayuda", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -442,8 +450,9 @@ fun FosterHelpFormScreen(
     val error by viewModel.error.collectAsState()
     LaunchedEffect(Unit) { viewModel.saved.collect { onSaved() } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Nuevo pedido", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Nuevo pedido", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -518,8 +527,9 @@ fun FosterHelpDetailScreen(
     var contribDesc by remember { mutableStateOf("") }
     var contribAmount by remember { mutableStateOf("") }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Pedido de ayuda", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Pedido de ayuda", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -607,8 +617,9 @@ fun FosterCompleteScreen(
     var confirm by remember { mutableStateOf(false) }
     LaunchedEffect(Unit) { viewModel.completed.collect { onCompleted() } }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Finalizar tránsito", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Finalizar tránsito", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when (val s = state) {
@@ -680,8 +691,9 @@ fun FosterHistoryScreen(
 ) {
     val history by viewModel.history.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Historial de tránsitos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Historial de tránsitos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         if (history.isEmpty()) {

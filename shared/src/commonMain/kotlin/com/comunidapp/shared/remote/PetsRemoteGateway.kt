@@ -66,12 +66,11 @@ internal class SupabasePetsRemoteGateway(
 
     override suspend fun listAccessibleActivePets(): Result<List<RemoteAccessiblePetRow>> {
         return try {
-            val rows = client.postgrest.rpc(
-                function = "m08_list_accessible_pets",
-                parameters = buildJsonObject {
-                    put("p_status", "ACTIVE")
+            val rows = client.from("pets")
+                .select {
+                    filter { eq("lifecycle_status", "ACTIVE") }
                 }
-            ).decodeList<RemoteAccessiblePetRow>()
+                .decodeList<RemoteAccessiblePetRow>()
             Result.success(rows)
         } catch (t: Throwable) {
             Result.failure(t)
@@ -94,20 +93,21 @@ internal class SupabasePetsRemoteGateway(
     override suspend fun createPetWithPrincipal(
         params: RemoteCreatePetParams
     ): Result<RemotePetRow> = try {
-        val rows = client.postgrest.rpc(
-            function = "m08_create_pet_with_principal",
+        val petId = client.postgrest.rpc(
+            function = "canon_create_pet",
             parameters = buildJsonObject {
                 put("p_name", params.name)
                 put("p_species", params.species)
-                put("p_sex", params.sex)
-                put("p_size", params.size)
-                put("p_description", params.description)
-                put("p_organization_id", JsonNull)
-                put("p_microchip_id", JsonNull)
+                put("p_birth_precision", "UNKNOWN")
+                put("p_birth_date", JsonNull)
+                put("p_birth_year", JsonNull)
+                put("p_birth_month", JsonNull)
+                put("p_estimated_age_months", JsonNull)
+                put("p_estimated_as_of", JsonNull)
             }
-        ).decodeList<RemotePetRow>()
-        val row = rows.firstOrNull()
-            ?: return Result.failure(IllegalStateException("PET_CREATE_EMPTY"))
+        ).decodeAs<String>()
+        val row = fetchPetById(petId).getOrNull()
+            ?: RemotePetRow(id = petId, name = params.name, species = params.species)
         Result.success(row)
     } catch (t: Throwable) {
         Result.failure(t)

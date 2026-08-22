@@ -1,20 +1,17 @@
 package com.comunidapp.app.ui.screens.pets
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
@@ -22,14 +19,28 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.Pet
-import com.comunidapp.app.data.model.SterilizationStatus
-import com.comunidapp.app.ui.components.ComunidappTopBar
 import com.comunidapp.app.ui.components.PetCard
+import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.components.leo.LeoEmptyState
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.BrandWhite
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.util.formatDisplayDate
 import com.comunidapp.app.viewmodel.MyPetsViewModel
 
@@ -38,14 +49,20 @@ fun MyPetsScreen(
     onNavigateBack: () -> Unit,
     onPetClick: (String) -> Unit,
     onAddPet: () -> Unit = {},
+    onImportRescuer: (() -> Unit)? = null,
     viewModel: MyPetsViewModel = viewModel()
 ) {
     val pets by viewModel.pets.collectAsState()
+    var needsPhotoOnly by remember { mutableStateOf(false) }
+    val visible = if (needsPhotoOnly) pets.filter { it.photoUrl.isNullOrBlank() && it.avatarFileAssetId.isNullOrBlank() } else pets
+    var showImportHelp by remember { mutableStateOf(false) }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Mis mascotas",
+                subtitle = "Identidad y salud de tus compañeros",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -55,12 +72,12 @@ fun MyPetsScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = padding.calculateTopPadding() + 8.dp,
+                    start = LeoDimens.SpaceMd,
+                    end = LeoDimens.SpaceMd,
+                    top = padding.calculateTopPadding() + LeoDimens.SpaceSm,
                     bottom = padding.calculateBottomPadding() + 72.dp
                 ),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
             ) {
                 item {
                     com.comunidapp.app.ui.components.ContextualFirstVisitHelp(
@@ -68,110 +85,172 @@ fun MyPetsScreen(
                         message = com.comunidapp.app.ui.components.ContextualHelpMessages.PET_PASSPORT
                     )
                 }
-                if (pets.isEmpty()) {
+                item {
+                    FilterChip(
+                        selected = needsPhotoOnly,
+                        onClick = { needsPhotoOnly = !needsPhotoOnly },
+                        label = { Text("Necesitan foto") }
+                    )
+                }
+                if (onImportRescuer != null && (
+                    com.comunidapp.app.data.provider.DataProvider.personCapabilityRepository.hasActive(
+                        com.comunidapp.app.domain.capability.PersonCapabilityCode.RESCUER
+                    ) ||
+                        com.comunidapp.app.domain.context.OperationalContextProvider.active.value
+                            is com.comunidapp.app.domain.context.OperationalContext.Rescuer
+                    )
+                ) {
                     item {
-                        Text(
-                            text = "Todavía no tenés mascotas registradas. Tocá + para agregar la primera.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(vertical = 24.dp)
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = onAddPet,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("+ Agregar mascota")
+                        }
+                    }
+                    item {
+                        androidx.compose.material3.OutlinedButton(
+                            onClick = onImportRescuer,
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Importar mascotas")
+                        }
+                    }
+                    item {
+                        androidx.compose.material3.TextButton(onClick = { showImportHelp = true }) {
+                            Text("Cómo funciona la importación")
+                        }
+                    }
+                }
+                if (visible.isEmpty()) {
+                    item {
+                        LeoEmptyState(
+                            title = "Todavía no tenés mascotas",
+                            message = "Tocá + para registrar la primera.",
+                            icon = Icons.Default.Pets
                         )
                     }
                 }
-                items(pets, key = { it.id }) { pet ->
+                items(visible, key = { it.id }) { pet ->
                     PetCard(pet = pet, onClick = { onPetClick(pet.id) })
                     PetHealthCard(pet = pet)
                 }
             }
             FloatingActionButton(
                 onClick = onAddPet,
+                containerColor = BrandWhite,
+                contentColor = BrandText,
                 modifier = Modifier
-                    .align(androidx.compose.ui.Alignment.BottomEnd)
+                    .align(Alignment.BottomEnd)
                     .padding(
-                        end = 16.dp,
-                        bottom = padding.calculateBottomPadding() + 16.dp
+                        end = LeoDimens.SpaceMd,
+                        bottom = padding.calculateBottomPadding() + LeoDimens.SpaceMd
                     )
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Agregar mascota")
             }
         }
     }
+    if (showImportHelp) {
+        androidx.compose.material3.AlertDialog(
+            onDismissRequest = { showImportHelp = false },
+            title = { Text("Cómo funciona la importación") },
+            text = {
+                Text(
+                    "1. Descargá la plantilla.\n" +
+                        "2. Completá los datos.\n" +
+                        "3. Subí el Excel.\n" +
+                        "4. Revisá la validación.\n" +
+                        "5. Confirmá.\n" +
+                        "6. Las mascotas se crean en LeoVer.\n" +
+                        "7. Las que no tienen imagen quedan marcadas “Necesita foto”.\n" +
+                        "8. Abrí la mascota y agregá la foto después.\n\n" +
+                        "Este texto no se vuelve a mostrar solo: siempre podés abrirlo desde Tutorial / Ayuda."
+                )
+            },
+            confirmButton = {
+                androidx.compose.material3.TextButton(onClick = { showImportHelp = false }) {
+                    Text("Entendido")
+                }
+            }
+        )
+    }
 }
 
 @Composable
 private fun PetHealthCard(pet: Pet) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
+    V2SurfaceCard {
+        Text(
+            text = "Salud de ${pet.name}",
+            style = LeoCardTitle,
+            color = BrandText,
+            fontWeight = FontWeight.SemiBold
+        )
+        pet.sterilized?.let {
             Text(
-                text = "Salud de ${pet.name}",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
+                text = "Castración: ${it.toDisplayName()}",
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
             )
-            pet.sterilized?.let {
+        }
+        pet.lastVetVisit?.let {
+            Text(
+                text = "Última consulta: ${formatDisplayDate(it)}",
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
+            )
+        }
+        pet.vaccinations.forEach { vac ->
+            val next = vac.nextDueDate?.takeIf { d -> d.isNotBlank() }?.let { " · Próx: ${formatDisplayDate(it)}" }.orEmpty()
+            Text(
+                text = "💉 ${vac.name}: ${formatDisplayDate(vac.date)}$next",
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
+            )
+        }
+        pet.lastDeworming?.let {
+            val product = pet.dewormingProduct?.let { p -> " ($p)" }.orEmpty()
+            Text(
+                text = "🪱 Desparasitación: ${formatDisplayDate(it)}$product",
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
+            )
+        }
+        pet.lastFleaTreatment?.let {
+            val product = pet.fleaTreatmentProduct?.let { p -> " ($p)" }.orEmpty()
+            Text(
+                text = "🐾 Antiparasitarios: ${formatDisplayDate(it)}$product",
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
+            )
+        }
+        pet.healthNotes?.let {
+            Text(
+                text = "Notas: $it",
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
+            )
+        }
+        if (pet.reminders.isNotEmpty()) {
+            Text(
+                text = "Recordatorios:",
+                style = LeoCaption,
+                fontWeight = FontWeight.SemiBold,
+                color = BrandText,
+                modifier = Modifier.padding(top = LeoDimens.SpaceSm)
+            )
+            pet.reminders.forEach { reminder ->
                 Text(
-                    text = "Castración: ${when (it) {
-                        SterilizationStatus.YES -> "Sí"
-                        SterilizationStatus.NO -> "No"
-                        SterilizationStatus.UNKNOWN -> "No especificado"
-                    }}",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
+                    text = "⏰ ${reminder.title} — ${reminder.date}",
+                    style = LeoCaption,
+                    color = BrandTextSecondary
                 )
-            }
-            pet.lastVetVisit?.let {
-                Text(
-                    text = "Última consulta: ${formatDisplayDate(it)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            pet.vaccinations.forEach { vac ->
-                val next = vac.nextDueDate?.takeIf { d -> d.isNotBlank() }?.let { " · Próx: ${formatDisplayDate(it)}" }.orEmpty()
-                Text(
-                    text = "💉 ${vac.name}: ${formatDisplayDate(vac.date)}$next",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            pet.lastDeworming?.let {
-                val product = pet.dewormingProduct?.let { p -> " ($p)" }.orEmpty()
-                Text(
-                    text = "🪱 Desparasitación: ${formatDisplayDate(it)}$product",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            pet.lastFleaTreatment?.let {
-                val product = pet.fleaTreatmentProduct?.let { p -> " ($p)" }.orEmpty()
-                Text(
-                    text = "🐾 Antiparasitarios: ${formatDisplayDate(it)}$product",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            pet.healthNotes?.let {
-                Text(
-                    text = "Notas: $it",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            if (pet.reminders.isNotEmpty()) {
-                Text(
-                    text = "Recordatorios:",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 8.dp)
-                )
-                pet.reminders.forEach { reminder ->
-                    Text(
-                        text = "⏰ ${reminder.title} — ${reminder.date}",
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                }
             }
         }
     }

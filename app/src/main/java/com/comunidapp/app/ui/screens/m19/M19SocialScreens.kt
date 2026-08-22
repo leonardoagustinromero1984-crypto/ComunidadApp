@@ -35,7 +35,9 @@ import com.comunidapp.app.data.model.M19FeedFilterKind
 import com.comunidapp.app.data.model.M19PostStatus
 import com.comunidapp.app.data.model.M19PublicPost
 import com.comunidapp.app.data.model.M19ReactionType
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -63,8 +65,9 @@ fun M19SocialFeedScreen(
     var query by remember(filter.query) { mutableStateOf(filter.query) }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Red social", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Red social", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -174,8 +177,9 @@ fun M19PostDetailScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Detalle publicación", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Detalle publicación", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {
@@ -254,8 +258,9 @@ fun M19PostsManageScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Administrar publicaciones", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Administrar publicaciones", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -311,8 +316,9 @@ fun M19PostEditScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = if (postId == null) "Nueva publicación" else "Editar publicación",
                 showBackButton = true,
                 onBackClick = onNavigateBack

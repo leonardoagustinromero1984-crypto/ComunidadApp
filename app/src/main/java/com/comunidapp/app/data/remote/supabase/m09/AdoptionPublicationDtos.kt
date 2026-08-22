@@ -24,6 +24,7 @@ data class AdoptionPublicationRow(
     val description: String = "",
     val requirements: String? = null,
     val status: String = "PUBLISHED",
+    @SerialName("public_code") val publicCode: String? = null,
     @SerialName("published_at") val publishedAt: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null

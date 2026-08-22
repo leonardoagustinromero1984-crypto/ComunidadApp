@@ -1,6 +1,17 @@
 package com.comunidapp.app.ui.screens.m14
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.style.TextAlign
+import com.comunidapp.app.data.model.PetSex
+import com.comunidapp.app.data.model.SterilizationStatus
+import com.comunidapp.app.domain.vitacora.VitaCoraHistoryPresentation
+import com.comunidapp.app.ui.components.PetImage
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -33,11 +44,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.ui.theme.ComunidappTheme
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.data.model.M14CredentialType
 import com.comunidapp.app.data.model.M14PassportStatus
 import com.comunidapp.app.data.model.M14Visibility
 import com.comunidapp.app.data.repository.M14Validators
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -59,9 +72,10 @@ fun M14PassportListScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
-                title = "Pasaportes",
+            LeoTopAppBar(
+                title = "VitaCora",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -69,15 +83,15 @@ fun M14PassportListScreen(
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             Text(
-                "Información pública resumida cuando el pasaporte es visible.",
+                "Información pública resumida cuando VitaCora es visible.",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(12.dp))
             when (val s = state) {
                 M14PassportListUiState.Loading -> LoadingState()
                 M14PassportListUiState.Empty -> EmptyState(
-                    title = "Sin pasaportes",
-                    message = "Creá un pasaporte desde el detalle de una mascota."
+                    title = "Sin VitaCora",
+                    message = "Abrí VitaCora desde el detalle de una mascota."
                 )
                 is M14PassportListUiState.Error -> ErrorState(message = s.message)
                 is M14PassportListUiState.Content -> LazyColumn(
@@ -113,19 +127,23 @@ fun M14PetPassportScreen(
     onHistory: (String) -> Unit,
     onManagedVerifications: () -> Unit,
     onPublic: (String) -> Unit,
+    onProfessionalAccess: (String) -> Unit = {},
+    onProposals: (String) -> Unit = {},
     viewModel: M14PetPassportViewModel = viewModel(
         factory = M14PetPassportViewModel.factory(petId)
     )
 ) {
     val passport by viewModel.passport.collectAsState()
     val pet by viewModel.pet.collectAsState()
+    val historyPreview by viewModel.historyPreview.collectAsState()
     val message by viewModel.message.collectAsState()
     val messageIsError by viewModel.messageIsError.collectAsState()
     val busy by viewModel.busy.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
-                title = "Pasaporte",
+            LeoTopAppBar(
+                title = "VitaCora",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -141,10 +159,11 @@ fun M14PetPassportScreen(
             val petName = pet?.name?.takeIf { it.isNotBlank() } ?: "tu mascota"
             if (p == null) {
                 val createFailed =
+                    message?.contains("No pudimos abrir VitaCora", ignoreCase = true) == true ||
                     message?.contains("No pudimos crear el pasaporte", ignoreCase = true) == true
                 if (createFailed) {
                     Text(
-                        text = "No pudimos crear el pasaporte",
+                        text = "No pudimos abrir VitaCora",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = MaterialTheme.colorScheme.error
@@ -169,7 +188,7 @@ fun M14PetPassportScreen(
                     ) { Text("Volver") }
                 } else {
                     Text(
-                        text = "Pasaporte de $petName",
+                        text = "VitaCora de $petName",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
@@ -183,76 +202,99 @@ fun M14PetPassportScreen(
                         onClick = { viewModel.createFromPet() },
                         enabled = !busy && petId.isNotBlank(),
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text(if (busy) "Creando…" else "Crear pasaporte") }
+                    ) { Text(if (busy) "Abriendo…" else "Abrir VitaCora") }
                 }
             } else {
-                Text(p.displayName, fontWeight = FontWeight.Bold)
-                Text("Nº ${p.passportNumber}")
-                Text(
-                    "Estado: ${
-                        when (p.status) {
-                            M14PassportStatus.DRAFT -> "Borrador"
-                            M14PassportStatus.ACTIVE -> "Activo"
-                            M14PassportStatus.SUSPENDED -> "Suspendido"
-                            M14PassportStatus.REVOKED -> "Revocado"
-                            M14PassportStatus.ARCHIVED -> "Archivado"
-                        }
-                    }"
+                val currentPet = pet
+                VitaCoraHubHeader(
+                    petName = p.displayName,
+                    vitacoraNumber = p.passportNumber,
+                    statusLabel = passportStatusLabel(p.status),
+                    visibilityLabel = passportVisibilityLabel(p.visibility),
+                    photoUrl = currentPet?.photoUrl,
+                    avatarAssetId = currentPet?.avatarFileAssetId
                 )
-                Text(
-                    "Visibilidad: ${
-                        when (p.visibility) {
-                            M14Visibility.PRIVATE -> "Privado"
-                            M14Visibility.RESPONSIBLES -> "Red de cuidado"
-                            M14Visibility.AUTHORIZED_ORGANIZATIONS -> "Organizaciones autorizadas"
-                            M14Visibility.PUBLIC_REDACTED -> "Público resumido"
+                Spacer(Modifier.height(16.dp))
+                VitaCoraSectionCard(
+                    title = "Resumen",
+                    description = "Información clave de ${p.displayName}."
+                ) {
+                    currentPet?.let { petSummary ->
+                        Text("Especie: ${petSummary.species.name}")
+                        petSummary.breed?.takeIf { it.isNotBlank() }?.let { Text("Raza: $it") }
+                        Text(
+                            "Sexo: ${
+                                when (petSummary.sex) {
+                                    PetSex.MALE -> "Macho"
+                                    PetSex.FEMALE -> "Hembra"
+                                    PetSex.UNKNOWN -> "Sin especificar"
+                                }
+                            }"
+                        )
+                        if (petSummary.ageYears > 0 || petSummary.ageMonths > 0) {
+                            Text("Edad: ${petSummary.ageYears}a ${petSummary.ageMonths}m")
                         }
-                    }"
+                        petSummary.weightKg?.takeIf { it > 0 }?.let {
+                            Text("Peso: ${it.toString().replace('.', ',')} kg")
+                        }
+                        petSummary.sterilized?.takeIf { it != SterilizationStatus.UNKNOWN }?.let {
+                            Text(
+                                "Castración: ${
+                                    if (it == SterilizationStatus.YES) "Sí" else "No"
+                                }"
+                            )
+                        }
+                    }
+                    TextButton(onClick = { onEdit(petId) }) { Text("Editar datos") }
+                }
+                Spacer(Modifier.height(12.dp))
+                VitaCoraSectionCard(
+                    title = "Salud",
+                    description = "Vacunas, peso y cuidados registrados.",
+                    actionLabel = "Ver salud",
+                    onAction = { onEdit(petId) }
                 )
-                Spacer(Modifier.height(8.dp))
+                Spacer(Modifier.height(12.dp))
+                VitaCoraSectionCard(
+                    title = "Últimos movimientos",
+                    description = if (historyPreview.isEmpty()) {
+                        "Todavía no hay eventos recientes."
+                    } else {
+                        historyPreview.joinToString("\n") { item ->
+                            "• ${VitaCoraHistoryPresentation.titleFor(item)}"
+                        }
+                    },
+                    actionLabel = "Ver historial completo",
+                    onAction = { onHistory(p.id) }
+                )
+                Spacer(Modifier.height(12.dp))
+                VitaCoraSectionCard(
+                    title = "Compartir QR",
+                    description = "Compartí un QR para abrir la vista pública de la VitaCora de ${p.displayName}.",
+                    actionLabel = "Compartir QR",
+                    onAction = { onShare(p.id) }
+                )
+                Spacer(Modifier.height(12.dp))
+                VitaCoraSectionCard(
+                    title = "Acceso profesional",
+                    description = "Administrá quién puede consultar o colaborar con la VitaCora de ${p.displayName}.",
+                    actionLabel = "Gestionar accesos",
+                    onAction = { onProfessionalAccess(petId) }
+                )
+                Spacer(Modifier.height(12.dp))
+                VitaCoraSectionCard(
+                    title = "Propuestas VitaCora",
+                    description = "Revisá aportes o cambios enviados por profesionales o personas autorizadas.",
+                    actionLabel = "Ver propuestas",
+                    onAction = { onProposals(petId) }
+                )
                 if (p.status == M14PassportStatus.DRAFT) {
+                    Spacer(Modifier.height(12.dp))
                     Button(
                         onClick = { viewModel.activate() },
                         enabled = !busy,
                         modifier = Modifier.fillMaxWidth()
-                    ) { Text("Activar pasaporte") }
-                }
-                OutlinedButton(
-                    onClick = { onEdit(petId) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Editar datos") }
-                OutlinedButton(
-                    onClick = { onCredentials(p.id) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Credenciales") }
-                OutlinedButton(
-                    onClick = { onVerification(p.id) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Mis solicitudes de verificación") }
-                OutlinedButton(
-                    onClick = onManagedVerifications,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Cola de verificación (gestión)") }
-                OutlinedButton(
-                    onClick = { onShare(p.id) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Compartir / código público") }
-                OutlinedButton(
-                    onClick = { onHistory(p.id) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Historial") }
-                if (p.visibility != M14Visibility.PUBLIC_REDACTED) {
-                    OutlinedButton(
-                        onClick = { viewModel.setPublicRedacted() },
-                        enabled = !busy,
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Marcar vista pública redactada") }
-                }
-                p.publicCode?.let { code ->
-                    OutlinedButton(
-                        onClick = { onPublic(code) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Ver proyección pública") }
+                    ) { Text("Activar VitaCora") }
                 }
             }
             message?.let {
@@ -301,9 +343,10 @@ fun M14PassportEditScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
-                title = "Editar pasaporte",
+            LeoTopAppBar(
+                title = "Editar VitaCora",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -372,8 +415,9 @@ fun M14CredentialsScreen(
 ) {
     val items by viewModel.items.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Credenciales",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -446,8 +490,9 @@ fun M14CredentialCreateScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Nueva credencial",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -509,8 +554,9 @@ fun M14CredentialDetailScreen(
     val message by viewModel.message.collectAsState()
     val busy by viewModel.busy.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Credencial",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -560,8 +606,9 @@ fun M14VerificationPrepScreen(
 ) {
     val requests by viewModel.requests.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Verificación",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -610,8 +657,9 @@ fun M14PublicPassportScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Vista pública",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -648,17 +696,101 @@ fun M14PublicPassportScreen(
     }
 }
 
+@Composable
+private fun VitaCoraHubHeader(
+    petName: String,
+    vitacoraNumber: String,
+    statusLabel: String,
+    visibilityLabel: String,
+    photoUrl: String?,
+    avatarAssetId: String?
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = BrandCream)
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            PetImage(
+                imageUrl = photoUrl,
+                contentDescription = petName,
+                modifier = Modifier.size(72.dp),
+                cornerRadius = 36.dp
+            )
+            Spacer(Modifier.size(12.dp))
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "VitaCora de $petName",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text("N.º $vitacoraNumber", style = MaterialTheme.typography.bodyMedium)
+                Text("Estado: $statusLabel", style = MaterialTheme.typography.bodySmall)
+                Text("Visibilidad: $visibilityLabel", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun VitaCoraSectionCard(
+    title: String,
+    description: String,
+    actionLabel: String? = null,
+    onAction: (() -> Unit)? = null,
+    content: (@Composable () -> Unit)? = null
+) {
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .then(if (onAction != null) Modifier.clickable(onClick = onAction) else Modifier),
+        shape = RoundedCornerShape(12.dp)
+    ) {
+        Column(Modifier.padding(16.dp)) {
+            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
+            Text(
+                description,
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(top = 6.dp)
+            )
+            content?.invoke()
+            actionLabel?.let { label ->
+                TextButton(onClick = { onAction?.invoke() }, modifier = Modifier.padding(top = 4.dp)) {
+                    Text(label, fontWeight = FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+
+private fun passportStatusLabel(status: M14PassportStatus): String = when (status) {
+    M14PassportStatus.DRAFT -> "Borrador"
+    M14PassportStatus.ACTIVE -> "Activa"
+    M14PassportStatus.SUSPENDED -> "Suspendida"
+    M14PassportStatus.REVOKED -> "Revocada"
+    M14PassportStatus.ARCHIVED -> "Archivada"
+}
+
+private fun passportVisibilityLabel(visibility: M14Visibility): String = when (visibility) {
+    M14Visibility.PRIVATE -> "Privada"
+    M14Visibility.RESPONSIBLES -> "Red de cuidado"
+    M14Visibility.AUTHORIZED_ORGANIZATIONS -> "Organizaciones autorizadas"
+    M14Visibility.PUBLIC_REDACTED -> "Pública resumida"
+}
+
 @Preview(showBackground = true, name = "PassportCreationEmptyPreview")
 @Composable
 private fun PassportCreationEmptyPreview() {
     ComunidappTheme {
         Column(Modifier.padding(16.dp)) {
-            Text("Pasaporte de Luna", fontWeight = FontWeight.Bold)
+            Text("VitaCora de Luna", fontWeight = FontWeight.Bold)
             Spacer(Modifier.height(8.dp))
             Text("Reuní en un solo lugar su información más importante.")
             Spacer(Modifier.height(12.dp))
             Button(onClick = {}, modifier = Modifier.fillMaxWidth()) {
-                Text("Crear pasaporte")
+                Text("Abrir VitaCora")
             }
         }
     }
@@ -670,7 +802,7 @@ private fun PassportCreationErrorPreview() {
     ComunidappTheme {
         Column(Modifier.padding(16.dp)) {
             Text(
-                "No pudimos crear el pasaporte",
+                "No pudimos abrir VitaCora",
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.error
             )

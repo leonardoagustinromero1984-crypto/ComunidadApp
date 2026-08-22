@@ -1,6 +1,7 @@
 package com.comunidapp.app.data.remote.supabase
 
 import com.comunidapp.app.data.model.User
+import com.comunidapp.app.data.remote.supabase.canonical.toUser
 import com.comunidapp.app.domain.user.CompleteOnboardingCommand
 import com.comunidapp.app.domain.user.PublicUserProfile
 import com.comunidapp.app.domain.user.UpdateMyProfileCommand
@@ -24,6 +25,14 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.put
 import kotlin.coroutines.coroutineContext
+
+@Serializable
+data class SearchPersonRpcRow(
+    @SerialName("user_id") val userId: String,
+    val username: String? = null,
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("avatar_asset_id") val avatarAssetId: String? = null
+)
 
 @Serializable
 data class PublicProfileRpcRow(
@@ -56,18 +65,28 @@ data class PrivacySettingsUpdateRow(
     @SerialName("updated_at") val updatedAt: String
 )
 
+@Serializable
+private data class PrivacyStatePatch(
+    @SerialName("privacy_state") val privacyState: String
+)
+
 class UserSupabaseDataSource {
 
     private val json = Json { ignoreUnknownKeys = true }
 
     suspend fun getUser(userId: String): User? {
         return try {
-            supabase.from(SupabaseTables.USERS)
+            val person = supabase.from(SupabaseTables.PERSONS)
                 .select {
-                    filter { eq("id", userId) }
+                    filter { eq("user_id", userId) }
                 }
-                .decodeSingleOrNull<UserRow>()
-                ?.let(::parseUser)
+                .decodeSingleOrNull<com.comunidapp.app.data.remote.supabase.canonical.CanonicalPersonRow>()
+            if (person != null) {
+                val email = supabase.auth.currentUserOrNull()?.email.orEmpty()
+                val verified = supabase.auth.currentUserOrNull()?.emailConfirmedAt != null
+                return person.toUser(email = email, emailVerified = verified)
+            }
+            null
         } catch (_: Exception) {
             null
         }
@@ -100,8 +119,29 @@ class UserSupabaseDataSource {
         return Result.success(Unit)
     }
 
-    fun observeUser(userId: String): Flow<User?> = pollingFlow {
-        getUser(userId)
+    fun observeUser(userId: String): Flow<User?> = flow {
+        while (coroutineContext.isActive) {
+            try {
+                emit(getUserAllowThrow(userId))
+            } catch (_: Exception) {
+                // Transient read errors must not look like "PERSON missing".
+            }
+            delay(4_000)
+        }
+    }
+
+    private suspend fun getUserAllowThrow(userId: String): User? {
+        val person = supabase.from(SupabaseTables.PERSONS)
+            .select {
+                filter { eq("user_id", userId) }
+            }
+            .decodeSingleOrNull<com.comunidapp.app.data.remote.supabase.canonical.CanonicalPersonRow>()
+        if (person != null) {
+            val email = supabase.auth.currentUserOrNull()?.email.orEmpty()
+            val verified = supabase.auth.currentUserOrNull()?.emailConfirmedAt != null
+            return person.toUser(email = email, emailVerified = verified)
+        }
+        return null
     }
 
     suspend fun fetchUsers(limit: Int = 100): List<User> = emptyList()
@@ -118,41 +158,45 @@ class UserSupabaseDataSource {
     }
 
     suspend fun isUsernameAvailable(username: String): Result<Boolean> {
-        return try {
-            val available = supabase.postgrest.rpc(
-                function = "is_username_available",
+        return runCatching {
+            supabase.postgrest.rpc(
+                function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_IS_USERNAME_AVAILABLE,
                 parameters = buildJsonObject { put("p_username", username) }
             ).decodeAs<Boolean>()
-            Result.success(available)
-        } catch (e: Exception) {
-            Result.failure(e)
         }
     }
 
     suspend fun completeOnboarding(command: CompleteOnboardingCommand): Result<UserProfile> {
+        val localityId = command.homeLocalityId?.trim().orEmpty()
+        if (localityId.isEmpty()) {
+            return Result.failure(IllegalArgumentException("HOME_LOCALITY_REQUIRED"))
+        }
         return try {
-            supabase.postgrest.rpc(
-                function = "complete_profile_onboarding",
-                parameters = buildJsonObject {
-                    put("p_display_name", command.displayName)
-                    put("p_username", command.username)
-                    command.city?.let { put("p_city", it) }
-                    command.province?.let { put("p_province", it) }
-                    command.countryCode?.let { put("p_country_code", it) }
-                    command.bio?.let { put("p_bio", it) }
-                    command.avatarPath?.let { put("p_avatar_path", it) }
-                    put("p_profile_visibility", command.privacy.profileVisibility.name)
-                    put("p_show_location", command.privacy.showLocation)
-                    put("p_show_phone", command.privacy.showPhone)
-                    put("p_allow_friend_requests", command.privacy.allowFriendRequests)
-                    command.locale?.let { put("p_locale", it) }
-                    command.timezone?.let { put("p_timezone", it) }
-                }
-            )
             val uid = supabase.auth.currentUserOrNull()?.id
                 ?: return Result.failure(IllegalStateException("NOT_AUTHENTICATED"))
-            runCatching {
-                supabase.postgrest.rpc(function = "ensure_my_default_user_role")
+            val existing = getUser(uid)
+            if (existing == null) {
+                val birth = command.birthDate?.trim().orEmpty()
+                if (birth.isEmpty()) {
+                    return Result.failure(IllegalArgumentException("BIRTH_DATE_INVALID"))
+                }
+                supabase.postgrest.rpc(
+                    function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_PROVISION_MY_PERSON,
+                    parameters = buildJsonObject {
+                        put("p_username", command.username)
+                        put("p_display_name", command.displayName)
+                        put("p_birth_date", birth)
+                        put("p_home_locality_id", localityId)
+                    }
+                )
+            } else {
+                supabase.postgrest.rpc(
+                    function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_UPDATE_MY_PERSON,
+                    parameters = buildJsonObject {
+                        put("p_display_name", command.displayName)
+                        put("p_home_locality_id", localityId)
+                    }
+                )
             }
             getOwnProfile(uid)
         } catch (e: Exception) {
@@ -163,16 +207,12 @@ class UserSupabaseDataSource {
     suspend fun updateMyProfile(command: UpdateMyProfileCommand): Result<UserProfile> {
         return try {
             supabase.postgrest.rpc(
-                function = "update_my_profile",
+                function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_UPDATE_MY_PERSON,
                 parameters = buildJsonObject {
                     command.displayName?.let { put("p_display_name", it) }
-                    command.bio?.let { put("p_bio", it) }
-                    command.city?.let { put("p_city", it) }
-                    command.province?.let { put("p_province", it) }
-                    command.countryCode?.let { put("p_country_code", it) }
-                    command.locale?.let { put("p_locale", it) }
-                    command.timezone?.let { put("p_timezone", it) }
-                    command.avatarPath?.let { put("p_avatar_path", it) }
+                    command.homeLocalityId?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                        put("p_home_locality_id", it)
+                    }
                 }
             )
             val uid = supabase.auth.currentUserOrNull()?.id
@@ -183,10 +223,52 @@ class UserSupabaseDataSource {
         }
     }
 
+    suspend fun setPersonAvatar(assetId: String): Result<Unit> {
+        val id = assetId.trim()
+        if (id.isBlank()) {
+            return Result.failure(IllegalStateException("SET_PERSON_AVATAR: MEDIA_ASSET_NOT_FOUND"))
+        }
+        return try {
+            callSetPersonAvatar(id)
+            Result.success(Unit)
+        } catch (e: Exception) {
+            val signal = e.message.orEmpty().uppercase()
+            val authish = "JWT" in signal || "401" in signal ||
+                "NOT_AUTHENTICATED" in signal || "PGRST301" in signal
+            if (authish && supabase.auth.currentUserOrNull() != null) {
+                runCatching { supabase.auth.refreshCurrentSession() }
+                return try {
+                    callSetPersonAvatar(id)
+                    Result.success(Unit)
+                } catch (retry: Exception) {
+                    Result.failure(
+                        IllegalStateException(
+                            "SET_PERSON_AVATAR: ${retry.message?.take(80).orEmpty()}",
+                            retry
+                        )
+                    )
+                }
+            }
+            Result.failure(
+                IllegalStateException(
+                    "SET_PERSON_AVATAR: ${e.message?.take(80).orEmpty()}",
+                    e
+                )
+            )
+        }
+    }
+
+    private suspend fun callSetPersonAvatar(assetId: String) {
+        supabase.postgrest.rpc(
+            function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_SET_PERSON_AVATAR,
+            parameters = buildJsonObject { put("p_media_asset_id", assetId) }
+        )
+    }
+
     suspend fun getPublicProfile(targetUserId: String): Result<PublicUserProfile?> {
         return try {
             val element = supabase.postgrest.rpc(
-                function = "get_public_user_profile",
+                function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_GET_PUBLIC_PERSON,
                 parameters = buildJsonObject { put("p_user_id", targetUserId) }
             ).decodeAs<JsonElement>()
             if (element is JsonNull) return Result.success(null)
@@ -210,73 +292,65 @@ class UserSupabaseDataSource {
     }
 
     suspend fun searchPublicProfiles(query: String, limit: Int): Result<List<PublicUserProfile>> {
+        val normalized = com.comunidapp.app.domain.user.PersonSearchQuery.normalize(query)
+        if (normalized.length < 2 || limit <= 0) return Result.success(emptyList())
         return try {
+            val authPresent = supabase.auth.currentUserOrNull() != null
+            com.comunidapp.app.core.logging.AppLog.info(
+                "FriendSearch",
+                "SEARCH rpc=canon_search_persons auth=${if (authPresent) "YES" else "NO"} qLen=${normalized.length}"
+            )
             val element = supabase.postgrest.rpc(
-                function = "search_public_user_profiles",
-                parameters = buildJsonObject {
-                    put("p_query", query)
-                    put("p_limit", limit)
-                    put("p_offset", 0)
-                }
+                function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_SEARCH_PERSONS,
+                parameters = buildJsonObject { put("p_query", normalized) }
             ).decodeAs<JsonElement>()
-            val array = element as? JsonArray ?: return Result.success(emptyList())
-            val list = array.mapNotNull { item ->
-                runCatching {
-                    json.decodeFromJsonElement(PublicProfileRpcRow.serializer(), item)
-                }.getOrNull()?.let { row ->
+            val rows = com.comunidapp.app.data.remote.supabase.m08.M08RpcDecoding
+                .decodeRows<SearchPersonRpcRow>(element)
+                .take(limit)
+            com.comunidapp.app.core.logging.AppLog.info(
+                "FriendSearch",
+                "SEARCH status=OK rows=${rows.size}"
+            )
+            Result.success(
+                rows.map { row ->
                     PublicUserProfile(
-                        id = row.id,
+                        id = row.userId,
                         displayName = row.displayName.orEmpty(),
                         username = row.username,
-                        avatarPath = row.avatarPath,
-                        bio = row.bio,
-                        locationText = row.locationText,
-                        city = row.city,
-                        province = row.province,
-                        countryCode = row.countryCode
+                        avatarPath = row.avatarAssetId
                     )
                 }
-            }
-            Result.success(list)
+            )
         } catch (e: Exception) {
+            com.comunidapp.app.core.logging.AppLog.info(
+                "FriendSearch",
+                "SEARCH status=FAIL type=${e::class.java.simpleName}"
+            )
             Result.failure(e)
         }
     }
 
     suspend fun getPrivacySettings(userId: String): Result<UserPrivacySettings> {
-        return try {
-            val row = supabase.from("user_privacy_settings")
-                .select {
-                    filter { eq("user_id", userId) }
-                }
-                .decodeSingleOrNull<PrivacySettingsRow>()
-            Result.success(
-                row?.let {
-                    UserPrivacySettings(
-                        profileVisibility = UserProfileMapper.parseVisibility(it.profileVisibility),
-                        showLocation = it.showLocation,
-                        showPhone = it.showPhone,
-                        allowFriendRequests = it.allowFriendRequests
-                    )
-                } ?: UserPrivacySettings()
-            )
-        } catch (_: Exception) {
-            Result.success(UserPrivacySettings())
-        }
+        val person = getUser(userId)
+        val visibility = com.comunidapp.app.domain.user.SocialProfileVisibility.fromRaw(
+            if (person?.profilePrivate == false) "PUBLIC_LIMITED" else "PRIVATE"
+        )
+        return Result.success(UserPrivacySettings(profileVisibility = visibility))
     }
 
     suspend fun updatePrivacySettings(userId: String, settings: UserPrivacySettings): Result<Unit> {
+        val uid = supabase.auth.currentUserOrNull()?.id
+            ?: return Result.failure(IllegalStateException("NOT_AUTHENTICATED"))
+        if (uid != userId) {
+            return Result.failure(IllegalStateException("FORBIDDEN"))
+        }
         return try {
-            supabase.from("user_privacy_settings").update(
-                PrivacySettingsUpdateRow(
-                    profileVisibility = settings.profileVisibility.name,
-                    showLocation = settings.showLocation,
-                    showPhone = settings.showPhone,
-                    allowFriendRequests = settings.allowFriendRequests,
-                    updatedAt = nowIso()
-                )
+            val state = com.comunidapp.app.domain.user.SocialProfileVisibility
+                .toCanonicalPrivacyState(settings.profileVisibility)
+            supabase.from(SupabaseTables.PERSONS).update(
+                PrivacyStatePatch(privacyState = state)
             ) {
-                filter { eq("user_id", userId) }
+                filter { eq("user_id", uid) }
             }
             Result.success(Unit)
         } catch (e: Exception) {

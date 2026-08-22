@@ -180,6 +180,17 @@ class M18EventDetailViewModel(
         viewModelScope.launch {
             repository.registerForEvent(eventId)
                 .onSuccess {
+                    val event = _event.value
+                    if (event != null) {
+                        runCatching {
+                            com.comunidapp.app.data.repository.ParticipationCoordinator.notifyEventRegistration(
+                                eventId = eventId,
+                                eventTitle = event.title,
+                                organizationDisplayName = event.organizationDisplayName,
+                                organizationId = event.organizationId
+                            )
+                        }
+                    }
                     _message.value = when (it.status) {
                         M18RegistrationStatus.REGISTERED -> "Inscripción confirmada."
                         M18RegistrationStatus.WAITLISTED -> "Estás en lista de espera."

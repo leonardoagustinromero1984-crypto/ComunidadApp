@@ -29,7 +29,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.toDisplayName
@@ -45,9 +47,10 @@ fun FriendRequestsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
-                title = "Solicitudes de amistad",
+            LeoTopAppBar(
+                title = "Solicitudes para seguirte",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -247,7 +250,7 @@ private fun RequestUserRow(
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = user.accountType.toDisplayName(),
+                text = "Persona",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

@@ -157,6 +157,23 @@ class M17CampaignDetailViewModel(
 
     fun consumeMessage() { _message.value = null }
 
+    fun offerHelp(kinds: List<String>) {
+        val summary = kinds.joinToString(", ").ifBlank { "colaboración" }
+        viewModelScope.launch {
+            val campaign = _campaign.value ?: return@launch
+            runCatching {
+                com.comunidapp.app.data.repository.ParticipationCoordinator.notifyCampaignOffer(
+                    campaignId = campaignId,
+                    campaignTitle = campaign.title,
+                    organizationDisplayName = campaign.organizationDisplayName,
+                    organizationId = campaign.organizationId,
+                    offerSummary = summary
+                )
+            }
+            _message.value = "Listo. Enviamos tu oferta al organizador por Mensajes LeoVer."
+        }
+    }
+
     companion object {
         fun factory(campaignId: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")

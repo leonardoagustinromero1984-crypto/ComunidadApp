@@ -131,6 +131,16 @@ object FilePathBuilder {
                     .getOrElse { return Result.failure(it) }
                 "posts/$postId/$assetId/$safe"
             }
+            FileAssetPurpose.STORY_MEDIA -> {
+                val storyId = requireResource(request.resourceRef, FileResourceType.STORY)
+                    .getOrElse { return Result.failure(it) }
+                "stories/$storyId/$assetId/$safe"
+            }
+            FileAssetPurpose.REEL_MEDIA -> {
+                val reelId = requireResource(request.resourceRef, FileResourceType.REEL)
+                    .getOrElse { return Result.failure(it) }
+                "reels/$reelId/$assetId/$safe"
+            }
             FileAssetPurpose.ADOPTION_MEDIA -> {
                 val id = requireResource(request.resourceRef, FileResourceType.ADOPTION)
                     .getOrElse { return Result.failure(it) }

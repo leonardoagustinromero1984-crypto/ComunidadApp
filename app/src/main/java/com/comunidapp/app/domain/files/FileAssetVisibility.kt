@@ -74,6 +74,8 @@ enum class FileResourceType {
     PET,
     ORGANIZATION,
     POST,
+    STORY,
+    REEL,
     ADOPTION,
     LOST_FOUND_CASE,
     SERVICE_PROFILE,

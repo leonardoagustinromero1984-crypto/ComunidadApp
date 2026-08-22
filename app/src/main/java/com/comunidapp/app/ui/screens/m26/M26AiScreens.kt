@@ -23,7 +23,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M26PublicDuplicateCandidate
 import com.comunidapp.app.data.model.M26PublicRecommendation
 import com.comunidapp.app.data.model.M26PublicVisualMatch
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -54,7 +56,7 @@ fun M26HubScreen(
     viewModel: M26HubViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Inteligencia asistida", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Inteligencia asistida", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (val s = state) {
                 M26HubUiState.Loading -> LoadingState()
@@ -78,7 +80,7 @@ fun M26HubScreen(
 @Composable
 fun M26VisualMatchingScreen(onNavigateBack: () -> Unit, viewModel: M26VisualMatchingViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Matching visual", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Matching visual", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (val s = state) {
                 M26VisualMatchingUiState.Loading -> LoadingState()
@@ -95,7 +97,7 @@ fun M26VisualMatchingScreen(onNavigateBack: () -> Unit, viewModel: M26VisualMatc
 @Composable
 fun M26DuplicatesScreen(onNavigateBack: () -> Unit, viewModel: M26DuplicatesViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Duplicados", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Duplicados", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (val s = state) {
                 M26DuplicatesUiState.Loading -> LoadingState()
@@ -112,7 +114,7 @@ fun M26DuplicatesScreen(onNavigateBack: () -> Unit, viewModel: M26DuplicatesView
 @Composable
 fun M26AssistanceScreen(onNavigateBack: () -> Unit, viewModel: M26AssistanceViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Asistencia", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Asistencia", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Asistencia orientativa — no reemplaza la moderación humana.", style = MaterialTheme.typography.bodyMedium)
             when (val s = state) {
@@ -143,7 +145,7 @@ fun M26AssistanceScreen(onNavigateBack: () -> Unit, viewModel: M26AssistanceView
 @Composable
 fun M26RecommendationsScreen(onNavigateBack: () -> Unit, viewModel: M26RecommendationsViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Recomendaciones", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Recomendaciones", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Solo se muestran recomendaciones con revisión humana aprobada.", style = MaterialTheme.typography.bodyMedium)
             when (val s = state) {
@@ -164,7 +166,7 @@ fun M26RecommendationsScreen(onNavigateBack: () -> Unit, viewModel: M26Recommend
 @Composable
 fun M26HistoryScreen(onNavigateBack: () -> Unit, viewModel: M26HistoryViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Historial de asistencia", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Historial de asistencia", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             Text("Resultados personales — no constituyen verdad garantizada.", style = MaterialTheme.typography.bodyMedium)
             when (val s = state) {
@@ -190,7 +192,7 @@ fun M26HistoryScreen(onNavigateBack: () -> Unit, viewModel: M26HistoryViewModel 
 @Composable
 fun M26ReviewQueueScreen(onNavigateBack: () -> Unit, viewModel: M26ReviewQueueViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Revisión humana", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Revisión humana", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text("Cola de calidad IA — distinta de la moderación de contenido.", style = MaterialTheme.typography.bodyMedium)
             when (val s = state) {

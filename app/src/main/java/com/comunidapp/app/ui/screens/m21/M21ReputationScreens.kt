@@ -26,7 +26,9 @@ import com.comunidapp.app.data.model.M21PublicReview
 import com.comunidapp.app.data.model.M21PublicVerification
 import com.comunidapp.app.data.model.M21ReviewTargetType
 import com.comunidapp.app.data.model.M21ReputationBreakdown
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.ReputationSection
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
@@ -53,8 +55,9 @@ fun M21HubScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Reputación", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Reputación", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -128,8 +131,9 @@ fun M21SubjectScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Reputación · ${targetType.name.lowercase()}",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -174,8 +178,9 @@ fun M21ReviewDetailScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Detalle de reseña", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Detalle de reseña", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -238,8 +243,9 @@ fun M21ReviewsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Mis reseñas", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Mis reseñas", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -298,8 +304,9 @@ fun M21VerificationsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Verificaciones", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Verificaciones", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {

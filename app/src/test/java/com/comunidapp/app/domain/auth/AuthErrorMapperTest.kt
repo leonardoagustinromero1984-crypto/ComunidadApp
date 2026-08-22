@@ -5,6 +5,7 @@ import com.comunidapp.app.domain.auth.validation.AuthValidationException
 import com.comunidapp.app.domain.auth.validation.AuthValidators
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.net.SocketTimeoutException
@@ -20,7 +21,10 @@ class AuthErrorMapperTest {
     fun maps_invalid_credentials() {
         val error = AuthErrorMapper.fromThrowable(Exception("Invalid login credentials"))
         assertEquals(AuthErrorCode.INVALID_CREDENTIALS.name, error.code)
-        assertEquals("El correo o la contraseña son incorrectos.", error.userMessage)
+        assertEquals(
+            "El correo o la contraseña son incorrectos. Si te registraste con Google, continuá con Google o usá Recuperar contraseña para crear una.",
+            error.userMessage
+        )
         assertEquals(AppErrorKind.UNAUTHORIZED, error.kind)
     }
 
@@ -36,6 +40,12 @@ class AuthErrorMapperTest {
         val error = AuthErrorMapper.fromThrowable(Exception("User already registered"))
         assertEquals(AuthErrorCode.EMAIL_ALREADY_REGISTERED.name, error.code)
         assertFalse(error.userMessage.contains("Ya existe una cuenta con ese email"))
+        assertEquals(
+            "Ya existe una cuenta asociada a este correo. Si te registraste con Google, continuá con Google para ingresar.",
+            error.userMessage
+        )
+        assertFalse(error.userMessage.contains("identit"))
+        assertFalse(error.userMessage.contains("{"))
     }
 
     @Test
@@ -46,18 +56,27 @@ class AuthErrorMapperTest {
 
     @Test
     fun maps_recovery_expired() {
-        val error = AuthErrorMapper.fromThrowable(Exception("otp_expired"))
+        val error = AuthErrorMapper.fromThrowable(Exception("email link is invalid or has expired"))
         assertEquals(AuthErrorCode.RECOVERY_LINK_EXPIRED.name, error.code)
-        assertTrue(error.userMessage.contains("expiró") || error.userMessage.contains("expir"))
+        assertEquals("El enlace venció o ya fue utilizado.", error.userMessage)
         assertFalse(error.userMessage.contains("12345678"))
+    }
+
+    @Test
+    fun maps_otp_expired_to_friendly_code_message() {
+        val error = AuthErrorMapper.fromThrowable(Exception("otp_expired"))
+        assertEquals(AuthErrorCode.OTP_EXPIRED.name, error.code)
+        assertEquals("El código venció. Pedí uno nuevo.", error.userMessage)
+        assertFalse(error.userMessage.contains("enlace"))
     }
 
     @Test
     fun maps_invalid_otp_token() {
         val error = AuthErrorMapper.fromThrowable(Exception("Invalid OTP token"))
-        assertEquals(AuthErrorCode.RECOVERY_LINK_INVALID.name, error.code)
-        assertTrue(error.userMessage.contains("código") || error.userMessage.contains("enlace"))
+        assertEquals(AuthErrorCode.OTP_INVALID.name, error.code)
+        assertTrue(error.userMessage.contains("código"))
         assertFalse(error.userMessage.contains("Invalid OTP"))
+        assertFalse(error.userMessage.contains("enlace"))
     }
 
     @Test
@@ -155,6 +174,20 @@ class AuthErrorMapperTest {
         val error = AuthErrorMapper.fromThrowable(Exception("weird boom"))
         assertEquals(AuthErrorCode.UNKNOWN_AUTH_ERROR.name, error.code)
         assertTrue(error.technicalMessage.contains("weird"))
+    }
+
+    @Test
+    fun maps_signup_smtp_and_database_errors() {
+        val smtp = AuthErrorMapper.fromThrowable(Exception("gomail: SMTP auth failed"))
+        assertEquals(AuthErrorCode.SIGNUP_FAILED.name, smtp.code)
+        assertEquals("No pudimos completar el registro. Intentá de nuevo.", smtp.userMessage)
+        val db = AuthErrorMapper.fromThrowable(Exception("Database error saving new user"))
+        assertEquals(AuthErrorCode.SIGNUP_FAILED.name, db.code)
+        assertEquals("AUTH_SIGNUP_SMTP", AuthSignupDiagnostic.qaCode(AuthErrorCode.SIGNUP_FAILED, "smtp timeout"))
+        assertEquals("AUTH_SIGNUP_RATE_LIMIT", AuthSignupDiagnostic.qaCode(AuthErrorCode.RATE_LIMITED))
+        assertEquals("AUTH_SIGNUP_ALREADY_REGISTERED", AuthSignupDiagnostic.qaCode(AuthErrorCode.EMAIL_ALREADY_REGISTERED))
+        assertNull(AuthSignupDiagnostic.debugDetail(AuthErrorCode.SIGNUP_FAILED, "x", debugBuild = false))
+        assertEquals("AUTH_SIGNUP_UNKNOWN", AuthSignupDiagnostic.debugDetail(AuthErrorCode.SIGNUP_FAILED, "x", debugBuild = true))
     }
 
     @Test

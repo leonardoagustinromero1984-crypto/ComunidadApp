@@ -70,6 +70,8 @@ object M08PetErrorMapper {
         "PET_STATUS_FILTER_INVALID",
         "PET_CREATE_PARTIAL",
         "M08_FEATURE_UNAVAILABLE",
+        "PET_HOLDER_REVOKE_DEFERRED",
+        "LAST_OWNER_REQUIRED",
         "NETWORK",
         "TIMEOUT",
         "SERIALIZATION"
@@ -132,6 +134,8 @@ object M08PetErrorMapper {
             "Para cambiar el responsable principal usá una transferencia."
         "PET_PRINCIPAL_MISSING" ->
             "La mascota no tiene responsable principal activo."
+        "PET_HOLDER_REVOKE_DEFERRED" ->
+            "Todavía no se puede revocar este vínculo desde la app."
         "PET_RESPONSIBILITY_NOT_FOUND" -> "No encontramos ese vínculo de responsabilidad."
         "PET_RESPONSIBILITY_NOT_ACTIVE" -> "Ese vínculo de responsabilidad ya no está activo."
         "PET_RESPONSIBILITY_DUPLICATE_ACTIVE" ->

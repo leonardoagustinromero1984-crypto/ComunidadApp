@@ -1,5 +1,14 @@
 package com.comunidapp.app.ui.screens.m14
 
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import com.comunidapp.app.ui.util.QrCodeBitmapGenerator
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -34,7 +43,7 @@ import com.comunidapp.app.data.model.M14RemoteFallback
 import com.comunidapp.app.data.model.M14VerificationNextStep
 import com.comunidapp.app.data.model.M14VerificationRequestStatus
 import com.comunidapp.app.data.model.nextStep
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -43,6 +52,7 @@ import com.comunidapp.app.viewmodel.M14ManagedVerificationsViewModel
 import com.comunidapp.app.viewmodel.M14PassportHistoryViewModel
 import com.comunidapp.app.viewmodel.M14RevokeCredentialViewModel
 import com.comunidapp.app.viewmodel.M14SharePassportViewModel
+import com.comunidapp.app.domain.vitacora.VitaCoraHistoryPresentation
 import com.comunidapp.app.viewmodel.M14VerificationDetailViewModel
 
 @Composable
@@ -55,8 +65,9 @@ fun M14ManagedVerificationsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Verificaciones",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -114,8 +125,9 @@ fun M14VerificationDetailScreen(
     var reason by remember { mutableStateOf("REVIEWED") }
     var note by remember { mutableStateOf("") }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Solicitud",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -231,8 +243,9 @@ fun M14IssueVerifiedCredentialScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Emitir verificada",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -302,8 +315,9 @@ fun M14RevokeCredentialScreen(
     var reason by remember { mutableStateOf("REVOKED") }
     LaunchedEffect(done) { if (done) onDone() }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Revocar credencial",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -348,10 +362,15 @@ fun M14PassportShareScreen(
     val payload by viewModel.payload.collectAsState()
     val message by viewModel.message.collectAsState()
     val remotePending by viewModel.remotePending.collectAsState()
+    val context = LocalContext.current
+    val qrBitmap = remember(payload) {
+        payload?.let { QrCodeBitmapGenerator.encode(it) }
+    }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
-                title = "Compartir pasaporte",
+            LeoTopAppBar(
+                title = "Compartir QR",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -367,26 +386,43 @@ fun M14PassportShareScreen(
                 Spacer(Modifier.height(8.dp))
             }
             Text(
-                "El enlace solo incluye el código público. Sin nombre de responsable ni datos personales.",
-                style = MaterialTheme.typography.bodySmall
+                "Compartí este QR para que otras personas puedan abrir la vista pública de la VitaCora de ${passport?.displayName ?: "tu mascota"}.",
+                style = MaterialTheme.typography.bodyMedium
             )
             Spacer(Modifier.height(12.dp))
-            Text(
-                "Código público: ${passport?.publicCode ?: "no disponible"}",
-                fontWeight = FontWeight.Bold
-            )
-            Text("Deep link / QR (solo publicCode):")
-            Text(payload ?: "—", style = MaterialTheme.typography.bodyMedium)
+            Text("N.º ${passport?.passportNumber ?: "—"}", fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(12.dp))
+            qrBitmap?.let { bitmap ->
+                Image(
+                    bitmap = bitmap.asImageBitmap(),
+                    contentDescription = "Código QR VitaCora",
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(240.dp)
+                )
+            } ?: Text("QR no disponible todavía.", style = MaterialTheme.typography.bodySmall)
             Spacer(Modifier.height(12.dp))
             Button(
-                onClick = { viewModel.rotate() },
+                onClick = {
+                    val shareText = buildString {
+                        append("VitaCora de ${passport?.displayName ?: "mi mascota"}")
+                        append("\n")
+                        payload?.let { append(it) }
+                    }
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_TEXT, shareText)
+                    }
+                    context.startActivity(Intent.createChooser(intent, "Compartir VitaCora"))
+                },
+                enabled = payload != null,
                 modifier = Modifier.fillMaxWidth()
-            ) { Text("Rotar código público") }
+            ) { Text("Compartir") }
             passport?.publicCode?.let { code ->
                 OutlinedButton(
                     onClick = { onPublic(code) },
                     modifier = Modifier.fillMaxWidth()
-                ) { Text("Ver proyección pública") }
+                ) { Text("Ver vista pública") }
             }
             message?.let {
                 Spacer(Modifier.height(8.dp))
@@ -408,8 +444,9 @@ fun M14PassportHistoryScreen(
     val message by viewModel.message.collectAsState()
     val remotePending by viewModel.remotePending.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Historial",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -426,7 +463,7 @@ fun M14PassportHistoryScreen(
                 Spacer(Modifier.height(8.dp))
             }
             Text(
-                "Eventos de estado y metadatos no sensibles (sin PII, sin actorUserId visible).",
+                "Eventos recientes de la VitaCora de tu mascota.",
                 style = MaterialTheme.typography.bodySmall
             )
             Spacer(Modifier.height(12.dp))
@@ -434,7 +471,7 @@ fun M14PassportHistoryScreen(
                 items.isEmpty() && message != null -> ErrorState(message = message!!)
                 items.isEmpty() -> EmptyState(
                     title = "Sin historial",
-                    message = "Todavía no hay eventos registrados para este pasaporte."
+                    message = "Todavía no hay eventos registrados para esta VitaCora."
                 )
                 else -> LazyColumn {
                     items(items, key = { it.id }) { h ->
@@ -445,12 +482,15 @@ fun M14PassportHistoryScreen(
                         ) {
                             Column(Modifier.padding(12.dp)) {
                                 Text(
-                                    "${h.fromStatus?.name ?: "—"} → ${h.toStatus.name}",
+                                    VitaCoraHistoryPresentation.titleFor(h),
                                     fontWeight = FontWeight.Bold
                                 )
-                                Text(h.reason ?: "—")
-                                h.metadataEvent?.let {
-                                    Text("Evento: $it", style = MaterialTheme.typography.bodySmall)
+                                VitaCoraHistoryPresentation.detailFor(h)?.let { detail ->
+                                    Text(detail, style = MaterialTheme.typography.bodyMedium)
+                                }
+                                val date = VitaCoraHistoryPresentation.formatDate(h.createdAt)
+                                if (date.isNotBlank()) {
+                                    Text(date, style = MaterialTheme.typography.bodySmall)
                                 }
                             }
                         }

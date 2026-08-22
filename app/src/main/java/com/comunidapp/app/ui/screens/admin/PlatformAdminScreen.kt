@@ -29,19 +29,27 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.authorization.PlatformRoleCode
 import com.comunidapp.app.domain.user.AccountStatus
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.state.LoadingState
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandOrange
 import com.comunidapp.app.viewmodel.PlatformAdminViewModel
 
 @Composable
 fun PlatformAdminScreen(
     onNavigateBack: () -> Unit,
+    onNavigateToLocationCatalog: () -> Unit = {},
+    onNavigateToMasterCatalog: () -> Unit = {},
+    onNavigateToImports: () -> Unit = {},
     viewModel: PlatformAdminViewModel = viewModel(factory = PlatformAdminViewModel.factory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Administración",
                 showBackButton = true,
                 onBackClick = {
@@ -53,9 +61,7 @@ fun PlatformAdminScreen(
     ) { padding ->
         when {
             !uiState.accessChecked -> {
-                Column(Modifier.padding(padding).padding(24.dp)) {
-                    CircularProgressIndicator()
-                }
+                LoadingState(contentModifier = Modifier.padding(padding))
             }
             !uiState.accessAllowed -> {
                 LaunchedEffect(Unit) { onNavigateBack() }
@@ -74,7 +80,10 @@ fun PlatformAdminScreen(
                 AdminUserSearch(
                     modifier = Modifier.padding(padding),
                     uiState = uiState,
-                    viewModel = viewModel
+                    viewModel = viewModel,
+                    onNavigateToLocationCatalog = onNavigateToLocationCatalog,
+                    onNavigateToMasterCatalog = onNavigateToMasterCatalog,
+                    onNavigateToImports = onNavigateToImports
                 )
             }
         }
@@ -112,7 +121,10 @@ fun PlatformAdminScreen(
 private fun AdminUserSearch(
     modifier: Modifier,
     uiState: com.comunidapp.app.viewmodel.PlatformAdminUiState,
-    viewModel: PlatformAdminViewModel
+    viewModel: PlatformAdminViewModel,
+    onNavigateToLocationCatalog: () -> Unit,
+    onNavigateToMasterCatalog: () -> Unit,
+    onNavigateToImports: () -> Unit
 ) {
     Column(
         modifier = modifier
@@ -121,6 +133,28 @@ private fun AdminUserSearch(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
+        OutlinedButton(
+            onClick = onNavigateToMasterCatalog,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Catálogos / datos maestros")
+        }
+        OutlinedButton(
+            onClick = onNavigateToLocationCatalog,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Ubicaciones (parametría)")
+        }
+        OutlinedButton(
+            onClick = onNavigateToImports,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text("Importaciones")
+        }
+        Text(
+            "Desde Importaciones podés verificar organizaciones y rescatistas independientes.",
+            style = MaterialTheme.typography.bodySmall
+        )
         OutlinedTextField(
             value = uiState.query,
             onValueChange = viewModel::onQueryChange,
@@ -129,7 +163,7 @@ private fun AdminUserSearch(
             singleLine = true
         )
         if (uiState.isSearching) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(color = BrandOrange)
         }
         uiState.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         uiState.results.forEach { user ->
@@ -243,7 +277,7 @@ private fun AdminUserDetail(
         }
 
         if (uiState.isWorking) {
-            CircularProgressIndicator()
+            CircularProgressIndicator(color = BrandOrange)
         }
         uiState.message?.let {
             Text(it)

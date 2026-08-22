@@ -37,14 +37,15 @@ export function isNotPublicRpcError(error: { message?: string; code?: string } |
   return (
     error.code === "P0001" ||
     error.message?.includes("NOT_PUBLIC") === true ||
-    error.message?.includes("PUBLIC_PASSPORT_NOT_AVAILABLE") === true
+    error.message?.includes("PUBLIC_PASSPORT_NOT_AVAILABLE") === true ||
+    error.message?.includes("CANONICAL_SCHEMA_BLOCKER") === true
   );
 }
 
 export async function fetchPublicPet(publicCode: string): Promise<PublicPet | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_pet", {
-    p_public_code: publicCode,
+  const { data, error } = await supabase.rpc("canon_public_pet", {
+    p_code: publicCode,
   });
 
   if (error) {
@@ -55,13 +56,19 @@ export async function fetchPublicPet(publicCode: string): Promise<PublicPet | nu
   }
 
   assertNoSensitiveLeak(data);
-  return data as PublicPet;
+  const row = data as PublicPet;
+  return {
+    ...row,
+    display_name: row.display_name || row.name || "Mascota",
+    page_kind: row.page_kind ?? "pet",
+    status: row.status || "ACTIVE",
+  };
 }
 
 export async function fetchPublicAdoption(publicCode: string): Promise<PublicAdoption | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_adoption", {
-    p_public_code: publicCode,
+  const { data, error } = await supabase.rpc("canon_public_adoption", {
+    p_code: publicCode,
   });
 
   if (error) {
@@ -71,14 +78,23 @@ export async function fetchPublicAdoption(publicCode: string): Promise<PublicAdo
     throw error;
   }
 
+  if (!data) {
+    return null;
+  }
+
   assertNoSensitiveLeak(data);
-  return data as PublicAdoption;
+  const row = data as PublicAdoption;
+  return {
+    ...row,
+    status: row.status || "OPEN",
+    is_active: row.is_active ?? row.status === "OPEN",
+  };
 }
 
 export async function fetchPublicLostCase(publicCode: string): Promise<PublicLostFoundCase | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_lost_case", {
-    p_public_code: publicCode,
+  const { data, error } = await supabase.rpc("canon_public_lost_found", {
+    p_code: publicCode,
   });
 
   if (error) {
@@ -89,13 +105,13 @@ export async function fetchPublicLostCase(publicCode: string): Promise<PublicLos
   }
 
   assertNoSensitiveLeak(data);
-  return data as PublicLostFoundCase;
+  return normalizeLostFound(data as PublicLostFoundCase, "LOST");
 }
 
 export async function fetchPublicFoundCase(publicCode: string): Promise<PublicLostFoundCase | null> {
   const supabase = await createClient();
-  const { data, error } = await supabase.rpc("get_public_found_case", {
-    p_public_code: publicCode,
+  const { data, error } = await supabase.rpc("canon_public_lost_found", {
+    p_code: publicCode,
   });
 
   if (error) {
@@ -106,5 +122,22 @@ export async function fetchPublicFoundCase(publicCode: string): Promise<PublicLo
   }
 
   assertNoSensitiveLeak(data);
-  return data as PublicLostFoundCase;
+  return normalizeLostFound(data as PublicLostFoundCase, "FOUND");
+}
+
+function normalizeLostFound(
+  row: PublicLostFoundCase,
+  expected: "LOST" | "FOUND",
+): PublicLostFoundCase | null {
+  const kind = (row.kind || row.case_type || "").toUpperCase();
+  if (kind !== expected) {
+    return null;
+  }
+  return {
+    ...row,
+    case_type: expected,
+    kind: expected,
+    status: row.status || "OPEN",
+    is_active: row.is_active ?? row.status === "OPEN",
+  };
 }

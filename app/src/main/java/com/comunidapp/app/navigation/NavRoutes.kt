@@ -8,7 +8,9 @@ object NavRoutes {
     const val EMAIL_VERIFICATION = "email_verification/{email}"
     const val LEGAL_TERMS = "legal_terms"
     const val LEGAL_PRIVACY = "legal_privacy"
+    const val PROFILE_PRIVACY = "profile_privacy"
     const val ACCOUNT_SECURITY = "account_security"
+    const val SETTINGS = "settings"
     const val PASSWORD_RESET_ACTIVE = "password_reset_active"
     const val LEGAL_CONSENT_REQUIRED = "legal_consent_required"
     const val PROFILE_ONBOARDING = "profile_onboarding"
@@ -18,14 +20,28 @@ object NavRoutes {
     const val FIRST_RUN_ONBOARDING = "first_run_onboarding/{restart}"
     const val ARG_ONBOARDING_RESTART = "restart"
 
+    /** ONB-02 / CONTEXT-01 — Perfil personal, funciones y tutoriales. */
+    const val ONB02 = "onb02/flow/{kind}"
+    const val ONB02_REOPEN = "onb02/reopen/{tutorialId}"
+    const val USE_LEOVER_AS = "use_leover_as"
+    const val HELP_TUTORIALS = "help/tutorials"
+    const val ARG_ONB02_KIND = "kind"
+    const val ARG_TUTORIAL_ID = "tutorialId"
+
+    fun onb02(kind: String) = "onb02/flow/$kind"
+    fun onb02Reopen(tutorialId: String) = "onb02/reopen/$tutorialId"
+
     const val HOME = "home"
     const val SUMATE = "sumate"
     const val COMUNIDAD = "comunidad"
     const val MY_BUSINESS = "my_business"
+    const val DAYCARE_RESERVATIONS = "daycare_reservations"
+    const val DAYCARE_GUESTS = "daycare_guests"
     const val PUBLISH = "publish"
     /** Creador social abierto desde Perfil (no es tab inferior; evita scrim/selección del FAB). */
     const val PUBLISH_FROM_PROFILE = "publish_from_profile"
     const val PROFILE = "profile"
+    const val MY_PUBLICATIONS = "profile/my_publications"
     const val ADOPTIONS = "adoptions"
     const val SHELTERS = "shelters"
     const val MY_PETS = "my_pets"
@@ -34,6 +50,13 @@ object NavRoutes {
     const val LOST_FOUND_DETAIL = "lost_found_detail/{postId}"
     const val ARG_LOST_FOUND_POST_ID = "postId"
     const val PUBLISH_LOST_FOUND = "publish_lost_found"
+    const val PUBLISH_LOST_FOUND_FOR_PET = "publish_lost_found/{petId}"
+
+    fun publishLostFound(petId: String? = null): String {
+        val id = petId?.trim().orEmpty()
+        if (id.isBlank()) return PUBLISH_LOST_FOUND
+        return "publish_lost_found/${java.net.URLEncoder.encode(id, Charsets.UTF_8.name())}"
+    }
 
     fun lostFoundDetail(postId: String): String =
         "lost_found_detail/${java.net.URLEncoder.encode(postId, Charsets.UTF_8.name())}"
@@ -51,7 +74,8 @@ object NavRoutes {
     const val ARG_SIGHTING_ID = "sightingId"
     const val ARG_CANDIDATE_ID = "candidateId"
 
-    // M14 — Pasaporte e identidad verificable (Bloque 1–3)
+    // M14 — VitaCora (active). Route strings keep m14/* for existing navigation WIP.
+    const val M14_VITACORA = "m14/vitacora"
     const val M14_PASSPORTS = "m14/passports"
     const val M14_PET_PASSPORT = "m14/pets/{petId}/passport"
     const val M14_PET_PASSPORT_EDIT = "m14/pets/{petId}/passport/edit"
@@ -226,6 +250,7 @@ object NavRoutes {
     const val FOSTER_REQUEST_FORM = "foster_request_form/{fosterHomeId}"
     const val FOSTER_REQUEST_DETAIL = "foster_request_detail/{requestId}"
     const val FOSTER_PLACEMENTS = "foster_placements"
+    const val FOSTER_NEW_PLACEMENT = "foster_placements/new"
     const val FOSTER_PLACEMENT_DETAIL = "foster_placement_detail/{placementId}"
     const val FOSTER_PLACEMENT_MANAGEMENT = "foster_placement_management/{placementId}"
     const val FOSTER_EXPENSES = "foster_expenses/{placementId}"
@@ -313,10 +338,11 @@ object NavRoutes {
 
     const val EDIT_PROFILE = "edit_profile"
     const val SEARCH_FRIENDS = "search_friends"
+    const val MY_FRIENDS = "my_friends"
     const val USER_PROFILE = "user_profile/{userId}"
 
     const val MY_ORGANIZATIONS = "my_organizations"
-    const val CREATE_ORGANIZATION = "create_organization"
+    const val CREATE_ORGANIZATION = "create_organization?preselect={preselect}&welfare={welfare}"
     const val EDIT_ORGANIZATION = "edit_organization/{organizationId}"
     const val MANAGE_ORGANIZATION = "manage_organization/{organizationId}"
     const val ORGANIZATION_TEAM = "organization_team/{organizationId}"
@@ -345,9 +371,26 @@ object NavRoutes {
     const val PUBLISH_SHELTER = "publish_shelter"
     const val SERVICE_DETAIL = "service_detail/{serviceId}"
     const val NOTIFICATIONS = "notifications"
+    const val ORG_INVITATION = "org_invitation/{invitationId}"
+    const val STORY_VIEWER = "story_viewer/{authorId}"
+    const val ARG_INVITATION_ID = "invitationId"
+    const val ARG_STORY_AUTHOR_ID = "authorId"
+
+    fun orgInvitation(invitationId: String) =
+        "org_invitation/${java.net.URLEncoder.encode(invitationId, Charsets.UTF_8.name())}"
+
+    fun storyViewer(authorId: String) =
+        "story_viewer/${java.net.URLEncoder.encode(authorId, Charsets.UTF_8.name())}"
     const val NOTIFICATION_PREFERENCES = "notification_preferences"
     const val ADMIN_MODERATION = "admin_moderation"
     const val PLATFORM_ADMIN = "platform_admin"
+    const val ADMIN_VITACORA_IMPORTS = "admin_vitacora_imports"
+    const val ADMIN_VITACORA_IMPORT_NEW = "admin_vitacora_import_new"
+    const val VITACORA_IMPORT = "vitacora_import/{organizationId}/{orgName}"
+    const val VITACORA_IMPORT_RESCUER = "vitacora_import_rescuer"
+    const val ARG_ORG_NAME = "orgName"
+    const val LOCATION_CATALOG_ADMIN = "platform_admin/location_catalog"
+    const val MASTER_CATALOG_ADMIN = "platform_admin/master_catalog"
     const val MODERATION_REPORT_DETAIL = "moderation_report/{reportId}"
     const val MODERATION_CASES = "moderation_cases"
     const val MODERATION_CASE_DETAIL = "moderation_case/{caseId}"
@@ -405,6 +448,8 @@ object NavRoutes {
     const val ARG_USER_ID = "userId"
     const val ARG_SERVICE_ID = "serviceId"
     const val ARG_ORGANIZATION_ID = "organizationId"
+    const val ARG_ORG_PRESELECT = "preselect"
+    const val ARG_ORG_WELFARE = "welfare"
     const val ARG_SLUG = "slug"
 
     fun adoptionDetail(adoptionId: String) =
@@ -490,6 +535,8 @@ object NavRoutes {
         "shelter_form/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
     fun shelterPets(shelterId: String) =
         "shelter_pets/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
+    fun vitacoraImport(organizationId: String, orgName: String) =
+        "vitacora_import/${java.net.URLEncoder.encode(organizationId, Charsets.UTF_8.name())}/${java.net.URLEncoder.encode(orgName, Charsets.UTF_8.name())}"
     fun shelterPetIntake(shelterId: String) =
         "shelter_pet_intake/${java.net.URLEncoder.encode(shelterId, Charsets.UTF_8.name())}"
     fun shelterPetDetail(placementId: String) =
@@ -569,6 +616,8 @@ object NavRoutes {
     }
     fun userProfile(userId: String) =
         "user_profile/${java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())}"
+    fun createOrganization(preselect: String = "", welfare: Boolean = false): String =
+        "create_organization?preselect=$preselect&welfare=$welfare"
     fun editOrganization(organizationId: String) =
         "edit_organization/${java.net.URLEncoder.encode(organizationId, Charsets.UTF_8.name())}"
     fun manageOrganization(organizationId: String) =

@@ -5,7 +5,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -24,8 +25,9 @@ fun AdministrativePhaseHost(
     content: @Composable (contentModifier: Modifier) -> Unit
 ) {
     Scaffold(
+        containerColor = leoVisual().background,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = title,
                 showBackButton = true,
                 onBackClick = onNavigateBack

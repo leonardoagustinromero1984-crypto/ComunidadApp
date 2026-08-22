@@ -122,6 +122,9 @@ class SupabaseAdoptionM09CompletionRemoteDataSource {
         }
     )
 
-    private suspend inline fun <reified T : Any> decodeOne(name: String, params: JsonObject): T =
-        supabase.postgrest.rpc(function = name, parameters = params).decodeList<T>().first()
+    private suspend inline fun <reified T : Any> decodeOne(name: String, params: JsonObject): T {
+        val element: kotlinx.serialization.json.JsonElement =
+            supabase.postgrest.rpc(function = name, parameters = params).decodeAs()
+        return M09RpcDecoding.decodeRow(element)
+    }
 }

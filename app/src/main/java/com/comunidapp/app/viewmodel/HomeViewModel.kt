@@ -14,13 +14,16 @@ import com.comunidapp.app.data.repository.FriendRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.ProfilePrivacy
+import com.comunidapp.app.domain.user.ProfileAvatarResolver
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -33,7 +36,8 @@ class HomeViewModel(
     private val userRepository: UserRepository = DataProvider.userRepository,
     private val friendRepository: FriendRepository = DataProvider.friendRepository,
     private val platformRepository: PlatformRepository = DataProvider.platformRepository,
-    private val authRepository: AuthRepository = AuthProvider.repository
+    private val authRepository: AuthRepository = AuthProvider.repository,
+    private val petRepository: com.comunidapp.app.data.repository.PetRepository = DataProvider.petRepository
 ) : ViewModel() {
 
     private val _isRefreshing = MutableStateFlow(false)
@@ -77,6 +81,9 @@ class HomeViewModel(
     ) { all, count -> all.take(count) }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val stories: StateFlow<List<FeedPost>> = feedRepository.observeActiveStories()
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
     val likedPostIds: StateFlow<Set<String>> = authRepository.observeAuthState()
         .flatMapLatest { user ->
             if (user == null) flowOf(emptySet())
@@ -112,10 +119,39 @@ class HomeViewModel(
             .take(12)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
-    /** Nombre para saludo de Home (solo presentación). */
-    val greetingName: StateFlow<String?> = authRepository.observeAuthState()
-        .map { user -> user?.name?.takeIf { it.isNotBlank() } }
+    /** Usuario actual — perfil persistido, no solo el JWT de auth. */
+    val currentUser: StateFlow<User?> = authRepository.observeAuthState()
+        .flatMapLatest { auth ->
+            if (auth == null) flowOf(null)
+            else userRepository.observeUser(auth.id).map { it ?: auth }
+        }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** Nombre para saludo de Home (solo presentación). */
+    val greetingName: StateFlow<String?> = currentUser
+        .map { user -> user?.resolvedDisplayName?.takeIf { it.isNotBlank() } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** URL cargable (http o storage firmado). Misma fuente que Perfil. */
+    val avatarDisplayUrl: StateFlow<String?> = currentUser
+        .distinctUntilChanged { a, b ->
+            a?.id == b?.id &&
+                a?.profileImageUrl == b?.profileImageUrl &&
+                a?.avatarPath == b?.avatarPath
+        }
+        .flatMapLatest { user -> flow { emit(ProfileAvatarResolver.displayUrl(user)) } }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    /** Mascotas activas del usuario — solo para carrusel de Inicio (fuente real). */
+    val myPets: StateFlow<List<com.comunidapp.app.data.model.Pet>> = combine(
+        petRepository.observePets(),
+        authRepository.observeAuthState()
+    ) { pets, user ->
+        val uid = user?.id ?: return@combine emptyList()
+        pets.filter {
+            it.ownerId == uid && it.status.equals("ACTIVE", ignoreCase = true)
+        }.sortedBy { it.name.lowercase() }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val hasMore: StateFlow<Boolean> = combine(
         visibleFeedPosts.map { it.size },
@@ -127,6 +163,7 @@ class HomeViewModel(
         viewModelScope.launch {
             _isRefreshing.value = true
             feedRepository.refreshPosts()
+            feedRepository.refreshStories()
             _isRefreshing.value = false
         }
     }
@@ -188,6 +225,7 @@ class HomeViewModel(
 
     fun openComments(postId: String) {
         _commentsPostId.value = postId
+        viewModelScope.launch { feedRepository.refreshComments(postId) }
     }
 
     fun closeComments() {
@@ -199,6 +237,15 @@ class HomeViewModel(
         val user = authRepository.getCurrentUser() ?: return
         viewModelScope.launch {
             feedRepository.addComment(postId, user.id, user.name, content)
+            feedRepository.refreshComments(postId)
+        }
+    }
+
+    fun deleteOwnComment(commentId: String) {
+        val postId = _commentsPostId.value
+        viewModelScope.launch {
+            feedRepository.deleteOwnComment(commentId)
+            postId?.let { feedRepository.refreshComments(it) }
         }
     }
 

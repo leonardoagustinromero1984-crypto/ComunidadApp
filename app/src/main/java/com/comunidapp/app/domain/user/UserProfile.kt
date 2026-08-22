@@ -64,7 +64,6 @@ enum class AccountStatus {
 
 enum class ProfileVisibility {
     PUBLIC,
-    FRIENDS,
     PRIVATE
 }
 
@@ -92,11 +91,13 @@ data class CompleteOnboardingCommand(
     val city: String? = null,
     val province: String? = null,
     val countryCode: String? = null,
+    val homeLocalityId: String? = null,
     val bio: String? = null,
     val avatarPath: String? = null,
     val privacy: UserPrivacySettings = UserPrivacySettings(),
     val locale: String? = null,
-    val timezone: String? = null
+    val timezone: String? = null,
+    val birthDate: String? = null
 )
 
 data class UpdateMyProfileCommand(
@@ -105,6 +106,7 @@ data class UpdateMyProfileCommand(
     val city: String? = null,
     val province: String? = null,
     val countryCode: String? = null,
+    val homeLocalityId: String? = null,
     val locale: String? = null,
     val timezone: String? = null,
     val avatarPath: String? = null

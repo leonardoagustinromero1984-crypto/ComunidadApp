@@ -42,6 +42,7 @@ object LegacyNotificationTypeAdapter {
         NotificationType.BOOKING -> NotificationCategory.APPOINTMENT
         NotificationType.SIGHTING -> NotificationCategory.LOST_FOUND
         NotificationType.SYSTEM -> NotificationCategory.SYSTEM
+        NotificationType.ORG_INVITE -> NotificationCategory.INVITATION
     }
 
     fun toPriority(type: NotificationType): NotificationPriority = when (type) {
@@ -104,6 +105,7 @@ object LegacyNotificationDeepLinkAdapter {
             NotificationType.BOOKING -> NotificationDeepLinkRoute.SAFE_HOME
             NotificationType.SIGHTING -> NotificationDeepLinkRoute.LOST_FOUND_CASE
             NotificationType.SYSTEM -> NotificationDeepLinkRoute.NOTIFICATIONS_INBOX
+            NotificationType.ORG_INVITE -> NotificationDeepLinkRoute.ORGANIZATION_INVITATION
         }
         val resourceId = relatedId?.takeIf { it.isNotBlank() && !looksLikeUri(it) }
         val resourceType = relatedType?.takeIf { it.isNotBlank() && !looksLikeUri(it) }

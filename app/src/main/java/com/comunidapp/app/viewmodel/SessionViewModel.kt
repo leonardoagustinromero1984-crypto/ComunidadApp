@@ -13,6 +13,8 @@ import com.comunidapp.app.domain.auth.AuthErrorMapper
 import com.comunidapp.app.domain.auth.AuthState
 import com.comunidapp.app.domain.auth.AuthUser
 import com.comunidapp.app.domain.auth.ConsentMetadata
+import com.comunidapp.app.domain.auth.PostAuthDestination
+import com.comunidapp.app.domain.auth.PostAuthResolver
 import com.comunidapp.app.domain.user.AccountStatus
 import com.comunidapp.app.domain.user.ProfileGate
 import com.comunidapp.app.domain.user.ProfileSessionGate
@@ -23,7 +25,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 /**
@@ -66,6 +67,8 @@ class SessionViewModel(
     /** Deep link de recovery activo; bloquea entrada a MAIN hasta reset. */
     private var passwordResetActive: Boolean = false
 
+    private var lastContextUserId: String? = null
+
     init {
         startObserving()
     }
@@ -87,7 +90,7 @@ class SessionViewModel(
                         }
                         flowOf(null)
                     } else {
-                        userRepository.observeUser(authUser.id).map { profile -> profile ?: authUser }
+                        userRepository.observeUser(authUser.id)
                     }
                 }
                 .collect { user ->
@@ -96,20 +99,51 @@ class SessionViewModel(
                         emitAuth(AuthState.PasswordResetActive)
                         return@collect
                     }
-                    _currentUser.value = user
+                    if (_authState.value is AuthState.SigningOut) {
+                        return@collect
+                    }
                     if (user != null) {
+                        _currentUser.value = user
+                        if (lastContextUserId != user.id) {
+                            lastContextUserId = user.id
+                            launch {
+                                com.comunidapp.app.domain.context.OperationalContextProvider.refresh(user.id)
+                            }
+                        }
                         resolveAuthenticatedFlow(user)
-                    } else if (_authState.value is AuthState.Authenticated ||
-                        _authState.value is AuthState.LegalConsentRequired ||
-                        _authState.value is AuthState.ProfileSetupRequired ||
-                        _authState.value is AuthState.AccountRestricted ||
-                        _authState.value is AuthState.AccountSuspended ||
-                        _authState.value is AuthState.AccountBanned ||
-                        _authState.value is AuthState.OnboardingBlocked ||
-                        _authState.value is AuthState.Initializing ||
-                        _authState.value is AuthState.SigningOut
-                    ) {
-                        emitAuth(AuthState.Unauthenticated)
+                    } else {
+                        val sessionUser = authRepository.getCurrentUser()
+                        if (sessionUser == null) {
+                            _currentUser.value = null
+                            lastContextUserId = null
+                            if (_authState.value is AuthState.Authenticated ||
+                                _authState.value is AuthState.LegalConsentRequired ||
+                                _authState.value is AuthState.ProfileSetupRequired ||
+                                _authState.value is AuthState.AccountRestricted ||
+                                _authState.value is AuthState.AccountSuspended ||
+                                _authState.value is AuthState.AccountBanned ||
+                                _authState.value is AuthState.OnboardingBlocked ||
+                                _authState.value is AuthState.Initializing ||
+                                _authState.value is AuthState.SigningOut ||
+                                _authState.value is AuthState.Unauthenticated
+                            ) {
+                                emitAuth(AuthState.Unauthenticated)
+                            }
+                        } else if (
+                            com.comunidapp.app.domain.user.ProfileHydrationStore.isReady(sessionUser.id)
+                        ) {
+                            if (_authState.value !is AuthState.Authenticated &&
+                                _authState.value !is AuthState.AccountRestricted
+                            ) {
+                                emitAuth(AuthState.Initializing)
+                            }
+                        } else {
+                            // observeUser already emitted null: PERSON is confirmed missing.
+                            // Do not route JWT defaults while PERSON is still loading — that
+                            // first emission is delayed until getUser succeeds or returns empty.
+                            _currentUser.value = sessionUser
+                            resolveAuthenticatedFlow(sessionUser)
+                        }
                     }
                 }
         }
@@ -141,7 +175,13 @@ class SessionViewModel(
                 AuthState.AccountBanned(authUser)
             }
             ProfileGate.AccountRestricted -> AuthState.AccountRestricted(authUser)
-            ProfileGate.ProfileReady -> AuthState.Authenticated(authUser)
+            ProfileGate.ProfileReady ->
+                if (PostAuthResolver.destination(user) == PostAuthDestination.COMPLETE_LEOVER_PROFILE) {
+                    AuthState.ProfileSetupRequired(authUser)
+                } else {
+                    com.comunidapp.app.domain.user.ProfileHydrationStore.markReady(user.id)
+                    AuthState.Authenticated(authUser)
+                }
         }
     }
 
@@ -155,15 +195,18 @@ class SessionViewModel(
     /**
      * Procesa deep link clasificado (ya consumido una vez por [AuthDeepLinkParser]).
      */
-    fun onAuthDeepLink(kind: AuthDeepLinkKind) {
+    fun onAuthDeepLink(kind: AuthDeepLinkKind, userMessage: String? = null) {
         when (kind) {
             AuthDeepLinkKind.PasswordRecovery -> {
                 passwordResetActive = true
                 emitAuth(AuthState.PasswordResetActive)
             }
-            AuthDeepLinkKind.EmailConfirmation -> Unit
+            AuthDeepLinkKind.EmailConfirmation,
+            AuthDeepLinkKind.SessionCallback -> Unit
+            AuthDeepLinkKind.LinkError,
             AuthDeepLinkKind.Unknown -> Unit
         }
+        if (userMessage.isNullOrBlank()) return
     }
 
     fun clearPasswordResetActive() {
@@ -222,6 +265,10 @@ class SessionViewModel(
             val user = _currentUser.value ?: return@launch
             val refreshed = userRepository.getUser(user.id) ?: user
             _currentUser.value = refreshed
+            com.comunidapp.app.domain.onboarding.onb02.Onb02SessionFlags.justCompletedProfileSetup = true
+            runCatching {
+                com.comunidapp.app.data.local.Onb02StoreProvider.instance.markFullPending(user.id)
+            }
             emitAuth(authStateForProfile(refreshed, toAuthUser(refreshed)))
         }
     }
@@ -262,20 +309,17 @@ class SessionViewModel(
             emitAuth(AuthState.SigningOut)
             passwordResetActive = false
             runCatching { authRepository.logout() }
-                .onFailure { error ->
-                    emitAuth(
-                        AuthState.AuthError(
-                            AuthErrorMapper.fromThrowable(error),
-                            previous = AuthState.Unauthenticated
-                        )
-                    )
-                }
             com.comunidapp.app.domain.observability.ObservabilityInstrumentation.reportLogout()
             _currentUser.value = null
+            lastContextUserId = null
             DataProvider.permissionRepository.invalidate()
+            com.comunidapp.app.domain.context.OperationalContextProvider.clear()
             com.comunidapp.app.domain.organization.OrganizationContextProvider.clear()
             com.comunidapp.app.viewmodel.moderation.AdministrativeSessionCleanup.clear()
             com.comunidapp.app.notifications.NotificationPendingNavigationStore.clear()
+            com.comunidapp.app.domain.navigation.AppNavRestoreStore.clear()
+            com.comunidapp.app.domain.user.ProfileHydrationStore.clear()
+            com.comunidapp.app.domain.onboarding.onb02.Onb02SessionFlags.justCompletedProfileSetup = false
             emitAuth(AuthState.Unauthenticated)
         }
     }

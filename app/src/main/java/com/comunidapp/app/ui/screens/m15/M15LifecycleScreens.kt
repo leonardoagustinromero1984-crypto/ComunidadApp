@@ -35,7 +35,9 @@ import com.comunidapp.app.data.model.M15EvolutionEventType
 import com.comunidapp.app.data.model.M15ExpenseCategory
 import com.comunidapp.app.data.model.M15FosterPlacementStatus
 import com.comunidapp.app.data.model.M15HelpRequestType
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.viewmodel.M15DischargeViewModel
@@ -56,8 +58,9 @@ fun M15PlacementsListScreen(
 ) {
     val placements by viewModel.placements.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Mis alojamientos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Mis alojamientos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -94,8 +97,9 @@ fun M15PlacementDetailScreen(
     val placement by viewModel.placement.collectAsState()
     val message by viewModel.message.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Alojamiento", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Alojamiento", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -135,8 +139,9 @@ fun M15EvolutionListScreen(
 ) {
     val items by viewModel.items.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Evolución", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Evolución", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -169,8 +174,9 @@ fun M15EvolutionFormScreen(
     val saved by viewModel.saved.collectAsState()
     LaunchedEffect(saved) { if (saved) onSaved() }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Nueva evolución", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Nueva evolución", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -199,8 +205,9 @@ fun M15DischargeScreen(
     val completed by viewModel.completed.collectAsState()
     LaunchedEffect(completed) { if (completed) onCompleted() }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Egreso", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Egreso", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -240,8 +247,9 @@ fun M15ExpensesScreen(
 ) {
     val items by viewModel.items.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Gastos", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Gastos", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -274,8 +282,9 @@ fun M15ExpenseFormScreen(
     val saved by viewModel.saved.collectAsState()
     LaunchedEffect(saved) { if (saved) onSaved() }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Nuevo gasto", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Nuevo gasto", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -302,8 +311,9 @@ fun M15HelpListScreen(
 ) {
     val items by viewModel.items.collectAsState()
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Ayuda", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Ayuda", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
@@ -336,8 +346,9 @@ fun M15HelpFormScreen(
     val saved by viewModel.saved.collectAsState()
     LaunchedEffect(saved) { if (saved) onSaved() }
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(title = "Pedido de ayuda", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = "Pedido de ayuda", showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {

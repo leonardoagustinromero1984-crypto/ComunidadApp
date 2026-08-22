@@ -10,12 +10,16 @@ import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.auth.AuthErrorCode
 import com.comunidapp.app.domain.auth.AuthErrorMapper
 import com.comunidapp.app.domain.auth.ConsentMetadata
+import com.comunidapp.app.domain.auth.GoogleAuthPolicy
+import com.comunidapp.app.domain.auth.GoogleAuthTrace
 import com.comunidapp.app.domain.auth.LegalDocumentConfig
 import com.comunidapp.app.domain.auth.validation.AuthValidators
 import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
 import com.comunidapp.app.notifications.PushTokenRegistrar
 import io.github.jan.supabase.auth.OtpType
+import io.github.jan.supabase.auth.SignOutScope
 import io.github.jan.supabase.auth.auth
+import io.github.jan.supabase.auth.providers.Google
 import io.github.jan.supabase.auth.providers.builtin.Email
 import io.github.jan.supabase.auth.status.SessionStatus
 import io.github.jan.supabase.auth.user.UserInfo
@@ -23,7 +27,7 @@ import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
@@ -68,6 +72,7 @@ class SupabaseAuthRepository(
                 )
 
             if (!authUser.isEmailConfirmed()) {
+                runCatching { supabase.auth.signOut() }
                 return Result.failure(
                     AuthErrorMapper.toException(AuthErrorCode.EMAIL_NOT_VERIFIED, "email not confirmed")
                 )
@@ -84,12 +89,84 @@ class SupabaseAuthRepository(
         }
     }
 
+    override suspend fun createGoogleOAuthUrl(): Result<String> {
+        if (!com.comunidapp.app.core.config.SupabaseUrlPolicy.credentialsPresent()) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.CONFIGURATION_ERROR,
+                    "supabase credentials missing or non-remote"
+                )
+            )
+        }
+        return try {
+            val url = supabase.auth.getOAuthUrl(
+                provider = Google,
+                redirectUrl = SupabaseAuthConfig.REDIRECT_URL
+            ) {
+                queryParams["prompt"] = GoogleAuthPolicy.OAUTH_PROMPT_SELECT_ACCOUNT
+            }
+            if (url.isBlank() || !url.startsWith("https://", ignoreCase = true)) {
+                GoogleAuthTrace.event("GOOGLE-ERROR=BAD_URL")
+                return Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.GOOGLE_AUTH_FAILED, "google oauth url missing")
+                )
+            }
+            Result.success(url)
+        } catch (e: Exception) {
+            com.comunidapp.app.core.config.AuthConfigDiagnostics.logSafe(
+                "google_oauth_url_failure",
+                exceptionClass = e::class.java.simpleName
+            )
+            GoogleAuthTrace.event("GOOGLE-ERROR=FAILED")
+            Result.failure(mapSupabaseException(e))
+        }
+    }
+
+    override suspend fun signInWithGoogle(): Result<User> {
+        return Result.failure(
+            AuthErrorMapper.toException(
+                AuthErrorCode.CONFIGURATION_ERROR,
+                "signInWith(Google) auto-open disconnected"
+            )
+        )
+    }
+
+    override suspend fun signInWithGoogleIdToken(idToken: String): Result<User> {
+        return Result.failure(
+            AuthErrorMapper.toException(
+                AuthErrorCode.CONFIGURATION_ERROR,
+                "google id token path disconnected"
+            )
+        )
+    }
+
+    override fun linkedAuthMethods(): List<com.comunidapp.app.domain.auth.AuthMethodKind> {
+        val identities = supabase.auth.currentUserOrNull()?.identities.orEmpty()
+        if (identities.isEmpty()) {
+            val email = supabase.auth.currentUserOrNull()?.email
+            return if (email.isNullOrBlank()) {
+                emptyList()
+            } else {
+                listOf(com.comunidapp.app.domain.auth.AuthMethodKind.EMAIL_PASSWORD_OTP)
+            }
+        }
+        return identities.mapNotNull { identity ->
+            when (identity.provider.lowercase()) {
+                "google" -> com.comunidapp.app.domain.auth.AuthMethodKind.GOOGLE
+                "email" -> com.comunidapp.app.domain.auth.AuthMethodKind.EMAIL_PASSWORD_OTP
+                "apple" -> com.comunidapp.app.domain.auth.AuthMethodKind.APPLE
+                else -> null
+            }
+        }.distinct()
+    }
+
     override suspend fun register(
         name: String,
         email: String,
         password: String,
         consent: ConsentMetadata,
         username: String,
+        birthDate: String,
         accountType: AccountType
     ): Result<User> {
         if (name.isBlank()) {
@@ -117,19 +194,38 @@ class SupabaseAuthRepository(
         ).getOrElse {
             return Result.failure(AuthErrorMapper.fromThrowableToException(it))
         }
+        val personAge = com.comunidapp.app.domain.user.PersonAgeRules
+            .validateSignupBirthDate(birthDate)
+            .getOrElse {
+                return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.UNKNOWN_AUTH_ERROR,
+                        it.message ?: "BIRTH_DATE_INVALID"
+                    )
+                )
+            }
         val normalizedEmail = AuthValidators.normalizeEmail(email)
-        val effectiveType = AccountType.PERSON
+        val effectiveType = com.comunidapp.app.domain.user.SessionIdentity.signupAccountType()
         return try {
+            val existingSessionId = supabase.auth.currentUserOrNull()?.id
+            if (com.comunidapp.app.domain.auth.SignupSessionPolicy.mustClearExistingSessionBeforeSignup(
+                    existingSessionId
+                )
+            ) {
+                runCatching { supabase.auth.signOut() }
+            }
             val trimmedName = name.trim()
             val signedUpUser = supabase.auth.signUpWith(
                 Email,
-                redirectUrl = SupabaseAuthConfig.REDIRECT_URL
+                redirectUrl = SupabaseAuthConfig.requireRedirectUrl()
             ) {
                 this.email = normalizedEmail
                 this.password = password
                 data = buildJsonObject {
                     put("name", trimmedName)
+                    put("display_name", trimmedName)
                     put("username", normalizedUsername.value)
+                    put("birth_date", personAge.birthDate.toString())
                     put("terms_version", consent.termsVersion)
                     put("privacy_version", consent.privacyVersion)
                     put("consent_source", consent.source)
@@ -138,21 +234,59 @@ class SupabaseAuthRepository(
             }
 
             val authUser = signedUpUser ?: supabase.auth.currentUserOrNull()
-                ?: return Result.failure(
-                    AuthErrorMapper.toException(AuthErrorCode.UNKNOWN_AUTH_ERROR, "signup failed")
+            val session = supabase.auth.currentSessionOrNull()
+            val identitiesCount = authUser?.identities.orEmpty().size
+            val sessionPresent = session != null
+            com.comunidapp.app.core.logging.AppLog.info(
+                "AuthSignup",
+                "SIGNUP identities=$identitiesCount session=${if (sessionPresent) "YES" else "NO"} " +
+                    "userId=${if (authUser?.id.isNullOrBlank()) "NO" else "YES"} " +
+                    "confirmed=${authUser?.isEmailConfirmed() == true}"
+            )
+            if (com.comunidapp.app.domain.auth.SignupSessionPolicy.existingEmailHiddenByGoTrue(
+                    identitiesCount = identitiesCount,
+                    sessionPresent = sessionPresent
                 )
+            ) {
+                return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.EMAIL_ALREADY_REGISTERED,
+                        "GOTRUE_EXISTING_EMAIL_NO_IDENTITIES"
+                    )
+                )
+            }
+            val confirmed = authUser?.isEmailConfirmed() == true
+            val signupAccepted = authUser != null ||
+                com.comunidapp.app.domain.auth.SignupSessionPolicy.signupAcceptedWithoutSession(
+                    httpAccepted = true,
+                    sessionPresent = sessionPresent
+                )
+            if (!signupAccepted) {
+                return Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.SIGNUP_FAILED, "signup not accepted")
+                )
+            }
 
             val user = User(
-                id = authUser.id,
+                id = authUser?.id.orEmpty(),
                 name = trimmedName,
                 email = normalizedEmail,
                 accountType = effectiveType,
                 username = normalizedUsername.value,
                 displayName = trimmedName,
-                onboardingStatus = "COMPLETED"
+                emailVerified = confirmed,
+                onboardingStatus = "IN_PROGRESS",
+                birthDate = personAge.birthDate.toString(),
+                ageBand = personAge.band.name
             )
 
-            if (supabase.auth.currentUserOrNull() != null) {
+            if (com.comunidapp.app.domain.auth.SignupSessionPolicy.mustReleaseUnconfirmedSession(
+                    sessionPresent = session != null,
+                    emailConfirmed = confirmed
+                )
+            ) {
+                runCatching { supabase.auth.signOut() }
+            } else if (session != null && confirmed) {
                 userDataSource.createUser(user).onFailure { /* trigger may have created profile */ }
             }
 
@@ -170,7 +304,7 @@ class SupabaseAuthRepository(
         return try {
             supabase.auth.resetPasswordForEmail(
                 normalizedEmail,
-                redirectUrl = SupabaseAuthConfig.REDIRECT_URL
+                redirectUrl = SupabaseAuthConfig.requireRedirectUrl()
             )
             Result.success(Unit)
         } catch (e: Exception) {
@@ -249,6 +383,41 @@ class SupabaseAuthRepository(
                 )
             }
             Result.failure(mapSupabaseException(e))
+        }
+    }
+
+    override suspend fun addPassword(newPassword: String): Result<Unit> {
+        AuthValidators.validatePassword(newPassword).getOrElse {
+            return Result.failure(AuthErrorMapper.fromThrowableToException(it))
+        }
+        if (supabase.auth.currentUserOrNull() == null) {
+            return Result.failure(
+                AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+            )
+        }
+        return try {
+            supabase.auth.updateUser {
+                password = newPassword
+            }
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(mapSupabaseException(e))
+        }
+    }
+
+    override suspend fun ensureAuthenticatedSession(): Result<User> {
+        return try {
+            val authUser = com.comunidapp.app.domain.auth.AuthSessionAccess.requireUser(supabase.auth)
+            val email = authUser.email.orEmpty()
+            Result.success(fetchUserProfile(authUser, email))
+        } catch (e: Exception) {
+            if (e.message == "NOT_AUTHENTICATED") {
+                Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.SESSION_EXPIRED, "no session")
+                )
+            } else {
+                Result.failure(mapSupabaseException(e))
+            }
         }
     }
 
@@ -361,6 +530,7 @@ class SupabaseAuthRepository(
     override suspend fun sendEmailVerification(email: String): Result<Unit> {
         val normalizedEmail = AuthValidators.normalizeEmail(email)
         return try {
+            // Resend OTP for the existing unconfirmed auth.users row. Do not signUp again.
             val sessionUser = supabase.auth.currentUserOrNull()
             if (sessionUser != null) {
                 if (!sessionUser.email.equals(normalizedEmail, ignoreCase = true)) {
@@ -388,7 +558,7 @@ class SupabaseAuthRepository(
             if (sessionUser == null) {
                 return Result.failure(
                     AuthErrorMapper.toException(
-                        AuthErrorCode.RECOVERY_LINK_INVALID,
+                        AuthErrorCode.EMAIL_NOT_VERIFIED,
                         "no session for confirm email"
                     )
                 )
@@ -405,7 +575,6 @@ class SupabaseAuthRepository(
             val refreshed = supabase.auth.currentUserOrNull()
             if (refreshed?.isEmailConfirmed() == true) {
                 userDataSource.updateEmailVerified(refreshed.id, true)
-                supabase.auth.signOut()
                 Result.success(Unit)
             } else {
                 Result.failure(
@@ -425,7 +594,7 @@ class SupabaseAuthRepository(
         val token = EmailOtpValidators.validate(otpCode).getOrElse { err ->
             return Result.failure(
                 AuthErrorMapper.toException(
-                    AuthErrorCode.RECOVERY_LINK_INVALID,
+                    AuthErrorCode.OTP_INVALID,
                     err.message ?: "otp invalid"
                 )
             )
@@ -437,10 +606,13 @@ class SupabaseAuthRepository(
                 token = token
             )
             val authUser = supabase.auth.currentUserOrNull()
-            if (authUser != null) {
-                userDataSource.updateEmailVerified(authUser.id, true)
-            }
-            supabase.auth.signOut()
+                ?: return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.EMAIL_NOT_VERIFIED,
+                        "otp verified without session"
+                    )
+                )
+            userDataSource.updateEmailVerified(authUser.id, true)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(mapSupabaseException(e))
@@ -455,7 +627,8 @@ class SupabaseAuthRepository(
     }
 
     override fun getCurrentUser(): User? {
-        val authUser = supabase.auth.currentUserOrNull() ?: return null
+        val authUser = com.comunidapp.app.domain.auth.AuthSessionAccess.currentUser(supabase.auth)
+            ?: return null
         return authUser.toUser()
     }
 
@@ -464,48 +637,87 @@ class SupabaseAuthRepository(
         runCatching { supabase.auth.signOut() }
             .onFailure { error ->
                 val mapped = AuthErrorMapper.fromThrowable(error)
-                // Refresh/sesión inválida: limpiar localmente sin brickear en AuthError.
-                if (mapped.code == AuthErrorCode.SESSION_EXPIRED.name ||
-                    mapped.code == AuthErrorCode.NETWORK_UNAVAILABLE.name
-                ) {
-                    AppLog.warning(TAG, "signOut cleaned after ${mapped.code}")
-                } else {
-                    throw AuthErrorMapper.fromThrowableToException(error)
-                }
+                AppLog.warning(TAG, "signOut remote failed ${mapped.code}; clearing local session")
+                runCatching { supabase.auth.signOut(SignOutScope.LOCAL) }
             }
     }
 
-    override fun observeAuthState(): Flow<User?> =
-        supabase.auth.sessionStatus.map { status ->
+    override fun observeAuthState(): Flow<User?> = kotlinx.coroutines.flow.flow {
+        var lastEmitted: User? = null
+        supabase.auth.sessionStatus.collect { status ->
             when (status) {
                 is SessionStatus.Authenticated -> {
-                    val authUser = status.session.user ?: return@map null
-                    if (authUser.isEmailConfirmed()) authUser.toUser() else null
+                    val authUser = status.session.user
+                    val next = if (authUser != null &&
+                        com.comunidapp.app.domain.auth.SignupSessionPolicy.appAccessAllowed(
+                            hasAuthenticatedSession = true,
+                            emailConfirmed = authUser.isEmailConfirmed()
+                        )
+                    ) {
+                        authUser.toUser()
+                    } else {
+                        null
+                    }
+                    lastEmitted = next
+                    emit(next)
                 }
-                // Sin sesión válida → null (Unauthenticated). No elevar a AuthError permanente.
-                else -> null
+                is SessionStatus.NotAuthenticated -> {
+                    lastEmitted = null
+                    emit(null)
+                }
+                else -> {
+                    // Initializing / RefreshFailure must not log the user out.
+                    // Profile publish can refresh the JWT; that is not a Google login.
+                    val current = supabase.auth.currentUserOrNull()?.takeIf { user ->
+                        com.comunidapp.app.domain.auth.SignupSessionPolicy.appAccessAllowed(
+                            hasAuthenticatedSession = true,
+                            emailConfirmed = user.isEmailConfirmed()
+                        )
+                    }?.toUser()
+                    if (current != null) {
+                        lastEmitted = current
+                        emit(current)
+                    }
+                }
             }
         }
+    }
 
     private suspend fun fetchUserProfile(authUser: UserInfo, email: String): User {
         return userDataSource.getUser(authUser.id) ?: User(
             id = authUser.id,
-            name = authUser.userMetadata?.get("name")?.toString()?.trim('"').orEmpty(),
+            name = authUser.metaString("full_name")
+                ?: authUser.metaString("name")
+                ?: authUser.metaString("display_name").orEmpty(),
             email = email,
             accountType = AccountType.PERSON,
-            emailVerified = authUser.isEmailConfirmed()
+            emailVerified = authUser.isEmailConfirmed(),
+            displayName = authUser.metaString("full_name")
+                ?: authUser.metaString("name")
+                ?: authUser.metaString("display_name")
         )
     }
 
-    private fun UserInfo.toUser(): User = User(
-        id = id,
-        name = userMetadata?.get("name")?.toString()?.trim('"').orEmpty(),
-        email = email.orEmpty(),
-        accountType = AccountType.fromString(
-            userMetadata?.get("account_type")?.toString()?.trim('"')
-        ),
-        emailVerified = isEmailConfirmed()
-    )
+    private fun UserInfo.metaString(key: String): String? =
+        userMetadata?.get(key)?.toString()?.trim('"')?.takeIf { it.isNotBlank() && it != "null" }
+
+    private fun UserInfo.toUser(): User {
+        val username = metaString("username")
+        val display = metaString("display_name") ?: metaString("name").orEmpty()
+        return User(
+            id = id,
+            name = display,
+            email = email.orEmpty(),
+            accountType = com.comunidapp.app.domain.user.SessionIdentity.fromLegacyJwtClaim(
+                metaString("account_type")
+            ),
+            emailVerified = isEmailConfirmed(),
+            username = username,
+            displayName = display.takeIf { it.isNotBlank() },
+            birthDate = metaString("birth_date"),
+            onboardingStatus = "IN_PROGRESS"
+        )
+    }
 
     private fun UserInfo.isEmailConfirmed(): Boolean =
         emailConfirmedAt != null

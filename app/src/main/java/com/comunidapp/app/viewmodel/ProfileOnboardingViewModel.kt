@@ -14,7 +14,9 @@ import com.comunidapp.app.domain.files.FileAssetPurpose
 import com.comunidapp.app.domain.files.FileAssetVisibility
 import com.comunidapp.app.domain.files.FileUploadRequest
 import com.comunidapp.app.domain.files.FileUiErrorMapper
+import com.comunidapp.app.domain.media.MediaDiagnostic
 import com.comunidapp.app.domain.user.CompleteOnboardingCommand
+import com.comunidapp.app.domain.user.OnboardingCompleteness
 import com.comunidapp.app.domain.user.ProfileVisibility
 import com.comunidapp.app.domain.user.UserPrivacySettings
 import com.comunidapp.app.domain.user.UsernameValidationException
@@ -40,23 +42,36 @@ data class ProfileOnboardingUiState(
     val userId: String = "",
     val displayName: String = "",
     val username: String = "",
+    val usernameLocked: Boolean = false,
+    val needsBirthDate: Boolean = false,
+    val birthDate: String = "",
+    val displayNamePresent: Boolean = false,
     val usernameAvailable: Boolean? = null,
     val checkingUsername: Boolean = false,
     val city: String = "",
     val province: String = "",
     val countryCode: String = "",
+    val homeLocalityId: String? = null,
     val profileVisibility: ProfileVisibility = ProfileVisibility.PRIVATE,
     val showLocation: Boolean = true,
     val showPhone: Boolean = false,
     val allowFriendRequests: Boolean = true,
     val bio: String = "",
     val pendingImageUri: Uri? = null,
+    val editorSourceUri: Uri? = null,
+    val processedPhotoPath: String? = null,
+    val registeredAvatarAssetId: String? = null,
+    val isProcessingPhoto: Boolean = false,
     val avatarPath: String? = null,
     val fieldErrors: Map<String, String> = emptyMap(),
     val errorMessage: String? = null,
+    val photoUploadFailed: Boolean = false,
     val isSubmitting: Boolean = false,
     val success: Boolean = false
-)
+) {
+    val identityRequired: Boolean
+        get() = !usernameLocked || !displayNamePresent || needsBirthDate
+}
 
 @OptIn(FlowPreview::class)
 class ProfileOnboardingViewModel(
@@ -79,22 +94,59 @@ class ProfileOnboardingViewModel(
                 return@launch
             }
             val profile = userRepository.getUser(authUser.id)
+            if (profile != null &&
+                !com.comunidapp.app.domain.auth.SignupSessionPolicy.sessionMatchesPerson(
+                    authUser.id,
+                    profile.id
+                )
+            ) {
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        errorMessage = "La sesión no coincide con el perfil. Cerrá sesión e iniciá de nuevo."
+                    )
+                }
+                return@launch
+            }
+            val username = profile?.username?.takeIf { it.isNotBlank() }.orEmpty()
+            val displayName = profile?.displayName?.takeIf { it.isNotBlank() }
+                ?: profile?.name?.takeIf { it.isNotBlank() }
+                ?: authUser.displayName?.takeIf { it.isNotBlank() }
+                ?: authUser.name
+            val usernameLocked = profile != null && username.isNotBlank()
+            com.comunidapp.app.core.logging.AppLog.info(
+                "ProfileOnboarding",
+                "ONB-LOAD person=${if (profile != null) "YES" else "NO"} uidPresent=YES usernameFromPerson=${if (username.isNotBlank()) "YES" else "NO"}"
+            )
+            val displayNamePresent = displayName.isNotBlank()
+            val needsBirthDate = profile?.birthDate.isNullOrBlank()
+            val startStep = if (usernameLocked && displayNamePresent && !needsBirthDate) {
+                OnboardingStep.LOCATION_PRIVACY
+            } else {
+                OnboardingStep.IDENTITY
+            }
             _uiState.update {
                 ProfileOnboardingUiState(
                     isLoading = false,
+                    step = startStep,
                     userId = authUser.id,
-                    displayName = profile?.displayName?.takeIf { it.isNotBlank() }
-                        ?: profile?.name.orEmpty(),
-                    username = profile?.username.orEmpty(),
+                    displayName = displayName,
+                    username = username,
+                    usernameLocked = usernameLocked,
+                    needsBirthDate = needsBirthDate,
+                    birthDate = profile?.birthDate.orEmpty(),
+                    displayNamePresent = displayNamePresent,
+                    usernameAvailable = if (usernameLocked) true else null,
                     city = profile?.city.orEmpty(),
                     province = profile?.province.orEmpty(),
-                    countryCode = profile?.countryCode.orEmpty(),
+                    countryCode = profile?.countryCode.orEmpty().ifBlank { "AR" },
+                    homeLocalityId = profile?.homeLocalityId,
                     bio = profile?.bio.orEmpty(),
                     avatarPath = profile?.avatarPath
                 )
             }
-            if (profile?.username.isNullOrBlank().not()) {
-                usernameQuery.value = profile?.username.orEmpty()
+            if (!usernameLocked && username.isNotBlank()) {
+                usernameQuery.value = username
             }
         }
 
@@ -119,6 +171,7 @@ class ProfileOnboardingViewModel(
     }
 
     fun onUsernameChange(value: String) {
+        if (_uiState.value.usernameLocked) return
         _uiState.update {
             it.copy(
                 username = value,
@@ -131,6 +184,12 @@ class ProfileOnboardingViewModel(
         usernameQuery.value = value
     }
 
+    fun onBirthDateChange(isoDate: String) {
+        _uiState.update {
+            it.copy(birthDate = isoDate, fieldErrors = it.fieldErrors - "birthDate", errorMessage = null)
+        }
+    }
+
     fun onCityChange(value: String) {
         _uiState.update {
             it.copy(city = value, fieldErrors = it.fieldErrors - "city", errorMessage = null)
@@ -140,6 +199,16 @@ class ProfileOnboardingViewModel(
     fun onProvinceChange(value: String) {
         _uiState.update {
             it.copy(province = value, fieldErrors = it.fieldErrors - "province", errorMessage = null)
+        }
+    }
+
+    fun onHomeLocalityIdChange(value: String?) {
+        _uiState.update {
+            it.copy(
+                homeLocalityId = value?.trim()?.ifBlank { null },
+                fieldErrors = it.fieldErrors - "province" - "city",
+                errorMessage = null
+            )
         }
     }
 
@@ -176,13 +245,95 @@ class ProfileOnboardingViewModel(
     }
 
     fun onImageSelected(uri: Uri?) {
-        _uiState.update { it.copy(pendingImageUri = uri, errorMessage = null) }
+        if (uri == null) {
+            _uiState.update {
+                it.copy(
+                    pendingImageUri = null,
+                    processedPhotoPath = null,
+                    editorSourceUri = null,
+                    photoUploadFailed = false,
+                    errorMessage = null
+                )
+            }
+            return
+        }
+        _uiState.update { it.copy(editorSourceUri = uri, errorMessage = null, photoUploadFailed = false) }
+    }
+
+    fun onCroppedPhoto(uri: Uri) {
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(
+                    isProcessingPhoto = true,
+                    errorMessage = null,
+                    photoUploadFailed = false,
+                    editorSourceUri = null
+                )
+            }
+            val processed = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                runCatching {
+                    val app = com.comunidapp.app.LeoverApplication.instance
+                    com.comunidapp.app.domain.media.AndroidImageIngest(
+                        app.contentResolver,
+                        app.cacheDir
+                    ).encodeAlreadyCropped(uri.toString(), FileAssetPurpose.USER_AVATAR)
+                }
+            }
+            processed.onSuccess { result ->
+                if (!result.normalized) {
+                    onPhotoProcessFailed(com.comunidapp.app.domain.media.MediaDiagnostic.ENCODE)
+                    return@onSuccess
+                }
+                val file = java.io.File(android.net.Uri.parse(result.uriString).path ?: "")
+                if (!file.exists() || file.length() <= 0L) {
+                    onPhotoProcessFailed(com.comunidapp.app.domain.media.MediaDiagnostic.ENCODE)
+                    return@onSuccess
+                }
+                _uiState.update {
+                    it.copy(
+                        pendingImageUri = android.net.Uri.fromFile(file),
+                        processedPhotoPath = file.absolutePath,
+                        registeredAvatarAssetId = null,
+                        editorSourceUri = null,
+                        isProcessingPhoto = false,
+                        photoUploadFailed = false
+                    )
+                }
+            }.onFailure { error ->
+                onPhotoProcessFailed(
+                    com.comunidapp.app.domain.media.MediaDiagnostic.fromThrowable(error)
+                )
+            }
+        }
+    }
+
+    fun onPhotoCropFailed(code: String) {
+        onPhotoProcessFailed(code)
+    }
+
+    private fun onPhotoProcessFailed(code: String) {
+        _uiState.update {
+            it.copy(
+                isProcessingPhoto = false,
+                photoUploadFailed = true,
+                editorSourceUri = null,
+                errorMessage = FileUiErrorMapper.message(code)
+            )
+        }
+    }
+
+    fun cancelPhotoEditor() {
+        _uiState.update { it.copy(editorSourceUri = null, isProcessingPhoto = false) }
     }
 
     fun goBack() {
-        val previous = when (_uiState.value.step) {
+        val state = _uiState.value
+        val previous = when (state.step) {
             OnboardingStep.IDENTITY -> return
-            OnboardingStep.LOCATION_PRIVACY -> OnboardingStep.IDENTITY
+            OnboardingStep.LOCATION_PRIVACY -> {
+                if (!state.identityRequired) return
+                OnboardingStep.IDENTITY
+            }
             OnboardingStep.AVATAR_SUMMARY -> OnboardingStep.LOCATION_PRIVACY
         }
         _uiState.update { it.copy(step = previous, errorMessage = null) }
@@ -222,39 +373,54 @@ class ProfileOnboardingViewModel(
         val identityErrors = validateIdentityStep(state)
         if (identityErrors.isNotEmpty()) {
             _uiState.update {
-                it.copy(step = OnboardingStep.IDENTITY, fieldErrors = identityErrors)
+                it.copy(
+                    step = if (state.identityRequired) OnboardingStep.IDENTITY else it.step,
+                    fieldErrors = identityErrors
+                )
+            }
+            return
+        }
+        val locationErrors = validateLocationStep(state)
+        if (locationErrors.isNotEmpty()) {
+            _uiState.update {
+                it.copy(step = OnboardingStep.LOCATION_PRIVACY, fieldErrors = locationErrors)
             }
             return
         }
 
         viewModelScope.launch {
-            _uiState.update { it.copy(isSubmitting = true, errorMessage = null, success = false) }
+            try {
+            _uiState.update { it.copy(isSubmitting = true, errorMessage = null, success = false, photoUploadFailed = false) }
 
             var avatarPath = state.avatarPath
-            state.pendingImageUri?.let { uri ->
-                when (val upload = DataProvider.fileUploadCoordinator.startUpload(
-                    uriString = uri.toString(),
-                    request = FileUploadRequest(
-                        purpose = FileAssetPurpose.USER_AVATAR,
-                        owner = FileAssetOwner.User(state.userId),
-                        originalFilename = "avatar.jpg",
-                        declaredMimeType = "image/jpeg",
-                        sizeBytes = 1L,
-                        requestedVisibility = FileAssetVisibility.PUBLIC
-                    ),
-                    actorUserId = state.userId
-                )) {
-                    is AppResult.Success -> avatarPath = upload.data.storagePath
-                    is AppResult.Failure -> {
-                        _uiState.update {
-                            it.copy(
-                                isSubmitting = false,
-                                errorMessage = FileUiErrorMapper.message(upload.error)
-                            )
-                        }
-                        return@launch
-                    }
+            val authUser = authRepository.getCurrentUser()
+            if (authUser == null) {
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        errorMessage = FileUiErrorMapper.message(
+                            MediaDiagnostic.DB,
+                            "SET_PERSON_AVATAR: NOT_AUTHENTICATED"
+                        )
+                    )
                 }
+                return@launch
+            }
+            val actorId = authUser.id
+            val processedFile = state.processedPhotoPath
+                ?.let { java.io.File(it) }
+                ?.takeIf { it.exists() && it.length() > 0L }
+            if (state.pendingImageUri != null && processedFile == null && state.registeredAvatarAssetId.isNullOrBlank()) {
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        photoUploadFailed = true,
+                        errorMessage = FileUiErrorMapper.message(
+                            com.comunidapp.app.domain.media.MediaDiagnostic.CROP
+                        )
+                    )
+                }
+                return@launch
             }
 
             val privacy = UserPrivacySettings(
@@ -268,35 +434,117 @@ class ProfileOnboardingViewModel(
                 username = state.username.trim(),
                 city = state.city.trim().ifBlank { null },
                 province = state.province.trim().ifBlank { null },
-                countryCode = state.countryCode.trim().ifBlank { null },
+                countryCode = state.countryCode.trim().ifBlank { "AR" },
+                homeLocalityId = state.homeLocalityId?.trim()?.ifBlank { null },
                 bio = state.bio.trim().ifBlank { null },
                 avatarPath = avatarPath,
-                privacy = privacy
+                privacy = privacy,
+                birthDate = state.birthDate.takeIf { state.needsBirthDate }
             )
+            // PERSON must exist before canon_register_media (FK owner_person_id → persons).
+            val provisioned = userRepository.completeOnboarding(state.userId, command)
+            if (provisioned.isFailure) {
+                val error = provisioned.exceptionOrNull()
+                val message = when (error?.message) {
+                    "USERNAME_UNAVAILABLE" -> "Ese nombre de usuario no está disponible."
+                    "DISPLAY_NAME_INVALID" -> "El nombre debe tener entre 2 y 80 caracteres."
+                    "HOME_LOCALITY_REQUIRED" -> "Elegí una provincia y una localidad."
+                    "BIRTH_DATE_INVALID", "UNDER_13_AUTONOMOUS_ACCOUNT_DENIED" ->
+                        "Revisá la fecha de nacimiento."
+                    else -> error?.message ?: "No se pudo completar el perfil"
+                }
+                _uiState.update {
+                    it.copy(isSubmitting = false, errorMessage = message)
+                }
+                return@launch
+            }
 
-            userRepository.completeOnboarding(state.userId, command)
-                .onSuccess {
-                    _uiState.update {
-                        it.copy(
-                            isSubmitting = false,
-                            success = true,
-                            avatarPath = avatarPath,
-                            pendingImageUri = null
+            var assetId = state.registeredAvatarAssetId?.takeIf { it.isNotBlank() }
+            if (assetId == null && processedFile != null) {
+                val uploadUri = android.net.Uri.fromFile(processedFile).toString()
+                when (val upload = DataProvider.fileUploadCoordinator.startUpload(
+                    uriString = uploadUri,
+                    request = FileUploadRequest(
+                        purpose = FileAssetPurpose.USER_AVATAR,
+                        owner = FileAssetOwner.User(actorId),
+                        originalFilename = "avatar.jpg",
+                        declaredMimeType = "image/jpeg",
+                        sizeBytes = processedFile.length(),
+                        requestedVisibility = FileAssetVisibility.PUBLIC
+                    ),
+                    actorUserId = actorId
+                )) {
+                    is AppResult.Success -> {
+                        assetId = upload.data.assetId
+                    }
+                    is AppResult.Failure -> {
+                        _uiState.update {
+                            it.copy(
+                                isSubmitting = false,
+                                photoUploadFailed = true,
+                                errorMessage = FileUiErrorMapper.message(upload.error)
+                            )
+                        }
+                        return@launch
+                    }
+                }
+            }
+            if (!assetId.isNullOrBlank()) {
+                userRepository.setPersonAvatar(assetId)
+                    .onSuccess { avatarPath = assetId }
+                    .onFailure { error ->
+                        _uiState.update {
+                            it.copy(
+                                isSubmitting = false,
+                                photoUploadFailed = true,
+                                registeredAvatarAssetId = assetId,
+                                errorMessage = FileUiErrorMapper.message(
+                                    "SET_PERSON_AVATAR",
+                                    error.message?.take(80)
+                                )
+                            )
+                        }
+                        return@launch
+                    }
+            }
+
+            _uiState.update {
+                it.copy(
+                    isSubmitting = false,
+                    success = true,
+                    avatarPath = avatarPath,
+                    pendingImageUri = null
+                )
+            }
+            } catch (error: Throwable) {
+                _uiState.update {
+                    it.copy(
+                        isSubmitting = false,
+                        photoUploadFailed = true,
+                        errorMessage = FileUiErrorMapper.message(
+                            com.comunidapp.app.domain.media.MediaDiagnostic.fromThrowable(error)
                         )
-                    }
+                    )
                 }
-                .onFailure { error ->
-                    val message = when (error.message) {
-                        "USERNAME_UNAVAILABLE" -> "Ese nombre de usuario no está disponible."
-                        "DISPLAY_NAME_INVALID" -> "El nombre debe tener entre 2 y 80 caracteres."
-                        "AVATAR_PATH_INVALID" -> "No se pudo guardar la foto de perfil."
-                        else -> error.message ?: "No se pudo completar el perfil"
-                    }
-                    _uiState.update {
-                        it.copy(isSubmitting = false, errorMessage = message)
-                    }
-                }
+            }
         }
+    }
+
+    fun retryPhotoUpload() {
+        completeOnboarding()
+    }
+
+    fun skipPhotoAndContinue() {
+        _uiState.update {
+            it.copy(
+                pendingImageUri = null,
+                processedPhotoPath = null,
+                editorSourceUri = null,
+                photoUploadFailed = false,
+                errorMessage = null
+            )
+        }
+        completeOnboarding()
     }
 
     fun clearSuccess() {
@@ -304,7 +552,14 @@ class ProfileOnboardingViewModel(
     }
 
     private suspend fun checkUsernameAvailability(raw: String) {
-        val userId = _uiState.value.userId
+        val state = _uiState.value
+        val userId = state.userId
+        if (state.usernameLocked ||
+            OnboardingCompleteness.isUnchangedSelfUsername(raw, state.username.takeIf { state.usernameLocked })
+        ) {
+            _uiState.update { it.copy(checkingUsername = false, usernameAvailable = true) }
+            return
+        }
         if (raw.isBlank()) {
             _uiState.update { it.copy(checkingUsername = false, usernameAvailable = null) }
             return
@@ -354,6 +609,9 @@ class ProfileOnboardingViewModel(
         if (display.length !in DISPLAY_NAME_MIN..DISPLAY_NAME_MAX) {
             errors["displayName"] = "El nombre debe tener entre $DISPLAY_NAME_MIN y $DISPLAY_NAME_MAX caracteres."
         }
+        if (state.usernameLocked) {
+            return errors
+        }
         UsernameValidators.validate(state.username).onFailure { ex ->
             val message = (ex as? UsernameValidationException)?.error?.userMessage
                 ?: "Nombre de usuario inválido"
@@ -372,13 +630,29 @@ class ProfileOnboardingViewModel(
                 true -> Unit
             }
         }
+        if (state.needsBirthDate) {
+            com.comunidapp.app.domain.user.PersonAgeRules.validateSignupBirthDate(state.birthDate)
+                .onFailure { err ->
+                    errors["birthDate"] = when (err.message) {
+                        "UNDER_13_AUTONOMOUS_ACCOUNT_DENIED" ->
+                            "LeoVer no crea cuentas autónomas para menores de 13 años."
+                        "BIRTH_DATE_IN_FUTURE" -> "La fecha de nacimiento no puede ser futura."
+                        else -> "Ingresá tu fecha de nacimiento."
+                    }
+                }
+        }
         return errors
     }
 
     private fun validateLocationStep(state: ProfileOnboardingUiState): Map<String, String> {
         val errors = mutableMapOf<String, String>()
-        val code = state.countryCode.trim()
-        if (code.isNotEmpty() && !COUNTRY_CODE_REGEX.matches(code)) {
+        val hasCatalogLocality = !state.homeLocalityId.isNullOrBlank()
+        val hasNamedPlace = state.province.isNotBlank() && state.city.isNotBlank()
+        if (!hasCatalogLocality && !hasNamedPlace) {
+            errors["province"] = "Elegí una provincia y una localidad."
+        }
+        val code = state.countryCode.trim().ifBlank { "AR" }
+        if (!COUNTRY_CODE_REGEX.matches(code)) {
             errors["countryCode"] = "Usá un código de país de 2 letras (ej. AR)."
         }
         return errors

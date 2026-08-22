@@ -24,7 +24,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.ui.components.AdoptionCard
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.FeedPostCard
 import com.comunidapp.app.ui.components.PetCard
 import com.comunidapp.app.ui.screens.lostfound.LostFoundCard
@@ -43,8 +45,9 @@ fun SearchScreen(
     val isSearching by viewModel.isSearching.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Buscar",
                 showBackButton = true,
                 onBackClick = onNavigateBack

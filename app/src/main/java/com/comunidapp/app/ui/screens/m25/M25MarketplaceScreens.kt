@@ -23,13 +23,16 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M25PublicShopListing
 import com.comunidapp.app.data.model.M25ShopStatus
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.viewmodel.*
 
 @Composable
+@Suppress("UNUSED_PARAMETER")
 fun M25HubScreen(
     onNavigateBack: () -> Unit,
     onOpenCatalog: () -> Unit,
@@ -39,7 +42,7 @@ fun M25HubScreen(
     viewModel: M25HubViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Marketplace", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Marketplace", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             when (val s = state) {
                 M25HubUiState.Loading -> LoadingState()
@@ -49,8 +52,7 @@ fun M25HubScreen(
                     Text("Catálogo local sin cobros.", color = MaterialTheme.colorScheme.primary)
                     Text("${s.shopCount} tiendas disponibles")
                     Button(onClick = onOpenCatalog, modifier = Modifier.fillMaxWidth()) { Text("Explorar tiendas") }
-                    OutlinedButton(onClick = onOpenCart, modifier = Modifier.fillMaxWidth()) { Text("Mi carrito") }
-                    OutlinedButton(onClick = onOpenOrders, modifier = Modifier.fillMaxWidth()) { Text("Mis pedidos") }
+                    Text("Checkout, carrito y pedidos están fuera de V1.")
                     OutlinedButton(onClick = onOpenManage, modifier = Modifier.fillMaxWidth()) { Text("Gestionar mis tiendas") }
                 }
             }
@@ -61,7 +63,7 @@ fun M25HubScreen(
 @Composable
 fun M25CatalogScreen(onNavigateBack: () -> Unit, onShopClick: (String) -> Unit, viewModel: M25CatalogViewModel = viewModel(factory = M25ViewModelFactories.catalog())) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Tiendas", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Tiendas", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (val s = state) {
                 M25CatalogUiState.Loading -> LoadingState()
@@ -78,7 +80,7 @@ fun M25CatalogScreen(onNavigateBack: () -> Unit, onShopClick: (String) -> Unit, 
 @Composable
 fun M25ShopDetailScreen(shopId: String, onNavigateBack: () -> Unit, viewModel: M25DetailViewModel = viewModel(factory = M25ViewModelFactories.detail(shopId))) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Tienda", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Tienda", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (val s = state) {
                 M25DetailUiState.Loading -> LoadingState()
@@ -101,7 +103,7 @@ fun M25ShopDetailScreen(shopId: String, onNavigateBack: () -> Unit, viewModel: M
 @Composable
 fun M25CartScreen(onNavigateBack: () -> Unit, viewModel: M25CartViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Carrito", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Carrito", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (val s = state) {
                 M25CartUiState.Loading -> LoadingState()
@@ -120,7 +122,7 @@ fun M25CartScreen(onNavigateBack: () -> Unit, viewModel: M25CartViewModel = view
 @Composable
 fun M25OrdersScreen(onNavigateBack: () -> Unit, onOrderClick: (String) -> Unit = {}, viewModel: M25OrdersViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Mis pedidos", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Mis pedidos", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (val s = state) {
                 M25OrdersUiState.Loading -> LoadingState()
@@ -144,7 +146,7 @@ fun M25OrdersScreen(onNavigateBack: () -> Unit, onOrderClick: (String) -> Unit =
 @Composable
 fun M25ManageScreen(onNavigateBack: () -> Unit, onOpenMerchantOrders: (String) -> Unit = {}, viewModel: M25ManageViewModel = viewModel()) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Mis tiendas", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Mis tiendas", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (val s = state) {
                 M25ManageUiState.Loading -> LoadingState()
@@ -185,7 +187,7 @@ private fun M25ShopCard(listing: M25PublicShopListing, onClick: () -> Unit) {
 @Composable
 fun M25MerchantOrdersScreen(shopId: String, onNavigateBack: () -> Unit, viewModel: M25MerchantOrdersViewModel = viewModel(factory = M25ViewModelFactories.merchantOrders(shopId))) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Pedidos comercio", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Pedidos comercio", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             when (val s = state) {
                 M25MerchantOrdersUiState.Loading -> LoadingState()
@@ -209,7 +211,7 @@ fun M25MerchantOrdersScreen(shopId: String, onNavigateBack: () -> Unit, viewMode
 @Composable
 fun M25OrderDetailScreen(orderId: String, onNavigateBack: () -> Unit, viewModel: M25OrderDetailViewModel = viewModel(factory = M25ViewModelFactories.orderDetail(orderId))) {
     val state by viewModel.uiState.collectAsState()
-    Scaffold(topBar = { ComunidappTopBar(title = "Detalle pedido", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
+    Scaffold(containerColor = BrandBackground, topBar = { LeoTopAppBar(title = "Detalle pedido", showBackButton = true, onBackClick = onNavigateBack) }) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             when (val s = state) {
                 M25OrderDetailUiState.Loading -> LoadingState()

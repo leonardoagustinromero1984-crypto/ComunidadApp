@@ -226,10 +226,8 @@ fun LeoSocialPostCard(
                         color = BrandText
                     )
                 }
-                val body = listOfNotNull(
-                    post.title.takeIf { it.isNotBlank() },
-                    post.content.takeIf { it.isNotBlank() }
-                ).joinToString("\n")
+                val body = post.content.takeIf { it.isNotBlank() }
+                    ?: post.title.takeIf { it.isNotBlank() }.orEmpty()
                 if (body.isNotBlank()) {
                     Text(
                         text = body,
@@ -290,7 +288,7 @@ private fun SocialTypeBadge(label: String, container: Color, content: Color) {
     )
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, name = "SocialPostImagePreview")
+@Preview(showBackground = true, backgroundColor = 0xFFFFFDF8, widthDp = 390, name = "SocialPostImagePreview")
 @Composable
 private fun SocialPostImagePreview() {
     ComunidappTheme {
@@ -313,7 +311,7 @@ private fun SocialPostImagePreview() {
     }
 }
 
-@Preview(showBackground = true, backgroundColor = 0xFFFFF6EA, widthDp = 390, name = "SocialPostSpecialPreview")
+@Preview(showBackground = true, backgroundColor = 0xFFFFFDF8, widthDp = 390, name = "SocialPostSpecialPreview")
 @Composable
 private fun SocialPostSpecialPreview() {
     ComunidappTheme {

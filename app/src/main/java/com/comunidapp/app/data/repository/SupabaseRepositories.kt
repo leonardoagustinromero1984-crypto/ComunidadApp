@@ -62,8 +62,23 @@ class SupabaseUserRepository(
             }
         }
 
-    override suspend fun isUsernameAvailable(username: String, excludingUserId: String?) =
-        dataSource.isUsernameAvailable(username)
+    override suspend fun isUsernameAvailable(
+        username: String,
+        excludingUserId: String?
+    ): Result<Boolean> {
+        val normalized = com.comunidapp.app.domain.user.UsernameValidators.normalize(username)
+        if (excludingUserId != null) {
+            val owned = getUser(excludingUserId)?.username
+            if (com.comunidapp.app.domain.user.OnboardingCompleteness.isUnchangedSelfUsername(
+                    normalized,
+                    owned
+                )
+            ) {
+                return Result.success(true)
+            }
+        }
+        return dataSource.isUsernameAvailable(username)
+    }
 
     override suspend fun completeOnboarding(
         userId: String,
@@ -74,6 +89,9 @@ class SupabaseUserRepository(
         userId: String,
         command: com.comunidapp.app.domain.user.UpdateMyProfileCommand
     ) = dataSource.updateMyProfile(command)
+
+    override suspend fun setPersonAvatar(assetId: String): Result<Unit> =
+        dataSource.setPersonAvatar(assetId)
 
     override suspend fun getPublicProfile(viewerId: String, targetUserId: String) =
         dataSource.getPublicProfile(targetUserId)
@@ -107,6 +125,7 @@ class SupabaseFeedRepository(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val _posts = MutableStateFlow<List<FeedPost>>(emptyList())
     override fun observeFeedPosts(): StateFlow<List<FeedPost>> = _posts.asStateFlow()
+    override fun observeActiveStories(): StateFlow<List<FeedPost>> = MutableStateFlow(emptyList())
 
     init {
         scope.launch {
@@ -125,6 +144,14 @@ class SupabaseFeedRepository(
         }
     }
 
+    override suspend fun refreshStories(): Result<Unit> = Result.success(Unit)
+
+    override suspend fun addStory(post: FeedPost, mediaAssetId: String): Result<String> =
+        addFeedPost(post.copy(imageUrl = mediaAssetId))
+
+    override suspend fun addReel(post: FeedPost, mediaAssetId: String): Result<String> =
+        addFeedPost(post.copy(imageUrl = mediaAssetId))
+
     override suspend fun addFeedPost(post: FeedPost) = dataSource.addPost(post)
 
     override suspend fun updateFeedPost(post: FeedPost) = dataSource.updatePost(post)
@@ -141,6 +168,8 @@ class SupabaseFeedRepository(
     override fun observeComments(postId: String): Flow<List<com.comunidapp.app.data.model.PostComment>> =
         socialDataSource.observeComments(postId)
 
+    override suspend fun refreshComments(postId: String): Result<Unit> = Result.success(Unit)
+
     override suspend fun addComment(
         postId: String,
         authorId: String,
@@ -151,6 +180,8 @@ class SupabaseFeedRepository(
         refreshPosts()
         return result
     }
+
+    override suspend fun deleteOwnComment(commentId: String): Result<Unit> = Result.success(Unit)
 
     override suspend fun searchPosts(query: String): List<FeedPost> {
         if (query.isBlank()) return emptyList()

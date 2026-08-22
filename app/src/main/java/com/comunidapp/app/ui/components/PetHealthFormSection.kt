@@ -2,6 +2,8 @@ package com.comunidapp.app.ui.components
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -31,6 +33,7 @@ import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.data.model.VaccinationRecord
 import com.comunidapp.app.ui.util.formatDisplayDate
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PetHealthFormSection(
     species: PetSpecies,
@@ -43,9 +46,14 @@ fun PetHealthFormSection(
     pendingVaccineNextDate: String,
     dewormingProduct: String,
     lastDeworming: String,
+    nextDeworming: String,
     fleaTreatmentProduct: String,
     lastFleaTreatment: String,
+    nextFleaTreatment: String,
     healthNotes: String,
+    allergyName: String = "",
+    medicationName: String = "",
+    conditionName: String = "",
     enabled: Boolean,
     onSterilizedChange: (SterilizationStatus) -> Unit,
     onMicrochipChange: (String) -> Unit,
@@ -57,10 +65,18 @@ fun PetHealthFormSection(
     onRemoveVaccination: (Int) -> Unit,
     onDewormingProductChange: (String) -> Unit,
     onLastDewormingChange: (String) -> Unit,
+    onNextDewormingChange: (String) -> Unit,
     onFleaProductChange: (String) -> Unit,
     onLastFleaTreatmentChange: (String) -> Unit,
+    onNextFleaTreatmentChange: (String) -> Unit,
+    onAllergyNameChange: (String) -> Unit = {},
+    onMedicationNameChange: (String) -> Unit = {},
+    onConditionNameChange: (String) -> Unit = {},
     onHealthNotesChange: (String) -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    vaccineOptions: List<String> = emptyList(),
+    dewormerOptions: List<String> = emptyList(),
+    fleaOptions: List<String> = emptyList()
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Text(
@@ -81,7 +97,7 @@ fun PetHealthFormSection(
             modifier = Modifier.fillMaxWidth()
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Row(
+        FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
@@ -90,8 +106,7 @@ fun PetHealthFormSection(
                     selected = sterilized == status,
                     onClick = { onSterilizedChange(status) },
                     enabled = enabled,
-                    label = { Text(status.toDisplayName(), maxLines = 1) },
-                    modifier = Modifier.weight(1f)
+                    label = { Text(status.toDisplayName()) }
                 )
             }
         }
@@ -105,7 +120,8 @@ fun PetHealthFormSection(
             label = "Última consulta veterinaria",
             isoDate = lastVetVisit,
             onDateSelected = onLastVetVisitChange,
-            enabled = enabled
+            enabled = enabled,
+            historicalOnly = true
         )
 
         Spacer(modifier = Modifier.height(20.dp))
@@ -132,7 +148,7 @@ fun PetHealthFormSection(
 
         HealthOptionDropdown(
             label = "Tipo de vacuna",
-            options = PetHealthCatalog.vaccinesForSpecies(species),
+            options = vaccineOptions.ifEmpty { PetHealthCatalog.vaccinesForSpecies(species) },
             selected = pendingVaccineName,
             onSelected = onPendingVaccineNameChange,
             enabled = enabled
@@ -142,11 +158,12 @@ fun PetHealthFormSection(
             label = "Fecha de aplicación",
             isoDate = pendingVaccineDate,
             onDateSelected = onPendingVaccineDateChange,
-            enabled = enabled
+            enabled = enabled,
+            historicalOnly = true
         )
         Spacer(modifier = Modifier.height(8.dp))
         DatePickerField(
-            label = "Próximo refuerzo (opcional)",
+            label = "Próximo refuerzo",
             isoDate = pendingVaccineNextDate,
             onDateSelected = onPendingVaccineNextDateChange,
             enabled = enabled
@@ -172,7 +189,7 @@ fun PetHealthFormSection(
         Spacer(modifier = Modifier.height(8.dp))
         HealthOptionDropdown(
             label = "Producto antiparasitario",
-            options = PetHealthCatalog.dewormingProducts,
+            options = dewormerOptions.ifEmpty { PetHealthCatalog.dewormingProducts },
             selected = dewormingProduct,
             onSelected = onDewormingProductChange,
             enabled = enabled
@@ -182,6 +199,14 @@ fun PetHealthFormSection(
             label = "Fecha de desparasitación",
             isoDate = lastDeworming,
             onDateSelected = onLastDewormingChange,
+            enabled = enabled,
+            historicalOnly = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        DatePickerField(
+            label = "Próxima desparasitación",
+            isoDate = nextDeworming,
+            onDateSelected = onNextDewormingChange,
             enabled = enabled
         )
 
@@ -194,7 +219,7 @@ fun PetHealthFormSection(
         Spacer(modifier = Modifier.height(8.dp))
         HealthOptionDropdown(
             label = "Producto aplicado",
-            options = PetHealthCatalog.fleaAndTickProducts,
+            options = fleaOptions.ifEmpty { PetHealthCatalog.fleaAndTickProducts },
             selected = fleaTreatmentProduct,
             onSelected = onFleaProductChange,
             enabled = enabled
@@ -204,15 +229,47 @@ fun PetHealthFormSection(
             label = "Fecha de aplicación",
             isoDate = lastFleaTreatment,
             onDateSelected = onLastFleaTreatmentChange,
+            enabled = enabled,
+            historicalOnly = true
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        DatePickerField(
+            label = "Próxima aplicación",
+            isoDate = nextFleaTreatment,
+            onDateSelected = onNextFleaTreatmentChange,
             enabled = enabled
         )
 
         Spacer(modifier = Modifier.height(16.dp))
         OutlinedTextField(
+            value = allergyName,
+            onValueChange = onAllergyNameChange,
+            label = { Text("Alergia declarada") },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = medicationName,
+            onValueChange = onMedicationNameChange,
+            label = { Text("Medicación declarada") },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled
+        )
+        Spacer(modifier = Modifier.height(8.dp))
+        OutlinedTextField(
+            value = conditionName,
+            onValueChange = onConditionNameChange,
+            label = { Text("Condición declarada") },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = enabled
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        OutlinedTextField(
             value = healthNotes,
             onValueChange = onHealthNotesChange,
-            label = { Text("Notas de salud") },
-            placeholder = { Text("Alergias, medicación, condiciones crónicas, observaciones del vet…") },
+            label = { Text("Indicaciones de cuidado") },
+            placeholder = { Text("Alimentación, cuidados especiales, observaciones…") },
             modifier = Modifier.fillMaxWidth(),
             minLines = 3,
             enabled = enabled

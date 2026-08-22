@@ -15,7 +15,6 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -39,8 +38,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.ChatMessage
 import com.comunidapp.app.data.model.Conversation
 import com.comunidapp.app.data.repository.AuthProvider
-import com.comunidapp.app.ui.components.ComunidappTopBar
-import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.leo.LeoEmptyState
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.ChatListViewModel
 import com.comunidapp.app.viewmodel.ChatStartState
 import com.comunidapp.app.viewmodel.ChatStartViewModel
@@ -58,9 +66,11 @@ fun ChatListScreen(
     val conversations by viewModel.conversations.collectAsState()
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Mensajes",
+                subtitle = "Tus conversaciones",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -73,9 +83,9 @@ fun ChatListScreen(
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "Todavía no tenés conversaciones",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                LeoEmptyState(
+                    title = "Todavía no tenés conversaciones",
+                    message = "Cuando alguien te escriba, van a aparecer acá."
                 )
             }
         } else {
@@ -83,8 +93,8 @@ fun ChatListScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                contentPadding = PaddingValues(LeoDimens.SpaceMd),
+                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
             ) {
                 items(conversations, key = { it.id }) { conversation ->
                     ConversationCard(
@@ -102,22 +112,21 @@ private fun ConversationCard(
     conversation: Conversation,
     onClick: () -> Unit
 ) {
-    Card(onClick = onClick, modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    V2SurfaceCard(onClick = onClick) {
+        Text(
+            text = conversation.peerName,
+            style = LeoCardTitle,
+            color = BrandText,
+            fontWeight = FontWeight.SemiBold
+        )
+        conversation.lastMessageText?.let { preview ->
             Text(
-                text = conversation.peerName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
+                text = preview,
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = LeoDimens.SpaceMicro),
+                maxLines = 2
             )
-            conversation.lastMessageText?.let { preview ->
-                Text(
-                    text = preview,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp),
-                    maxLines = 2
-                )
-            }
         }
     }
 }
@@ -138,8 +147,9 @@ fun ChatStartScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Abriendo chat…",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -190,8 +200,9 @@ fun ChatThreadScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = peerName,
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -277,7 +288,35 @@ private fun MessageBubble(message: ChatMessage, isMine: Boolean) {
                     fontWeight = FontWeight.SemiBold
                 )
             }
-            Text(text = message.content, style = MaterialTheme.typography.bodyMedium)
+            val share = com.comunidapp.app.domain.social.InternalShareCodec.decode(message.content)
+            if (share != null) {
+                val availability = com.comunidapp.app.domain.social.SharedContentPolicy.storyAvailability(
+                    share,
+                    System.currentTimeMillis(),
+                    storyStillReachable = share.expiresAtEpochMs == null ||
+                        (share.expiresAtEpochMs ?: 0L) > System.currentTimeMillis()
+                )
+                Text(
+                    text = when (availability) {
+                        com.comunidapp.app.domain.social.SharedContentAvailability.EXPIRED_STORY ->
+                            com.comunidapp.app.domain.social.SharedContentPolicy.EXPIRED_STORY_COPY
+                        com.comunidapp.app.domain.social.SharedContentAvailability.PERMISSION_DENIED ->
+                            "No tenés acceso a este contenido"
+                        com.comunidapp.app.domain.social.SharedContentAvailability.AVAILABLE ->
+                            com.comunidapp.app.domain.social.InternalShareCodec.visibleCaption(message.content)
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                if (availability == com.comunidapp.app.domain.social.SharedContentAvailability.AVAILABLE) {
+                    Text(share.deepLink, style = MaterialTheme.typography.labelSmall)
+                    if (share.captionPreview.isNotBlank()) {
+                        Text(share.captionPreview, style = MaterialTheme.typography.bodySmall, maxLines = 2)
+                    }
+                }
+            } else {
+                Text(text = message.content, style = MaterialTheme.typography.bodyMedium)
+            }
             if (time.isNotBlank()) {
                 Text(
                     text = time,

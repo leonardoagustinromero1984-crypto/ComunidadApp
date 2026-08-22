@@ -14,6 +14,7 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.PlatformRepository
 import com.comunidapp.app.data.repository.UserRepository
+import com.comunidapp.app.domain.pets.PetPhotoResolver
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -46,6 +47,9 @@ class PetDetailViewModel(
 
     private val _pet = MutableStateFlow<Pet?>(null)
     val pet: StateFlow<Pet?> = _pet.asStateFlow()
+
+    private val _photoDisplayUrl = MutableStateFlow<String?>(null)
+    val photoDisplayUrl: StateFlow<String?> = _photoDisplayUrl.asStateFlow()
 
     private val _isPetLoading = MutableStateFlow(petId.isNotBlank())
     val isPetLoading: StateFlow<Boolean> = _isPetLoading.asStateFlow()
@@ -145,6 +149,7 @@ class PetDetailViewModel(
             val cached = runCatching { petRepository.getPetById(petId) }.getOrNull()
             if (cached != null) {
                 _pet.value = cached
+                resolvePhoto(cached)
                 _isPetLoading.value = false
             }
 
@@ -160,6 +165,7 @@ class PetDetailViewModel(
             when {
                 fetched != null -> {
                     _pet.value = fetched
+                    resolvePhoto(fetched)
                     _petLoadError.value = null
                     _isPetLoading.value = false
                     refreshStatusReason(fetched.status)
@@ -192,6 +198,7 @@ class PetDetailViewModel(
                 .collect { latest ->
                     if (latest != null) {
                         _pet.value = latest
+                        resolvePhoto(latest)
                         _isPetLoading.value = false
                         _petLoadError.value = null
                         refreshStatusReason(latest.status)
@@ -209,6 +216,12 @@ class PetDetailViewModel(
                     resolvePrincipalName(ctx)
                 }
                 .onFailure { /* keep gates false */ }
+        }
+    }
+
+    private fun resolvePhoto(pet: Pet?) {
+        viewModelScope.launch {
+            _photoDisplayUrl.value = PetPhotoResolver.displayUrl(pet, currentUserId.value)
         }
     }
 

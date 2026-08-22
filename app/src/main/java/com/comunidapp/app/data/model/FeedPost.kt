@@ -20,7 +20,10 @@ data class FeedPost(
     /** Mascota asociada opcional (publicación / reel / historia). */
     val petId: String? = null,
     /** Epoch millis; historias vencen a las 24 h. Null = sin vencimiento (salvo STORY). */
-    val expiresAt: Long? = null
+    val expiresAt: Long? = null,
+    val localityId: String? = null,
+    val compositionJson: String? = null,
+    val mediaMime: String? = null
 ) {
     /**
      * Vigencia efectiva: usa `expires_at` si existe; si el backend aún no tiene la columna

@@ -74,29 +74,38 @@ describe("public shareable helpers", () => {
   });
 });
 
-describe("migration 081 static guards", () => {
+describe("canonical public RPC static guards", () => {
   const migrationPath = resolve(
     process.cwd(),
-    "../supabase/migrations/081_web_public_shareable_pages.sql",
+    "../infra/supabase-canonical/supabase/migrations/20260815172000_1020_rls_rpc.sql",
   );
 
   it("defines anon public RPCs with security definer and grants", () => {
     const sql = readFileSync(migrationPath, "utf8");
 
-    expect(sql).toContain("get_public_adoption");
-    [
-      "get_public_lost_case",
-      "get_public_found_case",
-      "get_public_pet",
-      "_web_is_content_blocked",
-      "_web_sanitize_public_image",
-    ].forEach((fragment) => expect(sql).toContain(fragment));
-
+    expect(sql).toContain("canon_public_pet");
+    expect(sql).toContain("canon_public_lost_found");
+    expect(sql).not.toContain("canon_public_adoption");
     expect(sql.toLowerCase()).toContain("security definer");
     expect(sql).toContain("set search_path = public");
-    expect(sql).toContain("grant execute on function public.get_public_adoption(text) to anon");
+    expect(sql).toContain("grant execute on function public.canon_public_pet(text) to anon");
+    expect(sql).toContain("grant execute on function public.canon_public_lost_found(text) to anon");
     expect(sql.toLowerCase()).not.toContain("service_role");
     expect(sql).not.toMatch(/jsonb_build_object\([\s\S]*'contact_info'/);
-    expect(sql).not.toMatch(/jsonb_build_object\([\s\S]*'latitude',\s*p_row\.latitude/);
+    expect(sql).not.toMatch(/jsonb_build_object\([\s\S]*'latitude'/);
+  });
+
+  it("defines 03E public adoption RPC without PII", () => {
+    const enablementPath = resolve(
+      process.cwd(),
+      "../infra/supabase-canonical/supabase/migrations/20260815212500_1023_consumer_enablement.sql",
+    );
+    const sql = readFileSync(enablementPath, "utf8");
+    expect(sql).toContain("canon_public_adoption");
+    expect(sql).toContain("grant execute on function public.canon_public_adoption(text) to anon");
+    expect(sql).not.toMatch(/jsonb_build_object\([\s\S]*'pet_id'/);
+    expect(sql).not.toMatch(/jsonb_build_object\([\s\S]*'published_by'/);
+    expect(sql).not.toMatch(/jsonb_build_object\([\s\S]*'email'/);
+    expect(sql.toLowerCase()).not.toContain("service_role");
   });
 });

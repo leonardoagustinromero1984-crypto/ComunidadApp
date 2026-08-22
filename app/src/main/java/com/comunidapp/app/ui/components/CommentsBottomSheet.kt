@@ -32,7 +32,9 @@ import com.comunidapp.app.data.model.PostComment
 fun CommentsBottomSheet(
     comments: List<PostComment>,
     onDismiss: () -> Unit,
-    onSendComment: (String) -> Unit
+    onSendComment: (String) -> Unit,
+    currentUserId: String? = null,
+    onDeleteOwn: (String) -> Unit = {}
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var text by remember { mutableStateOf("") }
@@ -66,6 +68,17 @@ fun CommentsBottomSheet(
                                 fontWeight = FontWeight.SemiBold
                             )
                             Text(text = comment.content, style = MaterialTheme.typography.bodyMedium)
+                            comment.createdAt?.let { ts ->
+                                Text(
+                                    text = android.text.format.DateFormat.format("HH:mm", ts).toString(),
+                                    style = MaterialTheme.typography.labelSmall
+                                )
+                            }
+                            if (currentUserId != null && comment.authorId == currentUserId) {
+                                androidx.compose.material3.TextButton(onClick = { onDeleteOwn(comment.id) }) {
+                                    Text("Eliminar")
+                                }
+                            }
                         }
                     }
                 }

@@ -6,7 +6,11 @@ enum class CommunityCategory {
     TRAINER,
     WALKER,
     SHOP,
-    DONATION
+    DAYCARE,
+    GROOMING,
+    CAREGIVER,
+    DONATION,
+    PET_FRIENDLY
 }
 
 data class CommunityListing(

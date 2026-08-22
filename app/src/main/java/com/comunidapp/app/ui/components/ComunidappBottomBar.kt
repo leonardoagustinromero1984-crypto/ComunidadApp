@@ -11,15 +11,23 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.filled.Dashboard
 import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Handshake
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.HomeWork
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Storefront
+import androidx.compose.material.icons.outlined.Assignment
+import androidx.compose.material.icons.outlined.Dashboard
 import androidx.compose.material.icons.outlined.Groups
 import androidx.compose.material.icons.outlined.Handshake
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.HomeWork
 import androidx.compose.material.icons.outlined.Person
+import androidx.compose.material.icons.outlined.Pets
 import androidx.compose.material.icons.outlined.Storefront
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -37,13 +45,13 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.comunidapp.app.data.model.AccountType
-import com.comunidapp.app.domain.AppMode
-import com.comunidapp.app.domain.RolePermissions
-import com.comunidapp.app.domain.toAppMode
+import com.comunidapp.app.domain.context.ContextNavigation
+import com.comunidapp.app.domain.context.OperationalContext
 import com.comunidapp.app.navigation.NavRoutes
 import com.comunidapp.app.ui.theme.BrandGrayMedium
+import com.comunidapp.app.ui.theme.BrandGreen
+import com.comunidapp.app.ui.theme.BrandGreenContainer
 import com.comunidapp.app.ui.theme.BrandOrange
-import com.comunidapp.app.ui.theme.BrandOrangeContainer
 import com.comunidapp.app.ui.theme.BrandOrangeSoft
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandWhite
@@ -58,40 +66,36 @@ data class BottomNavItem(
     val prominent: Boolean = false
 )
 
-fun bottomNavItemsFor(accountType: AccountType): List<BottomNavItem> {
-    val businessTitle = RolePermissions.businessPanelTitle(accountType)
-    return when (accountType.toAppMode()) {
-        AppMode.NEGOCIO -> listOf(
-            BottomNavItem(NavRoutes.HOME, "Inicio", Icons.Filled.Home, Icons.Outlined.Home),
-            BottomNavItem(NavRoutes.PUBLISH, "Publicar", Icons.Filled.AddCircle, Icons.Filled.AddCircle, prominent = true),
-            BottomNavItem(NavRoutes.MY_BUSINESS, businessTitle, Icons.Filled.Storefront, Icons.Outlined.Storefront),
-            BottomNavItem(NavRoutes.PROFILE, "Perfil", Icons.Filled.Person, Icons.Outlined.Person)
-        )
-        else -> listOf(
-            BottomNavItem(NavRoutes.HOME, "Inicio", Icons.Filled.Home, Icons.Outlined.Home),
-            BottomNavItem(NavRoutes.SUMATE, "Sumate", Icons.Filled.Handshake, Icons.Outlined.Handshake),
-            BottomNavItem(NavRoutes.PUBLISH, "Publicar", Icons.Filled.AddCircle, Icons.Filled.AddCircle, prominent = true),
-            BottomNavItem(NavRoutes.COMUNIDAD, "Comunidad", Icons.Filled.Groups, Icons.Outlined.Groups),
-            BottomNavItem(NavRoutes.PROFILE, "Perfil", Icons.Filled.Person, Icons.Outlined.Person)
-        )
-    }
+fun bottomNavItemsFor(context: OperationalContext): List<BottomNavItem> =
+    ContextNavigation.itemsFor(context)
+
+@Deprecated("AccountType is LEGACY. Use OperationalContext.")
+fun bottomNavItemsFor(accountType: AccountType): List<BottomNavItem> =
+    bottomNavItemsFor(accountType.toLegacyOperationalContext())
+
+internal fun AccountType.toLegacyOperationalContext(): OperationalContext = when (this) {
+    AccountType.PERSON -> OperationalContext.Personal
+    AccountType.SHELTER -> OperationalContext.Organization("legacy-shelter", "Organización", "SHELTER")
+    AccountType.FOSTER_HOME -> OperationalContext.Foster("legacy-foster", "Hogar de tránsito")
+    AccountType.VET -> OperationalContext.Veterinary("legacy-vet", "Consultorio")
+    AccountType.SHOP -> OperationalContext.Shop("legacy-shop", "Tienda")
+    AccountType.TRAINER -> OperationalContext.Provider("legacy-trainer", "Servicio", "TRAINING")
+    AccountType.WALKER -> OperationalContext.Provider("legacy-walker", "Paseos", "WALKING")
 }
 
 @Composable
 fun ComunidappBottomBar(
     navController: NavController,
-    accountType: AccountType
+    context: OperationalContext
 ) {
-    val items = bottomNavItemsFor(accountType)
+    val items = bottomNavItemsFor(context)
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
-    // Desde Perfil el hub usa PUBLISH_FROM_PROFILE: no marcar Publicar (evita “scrim” del FAB).
     val onProfileCreator = currentRoute == NavRoutes.PUBLISH_FROM_PROFILE
-    // Historia desde Inicio (`+` Tu historia): conservar Inicio seleccionado.
     val onHomeStoryCreator = currentRoute == NavRoutes.PUBLISH_STORY
 
     NavigationBar(
         containerColor = BrandWhite,
-        tonalElevation = 2.dp,
+        tonalElevation = 1.dp,
         windowInsets = WindowInsets(0, 0, 0, 0),
         modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
     ) {
@@ -109,18 +113,19 @@ fun ComunidappBottomBar(
                     if (currentRoute == item.route && !onProfileCreator && !onHomeStoryCreator) {
                         return@NavigationBarItem
                     }
+                    val goingHome = item.route == NavRoutes.HOME
                     navController.navigate(item.route) {
-                        popUpTo(NavRoutes.HOME) { saveState = true }
+                        popUpTo(NavRoutes.HOME) { saveState = !goingHome }
                         launchSingleTop = true
-                        restoreState = true
+                        restoreState = !goingHome
                     }
                 },
                 icon = {
                     if (item.prominent) {
                         Box(
                             modifier = Modifier
-                                .offset(y = (-6).dp)
-                                .size(52.dp)
+                                .offset(y = (-10).dp)
+                                .size(56.dp)
                                 .clip(CircleShape)
                                 .background(if (selected) BrandOrange else BrandOrangeSoft),
                             contentAlignment = Alignment.Center
@@ -128,8 +133,8 @@ fun ComunidappBottomBar(
                             Icon(
                                 imageVector = Icons.Filled.Add,
                                 contentDescription = item.label,
-                                tint = BrandText,
-                                modifier = Modifier.size(28.dp)
+                                tint = BrandWhite,
+                                modifier = Modifier.size(30.dp)
                             )
                         }
                     } else {
@@ -141,9 +146,9 @@ fun ComunidappBottomBar(
                 },
                 label = { Text(item.label, style = LeoNavLabel) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = BrandOrange,
-                    selectedTextColor = BrandOrange,
-                    indicatorColor = if (item.prominent) Color.Transparent else BrandOrangeContainer,
+                    selectedIconColor = if (item.prominent) BrandOrange else BrandGreen,
+                    selectedTextColor = if (item.prominent) BrandOrange else BrandGreen,
+                    indicatorColor = if (item.prominent) Color.Transparent else BrandGreenContainer,
                     unselectedIconColor = BrandGrayMedium,
                     unselectedTextColor = BrandGrayMedium
                 )
@@ -156,8 +161,8 @@ fun ComunidappBottomBar(
 @Composable
 private fun BottomBarPreview() {
     ComunidappTheme {
-        val items = bottomNavItemsFor(AccountType.PERSON)
-        NavigationBar(containerColor = BrandWhite, tonalElevation = 2.dp) {
+        val items = bottomNavItemsFor(OperationalContext.Personal)
+        NavigationBar(containerColor = BrandWhite, tonalElevation = 1.dp) {
             items.forEachIndexed { index, item ->
                 val selected = index == 0
                 NavigationBarItem(
@@ -167,13 +172,13 @@ private fun BottomBarPreview() {
                         if (item.prominent) {
                             Box(
                                 modifier = Modifier
-                                    .offset(y = (-6).dp)
-                                    .size(52.dp)
+                                    .offset(y = (-10).dp)
+                                    .size(56.dp)
                                     .clip(CircleShape)
-                                    .background(BrandOrangeSoft),
+                                    .background(BrandOrange),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Filled.Add, contentDescription = item.label, tint = BrandText)
+                                Icon(Icons.Filled.Add, contentDescription = item.label, tint = BrandWhite, modifier = Modifier.size(30.dp))
                             }
                         } else {
                             Icon(
@@ -184,9 +189,9 @@ private fun BottomBarPreview() {
                     },
                     label = { Text(item.label, style = LeoNavLabel) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = BrandOrange,
-                        selectedTextColor = BrandOrange,
-                        indicatorColor = BrandOrangeContainer,
+                        selectedIconColor = BrandGreen,
+                        selectedTextColor = BrandGreen,
+                        indicatorColor = BrandGreenContainer,
                         unselectedIconColor = BrandGrayMedium,
                         unselectedTextColor = BrandGrayMedium
                     )

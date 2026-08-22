@@ -26,6 +26,11 @@ enum class AuthErrorCode {
     /** Sin sesión de recovery válida para completar el reset. */
     PASSWORD_RESET_NOT_AVAILABLE,
     LEGAL_CONSENT_REQUIRED,
+    SIGNUP_FAILED,
+    OTP_INVALID,
+    OTP_EXPIRED,
+    GOOGLE_AUTH_CANCELLED,
+    GOOGLE_AUTH_FAILED,
     UNKNOWN_AUTH_ERROR
 }
 
@@ -109,6 +114,14 @@ object AuthErrorMapper {
                 lower.contains("abrí el link que te enviamos") ->
                 AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE
 
+            isGoogleAuthCancelled(lower) ->
+                AuthErrorCode.GOOGLE_AUTH_CANCELLED
+
+            lower.contains("google") &&
+                (lower.contains("provider") || lower.contains("oauth") ||
+                    lower.contains("unsupported") || lower.contains("disabled")) ->
+                AuthErrorCode.GOOGLE_AUTH_FAILED
+
             lower.contains("invalid login credentials") ||
                 lower.contains("email o contraseña incorrectos") ||
                 lower.contains("invalid_credentials") ->
@@ -121,8 +134,20 @@ object AuthErrorMapper {
 
             lower.contains("user already registered") ||
                 lower.contains("already been registered") ||
+                lower.contains("already registered") ||
                 lower.contains("ya existe una cuenta") ->
                 AuthErrorCode.EMAIL_ALREADY_REGISTERED
+
+            lower.contains("smtp") ||
+                lower.contains("gomail") ||
+                lower.contains("error sending confirmation") ||
+                lower.contains("error sending email") ->
+                AuthErrorCode.SIGNUP_FAILED
+
+            lower.contains("database error saving new user") ||
+                lower.contains("signup_requires_username") ||
+                lower.contains("signup failed") ->
+                AuthErrorCode.SIGNUP_FAILED
 
             lower.contains("password should be at least") ||
                 lower.contains("contraseña debe tener al menos") ->
@@ -130,7 +155,8 @@ object AuthErrorMapper {
 
             lower.contains("rate limit") ||
                 lower.contains("over_email_send_rate_limit") ||
-                lower.contains("email rate limit exceeded") ->
+                lower.contains("email rate limit exceeded") ||
+                lower.contains("429") ->
                 AuthErrorCode.RATE_LIMITED
 
             // 401 / JWT / sesión — antes que recovery link para que "invalid jwt"
@@ -145,18 +171,25 @@ object AuthErrorMapper {
                     (lower.contains("expired") || lower.contains("missing") || lower.contains("not found"))) ->
                 AuthErrorCode.SESSION_EXPIRED
 
+            lower.contains("otp_expired") ||
+                (lower.contains("otp") && (lower.contains("expired") || lower.contains("venc"))) ->
+                AuthErrorCode.OTP_EXPIRED
+
             lower.contains("email link is invalid or has expired") ||
-                lower.contains("otp_expired") ||
                 lower.contains("token has expired") ||
+                lower.contains("already been used") ||
+                lower.contains("token has been used") ||
                 lower.contains("código inválido o expirado") ->
                 AuthErrorCode.RECOVERY_LINK_EXPIRED
 
             lower.contains("invalid") &&
-                (lower.contains("link") ||
+                (lower.contains("otp") ||
                     lower.contains("token") ||
-                    lower.contains("otp") ||
                     lower.contains("código") ||
                     lower.contains("codigo")) ->
+                AuthErrorCode.OTP_INVALID
+
+            lower.contains("invalid") && lower.contains("link") ->
                 AuthErrorCode.RECOVERY_LINK_INVALID
 
             // 403 / RLS — no forzar logout
@@ -189,6 +222,23 @@ object AuthErrorMapper {
         }
     }
 
+    private fun isGoogleAuthCancelled(lower: String): Boolean {
+        if (lower.contains("otp_expired") ||
+            (lower.contains("otp") && lower.contains("expired"))
+        ) {
+            return false
+        }
+        if (lower.contains("user_cancelled")) return true
+        if (lower.contains("access_denied")) return true
+        val cancelled = lower.contains("canceled") || lower.contains("cancelled")
+        if (!cancelled) return false
+        return lower.contains("google") ||
+            lower.contains("oauth") ||
+            lower.contains("provider") ||
+            lower.contains("external") ||
+            lower.contains("browser")
+    }
+
     private fun kindFor(code: AuthErrorCode): AppErrorKind = when (code) {
         AuthErrorCode.INVALID_CREDENTIALS,
         AuthErrorCode.EMAIL_NOT_VERIFIED,
@@ -199,34 +249,43 @@ object AuthErrorMapper {
         AuthErrorCode.INVALID_EMAIL,
         AuthErrorCode.RECOVERY_LINK_INVALID,
         AuthErrorCode.RECOVERY_LINK_EXPIRED,
+        AuthErrorCode.OTP_INVALID,
+        AuthErrorCode.OTP_EXPIRED,
+        AuthErrorCode.GOOGLE_AUTH_CANCELLED,
         AuthErrorCode.PASSWORD_RESET_NOT_AVAILABLE,
         AuthErrorCode.LEGAL_CONSENT_REQUIRED -> AppErrorKind.VALIDATION
+        AuthErrorCode.GOOGLE_AUTH_FAILED -> AppErrorKind.SERVER
         AuthErrorCode.RATE_LIMITED -> AppErrorKind.RATE_LIMITED
         AuthErrorCode.NETWORK_UNAVAILABLE -> AppErrorKind.NETWORK
         AuthErrorCode.CONFIGURATION_ERROR -> AppErrorKind.CONFIGURATION
-        AuthErrorCode.ACCOUNT_DELETION_FAILED -> AppErrorKind.SERVER
+        AuthErrorCode.ACCOUNT_DELETION_FAILED,
+        AuthErrorCode.SIGNUP_FAILED -> AppErrorKind.SERVER
         AuthErrorCode.UNKNOWN_AUTH_ERROR -> AppErrorKind.UNKNOWN
     }
 
     private fun userMessageFor(code: AuthErrorCode): String = when (code) {
         AuthErrorCode.INVALID_CREDENTIALS ->
-            "El correo o la contraseña son incorrectos."
+            "El correo o la contraseña son incorrectos. Si te registraste con Google, continuá con Google o usá Recuperar contraseña para crear una."
         AuthErrorCode.EMAIL_NOT_VERIFIED ->
             "Tu correo todavía no fue confirmado."
         AuthErrorCode.EMAIL_ALREADY_REGISTERED ->
-            "No se pudo completar el registro. Revisá tu email o iniciá sesión."
+            "Ya existe una cuenta asociada a este correo. Si te registraste con Google, continuá con Google para ingresar."
         AuthErrorCode.WEAK_PASSWORD ->
             "La contraseña debe tener al menos 8 caracteres."
         AuthErrorCode.INVALID_EMAIL ->
             "Revisá el email ingresado."
         AuthErrorCode.RECOVERY_LINK_INVALID ->
-            "El enlace o código no es válido."
+            "El código no es válido. Revisalo e intentá de nuevo."
+        AuthErrorCode.OTP_INVALID ->
+            "El código no es válido. Revisalo e intentá de nuevo."
+        AuthErrorCode.OTP_EXPIRED ->
+            "El código venció. Pedí uno nuevo."
         AuthErrorCode.RECOVERY_LINK_EXPIRED ->
-            "El enlace o código expiró. Solicitá uno nuevo."
+            "El enlace venció o ya fue utilizado."
         AuthErrorCode.SESSION_EXPIRED ->
             "Tu sesión venció. Iniciá sesión nuevamente."
         AuthErrorCode.RATE_LIMITED ->
-            "Demasiados intentos. Probá más tarde."
+            "Esperá un momento antes de solicitar otro código."
         AuthErrorCode.NETWORK_UNAVAILABLE ->
             "No pudimos conectarnos. Revisá tu conexión."
         AuthErrorCode.CONFIGURATION_ERROR ->
@@ -239,6 +298,12 @@ object AuthErrorMapper {
             "Abrí el enlace del email para continuar el restablecimiento."
         AuthErrorCode.LEGAL_CONSENT_REQUIRED ->
             "Debés aceptar los términos y la política de privacidad vigentes."
+        AuthErrorCode.SIGNUP_FAILED ->
+            "No pudimos completar el registro. Intentá de nuevo."
+        AuthErrorCode.GOOGLE_AUTH_CANCELLED ->
+            "Se canceló el inicio de sesión."
+        AuthErrorCode.GOOGLE_AUTH_FAILED ->
+            "No pudimos iniciar sesión con Google."
         AuthErrorCode.UNKNOWN_AUTH_ERROR ->
             "No pudimos completar el inicio de sesión. Intentá de nuevo."
     }

@@ -299,9 +299,9 @@ class M14FoundationTest {
     @Test
     fun supabase_repository_is_wired_not_stub() {
         assertNotNull(DataProvider.m14PassportRepository)
+        val wiredName = DataProvider.m14PassportRepository::class.java.simpleName
         assertTrue(
-            DataProvider.m14PassportRepository::class.java.simpleName
-                .contains("M14Passport")
+            wiredName.contains("M14Passport") || wiredName.contains("VitaCora")
         )
         assertTrue(M14ErrorMapper.userMessage("PUBLIC_PASSPORT_NOT_AVAILABLE").isNotBlank())
         assertTrue(M14ErrorMapper.userMessage("PET_NOT_ELIGIBLE").isNotBlank())

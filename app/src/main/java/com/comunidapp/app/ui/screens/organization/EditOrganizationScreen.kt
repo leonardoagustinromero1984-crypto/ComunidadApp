@@ -30,14 +30,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.rememberCoroutineScope
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
-import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.components.v2.V2FormImagePreview
 import com.comunidapp.app.viewmodel.EditOrganizationViewModel
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.ui.files.FileUploadProgressSection
 import com.comunidapp.app.ui.files.PdfOrImageMimeTypes
 import com.comunidapp.app.ui.files.rememberPdfOrImageDocumentPicker
+import com.comunidapp.app.ui.media.LeoVerAvatarCropKind
+import com.comunidapp.app.ui.media.rememberLeoVerAvatarCropLauncher
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,9 +54,15 @@ fun EditOrganizationScreen(
     val uploadState by DataProvider.fileUploadCoordinator.uiState.collectAsState()
     val scope = rememberCoroutineScope()
 
+    val cropLogo = rememberLeoVerAvatarCropLauncher(
+        kind = LeoVerAvatarCropKind.ORGANIZATION,
+        onCropped = { viewModel.onLogoSelected(it) },
+        onCancel = {},
+        onError = viewModel::onPhotoCropFailed
+    )
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> viewModel.onLogoSelected(uri) }
+    ) { uri -> uri?.let(cropLogo) }
     val documentPicker = rememberPdfOrImageDocumentPicker { uri ->
         uri?.let { viewModel.attachDocument(it) }
     }
@@ -65,8 +75,9 @@ fun EditOrganizationScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Editar organización",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -107,10 +118,8 @@ fun EditOrganizationScreen(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                PetImage(
+                V2FormImagePreview(
                     imageUrl = uiState.pendingLogoUri?.toString() ?: uiState.logoUrl,
-                    modifier = Modifier.size(96.dp),
-                    cornerRadius = 16.dp,
                     contentDescription = "Logo"
                 )
                 Spacer(modifier = Modifier.height(8.dp))

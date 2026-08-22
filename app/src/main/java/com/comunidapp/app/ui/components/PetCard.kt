@@ -47,8 +47,8 @@ fun PetCard(
             Box(
                 modifier = Modifier.size(64.dp)
             ) {
-                PetImage(
-                    imageUrl = pet.photoUrl,
+                ResolvedPetImage(
+                    pet = pet,
                     modifier = Modifier.fillMaxSize(),
                     contentDescription = pet.name
                 )
@@ -57,7 +57,10 @@ fun PetCard(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = pet.name,
+                        text = com.comunidapp.app.domain.vitacora.import.VitacoraNumberQuery.petTitle(
+                            pet.name,
+                            pet.publicVitacoraNumber
+                        ),
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         modifier = Modifier.weight(1f, fill = false)
@@ -90,6 +93,13 @@ fun PetCard(
                     style = MaterialTheme.typography.labelMedium,
                     color = MaterialTheme.colorScheme.secondary
                 )
+                pet.organizationExternalPetId?.takeIf { it.isNotBlank() }?.let { ref ->
+                    Text(
+                        text = "${com.comunidapp.app.domain.vitacora.import.VitacoraImportCopy.ORG_REF_LABEL}: $ref",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     }

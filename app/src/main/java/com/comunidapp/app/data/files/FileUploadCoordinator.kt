@@ -18,8 +18,16 @@ import com.comunidapp.app.domain.files.FileUploadRequest
 import com.comunidapp.app.domain.files.FileUploadUiState
 import com.comunidapp.app.domain.files.FileValidationRules
 import com.comunidapp.app.domain.files.PreparedFileUpload
+import com.comunidapp.app.domain.files.ResumableUploadPolicy
+import com.comunidapp.app.domain.files.TusUploadSessionHint
+import com.comunidapp.app.domain.media.ImageIngest
+import com.comunidapp.app.domain.media.MediaDiagnostic
+import com.comunidapp.app.domain.media.MediaIngestionPolicy
+import com.comunidapp.app.domain.media.ProfileMediaPipeline
+import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -30,18 +38,23 @@ class FileUploadCoordinator(
     private val objectUploader: FileObjectUploader,
     private val metadataReader: FileLocalMetadataReader,
     private val bytesReader: FileBytesReader,
-    private val clock: () -> Long = { System.currentTimeMillis() }
+    private val clock: () -> Long = { System.currentTimeMillis() },
+    private val imageIngest: ImageIngest = ImageIngest.NoOp
 ) {
     private data class LastAttempt(
         val uriString: String,
         val request: FileUploadRequest,
-        val actorUserId: String
+        val actorUserId: String,
+        val prepared: PreparedFileUpload? = null,
+        val localFilePath: String? = null,
+        val tusHint: TusUploadSessionHint? = null
     )
 
     private val submitting = AtomicBoolean(false)
     private val activeSessions = ConcurrentHashMap.newKeySet<String>()
     private val cancelledSessions = ConcurrentHashMap.newKeySet<String>()
     private var lastAttempt: LastAttempt? = null
+    private val lastTusHint = AtomicReference<TusUploadSessionHint?>(null)
     private val mutableUiState = MutableStateFlow(FileUploadUiState())
     val uiState: StateFlow<FileUploadUiState> = mutableUiState.asStateFlow()
 
@@ -102,28 +115,64 @@ class FileUploadCoordinator(
         actorUserId: String
     ): AppResult<PreparedFileUpload> {
         if (!submitting.compareAndSet(false, true)) return fail("DOUBLE_SUBMIT")
-        lastAttempt = LastAttempt(uriString, request, actorUserId)
+        val ingested = runCatching { imageIngest.normalize(uriString, request.purpose) }
+        if (ingested.isFailure) {
+            submitting.set(false)
+            return fail(MediaDiagnostic.fromThrowable(ingested.exceptionOrNull()))
+        }
+        val ingestedResult = ingested.getOrThrow()
+        val imageLike = MediaIngestionPolicy.isImageMime(request.declaredMimeType) ||
+            MediaIngestionPolicy.isImageMime(ingestedResult.mimeType)
+        if (imageLike && ingestedResult.normalized != true) {
+            submitting.set(false)
+            return fail(MediaDiagnostic.DECODE)
+        }
+        val workUri = if (ingestedResult.normalized) ingestedResult.uriString else uriString
+        val resolvedSize = ProfileMediaPipeline.resolvedSizeBytes(
+            workUri,
+            ingestedResult.sizeBytes.takeIf { it > 1L } ?: request.sizeBytes
+        )
+        val workRequest = request.copy(
+            originalFilename = if (ingestedResult.normalized) "photo.jpg" else request.originalFilename,
+            declaredMimeType = ingestedResult.mimeType.ifBlank { request.declaredMimeType },
+            sizeBytes = resolvedSize
+        )
+        if (ingestedResult.normalized) {
+            FileValidationRules.validateProcessedSize(
+                request.purpose,
+                resolvedSize,
+                workRequest.declaredMimeType
+            )
+                .getOrElse {
+                    submitting.set(false)
+                    return fail(MediaDiagnostic.SIZE)
+                }
+        }
+        val resume = lastAttempt?.takeIf {
+            it.uriString == workUri && it.prepared != null && it.tusHint != null
+        }
+        lastAttempt = LastAttempt(workUri, workRequest, actorUserId, resume?.prepared, resume?.localFilePath, resume?.tusHint)
         mutableUiState.value = FileUploadUiState(
             phase = FileUploadPhase.Preparing,
-            previewUri = uriString,
+            previewUri = workUri,
             submittingLocked = true
         )
-        var sessionId: String? = null
+        var sessionId: String? = resume?.prepared?.session?.id
         try {
             val metadata = when (
                 val selected = selectAndValidate(
-                    uri = uriString,
-                    purpose = request.purpose,
-                    owner = request.owner,
-                    visibility = request.requestedVisibility,
-                    resourceRef = request.resourceRef,
+                    uri = workUri,
+                    purpose = workRequest.purpose,
+                    owner = workRequest.owner,
+                    visibility = workRequest.requestedVisibility,
+                    resourceRef = workRequest.resourceRef,
                     actorUserId = actorUserId
                 )
             ) {
                 is AppResult.Success -> selected.data
                 is AppResult.Failure -> return selected
             }
-            val normalizedRequest = request.copy(
+            val normalizedRequest = workRequest.copy(
                 originalFilename = metadata.originalFilename,
                 declaredMimeType = metadata.declaredMimeType,
                 sizeBytes = metadata.sizeBytes
@@ -132,7 +181,7 @@ class FileUploadCoordinator(
                 phase = FileUploadPhase.Preparing,
                 submittingLocked = true
             )
-            val prepared = when (
+            val prepared = resume?.prepared ?: when (
                 val result = uploadRepository.prepareUploadSession(
                     request = normalizedRequest,
                     createdByUserId = actorUserId,
@@ -154,34 +203,72 @@ class FileUploadCoordinator(
                 canCancel = true,
                 submittingLocked = true
             )
-            when (val started = uploadRepository.startUpload(sessionId)) {
-                is AppResult.Failure -> {
-                    updateFailure(started)
-                    return started
-                }
-                is AppResult.Success -> Unit
-            }
-            val bytes = when (val read = bytesReader.readBytes(uriString)) {
-                is AppResult.Success -> read.data
-                is AppResult.Failure -> {
-                    uploadRepository.failUpload(sessionId, read.error.code ?: "FILE_READ_FAILED")
-                    updateFailure(read)
-                    return read
+            if (resume == null) {
+                when (val started = uploadRepository.startUpload(sessionId)) {
+                    is AppResult.Failure -> {
+                        updateFailure(started)
+                        return started
+                    }
+                    is AppResult.Success -> Unit
                 }
             }
-            uploadRepository.updateProgress(sessionId, 0)
-            val uploaded = objectUploader.uploadBytes(
-                physicalBucket = prepared.physicalBucket,
-                storagePath = prepared.storagePath,
-                bytes = bytes,
-                mimeType = normalizedRequest.declaredMimeType ?: "application/octet-stream"
-            ) { progress ->
-                if (sessionId !in cancelledSessions) {
-                    mutableUiState.value = mutableUiState.value.copy(
-                        phase = FileUploadPhase.Uploading,
-                        progressPercent = progress.coerceIn(0, 100),
-                        canCancel = progress < 100
-                    )
+            val useTus = ResumableUploadPolicy.shouldUseTus(normalizedRequest.sizeBytes)
+            val uploaded = if (useTus) {
+                val file = resume?.localFilePath?.let { File(it).takeIf { f -> f.exists() } }
+                    ?: when (val materialized = bytesReader.materializeForUpload(workUri)) {
+                        is AppResult.Success -> materialized.data
+                        is AppResult.Failure -> {
+                            uploadRepository.failUpload(sessionId, materialized.error.code ?: "FILE_READ_FAILED")
+                            updateFailure(materialized)
+                            return materialized
+                        }
+                    }
+                lastAttempt = LastAttempt(workUri, normalizedRequest, actorUserId, prepared, file.absolutePath, resume?.tusHint)
+                objectUploader.uploadFile(
+                    physicalBucket = prepared.physicalBucket,
+                    storagePath = prepared.storagePath,
+                    file = file,
+                    mimeType = normalizedRequest.declaredMimeType ?: "application/octet-stream",
+                    sizeBytes = normalizedRequest.sizeBytes,
+                    onProgress = { progress ->
+                        if (sessionId !in cancelledSessions) {
+                            mutableUiState.value = mutableUiState.value.copy(
+                                phase = FileUploadPhase.Uploading,
+                                progressPercent = progress.coerceIn(0, 100),
+                                canCancel = progress < 100
+                            )
+                        }
+                    },
+                    isCancelled = { sessionId in cancelledSessions },
+                    resumeUrl = resume?.tusHint?.uploadUrl,
+                    onSession = { hint ->
+                        lastTusHint.set(hint)
+                        lastAttempt = lastAttempt?.copy(tusHint = hint)
+                    }
+                )
+            } else {
+                val bytes = when (val read = bytesReader.readBytes(workUri)) {
+                    is AppResult.Success -> read.data
+                    is AppResult.Failure -> {
+                        uploadRepository.failUpload(sessionId, read.error.code ?: "FILE_READ_FAILED")
+                        updateFailure(read)
+                        return read
+                    }
+                }
+                uploadRepository.updateProgress(sessionId, 0)
+                objectUploader.uploadBytes(
+                    physicalBucket = prepared.physicalBucket,
+                    storagePath = prepared.storagePath,
+                    bytes = bytes,
+                    mimeType = normalizedRequest.declaredMimeType ?: "application/octet-stream"
+                ) { progress ->
+                    if (sessionId !in cancelledSessions) {
+                        mutableUiState.value = mutableUiState.value.copy(
+                            phase = FileUploadPhase.Uploading,
+                            progressPercent = progress.coerceIn(0, 100),
+                            canCancel = progress < 100
+                        )
+                    }
                 }
             }
             if (sessionId in cancelledSessions) {
@@ -193,7 +280,12 @@ class FileUploadCoordinator(
                 return fail("CANCELLED", preserveCancelled = true)
             }
             if (uploaded is AppResult.Failure) {
-                uploadRepository.failUpload(sessionId, uploaded.error.code ?: "UPLOAD_FAILED")
+                MediaDiagnostic.logUpload(uploaded.error)
+                val resumable = lastTusHint.get() != null && uploaded.error.code != "CANCELLED"
+                if (!resumable) {
+                    uploadRepository.failUpload(sessionId, uploaded.error.code ?: "UPLOAD_FAILED")
+                }
+                lastAttempt = lastAttempt?.copy(prepared = prepared)
                 updateFailure(uploaded)
                 return uploaded
             }
@@ -205,6 +297,12 @@ class FileUploadCoordinator(
             )
             when (val completed = uploadRepository.completeUpload(sessionId, clock())) {
                 is AppResult.Failure -> {
+                    MediaDiagnostic.logStaging(
+                        MediaDiagnostic.classifyDb(
+                            completed.error.code,
+                            completed.error.technicalMessage
+                        )
+                    )
                     updateFailure(completed)
                     return completed
                 }
@@ -220,6 +318,7 @@ class FileUploadCoordinator(
                 userMessage = null
             )
             lastAttempt = null
+            lastTusHint.set(null)
             return AppResult.Success(prepared)
         } finally {
             sessionId?.let { activeSessions.remove(it) }
@@ -232,6 +331,8 @@ class FileUploadCoordinator(
 
     suspend fun cancel(sessionId: String): AppResult<Unit> {
         cancelledSessions += sessionId
+        lastAttempt = lastAttempt?.copy(prepared = null, tusHint = null, localFilePath = null)
+        lastTusHint.set(null)
         return when (val result = uploadRepository.cancelUpload(sessionId, clock())) {
             is AppResult.Success -> {
                 activeSessions.remove(sessionId)
@@ -305,6 +406,7 @@ class FileUploadCoordinator(
         activeSessions.clear()
         cancelledSessions.clear()
         lastAttempt = null
+        lastTusHint.set(null)
         submitting.set(false)
         mutableUiState.value = FileUploadUiState()
     }
@@ -324,6 +426,11 @@ class FileUploadCoordinator(
     }
 
     private fun updateFailure(failure: AppResult.Failure) {
+        val diagnostic = MediaDiagnostic.fromSignal(
+            failure.error.code,
+            failure.error.technicalMessage
+        )
+        if (diagnostic != null) MediaDiagnostic.logStaging(diagnostic)
         mutableUiState.value = mutableUiState.value.copy(
             phase = FileUploadPhase.Failed,
             userMessage = FileUiErrorMapper.message(failure.error),

@@ -45,7 +45,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.viewmodel.FriendActionState
@@ -66,8 +68,9 @@ fun SearchFriendsScreen(
     }
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
+            LeoTopAppBar(
                 title = "Buscar amigos",
                 showBackButton = true,
                 onBackClick = onNavigateBack
@@ -213,7 +216,7 @@ private fun UserSearchCard(
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
-                    text = item.user.accountType.toDisplayName(),
+                    text = "Persona",
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.primary
                 )

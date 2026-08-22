@@ -1,5 +1,8 @@
 package com.comunidapp.app.ui.screens.m17
 
+import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.BrandCream
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -26,7 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.ui.components.ComunidappTopBar
+import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -46,9 +49,10 @@ fun M17HubScreen(
     val tabs = listOf("Campañas", "Bienes", "Voluntariado")
 
     Scaffold(
+        containerColor = BrandBackground,
         topBar = {
-            ComunidappTopBar(
-                title = "Donaciones y voluntariado",
+            LeoTopAppBar(
+                title = "Donaciones",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -56,10 +60,9 @@ fun M17HubScreen(
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize()) {
             Text(
-                "Los pagos reales todavía no están habilitados.",
+                "Acá ves tus aportes y campañas. El descubrimiento público está en Sumate.",
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
+                style = MaterialTheme.typography.bodySmall
             )
             TabRow(selectedTabIndex = tab) {
                 tabs.forEachIndexed { index, label ->

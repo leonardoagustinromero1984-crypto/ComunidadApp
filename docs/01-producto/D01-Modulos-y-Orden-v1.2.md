@@ -660,6 +660,12 @@ AL CERRAR
 
 ---
 
+## Addendum REBASE-01 (no reescribe el historial)
+
+La identidad humana y el contexto operativo quedaron reconciliados en **ADR-016**. `AccountType` no es autoridad de producto. M25 checkout permanece fuera de V1 (DISABLE_FROM_PRODUCT / KEEP_FOR_FUTURE).
+
+---
+
 ## Aprobación
 
 Al aprobarse, **D01 v1.2** sustituye a D01 v1.1 y a D01 v1.0 como mapa oficial de módulos y orden de desarrollo para planificación nueva. Las versiones anteriores se conservan como histórico.

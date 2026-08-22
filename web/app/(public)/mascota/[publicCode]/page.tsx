@@ -32,7 +32,7 @@ export async function generateMetadata({ params }: PageProps) {
     });
   }
 
-  const title = `${pet.display_name} en LeoVer`;
+  const title = `${pet.display_name || pet.name || "Mascota"} en LeoVer`;
   const description = [
     speciesLabel(pet.species),
     pet.breed_text,
@@ -67,8 +67,8 @@ export default async function PublicPetPage({ params }: PageProps) {
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-3">
           <p className="text-sm font-semibold uppercase tracking-wide text-brand-green">Mascota</p>
-          <h1 className="text-3xl font-bold text-brand-text sm:text-4xl">{pet.display_name}</h1>
-          <PublicStatusBadge label="Pasaporte público" tone="active" />
+          <h1 className="text-3xl font-bold text-brand-text sm:text-4xl">{pet.display_name || pet.name}</h1>
+          <PublicStatusBadge label="VitaCora pública" tone="active" />
         </div>
         <ShareButton
           url={shareUrl}

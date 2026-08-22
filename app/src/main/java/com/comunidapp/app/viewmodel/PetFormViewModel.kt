@@ -4,6 +4,9 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.comunidapp.app.data.local.PetFormDraftStore
+import com.comunidapp.app.data.local.applyTo
+import com.comunidapp.app.data.local.toDraft
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
@@ -23,6 +26,12 @@ import com.comunidapp.app.domain.files.FileResourceRef
 import com.comunidapp.app.domain.files.FileResourceType
 import com.comunidapp.app.domain.files.FileUiErrorMapper
 import com.comunidapp.app.domain.files.FileUploadRequest
+import com.comunidapp.app.domain.pets.HistoricalDateRules
+import com.comunidapp.app.domain.pets.PetAgeRules
+import com.comunidapp.app.domain.pets.PetHealthReminders
+import com.comunidapp.app.domain.pets.PetHealthSchedule
+import com.comunidapp.app.domain.pets.PetPhotoResolver
+import com.comunidapp.app.domain.publish.LocalDebugDiagnostic
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,7 +51,9 @@ data class PetFormUiState(
     val species: PetSpecies = PetSpecies.DOG,
     val sex: PetSex = PetSex.UNKNOWN,
     val ageYears: Int = 1,
+    val ageYearsInput: String = "1",
     val ageMonths: Int = 0,
+    val ageMonthsInput: String = "0",
     val size: PetSize = PetSize.MEDIUM,
     val description: String = "",
     val sterilized: SterilizationStatus? = null,
@@ -54,17 +65,33 @@ data class PetFormUiState(
     val pendingVaccineNextDate: String = "",
     val dewormingProduct: String = "",
     val lastDeworming: String = "",
+    val nextDeworming: String = "",
+    val dewormNextManual: Boolean = false,
     val fleaTreatmentProduct: String = "",
     val lastFleaTreatment: String = "",
+    val nextFleaTreatment: String = "",
+    val fleaNextManual: Boolean = false,
+    val vaccineNextManual: Boolean = false,
     val healthNotes: String = "",
+    val allergyName: String = "",
+    val medicationName: String = "",
+    val conditionName: String = "",
     val photoUrl: String? = null,
     val pendingImageUri: Uri? = null,
     val canManageMedia: Boolean = true,
     val duplicateWarning: String? = null,
     val petStatus: String = "ACTIVE",
     val errorMessage: String? = null,
+    val debugDiagnostic: String? = null,
     val saveSuccess: Boolean = false,
-    val deleteSuccess: Boolean = false
+    val deleteSuccess: Boolean = false,
+    val breed: String = "",
+    val speciesOptions: List<PetSpecies> = PetSpecies.entries,
+    val speciesLabels: Map<PetSpecies, String> = emptyMap(),
+    val breedOptions: List<String> = emptyList(),
+    val vaccineOptions: List<String> = emptyList(),
+    val fleaOptions: List<String> = emptyList(),
+    val dewormerOptions: List<String> = emptyList()
 ) {
     val mutationsLocked: Boolean get() = petStatus != "ACTIVE"
 }
@@ -78,6 +105,8 @@ class PetFormViewModel(
 
     private var loadedPet: Pet? = null
     private var duplicateJob: Job? = null
+    private var draftJob: Job? = null
+    private var draftUserId: String? = null
 
     private val _uiState = MutableStateFlow(PetFormUiState())
     val uiState: StateFlow<PetFormUiState> = _uiState.asStateFlow()
@@ -115,8 +144,7 @@ class PetFormViewModel(
                     return@launch
                 }
                 loadedPet = pet
-                _uiState.update {
-                    PetFormUiState(
+                val base = PetFormUiState(
                         isLoading = false,
                         isEditMode = true,
                         petId = pet.id,
@@ -125,7 +153,9 @@ class PetFormViewModel(
                         species = pet.species,
                         sex = pet.sex,
                         ageYears = pet.ageYears,
+                        ageYearsInput = pet.ageYears.toString(),
                         ageMonths = pet.ageMonths,
+                        ageMonthsInput = pet.ageMonths.toString(),
                         size = pet.size,
                         description = pet.description,
                         sterilized = pet.sterilized,
@@ -134,18 +164,39 @@ class PetFormViewModel(
                         vaccinations = pet.vaccinations,
                         dewormingProduct = pet.dewormingProduct.orEmpty(),
                         lastDeworming = pet.lastDeworming.orEmpty(),
+                        nextDeworming = PetHealthReminders.dateOf(
+                            pet.reminders,
+                            PetHealthReminders.NEXT_DEWORMING
+                        ),
                         fleaTreatmentProduct = pet.fleaTreatmentProduct.orEmpty(),
                         lastFleaTreatment = pet.lastFleaTreatment.orEmpty(),
+                        nextFleaTreatment = PetHealthReminders.dateOf(
+                            pet.reminders,
+                            PetHealthReminders.NEXT_FLEA
+                        ),
                         healthNotes = pet.healthNotes.orEmpty(),
-                        photoUrl = pet.photoUrl,
+                        allergyName = pet.allergies.firstOrNull().orEmpty(),
+                        medicationName = pet.medications.firstOrNull().orEmpty(),
+                        conditionName = pet.conditions.firstOrNull().orEmpty(),
+                        photoUrl = PetPhotoResolver.displayUrl(pet, authUser.id),
                         canManageMedia = context.canManageMedia,
-                        petStatus = pet.status
+                        petStatus = pet.status,
+                        breed = pet.breed.orEmpty()
                     )
-                }
+                draftUserId = authUser.id
+                val drafted = com.comunidapp.app.data.local.PetFormDraftStore
+                    .read(authUser.id, petIdToEdit)
+                    ?.applyTo(base) ?: base
+                _uiState.update { drafted }
+                loadCatalogs(drafted.species)
             } else {
-                _uiState.update {
-                    PetFormUiState(isLoading = false, ownerId = authUser.id, canManageMedia = true)
-                }
+                draftUserId = authUser.id
+                val base = PetFormUiState(isLoading = false, ownerId = authUser.id, canManageMedia = true)
+                val drafted = com.comunidapp.app.data.local.PetFormDraftStore
+                    .read(authUser.id, null)
+                    ?.applyTo(base) ?: base
+                _uiState.update { drafted }
+                loadCatalogs(drafted.species)
             }
         }
     }
@@ -154,12 +205,43 @@ class PetFormViewModel(
         updateForm { copy(name = value, errorMessage = null) }
         scheduleDuplicateCheck()
     }
-    fun onSpeciesChange(value: PetSpecies) = updateForm {
-        copy(species = value, pendingVaccineName = "", errorMessage = null)
+    fun onSpeciesChange(value: PetSpecies) {
+        updateForm { copy(species = value, breed = "", pendingVaccineName = "", errorMessage = null) }
+        loadCatalogs(value)
     }
+    fun onBreedChange(value: String) = updateForm { copy(breed = value, errorMessage = null) }
     fun onSexChange(value: PetSex) = updateForm { copy(sex = value, errorMessage = null) }
-    fun onAgeYearsChange(value: Int) = updateForm { copy(ageYears = value.coerceAtLeast(0), errorMessage = null) }
-    fun onAgeMonthsChange(value: Int) = updateForm { copy(ageMonths = value.coerceIn(0, 11), errorMessage = null) }
+    fun onAgeYearsInput(raw: String) {
+        val digits = raw.filter { it.isDigit() }.take(2)
+        val parsed = PetAgeRules.parseYears(digits)
+        updateForm {
+            copy(
+                ageYearsInput = digits,
+                ageYears = parsed ?: ageYears,
+                errorMessage = if (digits.isNotEmpty() && parsed == null) {
+                    "Los años deben estar entre 0 y 99"
+                } else {
+                    null
+                }
+            )
+        }
+    }
+
+    fun onAgeMonthsInput(raw: String) {
+        val digits = raw.filter { it.isDigit() }.take(2)
+        val parsed = PetAgeRules.parseMonths(digits)
+        updateForm {
+            copy(
+                ageMonthsInput = digits,
+                ageMonths = parsed ?: ageMonths,
+                errorMessage = if (digits.isNotEmpty() && parsed == null) {
+                    "Los meses deben estar entre 0 y 11"
+                } else {
+                    null
+                }
+            )
+        }
+    }
     fun onSizeChange(value: PetSize) = updateForm { copy(size = value, errorMessage = null) }
     fun onDescriptionChange(value: String) = updateForm { copy(description = value, errorMessage = null) }
     fun onSterilizedChange(value: SterilizationStatus) = updateForm { copy(sterilized = value, errorMessage = null) }
@@ -169,13 +251,45 @@ class PetFormViewModel(
     }
     fun onLastVetVisitChange(value: String) = updateForm { copy(lastVetVisit = value, errorMessage = null) }
     fun onPendingVaccineNameChange(value: String) = updateForm { copy(pendingVaccineName = value, errorMessage = null) }
-    fun onPendingVaccineDateChange(value: String) = updateForm { copy(pendingVaccineDate = value, errorMessage = null) }
-    fun onPendingVaccineNextDateChange(value: String) = updateForm { copy(pendingVaccineNextDate = value, errorMessage = null) }
+    fun onPendingVaccineDateChange(value: String) = updateForm {
+        val next = if (value.isNotBlank() && !vaccineNextManual) {
+            runCatching { PetHealthSchedule.nextVaccineBooster(value) }.getOrDefault(pendingVaccineNextDate)
+        } else {
+            pendingVaccineNextDate
+        }
+        copy(pendingVaccineDate = value, pendingVaccineNextDate = next, errorMessage = null)
+    }
+    fun onPendingVaccineNextDateChange(value: String) = updateForm {
+        copy(pendingVaccineNextDate = value, vaccineNextManual = true, errorMessage = null)
+    }
     fun onDewormingProductChange(value: String) = updateForm { copy(dewormingProduct = value, errorMessage = null) }
-    fun onLastDewormingChange(value: String) = updateForm { copy(lastDeworming = value, errorMessage = null) }
+    fun onLastDewormingChange(value: String) = updateForm {
+        val next = if (value.isNotBlank() && !dewormNextManual) {
+            runCatching { PetHealthSchedule.nextDeworming(value) }.getOrDefault(nextDeworming)
+        } else {
+            nextDeworming
+        }
+        copy(lastDeworming = value, nextDeworming = next, errorMessage = null)
+    }
+    fun onNextDewormingChange(value: String) = updateForm {
+        copy(nextDeworming = value, dewormNextManual = true, errorMessage = null)
+    }
     fun onFleaProductChange(value: String) = updateForm { copy(fleaTreatmentProduct = value, errorMessage = null) }
-    fun onLastFleaTreatmentChange(value: String) = updateForm { copy(lastFleaTreatment = value, errorMessage = null) }
+    fun onLastFleaTreatmentChange(value: String) = updateForm {
+        val next = if (value.isNotBlank() && !fleaNextManual) {
+            runCatching { PetHealthSchedule.nextFleaApplication(value) }.getOrDefault(nextFleaTreatment)
+        } else {
+            nextFleaTreatment
+        }
+        copy(lastFleaTreatment = value, nextFleaTreatment = next, errorMessage = null)
+    }
+    fun onNextFleaTreatmentChange(value: String) = updateForm {
+        copy(nextFleaTreatment = value, fleaNextManual = true, errorMessage = null)
+    }
     fun onHealthNotesChange(value: String) = updateForm { copy(healthNotes = value, errorMessage = null) }
+    fun onAllergyNameChange(value: String) = updateForm { copy(allergyName = value, errorMessage = null) }
+    fun onMedicationNameChange(value: String) = updateForm { copy(medicationName = value, errorMessage = null) }
+    fun onConditionNameChange(value: String) = updateForm { copy(conditionName = value, errorMessage = null) }
     fun onImageSelected(uri: Uri?) {
         if (!_uiState.value.canManageMedia) {
             _uiState.update {
@@ -184,6 +298,12 @@ class PetFormViewModel(
             return
         }
         updateForm { copy(pendingImageUri = uri, errorMessage = null) }
+    }
+
+    fun onPhotoCropFailed(code: String) {
+        _uiState.update {
+            it.copy(errorMessage = FileUiErrorMapper.message(code))
+        }
     }
 
     fun addPendingVaccination() {
@@ -229,6 +349,28 @@ class PetFormViewModel(
             _uiState.update { it.copy(errorMessage = "Nombre y descripción son obligatorios") }
             return
         }
+        if (!PetAgeRules.isValidYears(state.ageYears) ||
+            PetAgeRules.parseYears(state.ageYearsInput) == null
+        ) {
+            _uiState.update { it.copy(errorMessage = "Los años deben estar entre 0 y 99") }
+            return
+        }
+        if (!PetAgeRules.isValidMonths(state.ageMonths) ||
+            PetAgeRules.parseMonths(state.ageMonthsInput) == null
+        ) {
+            _uiState.update { it.copy(errorMessage = "Los meses deben estar entre 0 y 11") }
+            return
+        }
+        val historicalDates = listOf(
+            state.lastVetVisit,
+            state.pendingVaccineDate,
+            state.lastDeworming,
+            state.lastFleaTreatment
+        ) + state.vaccinations.map { it.date }
+        if (historicalDates.any { !HistoricalDateRules.isNotFuture(it) }) {
+            _uiState.update { it.copy(errorMessage = "Las fechas históricas no pueden ser futuras") }
+            return
+        }
 
         viewModelScope.launch {
             _uiState.update { it.copy(isSaving = true, errorMessage = null, saveSuccess = false) }
@@ -236,13 +378,45 @@ class PetFormViewModel(
             val authUser = authRepository.getCurrentUser()
             if (authUser == null) {
                 _uiState.update {
-                    it.copy(isSaving = false, errorMessage = "No hay sesión activa")
+                    it.copy(
+                        isSaving = false,
+                        errorMessage = com.comunidapp.app.domain.pets.PetCreateDiagnostic.formatUserMessage(
+                            M08PetErrorMapper.userMessage("NOT_AUTHENTICATED"),
+                            com.comunidapp.app.domain.pets.PetCreateDiagnostic.AUTH
+                        )
+                    )
+                }
+                return@launch
+            }
+
+            val userRepository = DataProvider.userRepository
+            var person = userRepository.getUser(authUser.id)
+            var personLoadAttempts = 0
+            while (person == null && personLoadAttempts < 3) {
+                personLoadAttempts++
+                delay(400)
+                person = userRepository.getUser(authUser.id)
+            }
+            if (person == null) {
+                val code = if (personLoadAttempts > 0) {
+                    com.comunidapp.app.domain.pets.PetCreateDiagnostic.PERSON
+                } else {
+                    com.comunidapp.app.domain.pets.PetCreateDiagnostic.PERSON_LOAD
+                }
+                _uiState.update {
+                    it.copy(
+                        isSaving = false,
+                        errorMessage = com.comunidapp.app.domain.pets.PetCreateDiagnostic.formatUserMessage(
+                            "Todavía no encontramos tu perfil Persona. Esperá un momento e intentá de nuevo.",
+                            code
+                        )
+                    )
                 }
                 return@launch
             }
 
             val vaccinations = buildFinalVaccinations(state)
-            // Never persist photoUrl from form; avatar goes through M05 + m08_set_pet_avatar_asset.
+            // Never persist photoUrl from form; avatar goes through M05 + canon_set_pet_avatar.
             var pet = Pet(
                 id = state.petId,
                 ownerId = state.ownerId?.takeIf { it.isNotBlank() },
@@ -263,7 +437,21 @@ class PetFormViewModel(
                 microchipId = state.microchipId.trim().ifBlank { null },
                 lastVetVisit = state.lastVetVisit.takeIf { it.isNotBlank() },
                 healthNotes = state.healthNotes.trim().ifBlank { null },
-                reminders = loadedPet?.reminders.orEmpty(),
+                allergies = listOfNotNull(state.allergyName.trim().takeIf { it.isNotEmpty() }),
+                medications = listOfNotNull(state.medicationName.trim().takeIf { it.isNotEmpty() }),
+                conditions = listOfNotNull(state.conditionName.trim().takeIf { it.isNotEmpty() }),
+                breed = state.breed.trim().ifBlank { null },
+                reminders = PetHealthReminders.upsert(
+                    PetHealthReminders.upsert(
+                        loadedPet?.reminders.orEmpty(),
+                        PetHealthReminders.NEXT_DEWORMING,
+                        state.nextDeworming,
+                        "Próxima desparasitación"
+                    ),
+                    PetHealthReminders.NEXT_FLEA,
+                    state.nextFleaTreatment,
+                    "Próxima aplicación"
+                ),
                 createdAt = loadedPet?.createdAt,
                 avatarFileAssetId = loadedPet?.avatarFileAssetId,
                 status = loadedPet?.status ?: "ACTIVE"
@@ -278,11 +466,17 @@ class PetFormViewModel(
             petIdResult
                 .onSuccess { petId ->
                     pet = pet.copy(id = petId)
+                    loadedPet = pet
+                    com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                        "PET-STAGE=CREATED edit=${state.isEditMode} petId=$petId personId=${person.id}"
+                    )
 
                     if (state.pendingImageUri != null && !state.canManageMedia) {
                         _uiState.update {
                             it.copy(
                                 isSaving = false,
+                                isEditMode = true,
+                                petId = petId,
                                 errorMessage = M08PetErrorMapper.userMessage("FORBIDDEN")
                             )
                         }
@@ -290,6 +484,10 @@ class PetFormViewModel(
                     }
 
                     state.pendingImageUri?.let { uri ->
+                        val previousAssetId = loadedPet?.avatarFileAssetId
+                        com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                            "PET-STAGE=MEDIA-UPLOAD petId=$petId"
+                        )
                         when (val upload = DataProvider.fileUploadCoordinator.startUpload(
                             uriString = uri.toString(),
                             request = FileUploadRequest(
@@ -298,23 +496,53 @@ class PetFormViewModel(
                                 resourceRef = FileResourceRef(FileResourceType.PET, petId),
                                 originalFilename = "pet.jpg",
                                 declaredMimeType = "image/jpeg",
-                                sizeBytes = 1L,
+                                sizeBytes = com.comunidapp.app.domain.media.ProfileMediaPipeline.resolvedSizeBytes(
+                                    uri.toString(),
+                                    0L
+                                ),
                                 requestedVisibility = FileAssetVisibility.PUBLIC
                             ),
                             actorUserId = authUser.id
                         )) {
                             is AppResult.Success -> {
                                 val assetId = upload.data.assetId
+                                com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                                    "PET-STAGE=SET-AVATAR petId=$petId"
+                                )
                                 petRepository.setPetAvatarAsset(petId, assetId)
                                     .onSuccess { updated ->
                                         pet = updated
+                                        loadedPet = updated
                                     }
                                     .onFailure { err ->
+                                        com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                                            "PET-STAGE=SET-AVATAR-FAIL type=${err::class.java.simpleName}"
+                                        )
                                         _uiState.update {
                                             it.copy(
                                                 isSaving = false,
-                                                errorMessage = M08PetErrorMapper.userMessage(
-                                                    M08PetErrorMapper.codeOf(err)
+                                                isEditMode = true,
+                                                petId = petId,
+                                                errorMessage = com.comunidapp.app.domain.pets.PetCreateDiagnostic.formatUserMessage(
+                                                    M08PetErrorMapper.userMessage(
+                                                        M08PetErrorMapper.codeOf(err)
+                                                    ),
+                                                    com.comunidapp.app.domain.pets.PetCreateDiagnostic.MEDIA
+                                                ),
+                                                debugDiagnostic = LocalDebugDiagnostic.forOperation(
+                                                    operation = "PET_PHOTO_UPDATE",
+                                                    error = err,
+                                                    extra = mapOf(
+                                                        "step" to com.comunidapp.app.domain.canonical.CanonicalMedia.STEP_SET_PET_AVATAR,
+                                                        "rpc" to "canon_set_pet_avatar",
+                                                        "petId" to petId,
+                                                        "upload" to "ok",
+                                                        "previousAssetId" to (previousAssetId ?: ""),
+                                                        "bucket" to upload.data.physicalBucket,
+                                                        "objectPath" to PetPhotoResolver.sanitizeObjectPath(
+                                                            upload.data.storagePath
+                                                        )
+                                                    )
                                                 )
                                             )
                                         }
@@ -322,10 +550,29 @@ class PetFormViewModel(
                                     }
                             }
                             is AppResult.Failure -> {
+                                val step = upload.error.code
+                                    ?: com.comunidapp.app.domain.canonical.CanonicalMedia.STEP_STORAGE_UPLOAD
+                                com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
+                                    "PET-STAGE=MEDIA-UPLOAD-FAIL step=$step petId=$petId"
+                                )
                                 _uiState.update {
                                     it.copy(
                                         isSaving = false,
-                                        errorMessage = FileUiErrorMapper.message(upload.error)
+                                        isEditMode = true,
+                                        petId = petId,
+                                        errorMessage = com.comunidapp.app.domain.pets.PetCreateDiagnostic.formatUserMessage(
+                                            FileUiErrorMapper.message(upload.error),
+                                            com.comunidapp.app.domain.pets.PetCreateDiagnostic.MEDIA
+                                        ),
+                                        debugDiagnostic = LocalDebugDiagnostic.forOperation(
+                                            operation = "PET_PHOTO_UPDATE",
+                                            error = IllegalStateException(upload.error.technicalMessage),
+                                            extra = mapOf(
+                                                "step" to step,
+                                                "rpc" to "canon_register_media",
+                                                "petId" to petId
+                                            )
+                                        )
                                     )
                                 }
                                 return@launch
@@ -334,22 +581,51 @@ class PetFormViewModel(
                     }
 
                     loadedPet = pet
+                    val displayPhoto = PetPhotoResolver.displayUrl(pet, authUser.id)
                     _uiState.update {
                         it.copy(
                             isSaving = false,
                             saveSuccess = true,
+                            isEditMode = true,
                             petId = petId,
-                            photoUrl = pet.photoUrl,
+                            photoUrl = displayPhoto,
                             pendingImageUri = null
                         )
                     }
+                    com.comunidapp.app.data.local.PetFormDraftStore.clear()
                 }
                 .onFailure { error ->
-                    val code = M08PetErrorMapper.codeOf(error)
+                    val sessionPresent = authRepository.getCurrentUser() != null
+                    val code = com.comunidapp.app.domain.pets.PetCreateDiagnostic.fromSaveFailure(
+                        error = error,
+                        sessionPresent = sessionPresent
+                    )
+                    val mapped = M08PetErrorMapper.codeOf(error)
+                    val friendly = if (mapped == "NOT_AUTHENTICATED" && sessionPresent) {
+                        "No pudimos guardar la mascota. Intentá de nuevo."
+                    } else {
+                        M08PetErrorMapper.userMessage(mapped)
+                    }
+                    val operation = if (state.isEditMode) "pet_update" else "pet_create"
                     _uiState.update {
                         it.copy(
                             isSaving = false,
-                            errorMessage = M08PetErrorMapper.userMessage(code)
+                            errorMessage = com.comunidapp.app.domain.pets.PetCreateDiagnostic.formatUserMessage(
+                                friendly,
+                                code
+                            ),
+                            debugDiagnostic = LocalDebugDiagnostic.forOperation(
+                                operation = operation,
+                                error = error,
+                                extra = mapOf(
+                                    "rpc" to if (state.isEditMode) {
+                                        "canon_update_pet"
+                                    } else {
+                                        "canon_create_pet"
+                                    },
+                                    "code" to code
+                                )
+                            )
                         )
                     }
                 }
@@ -431,8 +707,59 @@ class PetFormViewModel(
         ) + state.vaccinations
     }
 
+    fun discardDraft() {
+        com.comunidapp.app.data.local.PetFormDraftStore.clear()
+    }
+
+    private fun loadCatalogs(species: PetSpecies) {
+        viewModelScope.launch {
+            val repo = DataProvider.masterCatalogRepository
+            val speciesRows = repo.listSpecies()
+            val labels = mutableMapOf<PetSpecies, String>()
+            val options = speciesRows.map { row ->
+                val mapped = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toPetSpecies(row.code)
+                labels[mapped] = row.name
+                mapped
+            }.distinct().ifEmpty { PetSpecies.entries }
+            val breeds = repo.listBreeds(species.name).map { it.name }
+            val vaccines = repo.listHealthProducts("VACCINE", species.name)
+                .map { it.displayName }
+                .ifEmpty { com.comunidapp.app.data.model.PetHealthCatalog.vaccinesForSpecies(species) }
+            val flea = repo.listHealthProducts("FLEA", species.name)
+                .map { it.displayName }
+                .ifEmpty { com.comunidapp.app.data.model.PetHealthCatalog.fleaAndTickProducts }
+            val deworm = repo.listHealthProducts("DEWORMER", species.name)
+                .map { it.displayName }
+                .ifEmpty { com.comunidapp.app.data.model.PetHealthCatalog.dewormingProducts }
+            _uiState.update {
+                it.copy(
+                    speciesOptions = options,
+                    speciesLabels = labels,
+                    breedOptions = breeds,
+                    vaccineOptions = vaccines,
+                    fleaOptions = flea,
+                    dewormerOptions = deworm
+                )
+            }
+        }
+    }
+
     private inline fun updateForm(block: PetFormUiState.() -> PetFormUiState) {
         _uiState.update { it.block() }
+        persistDraftSoon()
+    }
+
+    private fun persistDraftSoon() {
+        val userId = draftUserId ?: return
+        draftJob?.cancel()
+        draftJob = viewModelScope.launch {
+            delay(250)
+            val state = _uiState.value
+            if (state.isLoading || state.saveSuccess) return@launch
+            com.comunidapp.app.data.local.PetFormDraftStore.write(
+                state.toDraft(userId, editPetId)
+            )
+        }
     }
 
     companion object {

@@ -576,7 +576,9 @@ class SupabaseOrganizationMembershipRepository : OrganizationMembershipRepositor
     }
 
     override suspend fun countActiveOwners(organizationId: OrganizationId): Int =
-        listActiveByOrganization(organizationId).count { it.role == OrganizationRoleCode.OWNER }
+        listActiveByOrganization(organizationId).count {
+            com.comunidapp.app.domain.organization.authorization.MembershipDisplay.isAdministrator(it.role)
+        }
 
     override suspend fun addMembership(membership: OrganizationMembership): Result<Unit> =
         Result.failure(UnsupportedOperationException("membership writes only via RPC"))

@@ -12,8 +12,10 @@ data class LostFoundPost(
     val description: String,
     val contactInfo: String,
     val status: LostFoundStatus = LostFoundStatus.ACTIVE,
+    val publicCode: String? = null,
     val latitude: Double? = null,
     val longitude: Double? = null,
     val date: String,
-    val createdAt: Long? = null
+    val createdAt: Long? = null,
+    val petId: String? = null
 )

@@ -19,6 +19,19 @@
 
 Tonales derivados documentados: `BrandOrangeContainer`, `BrandGreenContainer`, `BrandGreenSoft`, `BrandOrangeDeep`, `BrandTextSecondary`.
 
+### Addendum 2026-08-16 — fondo general más claro
+
+No reescribe la tabla histórica de arriba.
+
+| Token | HEX | Uso |
+| --- | --- | --- |
+| `BrandBackground` / `GENERAL_LIGHT_BACKGROUND` | `#FAFBF8` | Scaffold, fondo de pantalla, status/nav bar |
+| `BrandWhite` / `SURFACE` | `#FFFFFF` | Tarjetas y superficies principales |
+| `BrandCream` / `SOFT_CREAM_ACCENT` | `#FFF8E1` | Crema suave secundaria; no es el fondo full-screen |
+| `ProfileGreen` / `PROFILE_GREEN` | `#66B978` | Acento de Perfil / contexto; no reemplaza BrandGreen |
+
+Naranja `#FF7A00`, verde `#49B749` y verde oscuro `#247A3D` no cambian. El logo no cambia.
+
 Semánticos (no corporativos): `UrgentRed`, `WarningAmber`.
 
 ---

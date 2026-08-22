@@ -3,9 +3,20 @@
 
     <style name="Theme.Comunidapp" parent="android:Theme.Material.Light.NoActionBar" />
 
+    <style name="Theme.LeoVer.UCrop" parent="Theme.AppCompat.Light.NoActionBar">
+        <item name="colorPrimary">@color/brand_orange</item>
+        <item name="colorPrimaryDark">@color/brand_text</item>
+        <item name="colorAccent">@color/brand_orange</item>
+        <item name="android:windowBackground">@color/brand_background</item>
+        <item name="android:statusBarColor">@color/brand_background</item>
+        <item name="android:navigationBarColor">@color/brand_background</item>
+        <item name="android:windowDrawsSystemBarBackgrounds">true</item>
+        <item name="android:windowLightStatusBar">true</item>
+    </style>
+
     <style name="Theme.Comunidapp.Splash" parent="Theme.SplashScreen">
-        <item name="windowSplashScreenBackground">@color/brand_cream</item>
-        <!-- Icono con transparencia (sin wordmark) — el fondo crema lo aporta windowSplashScreenBackground -->
+        <item name="windowSplashScreenBackground">@color/brand_background</item>
+        <!-- Icono con transparencia (sin wordmark) — el fondo #FAFBF8 lo aporta windowSplashScreenBackground -->
         <item name="windowSplashScreenAnimatedIcon">@drawable/leover_isotype_official</item>
         <item name="postSplashScreenTheme">@style/Theme.Comunidapp</item>
     </style>
