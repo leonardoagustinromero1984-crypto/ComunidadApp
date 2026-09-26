@@ -82,3 +82,18 @@ Visible debt, not baselined:
 ## Configuration cache
 
 DISABLED FOR CLOUD RUNNER ONLY (`--no-configuration-cache`). `org.gradle.configuration-cache=true` is unchanged.
+
+## Measured after repair
+
+| Suite | Result |
+| --- | --- |
+| `:app:testLocalDebugUnitTest` | 3037 tests, 3037 PASS, 0 FAIL |
+| `:shared:testAndroidHostTest` | 390 tests, 390 PASS, 0 FAIL |
+| Environment failures remaining | 0 |
+| `:app:lintLocalDebug` | 56 errors, 158 warnings, 2 hints |
+
+Before this repair the app suite was 2927 / 3023 PASS. The extra tests are the new clock, route, location, community, and P0 contracts.
+
+Lint errors are only `UnsafeOptInUsageError` (41) and `MissingTranslation` (15). `NewApi`, `StateFlowValueCalledInComposition`, and `UnrememberedMutableState` are gone. No lint baseline was added.
+
+`bash scripts/qa/run-regression.sh` exited 0. Emulator not installed. Maestro not run.
