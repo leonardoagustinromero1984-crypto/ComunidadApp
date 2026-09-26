@@ -37,12 +37,27 @@ import java.time.ZoneId
 
 class SupabaseNotificationInboxRepository : NotificationInboxRepository {
 
-    override suspend fun listNotifications(userId: String): AppResult<List<NotificationInboxItem>> = runRpc {
-        val element = rpc("m06_get_inbox", buildJsonObject {
-            put("p_limit", 100)
-            put("p_offset", 0)
-        })
-        M04SupabaseRpcSupport.decodeArray(element).mapNotNull { (it as? JsonObject)?.toInboxItem() }
+    override suspend fun listNotifications(userId: String): AppResult<List<NotificationInboxItem>> {
+        val m06 = runRpc {
+            val element = rpc("m06_get_inbox", buildJsonObject {
+                put("p_limit", 100)
+                put("p_offset", 0)
+            })
+            M04SupabaseRpcSupport.decodeArray(element).mapNotNull { (it as? JsonObject)?.toInboxItem() }
+        }
+        if (m06 is AppResult.Success && m06.data.isNotEmpty()) return m06
+        val fallback = runRpc {
+            val element = rpc(
+                com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_LIST_MY_NOTIFICATIONS,
+                buildJsonObject { put("p_limit", 100) }
+            )
+            M04SupabaseRpcSupport.decodeArray(element).mapNotNull { (it as? JsonObject)?.toInboxItem() }
+        }
+        return when {
+            fallback is AppResult.Success -> fallback
+            m06 is AppResult.Success -> m06
+            else -> fallback
+        }
     }
 
     override suspend fun getUnreadCount(userId: String): AppResult<Int> = runRpc {

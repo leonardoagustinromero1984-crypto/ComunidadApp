@@ -33,10 +33,9 @@ object MediaIngestionPolicy {
     const val SOCIAL_IMAGE_TARGET_BYTES = 6L * MIB
 
     /**
-     * Processed master caps match STAGING buckets/RPC where they exist:
-     * profile-avatars / organization-media = 5 MiB; public-media = 8 MiB.
-     * Video hard cap follows the configurable Supabase global limit, not a
-     * universal "everything must end at 40 MiB" encode target.
+     * Processed master caps match STAGING buckets/RPC:
+     * profile-avatars / organization-media = 5 MiB; public-media = 50 MiB.
+     * Video hard cap follows the configurable Supabase global limit.
      */
     const val AVATAR_MASTER_MAX_BYTES = 5L * MIB
     const val PET_MASTER_MAX_BYTES = 8L * MIB
@@ -58,7 +57,7 @@ object MediaIngestionPolicy {
     const val SUPABASE_GLOBAL_FILE_LIMIT = "50MiB"
     const val PROFILE_AVATARS_BUCKET_LIMIT_BYTES = 5L * MIB
     const val ORGANIZATION_MEDIA_BUCKET_LIMIT_BYTES = 5L * MIB
-    const val PUBLIC_MEDIA_BUCKET_LIMIT_BYTES = 8L * MIB
+    const val PUBLIC_MEDIA_BUCKET_LIMIT_BYTES = 50L * MIB
 
     fun destinationFor(purpose: FileAssetPurpose): MediaDestination = when (purpose) {
         FileAssetPurpose.USER_AVATAR, FileAssetPurpose.USER_COVER -> MediaDestination.AVATAR
@@ -132,6 +131,9 @@ object MediaIngestionPolicy {
 
     fun shouldUseTus(sizeBytes: Long): Boolean =
         ResumableUploadPolicy.shouldUseTus(sizeBytes)
+
+    fun shouldUseTus(sizeBytes: Long, mimeType: String?): Boolean =
+        ResumableUploadPolicy.shouldUseTus(sizeBytes, mimeType)
 
     fun sampleSize(width: Int, height: Int, maxEdge: Int): Int {
         var sample = 1

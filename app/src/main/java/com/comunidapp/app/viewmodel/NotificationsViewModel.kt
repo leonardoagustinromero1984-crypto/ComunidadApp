@@ -8,6 +8,8 @@ import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.NotificationInboxRepository
 import com.comunidapp.app.data.repository.PlatformRepository
+import com.comunidapp.app.domain.pets.IncomingCareTransferInbox
+import com.comunidapp.app.domain.pets.PetTransfer
 import java.time.Instant
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -23,7 +25,8 @@ import kotlinx.coroutines.launch
 class NotificationsViewModel(
     private val platformRepository: PlatformRepository = DataProvider.platformRepository,
     private val notificationInboxRepository: NotificationInboxRepository = DataProvider.notificationInboxRepository,
-    private val authRepository: AuthRepository = AuthProvider.repository
+    private val authRepository: AuthRepository = AuthProvider.repository,
+    private val incomingInbox: IncomingCareTransferInbox = DataProvider.incomingCareTransferInbox
 ) : ViewModel() {
 
     private val refreshTick = MutableStateFlow(0)
@@ -39,12 +42,23 @@ class NotificationsViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val incomingTransfers: StateFlow<List<PetTransfer>> = incomingInbox.items
+
     val unreadCount: StateFlow<Int> = notifications
         .map { list -> list.count { it.isUnread } }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
+    init {
+        viewModelScope.launch {
+            incomingInbox.refresh("notifications_open")
+        }
+    }
+
     fun refreshFromSignal() {
         refreshTick.value = refreshTick.value + 1
+        viewModelScope.launch {
+            incomingInbox.refresh("notifications_signal")
+        }
     }
 
     fun markRead(id: String) {

@@ -93,11 +93,23 @@ enum class LostFoundType {
 
 enum class LostFoundStatus {
     ACTIVE,
-    RESOLVED;
+    CLAIMED,
+    IN_CARE,
+    RESOLVED,
+    CANCELLED;
 
     companion object {
-        fun fromString(value: String?): LostFoundStatus =
-            entries.find { it.name == value } ?: ACTIVE
+        fun fromString(value: String?): LostFoundStatus {
+            val raw = value.orEmpty().uppercase()
+            return when (raw) {
+                "OPEN", "ACTIVE" -> ACTIVE
+                "CLAIMED" -> CLAIMED
+                "IN_CARE" -> IN_CARE
+                "RESOLVED" -> RESOLVED
+                "CANCELLED", "HIDDEN" -> CANCELLED
+                else -> entries.find { it.name == raw } ?: ACTIVE
+            }
+        }
     }
 }
 

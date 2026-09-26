@@ -370,6 +370,9 @@ class LeoVerOnb03ContractTest {
             commercialOrg = false
         )
         assertFalse(refuge.tutorials.contains(TutorialId.T13_COMMERCIAL_ORGANIZATION))
+        assertFalse(refuge.tutorials.contains(TutorialId.T10A_VETERINARY_CLINIC))
+        assertFalse(refuge.tutorials.contains(TutorialId.T10_ORGANIZATION))
+        assertEquals(listOf(TutorialId.T10B_SHELTER), refuge.tutorials)
         val invite = TutorialQueueResolver.queue(
             CanonicalTutorialEvent.ORGANIZATION_INVITATION_ACCEPTED,
             consumed = { false },

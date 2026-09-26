@@ -579,21 +579,9 @@ class MockAdoptionCompletionRepository(
         if (!petId.isNullOrBlank()) {
             val pet = InMemoryDataStore.getPetById(petId)
             if (pet != null) {
-                val previous = pet.status
-                InMemoryDataStore.updatePet(
-                    pet.copy(
-                        status = "ARCHIVED",
-                        ownerId = app.applicantUserId,
-                        archivedAt = now,
-                        updatedAt = now
-                    )
-                )
                 store.petHistory += M09CompletionMemoryStore.Quad(
-                    petId, previous, "ARCHIVED", "ADOPTED"
+                    petId, pet.status, pet.status, "ADOPTION_EVALUATION_DONE"
                 )
-                store.transfers += Triple(petId, adoption.publisherId, app.applicantUserId)
-            } else {
-                return fail("ADOPTION_TRANSFER_FAILED")
             }
         }
 

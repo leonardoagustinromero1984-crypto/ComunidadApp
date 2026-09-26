@@ -5,6 +5,9 @@ import com.comunidapp.app.data.mock.MockData
 import com.comunidapp.app.data.repository.MockAuthRepository
 import com.comunidapp.app.data.repository.MockPermissionRepository
 import com.comunidapp.app.data.repository.MockSupportRepository
+import com.comunidapp.app.data.repository.PermissionRepository
+import com.comunidapp.app.domain.authorization.AuthorizationContext
+import com.comunidapp.app.domain.authorization.PermissionCode
 import com.comunidapp.app.domain.authorization.PlatformRoleCode
 import com.comunidapp.app.domain.support.SupportCategory
 import com.comunidapp.app.domain.support.SupportTicketStatus
@@ -16,6 +19,8 @@ import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flowOf
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -78,5 +83,52 @@ class SupportAdminViewModelTest {
         vm.changeStatus(SupportTicketStatus.CLOSED, "resolved_ok")
         advanceUntilIdle()
         assertEquals(SupportTicketStatus.CLOSED, vm.uiState.value.ticket?.status)
+    }
+
+    @Test
+    fun manage_without_view_sensitive_cannot_read_or_add_internal_notes() = runTest(dispatcher) {
+        auth.login(MockData.currentUser.email, MockAuthDatabase.DEMO_PASSWORD)
+        val created = support.createTicket(
+            "req",
+            SupportCategory.OTHER,
+            "Asunto staff",
+            "Descripción suficientemente clara",
+            1L
+        )
+        val ticketId = (created as com.comunidapp.app.core.result.AppResult.Success).data.id
+        support.addInternalMessage(ticketId, "staff", "dato interno", 2L)
+        val permissionRepo = FixedPermissionRepository(
+            AuthorizationContext(
+                userId = MockData.currentUser.id,
+                roles = setOf(PlatformRoleCode.SUPPORT),
+                permissions = setOf(PermissionCode.SUPPORT_VIEW, PermissionCode.SUPPORT_MANAGE)
+            )
+        )
+
+        val vm = SupportTicketAdminDetailViewModel(ticketId, support, auth, permissionRepo)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.canManage)
+        assertTrue(vm.uiState.value.messages.none { it.body == "dato interno" })
+
+        vm.onInternalDraftChange("otro dato")
+        vm.sendInternalNote()
+        advanceUntilIdle()
+        assertEquals("No tenés permiso para notas internas.", vm.uiState.value.message)
+    }
+
+    private class FixedPermissionRepository(
+        private val context: AuthorizationContext
+    ) : PermissionRepository {
+        override suspend fun getAuthorizationContext(userId: String): AuthorizationContext = context
+        override fun observeAuthorizationContext(userId: String): Flow<AuthorizationContext> =
+            flowOf(context)
+        override suspend fun hasPermission(userId: String, permission: PermissionCode): Boolean =
+            permission in context.permissions
+        override suspend fun refresh(userId: String): AuthorizationContext = context
+        override fun invalidate() = Unit
+        override suspend fun setRolesForTests(
+            userId: String,
+            roles: Set<PlatformRoleCode>
+        ) = Unit
     }
 }

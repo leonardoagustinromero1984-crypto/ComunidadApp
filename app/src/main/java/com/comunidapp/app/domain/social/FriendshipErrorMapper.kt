@@ -10,7 +10,8 @@ object FriendshipErrorMapper {
         SEND,
         LOAD,
         RESPOND,
-        CANCEL
+        CANCEL,
+        REMOVE
     }
 
     fun userMessage(throwable: Throwable, operation: Operation): String {
@@ -77,5 +78,7 @@ object FriendshipErrorMapper {
             "No pudimos actualizar la solicitud. Intentá nuevamente."
         Operation.CANCEL ->
             "No pudimos cancelar la solicitud. Intentá nuevamente."
+        Operation.REMOVE ->
+            "No pudimos eliminar la conexión. Intentá nuevamente."
     }
 }

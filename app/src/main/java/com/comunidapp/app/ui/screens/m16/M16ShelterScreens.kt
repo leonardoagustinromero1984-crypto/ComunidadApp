@@ -15,11 +15,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -64,6 +60,11 @@ import com.comunidapp.app.viewmodel.M16SheltersListUiState
 import com.comunidapp.app.viewmodel.M16SheltersListViewModel
 import com.comunidapp.app.viewmodel.m16ContactTypeLabel
 import com.comunidapp.app.viewmodel.m16DayLabel
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
 fun M16SheltersListScreen(
@@ -118,9 +119,10 @@ fun M16SheltersListScreen(
                 onClear = viewModel::clearFilters
             )
             onManage?.let { manage ->
-                Button(onClick = manage, modifier = Modifier.fillMaxWidth()) {
-                    Text("Administrar refugio")
-                }
+                LeoPrimaryButton(
+                    text = "Administrar refugio",
+                    onClick = manage
+                )
             }
             when (val s = state) {
                 M16SheltersListUiState.Loading -> LoadingState()
@@ -156,32 +158,33 @@ private fun M16ListFilterRow(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(
+            LeoFilterChip(
+                label = "Activos y pausados",
                 selected = filter.operationalStatus == null,
-                onClick = { onOperational(null) },
-                label = { Text("Activos y pausados") }
+                onClick = { onOperational(null) }
             )
-            FilterChip(
+            LeoFilterChip(
+                label = "Activos",
                 selected = filter.operationalStatus == M16ShelterOperationalStatus.ACTIVE,
                 onClick = {
                     onOperational(
                         if (filter.operationalStatus == M16ShelterOperationalStatus.ACTIVE) null
                         else M16ShelterOperationalStatus.ACTIVE
                     )
-                },
-                label = { Text("Activos") }
+                }
             )
-            FilterChip(
+            LeoFilterChip(
+                label = "Pausados",
                 selected = filter.operationalStatus == M16ShelterOperationalStatus.PAUSED,
                 onClick = {
                     onOperational(
                         if (filter.operationalStatus == M16ShelterOperationalStatus.PAUSED) null
                         else M16ShelterOperationalStatus.PAUSED
                     )
-                },
-                label = { Text("Pausados") }
+                }
             )
-            FilterChip(
+            LeoFilterChip(
+                label = "Cerrados",
                 selected = filter.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED,
                 onClick = {
                     onOperational(
@@ -191,27 +194,26 @@ private fun M16ListFilterRow(
                             M16ShelterOperationalStatus.PERMANENTLY_CLOSED
                         }
                     )
-                },
-                label = { Text("Cerrados") }
+                }
             )
         }
         if (VerificationDisplayPolicy.FILTERS_VISIBLE) {
         Text("Verificación", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FilterChip(
+            LeoFilterChip(
+                label = "Todos",
                 selected = filter.verificationFilter == M16ShelterVerificationFilter.ALL,
-                onClick = { onVerification(M16ShelterVerificationFilter.ALL) },
-                label = { Text("Todos") }
+                onClick = { onVerification(M16ShelterVerificationFilter.ALL) }
             )
-            FilterChip(
+            LeoFilterChip(
+                label = "Verificados",
                 selected = filter.verificationFilter == M16ShelterVerificationFilter.VERIFIED_ONLY,
-                onClick = { onVerification(M16ShelterVerificationFilter.VERIFIED_ONLY) },
-                label = { Text("Verificados") }
+                onClick = { onVerification(M16ShelterVerificationFilter.VERIFIED_ONLY) }
             )
-            FilterChip(
+            LeoFilterChip(
+                label = "No verificados",
                 selected = filter.verificationFilter == M16ShelterVerificationFilter.UNVERIFIED_OR_PENDING,
-                onClick = { onVerification(M16ShelterVerificationFilter.UNVERIFIED_OR_PENDING) },
-                label = { Text("No verificados") }
+                onClick = { onVerification(M16ShelterVerificationFilter.UNVERIFIED_OR_PENDING) }
             )
         }
         }
@@ -220,16 +222,16 @@ private fun M16ListFilterRow(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
-            FilterChip(
+            LeoFilterChip(
+                label = "Todos",
                 selected = filter.service == null,
-                onClick = { onService(null) },
-                label = { Text("Todos") }
+                onClick = { onService(null) }
             )
             M16ShelterService.entries.forEach { service ->
-                FilterChip(
+                LeoFilterChip(
+                    label = service.visibleLabel(),
                     selected = filter.service == service,
-                    onClick = { onService(if (filter.service == service) null else service) },
-                    label = { Text(service.visibleLabel()) }
+                    onClick = { onService(if (filter.service == service) null else service) }
                 )
             }
         }
@@ -240,26 +242,28 @@ private fun M16ListFilterRow(
             label = { Text("Especie") },
             singleLine = true
         )
-        OutlinedButton(onClick = onClear, modifier = Modifier.fillMaxWidth()) {
-            Text("Limpiar filtros")
-        }
+        LeoOutlinedButton(
+            text = "Limpiar filtros",
+            onClick = onClear
+        )
     }
 }
 
 @Composable
 private fun M16PublicShelterCard(item: M16PublicShelter, onClick: () -> Unit) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onClick)
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(LeoDimens.SpaceCompact)) {
             Text(item.displayName, fontWeight = FontWeight.Bold)
             Text("${item.publicZoneText} · ${item.operationalStatus}")
             Text("Servicios: ${item.services.joinToString { it.name }}")
             Text("Disponibilidad: ${item.availability}")
             Text("Verificación: ${item.verificationStatus}")
         }
+        LeoHairline()
     }
 }
 
@@ -312,18 +316,14 @@ private fun M16PublicShelterDetailContent(
     onM18Events: (() -> Unit)? = null
 ) {
     if (s.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED) {
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            colors = androidx.compose.material3.CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.errorContainer
-            )
-        ) {
+        Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 "Este refugio cerró permanentemente.",
-                modifier = Modifier.padding(12.dp),
-                color = MaterialTheme.colorScheme.onErrorContainer,
+                modifier = Modifier.padding(LeoDimens.SpaceCompact),
+                color = MaterialTheme.colorScheme.error,
                 fontWeight = FontWeight.Bold
             )
+            LeoHairline()
         }
         Spacer(Modifier.height(12.dp))
     }
@@ -360,17 +360,20 @@ private fun M16PublicShelterDetailContent(
     }
     onM17Hub?.let { hub ->
         Spacer(Modifier.height(16.dp))
-        OutlinedButton(onClick = hub, modifier = Modifier.fillMaxWidth()) {
-            Text("Campañas")
-        }
+        LeoOutlinedButton(
+            text = "Campañas",
+            onClick = hub
+        )
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = hub, modifier = Modifier.fillMaxWidth()) {
-            Text("Voluntariado")
-        }
+        LeoOutlinedButton(
+            text = "Voluntariado",
+            onClick = hub
+        )
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = hub, modifier = Modifier.fillMaxWidth()) {
-            Text("Donar / Ayudar")
-        }
+        LeoOutlinedButton(
+            text = "Donar / Ayudar",
+            onClick = hub
+        )
         Text(
             "LeoVer no procesa pagos. Si el refugio publicó un alias o CBU, la transferencia se hace por fuera. 0% de comisión.",
             style = MaterialTheme.typography.bodySmall,
@@ -379,9 +382,10 @@ private fun M16PublicShelterDetailContent(
     }
     onM18Events?.let { events ->
         Spacer(Modifier.height(8.dp))
-        OutlinedButton(onClick = events, modifier = Modifier.fillMaxWidth()) {
-            Text("Eventos")
-        }
+        LeoOutlinedButton(
+            text = "Eventos",
+            onClick = events
+        )
     }
 }
 
@@ -474,10 +478,10 @@ fun M16ShelterManageScreen(
             Text("Organización mock", style = MaterialTheme.typography.labelMedium)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 M16MockOrganizations.MANAGE_ORGANIZATION_IDS.forEach { id ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = id.removePrefix("org_"),
                         selected = orgId == id,
-                        onClick = { viewModel.selectOrganization(id) },
-                        label = { Text(id.removePrefix("org_")) }
+                        onClick = { viewModel.selectOrganization(id) }
                     )
                 }
             }
@@ -547,9 +551,11 @@ private fun M16NoProfileContent(
         label = { Text("Capacidad total") },
         modifier = Modifier.fillMaxWidth()
     )
-    Button(onClick = onCreate, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
-        Text(if (saving) "Creando…" else "Crear perfil de refugio")
-    }
+    LeoPrimaryButton(
+        text = if (saving) "Creando…" else "Crear perfil de refugio",
+        onClick = onCreate,
+        enabled = !saving
+    )
 }
 
 @Composable
@@ -610,9 +616,11 @@ private fun M16ProfileManageContent(
         onValueChange = { v -> onDraftChange { it.copy(publicZoneText = v) } },
         enabled = !isTerminal
     )
-    Button(onClick = onSavePublic, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
-        Text("Guardar datos públicos")
-    }
+    LeoPrimaryButton(
+        text = "Guardar datos públicos",
+        onClick = onSavePublic,
+        enabled = !saving && !isTerminal
+    )
 
     Text("Capacidad", fontWeight = FontWeight.Bold)
     OutlinedTextField(
@@ -630,9 +638,11 @@ private fun M16ProfileManageContent(
         modifier = Modifier.fillMaxWidth(),
         enabled = !isTerminal
     )
-    Button(onClick = onSaveCapacity, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
-        Text("Guardar capacidad")
-    }
+    LeoPrimaryButton(
+        text = "Guardar capacidad",
+        onClick = onSaveCapacity,
+        enabled = !saving && !isTerminal
+    )
 
     Text("Horarios (HH:mm)", fontWeight = FontWeight.Bold)
     (1..7).forEach { day ->
@@ -663,7 +673,8 @@ private fun M16ProfileManageContent(
                 enabled = !isTerminal && !period.closed
             )
         }
-        FilterChip(
+        LeoFilterChip(
+            label = if (period.closed) "Cerrado" else "Abierto",
             selected = period.closed,
             onClick = {
                 if (!isTerminal) {
@@ -671,14 +682,14 @@ private fun M16ProfileManageContent(
                         d.copy(openingHours = d.openingHours.toggleClosed(day))
                     }
                 }
-            },
-            label = { Text(if (period.closed) "Cerrado" else "Abierto") },
-            enabled = !isTerminal
+            }
         )
     }
-    Button(onClick = onSaveHours, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
-        Text("Guardar horarios")
-    }
+    LeoPrimaryButton(
+        text = "Guardar horarios",
+        onClick = onSaveHours,
+        enabled = !saving && !isTerminal
+    )
 
     Text("Contactos públicos declarados", fontWeight = FontWeight.Bold)
     draft.contacts.forEachIndexed { index, contact ->
@@ -697,7 +708,8 @@ private fun M16ProfileManageContent(
             label = { Text("Nuevo email institucional (@)") },
             modifier = Modifier.fillMaxWidth()
         )
-        Button(
+        LeoPrimaryButton(
+            text = "Agregar contacto público",
             onClick = {
                 if (newContactValue.isNotBlank()) {
                     onDraftChange { d ->
@@ -710,18 +722,20 @@ private fun M16ProfileManageContent(
                     }
                     newContactValue = ""
                 }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) { Text("Agregar contacto público") }
+            }
+        )
     }
-    Button(onClick = onSaveContacts, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
-        Text("Guardar contactos")
-    }
+    LeoPrimaryButton(
+        text = "Guardar contactos",
+        onClick = onSaveContacts,
+        enabled = !saving && !isTerminal
+    )
 
     Text("Servicios", fontWeight = FontWeight.Bold)
     Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         M16ShelterService.entries.forEach { service ->
-            FilterChip(
+            LeoFilterChip(
+                label = service.visibleLabel(),
                 selected = draft.services.contains(service),
                 onClick = {
                     if (!isTerminal) {
@@ -731,15 +745,15 @@ private fun M16ProfileManageContent(
                             )
                         }
                     }
-                },
-                label = { Text(service.visibleLabel()) },
-                enabled = !isTerminal
+                }
             )
         }
     }
-    Button(onClick = onSaveServices, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
-        Text("Guardar servicios")
-    }
+    LeoPrimaryButton(
+        text = "Guardar servicios",
+        onClick = onSaveServices,
+        enabled = !saving && !isTerminal
+    )
 
     Text("Necesidades (categoría|descripción por línea)", fontWeight = FontWeight.Bold)
     OutlinedTextField(
@@ -748,29 +762,49 @@ private fun M16ProfileManageContent(
         modifier = Modifier.fillMaxWidth(),
         enabled = !isTerminal
     )
-    Button(onClick = onSaveNeeds, enabled = !saving && !isTerminal, modifier = Modifier.fillMaxWidth()) {
-        Text("Guardar necesidades")
-    }
+    LeoPrimaryButton(
+        text = "Guardar necesidades",
+        onClick = onSaveNeeds,
+        enabled = !saving && !isTerminal
+    )
 
     if (!isTerminal) {
         Text("Acciones operativas", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 8.dp))
-        Button(onClick = onPublish, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("Publicar") }
-        Button(onClick = onPause, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("Pausar") }
-        Button(onClick = onActivate, enabled = !saving, modifier = Modifier.fillMaxWidth()) { Text("Reactivar") }
-        Button(onClick = onRequestVerification, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
-            Text("Solicitar verificación")
-        }
-        OutlinedButton(onClick = onClosePermanently, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
-            Text("Cerrar permanentemente")
-        }
+        LeoPrimaryButton(
+            text = "Publicar",
+            onClick = onPublish,
+            enabled = !saving
+        )
+        LeoPrimaryButton(
+            text = "Pausar",
+            onClick = onPause,
+            enabled = !saving
+        )
+        LeoPrimaryButton(
+            text = "Reactivar",
+            onClick = onActivate,
+            enabled = !saving
+        )
+        LeoPrimaryButton(
+            text = "Solicitar verificación",
+            onClick = onRequestVerification,
+            enabled = !saving
+        )
+        LeoOutlinedButton(
+            text = "Cerrar permanentemente",
+            onClick = onClosePermanently,
+            enabled = !saving
+        )
     } else {
         Text(
             "Este refugio está cerrado permanentemente. No hay acciones operativas disponibles.",
             color = MaterialTheme.colorScheme.error
         )
-        Button(onClick = onActivate, enabled = !saving, modifier = Modifier.fillMaxWidth()) {
-            Text("Intentar reactivar (debe fallar)")
-        }
+        LeoPrimaryButton(
+            text = "Intentar reactivar (debe fallar)",
+            onClick = onActivate,
+            enabled = !saving
+        )
     }
 
     M16OperationsSection(
@@ -821,16 +855,17 @@ private fun M16OperationsSection(
     Text("Operación del refugio", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 16.dp))
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         M16ShelterOperationsFilter.entries.forEach { filter ->
-            FilterChip(
+            LeoFilterChip(
+                label = filter.name.lowercase().replace('_', ' '),
                 selected = operationsFilter == filter,
-                onClick = { onFilterChange(filter) },
-                label = { Text(filter.name.lowercase().replace('_', ' ')) }
+                onClick = { onFilterChange(filter) }
             )
         }
     }
-    OutlinedButton(onClick = onRefresh, modifier = Modifier.fillMaxWidth()) {
-        Text("Actualizar operación")
-    }
+    LeoOutlinedButton(
+        text = "Actualizar operación",
+        onClick = onRefresh
+    )
     when (operationsState) {
         M16ShelterOperationsUiState.Loading -> LoadingState()
         M16ShelterOperationsUiState.PermissionDenied -> ErrorState(
@@ -936,9 +971,10 @@ private fun M16OperationsSummaryBody(
             color = MaterialTheme.colorScheme.error,
             style = MaterialTheme.typography.bodySmall
         )
-        OutlinedButton(onClick = onSyncOccupancySnapshot, modifier = Modifier.fillMaxWidth()) {
-            Text("Actualizar snapshot de ocupación")
-        }
+        LeoOutlinedButton(
+            text = "Actualizar snapshot de ocupación",
+            onClick = onSyncOccupancySnapshot
+        )
     }
     b.warnings.forEach { w ->
         Text("• $w", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
@@ -955,13 +991,12 @@ private fun M16OperationalPetRow(
     onNavigateToAdoption: (String) -> Unit,
     onNavigateToFoster: (String) -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 4.dp)
             .clickable { onNavigateToPet(item.petId) }
     ) {
-        Column(Modifier.padding(12.dp)) {
+        Column(Modifier.padding(LeoDimens.SpaceCompact)) {
             Text(item.displayName, fontWeight = FontWeight.SemiBold)
             Text("${item.species} · ${item.status.name}")
             if (item.reservedSlot) {
@@ -972,7 +1007,7 @@ private fun M16OperationalPetRow(
             item.warning?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
                 TextButton(onClick = { onNavigateToPet(item.petId) }) { Text("Mascota") }
                 item.adoptionPostId?.let { id ->
                     TextButton(onClick = { onNavigateToAdoption(id) }) { Text("Adopción") }
@@ -982,5 +1017,6 @@ private fun M16OperationalPetRow(
                 }
             }
         }
+        LeoHairline()
     }
 }

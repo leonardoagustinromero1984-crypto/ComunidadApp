@@ -1,0 +1,37 @@
+appId: ${APP_ID}
+name: "Owner assert then finder review"
+tags:
+  - community-care
+  - match
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA01_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-notifications.yaml
+    env:
+      APP_ID: ${APP_ID}
+- tapOn: ".*podría coincidir.*"
+- tapOn: "Podría ser mi mascota"
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person-keep.yaml
+    env:
+      USERNAME: ${QA02_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-notifications.yaml
+    env:
+      APP_ID: ${APP_ID}
+- tapOn: ".*mascota.*"
+- assertVisible: "Sí, corresponde"
+- assertVisible: "No corresponde"
+- takeScreenshot: finder_ownership_actions

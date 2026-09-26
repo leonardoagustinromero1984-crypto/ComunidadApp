@@ -39,6 +39,13 @@ class FileDisplayResolverTest {
         assertTrue(first.data.displayValue.startsWith("https://"))
         assertFalse(fixture.assets.getAsset(uploaded.assetId).toString().contains(first.data.displayValue))
 
+        val cached = resolver.resolve(
+            uploaded.assetId,
+            null,
+            FileAuthContext(actorUserId = "user-1")
+        ) as AppResult.Success
+        assertEquals(first.data.displayValue, cached.data.displayValue)
+
         now = first.data.expiresAtEpochMs!! + 1
         val second = resolver.resolve(
             uploaded.assetId,

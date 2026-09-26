@@ -7,6 +7,7 @@ enum class PlatformRoleCode {
     USER,
     MODERATOR,
     ADMIN,
+    SUPPORT,
     SUPERADMIN
 }
 
@@ -58,7 +59,11 @@ enum class PermissionCode(val code: String) {
     PET_RESTORE("pet.restore"),
     PET_MANAGE_MEDIA("pet.manage_media"),
     PET_VIEW_HISTORY("pet.view_history"),
-    PET_MANAGE_HEALTH("pet.manage_health");
+    PET_MANAGE_HEALTH("pet.manage_health"),
+    CATALOGS_VIEW("catalogs.view"),
+    CATALOGS_MANAGE("catalogs.manage"),
+    STAFF_VIEW("staff.view"),
+    STAFF_MANAGE("staff.manage");
 
     companion object {
         fun fromCode(raw: String): PermissionCode? =
@@ -104,6 +109,13 @@ object RolePermissionMatrix {
         PermissionCode.MODERATION_REVIEW_APPEALS
     )
 
+    private val SUPPORT: Set<PermissionCode> = USER + setOf(
+        PermissionCode.SUPPORT_VIEW,
+        PermissionCode.SUPPORT_MANAGE,
+        PermissionCode.SUPPORT_VIEW_SENSITIVE,
+        PermissionCode.USERS_VIEW_PRIVATE
+    )
+
     private val ADMIN: Set<PermissionCode> = MODERATOR + setOf(
         PermissionCode.MODERATION_APPLY_ACTIONS,
         PermissionCode.MODERATION_VIEW_SENSITIVE,
@@ -125,6 +137,8 @@ object RolePermissionMatrix {
         PermissionCode.ALERT_MANAGE,
         PermissionCode.RETENTION_MANAGE,
         PermissionCode.HEALTH_CHECK_EXECUTE,
+        PermissionCode.CATALOGS_VIEW,
+        PermissionCode.CATALOGS_MANAGE,
         // M08 staff support (deny-by-default para USER; no AccountType)
         PermissionCode.PET_READ,
         PermissionCode.PET_VIEW_HISTORY
@@ -132,6 +146,8 @@ object RolePermissionMatrix {
 
     private val SUPERADMIN: Set<PermissionCode> = ADMIN + setOf(
         PermissionCode.ORGANIZATIONS_REVOKE_VERIFICATION,
+        PermissionCode.STAFF_VIEW,
+        PermissionCode.STAFF_MANAGE,
         PermissionCode.PET_CREATE,
         PermissionCode.PET_UPDATE,
         PermissionCode.PET_MANAGE_RESPONSIBILITIES,
@@ -154,6 +170,7 @@ object RolePermissionMatrix {
                 PlatformRoleCode.USER -> USER
                 PlatformRoleCode.MODERATOR -> MODERATOR
                 PlatformRoleCode.ADMIN -> ADMIN
+                PlatformRoleCode.SUPPORT -> SUPPORT
                 PlatformRoleCode.SUPERADMIN -> SUPERADMIN
             }
         }

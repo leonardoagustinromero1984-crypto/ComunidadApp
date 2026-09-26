@@ -10,6 +10,7 @@ import com.comunidapp.app.domain.auth.AuthErrorCode
 import com.comunidapp.app.domain.auth.AuthErrorMapper
 import com.comunidapp.app.domain.auth.AuthException
 import com.comunidapp.app.domain.auth.ConsentMetadata
+import com.comunidapp.app.domain.auth.LoginIdentifier
 import com.comunidapp.app.domain.auth.LegalDocumentConfig
 import com.comunidapp.app.domain.auth.SignInCommand
 import com.comunidapp.app.domain.auth.SignUpCommand
@@ -57,6 +58,7 @@ class LoginViewModel(
     private var googleWaitJob: Job? = null
     private var googleLaunchAtElapsedMs: Long = 0L
     private var googleHostPausedSinceLaunch: Boolean = false
+    private var googleLaunchAuthUserId: String? = null
 
     fun onEmailChange(email: String) {
         _uiState.update { it.copy(email = email, errorMessage = null) }
@@ -73,28 +75,47 @@ class LoginViewModel(
             _uiState.update {
                 it.copy(isLoading = true, errorMessage = null, needsEmailVerification = null)
             }
-            val command = SignInCommand(_uiState.value.email, _uiState.value.password)
-            AuthValidators.validateEmail(command.email).getOrElse { err ->
-                AuthAnalytics.track("auth_error_shown")
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = userMessage(err)
-                    )
+            val identifier = _uiState.value.email.trim()
+            val password = _uiState.value.password
+            if (identifier.isEmpty() || password.isEmpty()) {
+                showGenericLoginError()
+                return@launch
+            }
+            if (!LoginIdentifier.looksLikeEmail(identifier)) {
+                val usernameResult = authRepository.loginWithUsername(identifier, password)
+                val user = usernameResult.getOrNull()
+                if (user != null) {
+                    AuthAnalytics.track("login_completed")
+                    if (isAdministrativeIdentity(user.id)) {
+                        // SessionViewModel observes auth and routes ADMIN_SESSION.
+                        _uiState.update { it.copy(isLoading = false) }
+                    } else {
+                        _uiState.update { it.copy(isLoading = false, isLoggedIn = true) }
+                    }
+                } else {
+                    val error = usernameResult.exceptionOrNull()
+                    com.comunidapp.app.domain.observability.ObservabilityInstrumentation.reportLoginFailure()
+                    val appError = error?.let { AuthErrorMapper.fromThrowable(it) }
+                    if (appError?.code == AuthErrorCode.EMAIL_NOT_VERIFIED.name) {
+                        val maybeEmail = appError.technicalMessage
+                        if (LoginIdentifier.looksLikeEmail(maybeEmail)) {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    needsEmailVerification = AuthValidators.normalizeEmail(maybeEmail),
+                                    errorMessage = null
+                                )
+                            }
+                            return@launch
+                        }
+                    }
+                    showGenericLoginError()
                 }
                 return@launch
             }
-            if (command.password.isEmpty()) {
-                AuthAnalytics.track("auth_error_shown")
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = AuthErrorMapper.fromCode(
-                            AuthErrorCode.INVALID_CREDENTIALS,
-                            "empty password"
-                        ).userMessage
-                    )
-                }
+            val command = SignInCommand(identifier, password)
+            AuthValidators.validateEmail(command.email).getOrElse {
+                showGenericLoginError()
                 return@launch
             }
             authRepository.login(command.email, command.password)
@@ -117,7 +138,7 @@ class LoginViewModel(
                         }
                     } else {
                         _uiState.update {
-                            it.copy(isLoading = false, errorMessage = appError.userMessage)
+                            it.copy(isLoading = false, errorMessage = GENERIC_LOGIN_ERROR)
                         }
                     }
                 }
@@ -130,6 +151,7 @@ class LoginViewModel(
         googleWaitJob?.cancel()
         googleLaunchAtElapsedMs = SystemClock.elapsedRealtime()
         googleHostPausedSinceLaunch = false
+        googleLaunchAuthUserId = authRepository.getCurrentUser()?.id
         GoogleAuthTrace.event("GOOGLE-TAP")
         _uiState.update {
             it.copy(
@@ -162,11 +184,21 @@ class LoginViewModel(
                 return@launch
             }
             _uiState.update { it.copy(googleLifecycle = GoogleAuthLifecycle.WAITING_EXTERNAL_AUTH) }
+            val previousId = googleLaunchAuthUserId
             val user = authRepository.observeAuthState().first { candidate ->
-                candidate != null && !GoogleOAuthPending.isPendingUserId(candidate.id)
+                isFreshGoogleUser(candidate, previousId)
             }
             if (user != null) completeGoogleSuccess(user)
         }
+    }
+
+    private fun isFreshGoogleUser(
+        candidate: com.comunidapp.app.data.model.User?,
+        previousId: String?
+    ): Boolean {
+        val id = candidate?.id ?: return false
+        if (GoogleOAuthPending.isPendingUserId(id)) return false
+        return previousId.isNullOrBlank() || id != previousId
     }
 
     private fun failGoogleLogin(error: Throwable) {
@@ -206,19 +238,9 @@ class LoginViewModel(
             delay(400)
             if (_uiState.value.googleLifecycle != GoogleAuthLifecycle.WAITING_EXTERNAL_AUTH) return@launch
             val user = authRepository.getCurrentUser()
-            if (user != null && !GoogleOAuthPending.isPendingUserId(user.id)) {
+            if (isFreshGoogleUser(user, googleLaunchAuthUserId)) {
                 googleWaitJob?.cancel()
-                completeGoogleSuccess(user)
-            } else {
-                googleWaitJob?.cancel()
-                GoogleAuthTrace.error("CANCELLED")
-                _uiState.update {
-                    it.copy(
-                        isGoogleLoading = false,
-                        errorMessage = null,
-                        googleLifecycle = GoogleAuthLifecycle.CANCELLED
-                    )
-                }
+                completeGoogleSuccess(user!!)
             }
         }
     }
@@ -243,6 +265,30 @@ class LoginViewModel(
 
     fun clearEmailVerificationRedirect() {
         _uiState.update { it.copy(needsEmailVerification = null) }
+    }
+
+    private suspend fun isAdministrativeIdentity(userId: String): Boolean {
+        if (com.comunidapp.app.data.repository.MockAdministrativeIdentityStore.sessionFor(userId) != null) {
+            return true
+        }
+        if (authRepository is com.comunidapp.app.data.repository.MockAuthRepository) {
+            return false
+        }
+        return runCatching {
+            com.comunidapp.app.data.provider.DataProvider.adminSessionRepository
+                .authState(userId)?.isAdminIdentity == true
+        }.getOrDefault(false)
+    }
+
+    private fun showGenericLoginError() {
+        AuthAnalytics.track("auth_error_shown")
+        _uiState.update {
+            it.copy(isLoading = false, errorMessage = GENERIC_LOGIN_ERROR)
+        }
+    }
+
+    companion object {
+        const val GENERIC_LOGIN_ERROR = "Usuario o contraseña incorrectos."
     }
 }
 
@@ -312,6 +358,7 @@ class RegisterViewModel(
     private var googleWaitJob: Job? = null
     private var googleLaunchAtElapsedMs: Long = 0L
     private var googleHostPausedSinceLaunch: Boolean = false
+    private var googleLaunchAuthUserId: String? = null
 
     private val usernameQuery = MutableStateFlow("")
     private var availabilityToken = 0L
@@ -628,6 +675,7 @@ class RegisterViewModel(
         googleWaitJob?.cancel()
         googleLaunchAtElapsedMs = SystemClock.elapsedRealtime()
         googleHostPausedSinceLaunch = false
+        googleLaunchAuthUserId = authRepository.getCurrentUser()?.id
         GoogleAuthTrace.event("GOOGLE-TAP")
         _uiState.update {
             it.copy(
@@ -660,11 +708,21 @@ class RegisterViewModel(
                 return@launch
             }
             _uiState.update { it.copy(googleLifecycle = GoogleAuthLifecycle.WAITING_EXTERNAL_AUTH) }
+            val previousId = googleLaunchAuthUserId
             val user = authRepository.observeAuthState().first { candidate ->
-                candidate != null && !GoogleOAuthPending.isPendingUserId(candidate.id)
+                isFreshGoogleUser(candidate, previousId)
             }
             if (user != null) completeGoogleSignupSuccess()
         }
+    }
+
+    private fun isFreshGoogleUser(
+        candidate: com.comunidapp.app.data.model.User?,
+        previousId: String?
+    ): Boolean {
+        val id = candidate?.id ?: return false
+        if (GoogleOAuthPending.isPendingUserId(id)) return false
+        return previousId.isNullOrBlank() || id != previousId
     }
 
     private fun failGoogleSignup(error: Throwable) {
@@ -710,19 +768,9 @@ class RegisterViewModel(
             delay(400)
             if (_uiState.value.googleLifecycle != GoogleAuthLifecycle.WAITING_EXTERNAL_AUTH) return@launch
             val user = authRepository.getCurrentUser()
-            if (user != null && !GoogleOAuthPending.isPendingUserId(user.id)) {
+            if (isFreshGoogleUser(user, googleLaunchAuthUserId)) {
                 googleWaitJob?.cancel()
                 completeGoogleSignupSuccess()
-            } else {
-                googleWaitJob?.cancel()
-                GoogleAuthTrace.error("CANCELLED")
-                _uiState.update {
-                    it.copy(
-                        isLoading = false,
-                        errorMessage = null,
-                        googleLifecycle = GoogleAuthLifecycle.CANCELLED
-                    )
-                }
             }
         }
     }

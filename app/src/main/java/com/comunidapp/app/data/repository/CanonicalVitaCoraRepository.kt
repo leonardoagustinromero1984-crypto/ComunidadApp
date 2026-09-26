@@ -31,6 +31,28 @@ class CanonicalVitaCoraRepository : VitaCoraRepository {
         ).decodeAs<String>()
     }
 
+    override suspend fun saveSocialMoment(
+        petId: String,
+        title: String,
+        body: String
+    ): Result<String> = runCatching {
+        supabase.postgrest.rpc(
+            function = CanonicalBackend.RPC_SAVE_SOCIAL_VITACORA_MOMENT,
+            parameters = buildJsonObject {
+                put("p_pet_id", petId)
+                put("p_title", title)
+                put("p_body", body)
+            }
+        ).decodeAs<String>()
+    }.recoverCatching { error ->
+        val signal = error.message.orEmpty()
+        if ("does not exist" in signal || "PGRST202" in signal) {
+            createMoment(petId, "SOCIAL", title, body).getOrThrow()
+        } else {
+            throw error
+        }
+    }
+
     override suspend fun grantAccess(
         petId: String,
         granteeKind: VitaCoraHolderKind,

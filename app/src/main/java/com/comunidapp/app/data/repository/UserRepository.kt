@@ -20,6 +20,12 @@ import kotlinx.coroutines.flow.update
 
 interface UserRepository {
     suspend fun getUser(userId: String): User?
+    /**
+     * Canonical PERSON by auth.uid. Null means no row (new user).
+     * Throws on transport/backend failure so session can show retry
+     * instead of treating a read error as "person missing".
+     */
+    suspend fun fetchPerson(userId: String): User? = getUser(userId)
     suspend fun createUser(user: User): Result<Unit>
     /** Legacy; prefer [updateMyProfile]. Mock enforces allowlist. */
     suspend fun updateUser(user: User): Result<Unit>

@@ -1,0 +1,51 @@
+---
+description: LeoVer Definition of Done — lightweight local regression required; Maestro/emulator never auto-start
+alwaysApply: true
+---
+
+# LeoVer regression Definition of Done
+
+A change is **not done** if related tests are missing, stale, or not run.
+
+Daily default is **lightweight**. Do **not** start LeoVer-QA or Maestro unless the user explicitly asks (`-Maestro`, `-SmokeE2E`, `-FullE2E`).
+
+## Before declaring done
+
+1. Name the behavior that changed.
+2. Find or add the cheapest tests that protect it (unit / contract / ViewModel / SQL-RPC / RLS).
+3. Run `.\scripts\qa\run-regression.ps1 -Affected` (defaults to Fast; no emulator).
+4. Report results. Never claim PASS from inspection only.
+
+## Layer
+
+| Change | Minimum tests | Maestro |
+| --- | --- | --- |
+| New feature | New tests + affected Fast suite | Only if user-visible Android path cannot be proven cheaper |
+| Modified behavior | Review/update existing tests | Same |
+| Bugfix | Failing cheap test first, then fix | Do **not** make every bug a Maestro flow |
+| Migration / RPC | Contract + security/RLS if ACL/data | No auto E2E |
+| UI behavior | Unit/contract/Compose-without-device | `MAESTRO_REQUIRED: YES` if E2E needed, **do not start it** |
+| Visual only | `UiRegressionGateTest` / screenshot note | MANUAL if hardware |
+
+## Report every implementation
+
+```
+TEST IMPACT: ...
+FAST/AFFECTED TESTS: PASS | FAIL | NOT RUN
+MAESTRO REQUIRED: YES | NO
+MAESTRO RUN: NOT RUN | PASS | FAIL
+FULL REGRESSION: NOT RUN
+```
+
+If tests were not executed, write **NOT RUN**. Never write "implemented" without this block.
+
+## Catalog
+
+Map rules in `docs/qa/regression-catalog.yaml`. Use `docs/qa/change-impact-map.yaml` to pick suites. Gate: `scripts/qa/check-regression-coverage.ps1`.
+
+## Forbidden as daily default
+
+- Auto-start emulator or Maestro
+- Full E2E on every change
+- Personal phone as QA target
+- Declaring FULL PASS when security tests failed

@@ -2,8 +2,11 @@ package com.comunidapp.app.viewmodel
 
 import com.comunidapp.app.data.mock.MockAuthDatabase
 import com.comunidapp.app.data.mock.MockData
+import com.comunidapp.app.data.model.User
+import com.comunidapp.app.data.repository.MockAdministrativeIdentityStore
 import com.comunidapp.app.data.repository.MockAuthRepository
 import com.comunidapp.app.data.repository.MockUserRepository
+import com.comunidapp.app.domain.authorization.AdminSessionInfo
 import com.comunidapp.app.domain.auth.EmailMasking
 import com.comunidapp.app.domain.auth.LegalDocumentConfig
 import kotlinx.coroutines.Dispatchers
@@ -42,6 +45,7 @@ class AuthViewModelsTest {
     fun tearDown() {
         Dispatchers.resetMain()
         MockAuthDatabase.resetToFixtures()
+        MockAdministrativeIdentityStore.reset()
     }
 
     private fun kotlinx.coroutines.test.TestScope.fillValidForm(
@@ -173,6 +177,86 @@ class AuthViewModelsTest {
         advanceUntilIdle()
         assertTrue(vm.uiState.value.isLoggedIn)
         assertNull(vm.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun login_person_username_sets_logged_in() = runTest(dispatcher) {
+        val vm = LoginViewModel(repo)
+        vm.onEmailChange("maria.demo")
+        vm.onPasswordChange(MockAuthDatabase.DEMO_PASSWORD)
+        vm.login()
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.isLoggedIn)
+        assertNull(vm.uiState.value.errorMessage)
+        assertEquals(MockData.currentUser.id, repo.getCurrentUser()?.id)
+    }
+
+    @Test
+    fun login_username_uses_backend_identity_without_person_flag() = runTest(dispatcher) {
+        MockAdministrativeIdentityStore.seed(
+            MockAdministrativeIdentityStore.Entry(
+                username = "qa.admin",
+                password = "test-admin-pass",
+                user = User(
+                    id = "admin-tech-1",
+                    name = "",
+                    email = "hidden-internal@invalid",
+                    emailVerified = true
+                ),
+                session = AdminSessionInfo(
+                    userId = "admin-tech-1",
+                    mustChangePassword = false,
+                    isRoot = true
+                )
+            )
+        )
+        val vm = LoginViewModel(repo)
+        vm.onEmailChange("qa.admin")
+        vm.onPasswordChange("test-admin-pass")
+        vm.login()
+        advanceUntilIdle()
+        assertNull(vm.uiState.value.errorMessage)
+        assertFalse(vm.uiState.value.isLoggedIn)
+        assertEquals("admin-tech-1", repo.getCurrentUser()?.id)
+    }
+
+    @Test
+    fun login_username_wrong_password_is_generic() = runTest(dispatcher) {
+        MockAdministrativeIdentityStore.seed(
+            MockAdministrativeIdentityStore.Entry(
+                username = "qa.admin",
+                password = "test-admin-pass",
+                user = User(
+                    id = "admin-tech-1",
+                    name = "",
+                    email = "hidden-internal@invalid",
+                    emailVerified = true
+                ),
+                session = AdminSessionInfo(
+                    userId = "admin-tech-1",
+                    mustChangePassword = false,
+                    isRoot = true
+                )
+            )
+        )
+        val vm = LoginViewModel(repo)
+        vm.onEmailChange("qa.admin")
+        vm.onPasswordChange("wrong")
+        vm.login()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.isLoggedIn)
+        assertEquals(LoginViewModel.GENERIC_LOGIN_ERROR, vm.uiState.value.errorMessage)
+    }
+
+    @Test
+    fun login_unknown_username_is_generic() = runTest(dispatcher) {
+        val vm = LoginViewModel(repo)
+        vm.onEmailChange("nobody")
+        vm.onPasswordChange("whatever1")
+        vm.login()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.isLoggedIn)
+        assertEquals(LoginViewModel.GENERIC_LOGIN_ERROR, vm.uiState.value.errorMessage)
     }
 
     @Test

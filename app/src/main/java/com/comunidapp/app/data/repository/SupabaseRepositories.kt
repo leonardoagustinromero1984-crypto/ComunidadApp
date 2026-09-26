@@ -41,6 +41,8 @@ class SupabaseUserRepository(
 
     override suspend fun getUser(userId: String) = dataSource.getUser(userId)
 
+    override suspend fun fetchPerson(userId: String) = dataSource.fetchPersonOrThrow(userId)
+
     override suspend fun createUser(user: com.comunidapp.app.data.model.User) = dataSource.createUser(user)
 
     override suspend fun updateUser(user: com.comunidapp.app.data.model.User) = dataSource.updateUser(user)
@@ -147,10 +149,22 @@ class SupabaseFeedRepository(
     override suspend fun refreshStories(): Result<Unit> = Result.success(Unit)
 
     override suspend fun addStory(post: FeedPost, mediaAssetId: String): Result<String> =
-        addFeedPost(post.copy(imageUrl = mediaAssetId))
+        addFeedPost(
+            post.copy(
+                mediaAssetId = mediaAssetId,
+                imageUrl = mediaAssetId,
+                mediaAvailability = com.comunidapp.app.data.model.FeedMediaAvailability.AVAILABLE
+            )
+        )
 
     override suspend fun addReel(post: FeedPost, mediaAssetId: String): Result<String> =
-        addFeedPost(post.copy(imageUrl = mediaAssetId))
+        addFeedPost(
+            post.copy(
+                mediaAssetId = mediaAssetId,
+                imageUrl = mediaAssetId,
+                mediaAvailability = com.comunidapp.app.data.model.FeedMediaAvailability.AVAILABLE
+            )
+        )
 
     override suspend fun addFeedPost(post: FeedPost) = dataSource.addPost(post)
 

@@ -11,6 +11,7 @@ import com.comunidapp.app.data.remote.supabase.PetReminderDto
 import com.comunidapp.app.data.remote.supabase.VaccinationRecordDto
 import com.comunidapp.app.domain.organization.OrganizationId
 import com.comunidapp.app.domain.pets.MicrochipNormalizer
+import com.comunidapp.app.domain.pets.resolvedSpeciesCode
 import com.comunidapp.app.domain.pets.PetAggregate
 import com.comunidapp.app.domain.pets.PetAuthorization
 import com.comunidapp.app.domain.pets.PetAuthorizationId
@@ -38,6 +39,9 @@ object PetM08Mappers {
         name = name,
         photoUrl = photoUrl,
         species = enumValueOrDefault(species, PetSpecies.OTHER),
+        speciesCode = species.takeIf { it.isNotBlank() },
+        speciesName = speciesName,
+        secondaryLabelSingular = secondaryLabelSingular,
         sex = parsePetSex(sex),
         ageYears = ageYears,
         ageMonths = ageMonths,
@@ -67,6 +71,7 @@ object PetM08Mappers {
         conditions = conditions,
         color = color,
         breed = breed,
+        breedId = breedId,
         personality = personality,
         locationText = locationText,
         reminders = (reminders ?: emptyList()).mapNotNull { dto ->
@@ -89,10 +94,51 @@ object PetM08Mappers {
         microchipNormalized = microchipNormalized
             ?: MicrochipNormalizer.normalizeOrNull(microchipId),
         publicCode = publicCode,
-        publicVitacoraNumber = publicVitacoraNumber
+        publicVitacoraNumber = publicVitacoraNumber,
+        createdByUserId = createdByUserId ?: ownerId,
+        healthReadFailed = healthReadFailed,
+        managementContextKind = managementContextKind,
+        managementContextId = managementContextId,
+        originKind = originKind
     )
 
     fun AccessiblePetM08Row.toPet(): Pet = toPetM08Row().toPet()
+
+    fun ProfilePetRow.toProfilePet(): Pet {
+        val birth = com.comunidapp.app.domain.pets.PetBirth(
+            precision = runCatching {
+                com.comunidapp.app.domain.pets.PetBirthPrecision.valueOf(birthPrecision)
+            }.getOrDefault(com.comunidapp.app.domain.pets.PetBirthPrecision.UNKNOWN),
+            birthDate = birthDate?.let { runCatching { java.time.LocalDate.parse(it) }.getOrNull() },
+            birthYear = birthYear,
+            birthMonth = birthMonth,
+            estimatedAgeMonths = estimatedAgeMonths,
+            estimatedAsOf = estimatedAsOf?.let {
+                runCatching { java.time.LocalDate.parse(it) }.getOrNull()
+            }
+        )
+        val age = birth.approximateYearsMonths()
+        return Pet(
+            id = id,
+            name = name,
+            species = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toPetSpecies(speciesCode),
+            speciesCode = speciesCode.takeIf { it.isNotBlank() },
+            sex = parsePetSex(sex),
+            ageYears = age?.first ?: 0,
+            ageMonths = age?.second ?: 0,
+            size = PetSize.MEDIUM,
+            description = "",
+            photoUrl = avatarAssetId,
+            avatarFileAssetId = avatarAssetId,
+            publicCode = publicCode,
+            birthPrecision = birth.precision.name,
+            birthDate = birth.birthDate?.toString(),
+            birthYear = birth.birthYear,
+            birthMonth = birth.birthMonth,
+            estimatedAgeMonths = birth.estimatedAgeMonths,
+            estimatedAsOf = birth.estimatedAsOf?.toString()
+        )
+    }
 
     fun AccessiblePetM08Row.toPetAndContext(): Pair<Pet, PetAccessContext> {
         val pet = toPet()
@@ -117,6 +163,7 @@ object PetM08Mappers {
         relationCode = relationCode,
         principalPersonId = principalPersonId,
         principalOrganizationId = principalOrganizationId,
+        principalDisplayName = principalDisplayName,
         capabilities = capabilities,
         canRead = canRead,
         canUpdate = canUpdate,
@@ -136,8 +183,9 @@ object PetM08Mappers {
     fun Pet.toUpdateProfileParams(): UpdatePetProfileParams = UpdatePetProfileParams(
         petId = id,
         name = name.trim(),
-        species = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toRpcCode(species.name),
+        species = resolvedSpeciesCode(),
         breed = breed,
+        breedId = breedId,
         sex = sex.name,
         size = size.name,
         description = description,
@@ -185,7 +233,7 @@ object PetM08Mappers {
         }
         return CreatePetWithPrincipalParams(
             name = name.trim(),
-            species = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toRpcCode(species.name),
+            species = resolvedSpeciesCode(),
             sex = sex.name,
             size = size.name,
             description = description,
@@ -276,7 +324,8 @@ object PetM08Mappers {
             revokedAtEpochMs = revokedAt.toEpochMillis(),
             revokeReason = reason,
             createdAtEpochMs = createdAt.toEpochMillis() ?: 0L,
-            holderDisplayName = displayName
+            holderDisplayName = displayName,
+            careRole = careRole
         )
     }
 
@@ -344,6 +393,7 @@ object PetM08Mappers {
         weightKg = weightKg,
         color = color,
         breed = breed,
+        breedId = breedId,
         personality = personality,
         locationText = locationText,
         reminders = reminders,
@@ -355,7 +405,11 @@ object PetM08Mappers {
         microchipNormalized = microchipNormalized,
         avatarFileAssetId = avatarFileAssetId,
         publicCode = publicCode,
-        publicVitacoraNumber = publicVitacoraNumber
+        publicVitacoraNumber = publicVitacoraNumber,
+        createdByUserId = createdByUserId,
+        managementContextKind = managementContextKind,
+        managementContextId = managementContextId,
+        originKind = originKind
     )
 
     private fun PetM08Row.principalPersonHint(): String? = ownerId

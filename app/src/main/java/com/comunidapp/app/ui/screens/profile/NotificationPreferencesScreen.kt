@@ -14,15 +14,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -43,6 +38,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.notifications.NotificationCategory
 import com.comunidapp.app.notifications.NotificationPermissionCoordinator
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.VisualDirectionPilot
 import com.comunidapp.app.ui.theme.leoVisual
@@ -105,12 +103,11 @@ fun NotificationPreferencesScreen(
                         color = MaterialTheme.colorScheme.error
                     )
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
+                    LeoOutlinedButton(
+                        text = "Reintentar",
                         onClick = viewModel::retry,
                         modifier = Modifier.semantics { contentDescription = "Reintentar cargar preferencias" }
-                    ) {
-                        Text("Reintentar")
-                    }
+                    )
                     Spacer(modifier = Modifier.height(16.dp))
                 }
                 else -> Unit
@@ -160,21 +157,12 @@ fun NotificationPreferencesScreen(
             EmailComingSoonSection()
 
             Spacer(modifier = Modifier.height(20.dp))
-            Button(
+            LeoPrimaryButton(
+                text = if (uiState.status == PreferenceUiStatus.SAVING) "Guardando…" else "Guardar",
                 onClick = viewModel::save,
                 enabled = uiState.status != PreferenceUiStatus.SAVING,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .semantics { contentDescription = "Guardar preferencias de notificaciones" }
-            ) {
-                if (uiState.status == PreferenceUiStatus.SAVING) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Guardando…")
-                } else {
-                    Text("Guardar")
-                }
-            }
+                modifier = Modifier.semantics { contentDescription = "Guardar preferencias de notificaciones" }
+            )
             if (uiState.status == PreferenceUiStatus.SUCCESS) {
                 uiState.message?.let {
                     Spacer(modifier = Modifier.height(8.dp))
@@ -216,20 +204,22 @@ private fun PushPermissionSection(
             "¿Querés recibir avisos push de LeoVer en este dispositivo?",
             style = MaterialTheme.typography.bodyMedium
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LeoPrimaryButton(
+                text = "Permitir",
                 onClick = onRequest,
                 modifier = Modifier.semantics { contentDescription = "Confirmar permiso de notificaciones" }
-            ) { Text("Permitir") }
+            )
             TextButton(onClick = onDismiss) { Text("Ahora no") }
         }
     } else {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LeoOutlinedButton(
+                text = "Activar push",
                 onClick = onShowRationale,
                 enabled = canRequest,
                 modifier = Modifier.semantics { contentDescription = "Activar notificaciones push" }
-            ) { Text("Activar push") }
+            )
             TextButton(
                 onClick = onOpenSettings,
                 modifier = Modifier.semantics { contentDescription = "Abrir ajustes de notificaciones" }
@@ -341,10 +331,10 @@ private fun QuietHoursSection(
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             DayOfWeek.entries.forEach { day ->
-                FilterChip(
+                LeoFilterChip(
+                    label = day.shortLabel(),
                     selected = day in uiState.quietDays,
                     onClick = { viewModel.toggleQuietDay(day) },
-                    label = { Text(day.shortLabel()) },
                     modifier = Modifier.semantics {
                         contentDescription = "Horario silencioso: ${day.displayLabel()}"
                     }
@@ -392,13 +382,12 @@ private fun EmailComingSoonSection() {
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )
-    OutlinedButton(
+    LeoOutlinedButton(
+        text = "Email no disponible",
         onClick = {},
         enabled = false,
         modifier = Modifier.semantics { contentDescription = "Notificaciones por email, próximamente" }
-    ) {
-        Text("Email no disponible")
-    }
+    )
 }
 
 private fun DayOfWeek.shortLabel(): String = when (this) {

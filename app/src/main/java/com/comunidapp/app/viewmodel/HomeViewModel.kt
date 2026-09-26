@@ -28,6 +28,8 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -44,6 +46,8 @@ class HomeViewModel(
     val isRefreshing: StateFlow<Boolean> = _isRefreshing.asStateFlow()
 
     private val _visibleCount = MutableStateFlow(20)
+    private val _serverHasMore = MutableStateFlow(false)
+    private var loadingMore = false
     private val _commentsPostId = MutableStateFlow<String?>(null)
     val commentsPostId: StateFlow<String?> = _commentsPostId.asStateFlow()
 
@@ -67,12 +71,13 @@ class HomeViewModel(
         authRepository.observeAuthState(),
         blockedUserIds
     ) { posts, users, connections, currentUser, blocked ->
-        val usersById = users.associateBy { it.id }
-        val friendIds = currentUser?.let {
-            ProfilePrivacy.friendIdsFor(it.id, connections)
-        }.orEmpty()
-        ProfilePrivacy.filterVisiblePosts(posts, usersById, currentUser?.id, friendIds)
-            .filter { it.authorId !in blocked }
+        val authorProfilePublicById = users.associate { it.id to ProfilePrivacy.isPublicProfile(it) }
+        ProfilePrivacy.filterVisiblePosts(
+            posts,
+            currentUser?.id,
+            connections,
+            authorProfilePublicById
+        ).filter { it.authorId !in blocked }
     }
 
     val posts: StateFlow<List<FeedPost>> = combine(
@@ -145,31 +150,62 @@ class HomeViewModel(
     /** Mascotas activas del usuario — solo para carrusel de Inicio (fuente real). */
     val myPets: StateFlow<List<com.comunidapp.app.data.model.Pet>> = combine(
         petRepository.observePets(),
-        authRepository.observeAuthState()
-    ) { pets, user ->
+        authRepository.observeAuthState(),
+        com.comunidapp.app.domain.context.OperationalContextProvider.active
+    ) { pets, user, context ->
         val uid = user?.id ?: return@combine emptyList()
-        pets.filter {
-            it.ownerId == uid && it.status.equals("ACTIVE", ignoreCase = true)
-        }.sortedBy { it.name.lowercase() }
+        com.comunidapp.app.domain.pets.PetManagementContext.filter(pets, context, uid)
+            .filter { it.status.equals("ACTIVE", ignoreCase = true) }
+            .sortedBy { it.name.lowercase() }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     val hasMore: StateFlow<Boolean> = combine(
         visibleFeedPosts.map { it.size },
-        _visibleCount
-    ) { total, visible -> visible < total }
+        _visibleCount,
+        _serverHasMore
+    ) { total, visible, server -> visible < total || server }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
 
     fun refresh() {
         viewModelScope.launch {
             _isRefreshing.value = true
-            feedRepository.refreshPosts()
-            feedRepository.refreshStories()
-            _isRefreshing.value = false
+            val probe = com.comunidapp.app.domain.perf.ScreenPerfProbe.begin("home")
+            try {
+                probe.network {
+                    coroutineScope {
+                        val postsJob = async { feedRepository.refreshPosts() }
+                        val storiesJob = async { feedRepository.refreshStories() }
+                        postsJob.await()
+                        storiesJob.await()
+                    }
+                }
+                _visibleCount.value = 20
+                _serverHasMore.value = feedRepository.hasMorePosts()
+                probe.markFirstContent()
+            } finally {
+                _isRefreshing.value = false
+                probe.finish(com.comunidapp.app.domain.perf.ScreenPerfProbe.Ledger.snapshot())
+            }
         }
     }
 
     fun loadMore() {
-        _visibleCount.update { it + 20 }
+        if (loadingMore) return
+        viewModelScope.launch {
+            loadingMore = true
+            try {
+                val loaded = feedRepository.observeFeedPosts().value.size
+                if (_visibleCount.value < loaded) {
+                    _visibleCount.update { it + 20 }
+                } else if (feedRepository.hasMorePosts()) {
+                    feedRepository.loadMorePosts()
+                    _visibleCount.update { it + 20 }
+                }
+                _serverHasMore.value = feedRepository.hasMorePosts()
+            } finally {
+                loadingMore = false
+            }
+        }
     }
 
     fun toggleLike(postId: String) {
@@ -254,5 +290,9 @@ class HomeViewModel(
         if (otherLocation.isNullOrBlank()) return false
         return otherLocation.contains(myLocation, ignoreCase = true) ||
             myLocation.contains(otherLocation, ignoreCase = true)
+    }
+
+    init {
+        refresh()
     }
 }

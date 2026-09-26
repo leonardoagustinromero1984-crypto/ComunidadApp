@@ -15,8 +15,6 @@ import androidx.compose.material.icons.filled.Email
 import androidx.compose.material.icons.filled.Lock
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,13 +36,20 @@ import com.comunidapp.app.domain.auth.AuthLinkNoticeStore
 import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
 import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.PasswordTextField
-import com.comunidapp.app.ui.components.v2.V2SurfaceCard
 import com.comunidapp.app.ui.components.v2.v2KeepVisibleOnFocus
 import com.comunidapp.app.ui.theme.BrandOrange
+import com.comunidapp.app.ui.theme.BrandGreen
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoBody
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.LeoSectionTitle
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.ui.theme.VisualDirectionPilot
 import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.viewmodel.EmailVerificationViewModel
@@ -79,16 +84,16 @@ fun ForgotPasswordScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 32.dp, vertical = 24.dp),
+                .padding(horizontal = LeoDimens.SpaceXl, vertical = LeoDimens.SpaceXl),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Default.Lock,
                 contentDescription = null,
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(28.dp),
                 tint = BrandOrange
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceMd))
             Text(
                 text = if (!uiState.emailSent) {
                     "Ingresá tu email y te enviaremos instrucciones para restablecer tu contraseña."
@@ -97,20 +102,19 @@ fun ForgotPasswordScreen(
                 } else {
                     "Ingresá el código que recibiste con tu nueva contraseña."
                 },
-                style = MaterialTheme.typography.bodyMedium,
+                style = LeoBody,
                 color = BrandTextSecondary,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceXl))
 
-            OutlinedTextField(
+            LeoTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
-                label = { Text("Email") },
+                label = "Email",
                 modifier = Modifier
                     .fillMaxWidth()
                     .v2KeepVisibleOnFocus(),
-                singleLine = true,
                 enabled = !uiState.emailSent || !isRemoteBackend,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email)
             )
@@ -134,21 +138,20 @@ fun ForgotPasswordScreen(
                 LeoPrimaryButton(text = "Volver al login", onClick = onNavigateBack)
             } else {
                 uiState.mockToken?.let { token ->
-                    Spacer(modifier = Modifier.height(12.dp))
-                    V2SurfaceCard {
-                        Text(text = "Código demo:", style = MaterialTheme.typography.labelMedium, color = BrandText)
-                        Text(text = token, style = MaterialTheme.typography.titleLarge, color = BrandText)
+                    Spacer(modifier = Modifier.height(LeoDimens.SpaceCompact))
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        Text(text = "Código demo:", style = LeoCaption, color = BrandText)
+                        Text(text = token, style = LeoCardTitle, color = BrandText)
                     }
                 }
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
+                Spacer(modifier = Modifier.height(LeoDimens.SpaceMd))
+                LeoTextField(
                     value = uiState.token,
                     onValueChange = viewModel::onTokenChange,
-                    label = { Text("Código") },
+                    label = "Código",
                     modifier = Modifier
                         .fillMaxWidth()
-                        .v2KeepVisibleOnFocus(),
-                    singleLine = true
+                        .v2KeepVisibleOnFocus()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 PasswordTextField(
@@ -176,7 +179,7 @@ fun ForgotPasswordScreen(
 
             uiState.errorMessage?.let { error ->
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(text = error, color = MaterialTheme.colorScheme.error)
+                Text(text = error, color = UrgentRed, style = LeoCaption)
             }
         }
     }
@@ -233,27 +236,27 @@ fun EmailVerificationScreen(
                 .fillMaxSize()
                 .padding(padding)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 32.dp, vertical = 24.dp),
+                .padding(horizontal = LeoDimens.SpaceXl, vertical = LeoDimens.SpaceXl),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Icon(
                 imageVector = Icons.Default.Email,
                 contentDescription = null,
-                modifier = Modifier.size(72.dp),
+                modifier = Modifier.size(28.dp),
                 tint = BrandOrange
             )
-            Spacer(modifier = Modifier.height(24.dp))
-            Text(text = "Verificá tu correo", style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceXl))
+            Text(text = "Verificá tu correo", style = LeoSectionTitle, color = BrandText)
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceS))
             Text(
                 text = "Te enviamos un código de verificación a $email. Ingresalo para confirmar tu cuenta.",
-                style = MaterialTheme.typography.bodyMedium,
+                style = LeoBody,
                 color = BrandTextSecondary,
                 textAlign = TextAlign.Center
             )
-            Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceXl))
 
-            OutlinedTextField(
+            LeoTextField(
                 value = otpCode,
                 onValueChange = { value ->
                     val sanitized = EmailOtpValidators.sanitizeInput(value)
@@ -263,15 +266,12 @@ fun EmailVerificationScreen(
                     }
                     otpCode = sanitized
                 },
-                label = { Text("Código de verificación") },
+                label = "Código de verificación",
                 modifier = Modifier
                     .fillMaxWidth()
                     .v2KeepVisibleOnFocus(),
-                singleLine = true,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.NumberPassword),
-                supportingText = {
-                    Text("Solo números")
-                }
+                supportingText = "Solo números"
             )
             Spacer(modifier = Modifier.height(16.dp))
 
@@ -308,11 +308,11 @@ fun EmailVerificationScreen(
 
             uiState.successMessage?.let { msg ->
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(text = msg, color = BrandOrange)
+                Text(text = msg, color = BrandGreen, style = LeoCaption)
             }
             visibleError?.let { error ->
                 Spacer(modifier = Modifier.height(12.dp))
-                Text(text = error, color = MaterialTheme.colorScheme.error)
+                Text(text = error, color = UrgentRed, style = LeoCaption)
             }
         }
     }

@@ -18,6 +18,7 @@ import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.ProfilePrivacy
 import com.comunidapp.app.domain.social.FriendshipErrorMapper
+import com.comunidapp.app.domain.social.SocialFeedVisibilityRules
 import com.comunidapp.app.domain.user.toBridgeUser
 import com.comunidapp.app.notifications.NotificationDispatcher
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,9 +60,13 @@ class UserPublicProfileViewModel(
 
     private val _actionMessage = MutableStateFlow<String?>(null)
     private val _actionInProgress = MutableStateFlow(false)
+    private val _connectionPets = MutableStateFlow<List<Pet>>(emptyList())
+    private var lastConnectionPetUserId: String? = null
 
     val uiState: StateFlow<PublicProfileUiState> =
-        authRepository.observeAuthState().flatMapLatest { currentUser ->
+        authRepository.observeAuthState().flatMapLatest { authUser ->
+            val currentUser = com.comunidapp.app.domain.user.SessionResolvedPerson.current()
+                ?: authUser
             if (userId.isBlank()) {
                 flowOf(PublicProfileUiState(isLoading = false, errorMessage = "Perfil no válido"))
             } else {
@@ -79,32 +84,38 @@ class UserPublicProfileViewModel(
                             emit(null)
                             return@flow
                         }
-                        while (true) {
-                            val public = userRepository.getPublicProfile(viewerId, userId).getOrNull()
-                            emit(public?.toBridgeUser())
-                            kotlinx.coroutines.delay(4_000)
+                        val probe = com.comunidapp.app.domain.perf.ScreenPerfProbe.begin("connection_detail")
+                        val public = probe.network {
+                            userRepository.getPublicProfile(viewerId, userId).getOrNull()
                         }
+                        emit(public?.toBridgeUser())
+                        probe.markFirstContent()
+                        probe.finish(com.comunidapp.app.domain.perf.ScreenPerfProbe.Ledger.snapshot())
                     }.catch { emit(null) },
-                    // LeoVer M08 privacy: never list all pets; own profile uses accessible list.
                     if (currentUser?.id == userId) {
                         petRepository.observePetsForOwner(userId)
                     } else {
                         flowOf(emptyList())
                     },
                     feedRepository.observeFeedPosts(),
-                    combine(_actionMessage, _actionInProgress) { message, inProgress ->
-                        message to inProgress
-                    }
-                ) { connections, user, pets, posts, actionState ->
-                    val (actionMessage, actionInProgress) = actionState
+                    _connectionPets
+                ) { connections, user, pets, posts, connectionPets ->
                     buildUiState(
                         viewerId = currentUser?.id,
                         user = user,
                         connections = connections,
                         pets = pets,
                         posts = posts,
-                        actionMessage = actionMessage,
-                        actionInProgress = actionInProgress
+                        connectionPets = connectionPets,
+                        actionMessage = _actionMessage.value,
+                        actionInProgress = _actionInProgress.value
+                    )
+                }.combine(combine(_actionMessage, _actionInProgress) { message, inProgress ->
+                    message to inProgress
+                }) { state, action ->
+                    state.copy(
+                        actionMessage = action.first,
+                        actionInProgress = action.second
                     )
                 }
             }
@@ -127,6 +138,7 @@ class UserPublicProfileViewModel(
         connections: List<FriendConnection>,
         pets: List<Pet>,
         posts: List<FeedPost>,
+        connectionPets: List<Pet>,
         actionMessage: String?,
         actionInProgress: Boolean
     ): PublicProfileUiState {
@@ -144,19 +156,42 @@ class UserPublicProfileViewModel(
             (conn.requesterId == viewerId && conn.addresseeId == userId) ||
                 (conn.requesterId == userId && conn.addresseeId == viewerId)
         }
-        val canView = ProfilePrivacy.canViewFullProfile(relation)
+        val wallPosts = SocialFeedVisibilityRules.filterAuthorWallPosts(
+            posts = posts,
+            authorId = userId,
+            viewerId = viewerId,
+            connections = connections,
+            authorProfilePublic = ProfilePrivacy.isPublicProfile(user)
+        )
+        ensureConnectionPetsLoaded(viewerId)
+
+        val visiblePets = when {
+            viewerId == userId -> pets
+            viewerId != null -> connectionPets
+            else -> emptyList()
+        }
 
         return PublicProfileUiState(
             isLoading = false,
             user = user,
-            // Foreign pets stay hidden (no public profile pets RPC). Own profile already scoped.
-            pets = if (canView && viewerId == userId) pets else emptyList(),
-            posts = if (canView) posts.filter { it.authorId == userId } else emptyList(),
+            pets = visiblePets,
+            posts = wallPosts,
             relation = relation,
             connectionId = connection?.id,
             actionInProgress = actionInProgress,
             actionMessage = actionMessage
         )
+    }
+
+    private fun ensureConnectionPetsLoaded(viewerId: String?) {
+        if (viewerId == null || viewerId == userId) return
+        if (lastConnectionPetUserId == userId) return
+        lastConnectionPetUserId = userId
+        viewModelScope.launch {
+            petRepository.listPetsForPersonProfile(userId)
+                .onSuccess { _connectionPets.value = it }
+                .onFailure { _connectionPets.value = emptyList() }
+        }
     }
 
     fun sendFriendRequest() {

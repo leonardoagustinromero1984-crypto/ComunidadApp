@@ -31,6 +31,20 @@ class EmailNotVerifiedException(email: String) :
  */
 interface AuthRepository {
     suspend fun login(email: String, password: String): Result<User>
+    suspend fun loginAdministrative(username: String, password: String): Result<User> =
+        Result.failure(
+            AuthErrorMapper.toException(
+                AuthErrorCode.INVALID_CREDENTIALS,
+                "Usuario o contraseña incorrectos."
+            )
+        )
+
+    /**
+     * Unified username field: PERSON [persons.username] first, then staff.
+     * Default keeps staff-only so callers that only implement admin stay safe.
+     */
+    suspend fun loginWithUsername(username: String, password: String): Result<User> =
+        loginAdministrative(username, password)
     suspend fun register(
         name: String,
         email: String,
@@ -149,8 +163,20 @@ class MockAuthRepository : AuthRepository {
         MockAuthDatabase.resetToFixtures()
         googleSignInOverride = null
         mockLinkedMethods = emptyList()
+        MockAdministrativeIdentityStore.reset()
         // Fixture demo ya verificada: consentimiento vigente alineado a LegalDocumentConfig.
         consentsByEmail[AuthValidators.normalizeEmail(MockData.currentUser.email)] =
+            ConsentMetadata.forRegistration()
+    }
+
+    /** Solo tests: emite sesión OAuth (p. ej. JWT stub) sin pasar por login email. */
+    fun emitSessionForTests(user: User?) {
+        setLoggedInUser(user)
+    }
+
+    /** Solo tests: consentimiento vigente para un email distinto al fixture. */
+    fun grantConsentForTests(email: String) {
+        consentsByEmail[AuthValidators.normalizeEmail(email)] =
             ConsentMetadata.forRegistration()
     }
 
@@ -225,6 +251,40 @@ class MockAuthRepository : AuthRepository {
                 Result.success(user)
             }
         }
+    }
+
+    override suspend fun loginAdministrative(username: String, password: String): Result<User> {
+        delay(40)
+        val entry = MockAdministrativeIdentityStore.find(username, password)
+            ?: return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.INVALID_CREDENTIALS,
+                    "Usuario o contraseña incorrectos."
+                )
+            )
+        setLoggedInUser(entry.user)
+        return Result.success(entry.user)
+    }
+
+    override suspend fun loginWithUsername(username: String, password: String): Result<User> {
+        delay(40)
+        val normalized = UsernameValidators.normalize(username)
+        val person = MockUserStore.allUsers().firstOrNull {
+            it.username.equals(normalized, ignoreCase = true)
+        }
+        if (person != null) {
+            val email = person.email.trim()
+            if (email.isEmpty()) {
+                return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.INVALID_CREDENTIALS,
+                        "Usuario o contraseña incorrectos."
+                    )
+                )
+            }
+            return login(email, password)
+        }
+        return loginAdministrative(username, password)
     }
 
     override suspend fun register(

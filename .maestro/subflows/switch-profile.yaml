@@ -1,0 +1,9 @@
+appId: ${APP_ID}
+---
+- tapOn: "Perfil"
+- tapOn: "Usar LeoVer como"
+- tapOn: ${CONTEXT_LABEL}
+- extendedWaitUntil:
+    visible: "Inicio"
+    timeout: 15000
+- assertNotVisible: "Usar LeoVer como"

@@ -16,4 +16,9 @@ object ResumableUploadPolicy {
     const val PROTOCOL = "TUS"
 
     fun shouldUseTus(sizeBytes: Long): Boolean = sizeBytes > STANDARD_THRESHOLD_BYTES
+
+    fun shouldUseTus(sizeBytes: Long, mimeType: String?): Boolean {
+        if (mimeType?.lowercase()?.startsWith("video/") == true) return true
+        return shouldUseTus(sizeBytes)
+    }
 }

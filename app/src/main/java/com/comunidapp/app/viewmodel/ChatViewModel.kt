@@ -109,6 +109,19 @@ class ChatThreadViewModel(
 
     private val _sendState = MutableStateFlow<SendMessageState>(SendMessageState.Idle)
     val sendState: StateFlow<SendMessageState> = _sendState.asStateFlow()
+    private var loadingOlder = false
+
+    fun loadOlder() {
+        if (conversationId.isBlank() || loadingOlder) return
+        viewModelScope.launch {
+            loadingOlder = true
+            try {
+                chatRepository.loadOlderMessages(conversationId)
+            } finally {
+                loadingOlder = false
+            }
+        }
+    }
 
     fun sendMessage(content: String) {
         val sender = AuthProvider.repository.getCurrentUser() ?: return

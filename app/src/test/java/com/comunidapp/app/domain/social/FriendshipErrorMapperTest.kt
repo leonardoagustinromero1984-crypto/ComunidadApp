@@ -38,6 +38,16 @@ class FriendshipErrorMapperTest {
     }
 
     @Test
+    fun remove_usesFriendlyCopy() {
+        val message = FriendshipErrorMapper.userMessage(
+            RuntimeException("FRIENDSHIP_NOT_FOUND"),
+            FriendshipErrorMapper.Operation.REMOVE
+        )
+        assertEquals("No pudimos eliminar la conexión. Intentá nuevamente.", message)
+        assertFalse(message.contains("FRIENDSHIP_NOT_FOUND"))
+    }
+
+    @Test
     fun domainIllegalArgument_passesThrough() {
         val message = FriendshipErrorMapper.userMessage(
             IllegalArgumentException("Ya hay una solicitud pendiente"),

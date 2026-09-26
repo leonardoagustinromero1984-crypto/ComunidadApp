@@ -1,6 +1,13 @@
 package com.comunidapp.app.data.model
 
+import com.comunidapp.app.domain.social.CanonicalSocialPostVisibility
 import com.comunidapp.app.domain.social.StoryExpiration
+
+enum class FeedMediaAvailability {
+    NONE,
+    AVAILABLE,
+    UNAVAILABLE
+}
 
 data class FeedPost(
     val id: String,
@@ -10,7 +17,16 @@ data class FeedPost(
     val type: PostType,
     val title: String,
     val content: String,
+    /** Canonical media_assets.id. Kept independently from its expiring display URL. */
+    val mediaAssetId: String? = null,
     val imageUrl: String? = null,
+    val imageUrls: List<String> = emptyList(),
+    /** Explicitly distinguishes text-only content from media that could not be displayed. */
+    val mediaAvailability: FeedMediaAvailability = if (imageUrl != null || imageUrls.isNotEmpty()) {
+        FeedMediaAvailability.AVAILABLE
+    } else {
+        FeedMediaAvailability.NONE
+    },
     val locationText: String? = null,
     val likeCount: Int = 0,
     val commentCount: Int = 0,
@@ -19,11 +35,15 @@ data class FeedPost(
     val date: String = "",
     /** Mascota asociada opcional (publicación / reel / historia). */
     val petId: String? = null,
+    val petIds: List<String> = emptyList(),
+    val petNames: List<String> = emptyList(),
     /** Epoch millis; historias vencen a las 24 h. Null = sin vencimiento (salvo STORY). */
     val expiresAt: Long? = null,
     val localityId: String? = null,
     val compositionJson: String? = null,
-    val mediaMime: String? = null
+    val mediaMime: String? = null,
+    /** Canonical social_posts.visibility (PUBLIC / FOLLOWERS / PRIVATE). */
+    val visibility: CanonicalSocialPostVisibility = CanonicalSocialPostVisibility.PUBLIC
 ) {
     /**
      * Vigencia efectiva: usa `expires_at` si existe; si el backend aún no tiene la columna

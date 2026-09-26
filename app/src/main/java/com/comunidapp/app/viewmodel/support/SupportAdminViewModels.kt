@@ -181,8 +181,7 @@ class SupportTicketAdminDetailViewModel(
                     }
                     val msgs = SensitiveDataPresentation.messagesForStaff(
                         result.data.messages,
-                        includeInternal = gate.canViewSensitive ||
-                            AdministrativeAccessGate.hasExtra(gate, PermissionCode.SUPPORT_MANAGE)
+                        includeInternal = gate.canViewSensitive
                     )
                     _uiState.update {
                         it.copy(
@@ -243,6 +242,10 @@ class SupportTicketAdminDetailViewModel(
     }
 
     fun sendInternalNote() {
+        if (!_uiState.value.canViewSensitive) {
+            _uiState.update { it.copy(message = "No tenés permiso para notas internas.") }
+            return
+        }
         mutate {
             val actor = authRepository.getCurrentUser()?.id ?: return@mutate failAuth()
             supportRepository.addInternalMessage(

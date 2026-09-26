@@ -98,11 +98,12 @@ class SearchViewModel(
             ProfilePrivacy.friendIdsFor(it.id, connections)
         }.orEmpty()
 
+        val authorProfilePublicById = users.associate { it.id to ProfilePrivacy.isPublicProfile(it) }
         val posts = ProfilePrivacy.filterVisiblePosts(
             feedRepository.searchPosts(text),
-            usersById,
             currentUser?.id,
-            friendIds
+            connections,
+            authorProfilePublicById
         )
         val matchingUsers = users.filter {
             it.id != currentUser?.id && (

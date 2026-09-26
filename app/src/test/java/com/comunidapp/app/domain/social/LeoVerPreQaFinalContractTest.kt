@@ -248,7 +248,7 @@ class LeoVerPreQaFinalContractTest {
 
     @Test
     fun previousSocialContractsStillHold() {
-        assertEquals("https://leover.app/p/abc", SocialShare.deepLink(SocialContentKind.POST, "abc"))
+        assertEquals("https://leover.com.ar/p/abc", SocialShare.deepLink(SocialContentKind.POST, "abc"))
         assertEquals(24L * 60 * 60 * 1000, StoryExpiration.DURATION_MS)
         val tus = UiRegressionGateTest.sourceFile(
             "app/src/main/java/com/comunidapp/app/data/files/SupabaseTusUploader.kt"

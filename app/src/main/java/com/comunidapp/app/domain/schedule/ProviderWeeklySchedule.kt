@@ -28,24 +28,47 @@ data class ProviderWeeklySchedule(
 
     fun day(weekday: Int): WeeklyHoursDay? = days.firstOrNull { it.weekday == weekday }
 
+    fun visibleDays(): List<WeeklyHoursDay> =
+        emptyTemplate().days.map { template ->
+            day(template.weekday) ?: template
+        }
+
     fun replace(day: WeeklyHoursDay): ProviderWeeklySchedule {
-        val next = days.filterNot { it.weekday == day.weekday } + day
-        return copy(days = next.sortedBy { it.weekday })
+        val next = visibleDays().map { current ->
+            if (current.weekday == day.weekday) day else current
+        }
+        return copy(days = next)
     }
 
     companion object {
         val WEEKDAY_LABELS = mapOf(
-            1 to "Lunes",
-            2 to "Martes",
-            3 to "Miércoles",
-            4 to "Jueves",
-            5 to "Viernes",
-            6 to "Sábado",
-            7 to "Domingo"
+            1 to "Lun",
+            2 to "Mar",
+            3 to "Mié",
+            4 to "Jue",
+            5 to "Vie",
+            6 to "Sáb",
+            7 to "Dom"
         )
 
         val ARGENTINA = ZoneId.of("America/Argentina/Buenos_Aires")
         private val HM: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+        fun normalizeIsoWeekday(raw: Int): Int = when (raw) {
+            0 -> 7
+            in 1..7 -> raw
+            else -> raw
+        }
+
+        /** State the veterinary editor screen iterates: always Lun–Dom. */
+        fun forEditor(stored: List<WeeklyHoursDay>): ProviderWeeklySchedule {
+            val normalized = stored.map { day ->
+                day.copy(weekday = normalizeIsoWeekday(day.weekday))
+            }
+            return ProviderWeeklySchedule(normalized).let { current ->
+                ProviderWeeklySchedule(current.visibleDays())
+            }
+        }
 
         fun emptyTemplate(): ProviderWeeklySchedule =
             ProviderWeeklySchedule((1..7).map { WeeklyHoursDay(it, closed = true) })

@@ -56,7 +56,8 @@ data class ComunidadUiState(
     val resultsView: CommunityResultsView = CommunityResultsView.LIST,
     val hasSearched: Boolean = false,
     val resultsStale: Boolean = false,
-    val searchError: String? = null
+    val searchError: String? = null,
+    val nearbyItems: List<com.comunidapp.app.data.repository.CommunityNearbyItem> = emptyList()
 ) {
     val activeFilterCount: Int
         get() = listOf(
@@ -98,6 +99,7 @@ data class MiNegocioUiState(
         com.comunidapp.app.domain.validation.ValidationSummary(items = emptyList()),
     val isSaving: Boolean = false,
     val message: String? = null,
+    val published: Boolean = false,
     val productName: String = "",
     val productPrice: String = "",
     val productStock: String = "",
@@ -109,7 +111,9 @@ class ComunidadViewModel(
     private val serviceRepository: ServiceRepository = DataProvider.serviceRepository,
     private val authRepository: AuthRepository = AuthProvider.repository,
     private val userRepository: com.comunidapp.app.data.repository.UserRepository =
-        DataProvider.userRepository
+        DataProvider.userRepository,
+    private val nearbyRepository: com.comunidapp.app.data.repository.CanonicalCommunityNearbyRepository =
+        com.comunidapp.app.data.repository.CanonicalCommunityNearbyRepository()
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(ComunidadUiState())
@@ -146,12 +150,24 @@ class ComunidadViewModel(
         val generation = ++searchGeneration
         searchJob = viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, searchError = null) }
+            val probe = com.comunidapp.app.domain.perf.ScreenPerfProbe.begin("community")
             try {
                 runCatching {
-                    serviceRepository.refreshDirectory(
-                        nearLat = _uiState.value.deviceLat.takeIf { _uiState.value.nearMeEnabled },
-                        nearLng = _uiState.value.deviceLng.takeIf { _uiState.value.nearMeEnabled }
-                    )
+                    probe.network {
+                        val lat = _uiState.value.deviceLat
+                        val lng = _uiState.value.deviceLng
+                        if (_uiState.value.nearMeEnabled && lat != null && lng != null) {
+                            nearbyRepository.list(lat, lng, nearbyFilter(category)).getOrThrow()
+                        } else {
+                            emptyList()
+                        }.also { nearby ->
+                            _uiState.update { it.copy(nearbyItems = nearby) }
+                        }
+                        serviceRepository.refreshDirectory(
+                            nearLat = _uiState.value.deviceLat.takeIf { _uiState.value.nearMeEnabled },
+                            nearLng = _uiState.value.deviceLng.takeIf { _uiState.value.nearMeEnabled }
+                        )
+                    }
                 }
                     .onFailure { error ->
                         if (generation == searchGeneration) {
@@ -181,6 +197,8 @@ class ComunidadViewModel(
                 if (generation == searchGeneration && _uiState.value.isLoading) {
                     _uiState.update { it.copy(isLoading = false, hasSearched = true, resultsStale = false) }
                 }
+                probe.markFirstContent()
+                probe.finish(com.comunidapp.app.domain.perf.ScreenPerfProbe.Ledger.snapshot())
             }
         }
     }
@@ -243,6 +261,13 @@ class ComunidadViewModel(
 
     fun toggleNearMe() {
         if (_uiState.value.nearMeEnabled) disableNearMe()
+    }
+
+    private fun nearbyFilter(category: ServiceCategory): String = when (category) {
+        ServiceCategory.VET -> "VETERINARY"
+        ServiceCategory.TRAINER, ServiceCategory.WALKER, ServiceCategory.GROOMING,
+        ServiceCategory.CAREGIVER, ServiceCategory.SHOP, ServiceCategory.DAYCARE -> "SERVICES"
+        else -> "NEAR"
     }
 
     fun clearFilters() {
@@ -419,22 +444,30 @@ class MiNegocioViewModel(
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
+    private var formDirty = false
+    private var loadedContextKey: String? = null
+
     init {
         viewModelScope.launch {
             currentUser.collect { user ->
                 if (user == null) return@collect
-                reloadIsolatedProfile(user.id)
+                reloadIsolatedProfile(user.id, force = false)
             }
         }
         viewModelScope.launch {
-            OperationalContextProvider.active.collect {
+            OperationalContextProvider.active.collect { ctx ->
                 val user = authRepository.getCurrentUser() ?: return@collect
-                reloadIsolatedProfile(user.id)
+                val key = ctx.kind.name + ":" + ctx.entityId
+                reloadIsolatedProfile(user.id, force = loadedContextKey != null && loadedContextKey != key)
             }
         }
     }
 
-    private suspend fun reloadIsolatedProfile(userId: String) {
+    private suspend fun reloadIsolatedProfile(userId: String, force: Boolean) {
+        val key = OperationalContextProvider.active.value.let { it.kind.name + ":" + it.entityId }
+        if (formDirty && !force && loadedContextKey == key) return
+        loadedContextKey = key
+        formDirty = false
         val existing = serviceRepository.fetchMyServiceProfile(userId)
         _uiState.update {
             it.copy(
@@ -444,7 +477,9 @@ class MiNegocioViewModel(
                 description = existing?.description.orEmpty(),
                 contactInfo = existing?.contactInfo.orEmpty(),
                 scheduleText = "",
-                weeklyHours = existing?.weeklyHours.orEmpty(),
+                weeklyHours = ProviderWeeklySchedule.forEditor(
+                    existing?.weeklyHours.orEmpty()
+                ).days,
                 pinLat = existing?.latitude,
                 pinLng = existing?.longitude,
                 geoIsPublicPremises = existing?.geoIsPublicPremises == true,
@@ -456,14 +491,19 @@ class MiNegocioViewModel(
         }
     }
 
-    fun updateName(v: String) = _uiState.update { it.copy(name = v) }
-    fun updateLocation(v: String) = _uiState.update { it.copy(location = v) }
-    fun updateDescription(v: String) = _uiState.update { it.copy(description = v) }
-    fun updateContact(v: String) = _uiState.update { it.copy(contactInfo = v) }
-    fun updateSchedule(v: String) = _uiState.update { it.copy(scheduleText = v) }
-    fun updateWeeklyHours(days: List<WeeklyHoursDay>) = _uiState.update { it.copy(weeklyHours = days) }
-    fun updateMapPin(lat: Double, lng: Double, publicPremises: Boolean) =
+    fun updateName(v: String) { formDirty = true; _uiState.update { it.copy(name = v) } }
+    fun updateLocation(v: String) { formDirty = true; _uiState.update { it.copy(location = v) } }
+    fun updateDescription(v: String) { formDirty = true; _uiState.update { it.copy(description = v) } }
+    fun updateContact(v: String) { formDirty = true; _uiState.update { it.copy(contactInfo = v) } }
+    fun updateSchedule(v: String) { formDirty = true; _uiState.update { it.copy(scheduleText = v) } }
+    fun updateWeeklyHours(days: List<WeeklyHoursDay>) {
+        formDirty = true
+        _uiState.update { it.copy(weeklyHours = ProviderWeeklySchedule.forEditor(days).days) }
+    }
+    fun updateMapPin(lat: Double, lng: Double, publicPremises: Boolean) {
+        formDirty = true
         _uiState.update { it.copy(pinLat = lat, pinLng = lng, geoIsPublicPremises = publicPremises) }
+    }
     fun updatePrice(v: String) = _uiState.update { it.copy(priceFrom = v) }
     fun updateAcceptsBookings(v: Boolean) = _uiState.update { it.copy(acceptsBookings = v) }
     fun updateSlotInterval(minutes: Int) = _uiState.update { it.copy(slotIntervalMinutes = minutes) }
@@ -562,6 +602,7 @@ class MiNegocioViewModel(
             )
             val result = serviceRepository.upsertServiceProfile(profile)
             result.onSuccess { id ->
+                formDirty = false
                 val canonical = serviceRepository as? CanonicalServiceRepository
                 if (canonical != null) {
                     val hours = state.weeklyHours.ifEmpty { ProviderWeeklySchedule.emptyTemplate().days }
@@ -584,6 +625,7 @@ class MiNegocioViewModel(
                     } else {
                         it.profile
                     },
+                    published = result.isSuccess,
                     message = result.fold(
                         onSuccess = { "Ficha publicada en Comunidad" },
                         onFailure = { e ->

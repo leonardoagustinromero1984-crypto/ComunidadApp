@@ -84,6 +84,17 @@ fun LeoVerProfileHeader(
 ) = LeoGreetingHeader(name, onSearch, onNotifications, modifier)
 
 @Composable
+fun LeoVerListRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+    showDivider: Boolean = true
+) = LeoListRow(title, modifier, subtitle, leading, trailing, onClick, showDivider)
+
+@Composable
 fun LeoVerEmptyState(
     title: String,
     message: String? = null,

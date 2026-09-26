@@ -15,6 +15,7 @@ import com.comunidapp.app.domain.canonical.CanonicalProviderHolder
 import com.comunidapp.app.domain.canonical.CanonicalProviderWrite
 import com.comunidapp.app.domain.context.OperationalContextProvider
 import com.comunidapp.app.domain.ux.CanonicalUiErrorMapper
+import com.comunidapp.app.domain.schedule.ProviderWeeklySchedule
 import com.comunidapp.app.domain.schedule.WeeklyHoursDay
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.CoroutineScope
@@ -217,7 +218,7 @@ class CanonicalServiceRepository : ServiceRepository {
                     distanceKm = row.distanceM?.let { it / 1000.0 },
                     weeklyHours = row.hours.map {
                         WeeklyHoursDay(
-                            weekday = it.weekday,
+                            weekday = ProviderWeeklySchedule.normalizeIsoWeekday(it.weekday),
                             closed = it.closed,
                             opensAt = it.opensAt.toHm(),
                             closesAt = it.closesAt.toHm()

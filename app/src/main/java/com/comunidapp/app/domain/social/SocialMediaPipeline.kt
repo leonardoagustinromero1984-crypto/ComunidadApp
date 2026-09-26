@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.media.MediaMetadataRetriever
 import android.net.Uri
 import android.os.Build
+import android.provider.OpenableColumns
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.effect.Presentation
@@ -13,9 +14,12 @@ import androidx.media3.transformer.Composition
 import androidx.media3.transformer.EditedMediaItem
 import androidx.media3.transformer.EditedMediaItemSequence
 import androidx.media3.transformer.Effects
+import androidx.media3.transformer.AudioEncoderSettings
+import androidx.media3.transformer.DefaultEncoderFactory
 import androidx.media3.transformer.ExportException
 import androidx.media3.transformer.ExportResult
 import androidx.media3.transformer.Transformer
+import androidx.media3.transformer.VideoEncoderSettings
 import java.io.File
 import java.io.FileOutputStream
 import kotlin.coroutines.resume
@@ -31,7 +35,9 @@ data class PreparedSocialMedia(
     val durationMs: Long? = null,
     val width: Int? = null,
     val height: Int? = null,
-    val transcoded: Boolean = false
+    val transcoded: Boolean = false,
+    val exportDecision: String? = null,
+    val bitrateBps: Long? = null
 )
 
 object SocialMediaPipeline {
@@ -40,17 +46,47 @@ object SocialMediaPipeline {
         context: Context,
         source: Uri,
         expectVideo: Boolean,
+        outputFile: File? = null,
         onProgress: (Int) -> Unit = {}
     ): Result<PreparedSocialMedia> = withContext(Dispatchers.IO) {
         runCatching {
             val cr = context.contentResolver
-            val mime = cr.getType(source)?.lowercase().orEmpty().ifBlank {
-                if (expectVideo) VideoExportPolicy.TARGET_VIDEO_MIME else "image/jpeg"
+            val displayName = cr.query(
+                source,
+                arrayOf(OpenableColumns.DISPLAY_NAME),
+                null,
+                null,
+                null
+            )?.use { cursor ->
+                if (cursor.moveToFirst()) cursor.getString(0) else null
             }
-            val isVideo = mime.startsWith("video/") || expectVideo
+            val ext = displayName?.let { com.comunidapp.app.domain.files.FileNameSanitizer.extensionOf(it) }
+            val resolverMime = cr.getType(source)?.lowercase().orEmpty()
+            com.comunidapp.app.domain.media.MediaDiagnostic.logStaging(
+                "MIME-DIAG-REEL scheme=${source.scheme} ext=$ext resolverMime=$resolverMime expectVideo=$expectVideo"
+            )
             onProgress(8)
-            if (isVideo) prepareVideo(context, source, mime, onProgress)
-            else prepareImage(context, source, mime, onProgress)
+            if (expectVideo) {
+                return@runCatching prepareVideo(
+                    context = context,
+                    source = source,
+                    mime = resolverMime,
+                    outputFile = outputFile,
+                    onProgress = onProgress
+                )
+            }
+            val mime = when {
+                resolverMime.startsWith("video/") -> resolverMime
+                resolverMime.isNotBlank() &&
+                    !resolverMime.equals("application/octet-stream", ignoreCase = true) -> resolverMime
+                ext != null -> {
+                    com.comunidapp.app.domain.files.FileValidationRules.inferMimeFromExtension(ext)
+                        ?: "image/jpeg"
+                }
+                else -> "image/jpeg"
+            }
+            onProgress(8)
+            prepareImage(context, source, mime, onProgress)
         }
     }
 
@@ -83,45 +119,89 @@ object SocialMediaPipeline {
         context: Context,
         source: Uri,
         mime: String,
+        outputFile: File?,
         onProgress: (Int) -> Unit
     ): PreparedSocialMedia {
+        val trackMime = com.comunidapp.app.domain.media.VerifiedVideoPipeline.detectVideoTrackMime(context, source)
+            ?: error(com.comunidapp.app.domain.media.MediaDiagnostic.MIME)
         val meta = readVideoMeta(context, source)
+        val size = meta.sizeBytes
+        if (size != null && size > VideoExportPolicy.RAW_REJECT_BYTES) {
+            error(com.comunidapp.app.domain.media.MediaDiagnostic.SIZE)
+        }
+        val bitrate = VideoExportPolicy.bitrateBps(size, meta.durationMs) ?: meta.bitrateBps
+        val codecSignal = listOfNotNull(mime, meta.mimeType, trackMime).joinToString(" ")
         onProgress(20)
-        val codec = meta.mimeType.orEmpty()
-        val alreadyOptimized =
-            (meta.sizeBytes ?: Long.MAX_VALUE) <= VideoExportPolicy.PROCESSED_HARD_CAP_BYTES &&
-                (meta.maxEdge ?: Int.MAX_VALUE) <= VideoExportPolicy.TARGET_MAX_EDGE &&
-                (mime.contains("mp4") || codec.contains("mp4", ignoreCase = true)) &&
-                (codec.contains("avc", ignoreCase = true) ||
-                    codec.contains("h264", ignoreCase = true) ||
-                    codec.isBlank())
-        if (alreadyOptimized) {
+        val passthrough = VideoExportPolicy.shouldPassthrough(
+            maxEdge = meta.maxEdge,
+            bitrateBps = bitrate,
+            sizeBytes = size,
+            mimeOrCodec = codecSignal,
+            durationMs = meta.durationMs
+        )
+        com.comunidapp.app.domain.media.MediaDiagnostic.logStaging(
+            "REEL-EXPORT decision=${if (passthrough) VideoExportPolicy.DECISION_PASSTHROUGH else VideoExportPolicy.DECISION_TRANSCODE} " +
+                "size=$size bitrate=$bitrate maxEdge=${meta.maxEdge} codec=$codecSignal"
+        )
+        if (passthrough) {
             onProgress(70)
+            val localSource = source.path
+                ?.takeIf { source.scheme.isNullOrBlank() || source.scheme == "file" }
+                ?.let { File(it) }
+                ?.takeIf { it.exists() && it.length() > 0L }
+            val passthroughUri = if (localSource != null) {
+                Uri.fromFile(localSource)
+            } else if (outputFile != null) {
+                copyToPrivate(context, source, outputFile)
+                Uri.fromFile(outputFile)
+            } else {
+                source
+            }
+            val passthroughSize = localSource?.length()
+                ?: outputFile?.takeIf { it.exists() }?.length()
+                ?: size
+                ?: 0L
             return PreparedSocialMedia(
-                uri = source,
-                mimeType = mime.ifBlank { VideoExportPolicy.TARGET_VIDEO_MIME },
-                filename = "reel.mp4",
-                sizeBytes = meta.sizeBytes ?: 0L,
+                uri = passthroughUri,
+                mimeType = mime.ifBlank {
+                    meta.mimeType?.takeIf { it.startsWith("video/") }
+                        ?: VideoExportPolicy.TARGET_VIDEO_MIME
+                },
+                filename = outputFile?.name ?: "reel.mp4",
+                sizeBytes = passthroughSize,
                 durationMs = meta.durationMs,
                 width = meta.width,
                 height = meta.height,
-                transcoded = false
+                transcoded = false,
+                exportDecision = VideoExportPolicy.DECISION_PASSTHROUGH,
+                bitrateBps = bitrate
             )
         }
-        val out = File(context.cacheDir, "export_${System.currentTimeMillis()}.mp4")
-        transcode(context, source, out, onProgress)
-        val exported = out.takeIf { it.exists() && it.length() > 0 }
-        val use = exported ?: error("VIDEO_TRANSCODE_FAILED")
+        val out = outputFile ?: File(context.cacheDir, "leover_export_${System.currentTimeMillis()}.mp4")
+        try {
+            transcode(context, source, out, meta, onProgress)
+        } catch (error: Throwable) {
+            out.delete()
+            throw error
+        }
+        val use = out.takeIf { it.exists() && it.length() > 0L } ?: error("VIDEO_TRANSCODE_FAILED")
         if (use.length() > VideoExportPolicy.PROCESSED_HARD_CAP_BYTES) {
+            use.delete()
             error(com.comunidapp.app.domain.media.MediaDiagnostic.SIZE)
         }
+        val exported = readVideoMeta(context, Uri.fromFile(use))
+        onProgress(70)
         return PreparedSocialMedia(
             uri = Uri.fromFile(use),
             mimeType = VideoExportPolicy.TARGET_VIDEO_MIME,
             filename = use.name,
             sizeBytes = use.length(),
-            durationMs = meta.durationMs,
-            transcoded = true
+            durationMs = exported.durationMs ?: meta.durationMs,
+            width = exported.width ?: meta.width,
+            height = exported.height ?: meta.height,
+            transcoded = true,
+            exportDecision = VideoExportPolicy.DECISION_TRANSCODE,
+            bitrateBps = VideoExportPolicy.bitrateBps(use.length(), exported.durationMs ?: meta.durationMs)
         )
     }
 
@@ -129,15 +209,30 @@ object SocialMediaPipeline {
         context: Context,
         source: Uri,
         output: File,
+        meta: VideoMeta,
         onProgress: (Int) -> Unit
     ) = withContext(Dispatchers.Main.immediate) {
         suspendCancellableCoroutine { cont ->
+            val outputEdge = VideoExportPolicy.outputEdge(meta.maxEdge)
+            val encoderFactory = DefaultEncoderFactory.Builder(context)
+                .setRequestedVideoEncoderSettings(
+                    VideoEncoderSettings.Builder()
+                        .setBitrate(VideoExportPolicy.targetBitrateBps(outputEdge).toInt())
+                        .build()
+                )
+                .setRequestedAudioEncoderSettings(
+                    AudioEncoderSettings.Builder()
+                        .setBitrate(VideoExportPolicy.TARGET_AUDIO_BITRATE_BPS)
+                        .build()
+                )
+                .build()
             val transformer = Transformer.Builder(context)
                 .setVideoMimeType(MimeTypes.VIDEO_H264)
                 .setAudioMimeType(MimeTypes.AUDIO_AAC)
+                .setEncoderFactory(encoderFactory)
                 .addListener(object : Transformer.Listener {
                     override fun onCompleted(composition: Composition, exportResult: ExportResult) {
-                        onProgress(85)
+                        onProgress(65)
                         if (cont.isActive) cont.resume(Unit)
                     }
 
@@ -150,13 +245,20 @@ object SocialMediaPipeline {
                     }
                 })
                 .build()
-            val edited = EditedMediaItem.Builder(MediaItem.fromUri(source))
-                .setEffects(
-                    Effects(
-                        emptyList(),
-                        listOf(Presentation.createForHeight(VideoExportPolicy.TARGET_MAX_EDGE))
-                    )
+            val videoEffects = if (VideoExportPolicy.needsScale(meta.maxEdge) &&
+                meta.width != null && meta.height != null
+            ) {
+                val (tw, th) = com.comunidapp.app.domain.media.MediaIngestionPolicy.outputSize(
+                    meta.width,
+                    meta.height,
+                    VideoExportPolicy.TARGET_MAX_EDGE
                 )
+                listOf(Presentation.createForWidthAndHeight(tw, th, Presentation.LAYOUT_SCALE_TO_FIT))
+            } else {
+                emptyList()
+            }
+            val edited = EditedMediaItem.Builder(MediaItem.fromUri(source))
+                .setEffects(Effects(emptyList(), videoEffects))
                 .build()
             val composition = Composition.Builder(EditedMediaItemSequence(edited)).build()
             transformer.start(composition, output.absolutePath)
@@ -164,6 +266,7 @@ object SocialMediaPipeline {
                 android.os.Handler(android.os.Looper.getMainLooper()).post {
                     runCatching { transformer.cancel() }
                 }
+                output.delete()
             }
         }
     }
@@ -173,9 +276,19 @@ object SocialMediaPipeline {
         val durationMs: Long?,
         val width: Int?,
         val height: Int?,
-        val mimeType: String? = null
+        val mimeType: String? = null,
+        val bitrateBps: Long? = null
     ) {
         val maxEdge: Int? = listOfNotNull(width, height).maxOrNull()
+    }
+
+    private fun copyToPrivate(context: Context, source: Uri, dest: File) {
+        if (source.scheme == "file" && source.path == dest.absolutePath) return
+        dest.parentFile?.mkdirs()
+        context.contentResolver.openInputStream(source)?.use { input ->
+            dest.outputStream().use { output -> input.copyTo(output) }
+        } ?: error("FILE_READ_FAILED")
+        if (!dest.exists() || dest.length() <= 0L) error("FILE_READ_FAILED")
     }
 
     private fun readVideoMeta(context: Context, uri: Uri): VideoMeta {
@@ -194,7 +307,9 @@ object SocialMediaPipeline {
             val w = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toIntOrNull()
             val h = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toIntOrNull()
             val mime = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_MIMETYPE)
-            VideoMeta(size, duration, w, h, mime)
+            val bitrate = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_BITRATE)
+                ?.toLongOrNull()
+            VideoMeta(size, duration, w, h, mime, bitrate)
         } finally {
             retriever.release()
         }

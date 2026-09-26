@@ -10,9 +10,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -24,9 +21,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M15OperationalMetrics
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.viewmodel.M15OperationsUiState
@@ -65,10 +65,10 @@ fun M15OperationsScreen(
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 tabLabels.forEachIndexed { index, label ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = label,
                         selected = tab == index,
-                        onClick = { viewModel.selectTab(index) },
-                        label = { Text(label) }
+                        onClick = { viewModel.selectTab(index) }
                     )
                 }
             }
@@ -99,9 +99,10 @@ fun M15OperationsScreen(
                         2 -> M15PrivacyTab()
                         3 -> M15SmokeTab()
                     }
-                    Button(onClick = { viewModel.loadDefaultMetrics() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Actualizar métricas (30 días)")
-                    }
+                    LeoPrimaryButton(
+                        text = "Actualizar métricas (30 días)",
+                        onClick = { viewModel.loadDefaultMetrics() }
+                    )
                 }
             }
         }
@@ -110,8 +111,8 @@ fun M15OperationsScreen(
 
 @Composable
 private fun M15StatusCard(m06Status: String, remotePending: Boolean, hookCount: Int) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(LeoDimens.SpaceCompact), verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceXs)) {
             Text("Infraestructura de notificaciones", fontWeight = FontWeight.Bold)
             Text("Estado: $m06Status")
             Text("Hooks preparados: $hookCount")
@@ -122,6 +123,7 @@ private fun M15StatusCard(m06Status: String, remotePending: Boolean, hookCount: 
                 )
             }
         }
+        LeoHairline()
     }
 }
 
@@ -131,8 +133,8 @@ private fun M15SummaryTab(metrics: M15OperationalMetrics?) {
         Text("Sin métricas locales en este modo. Fallback remoto o rango vacío.")
         return
     }
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(LeoDimens.SpaceCompact), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Hogares", fontWeight = FontWeight.Bold)
             Text("Capacidad total: ${metrics.totalCapacity}")
             Text("Ocupadas: ${metrics.occupiedSlots} · Reservadas: ${metrics.reservedSlots}")
@@ -150,6 +152,7 @@ private fun M15SummaryTab(metrics: M15OperationalMetrics?) {
             Text("Conflictos: ${metrics.conflicts} · Reintentos idempotentes: ${metrics.idempotentRetries}")
             Text("Fallbacks remotos: ${metrics.remoteFallbacks}")
         }
+        LeoHairline()
     }
 }
 
@@ -159,8 +162,8 @@ private fun M15MetricsTab(metrics: M15OperationalMetrics?) {
         Text("Métricas no disponibles.")
         return
     }
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+    Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(LeoDimens.SpaceCompact), verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceXs)) {
             Text("Rango", fontWeight = FontWeight.Bold)
             Text("TZ: ${metrics.zoneIdName}")
             Text("Desde: ${metrics.fromInclusive} → Hasta: ${metrics.toExclusive}")
@@ -195,13 +198,14 @@ private fun M15MetricsTab(metrics: M15OperationalMetrics?) {
                 }
             }
         }
+        LeoHairline()
     }
 }
 
 @Composable
 private fun M15PrivacyTab() {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(LeoDimens.SpaceCompact), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Privacidad de tránsito", fontWeight = FontWeight.Bold)
             Text("Permitido en vistas públicas:")
             Text("· Alias/nombre público del hogar")
@@ -216,13 +220,14 @@ private fun M15PrivacyTab() {
                 style = MaterialTheme.typography.bodySmall
             )
         }
+        LeoHairline()
     }
 }
 
 @Composable
 private fun M15SmokeTab() {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(LeoDimens.SpaceCompact), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text("Smoke funcional remoto", fontWeight = FontWeight.Bold)
             Text("Smoke funcional remoto pendiente externo")
             Text("Checklist manual (no ejecutado desde Cursor):")
@@ -245,5 +250,6 @@ private fun M15SmokeTab() {
                 fontWeight = FontWeight.Medium
             )
         }
+        LeoHairline()
     }
 }

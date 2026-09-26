@@ -15,8 +15,6 @@ import com.comunidapp.app.ui.map.LeoVerMap
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -33,14 +31,17 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.domain.schedule.ProviderWeeklySchedule
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.leo.LeoVerHoursDisplay
-import com.comunidapp.app.ui.components.v2.V2SurfaceCard
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandTextSecondary
 import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.theme.LeoSectionTitle
 import com.comunidapp.app.viewmodel.ServiceDetailViewModel
 
@@ -82,12 +83,12 @@ fun ServiceDetailScreen(
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                start = 16.dp,
-                end = 16.dp,
-                top = padding.calculateTopPadding() + 8.dp,
-                bottom = padding.calculateBottomPadding() + 16.dp
+                start = LeoDimens.SpaceMd,
+                end = LeoDimens.SpaceMd,
+                top = padding.calculateTopPadding() + LeoDimens.SpaceSm,
+                bottom = padding.calculateBottomPadding() + LeoDimens.SpaceMd
             ),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
         ) {
             item {
                 PetImage(
@@ -101,12 +102,12 @@ fun ServiceDetailScreen(
             }
             item {
                 val public = com.comunidapp.app.domain.business.PublicCommercialProfileMapper.fromService(service)
-                V2SurfaceCard {
+                Column(Modifier.fillMaxWidth()) {
                     Text(
                         text = public.name,
                         style = LeoSectionTitle,
                         color = BrandText,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.SemiBold
                     )
                     Text(
                         text = public.categoryLabel,
@@ -167,6 +168,7 @@ fun ServiceDetailScreen(
                             modifier = Modifier.padding(top = 4.dp)
                         )
                     }
+                    LeoHairline(Modifier.padding(top = LeoDimens.SpaceMd))
                 }
             }
             if (service.geoIsPublicPremises && service.latitude != null && service.longitude != null) {
@@ -200,7 +202,7 @@ fun ServiceDetailScreen(
             }
             if (service.acceptsBookings) {
                 item {
-                    V2SurfaceCard {
+                    Column(Modifier.fillMaxWidth()) {
                         Text(
                             text = "Pedir turno",
                             style = LeoSectionTitle,
@@ -219,10 +221,10 @@ fun ServiceDetailScreen(
                     Text("Día", style = LeoCaption, color = BrandText, fontWeight = FontWeight.SemiBold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(0 to "Hoy", 1 to "Mañana", 2 to "Pasado").forEach { (offset, label) ->
-                            FilterChip(
+                            LeoFilterChip(
+                                label = label,
                                 selected = uiState.scheduledDayOffset == offset,
-                                onClick = { viewModel.updateDayOffset(offset) },
-                                label = { Text(label) }
+                                onClick = { viewModel.updateDayOffset(offset) }
                             )
                         }
                     }
@@ -231,20 +233,20 @@ fun ServiceDetailScreen(
                     Text("Horario", style = LeoCaption, color = BrandText, fontWeight = FontWeight.SemiBold)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(9, 10, 12, 16, 18).forEach { hour ->
-                            FilterChip(
+                            LeoFilterChip(
+                                label = "${hour}:00",
                                 selected = uiState.hour == hour,
-                                onClick = { viewModel.updateHour(hour) },
-                                label = { Text("${hour}:00") }
+                                onClick = { viewModel.updateHour(hour) }
                             )
                         }
                     }
                 }
                 item {
-                    OutlinedTextField(
+                    LeoTextField(
                         value = uiState.notes,
                         onValueChange = viewModel::updateNotes,
-                        label = { Text("Notas (opcional)") },
-                        modifier = Modifier.fillMaxWidth(),
+                        label = "Notas (opcional)",
+                        singleLine = false,
                         minLines = 2
                     )
                 }
@@ -276,7 +278,7 @@ fun ServiceDetailScreen(
                 }
             } else {
                 items(reviews, key = { it.id }) { review ->
-                    V2SurfaceCard {
+                    Column(Modifier.fillMaxWidth()) {
                         Text(
                             text = "${review.authorName} · ${"★".repeat(review.rating.coerceIn(1, 5))}",
                             style = LeoCaption,
@@ -291,46 +293,47 @@ fun ServiceDetailScreen(
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
+                        LeoHairline(Modifier.padding(top = LeoDimens.SpaceCompact))
                     }
                 }
             }
-            item {
-                V2SurfaceCard {
-                    Text(
-                        text = "Dejá tu reseña",
-                        style = LeoCaption,
-                        fontWeight = FontWeight.SemiBold,
-                        color = BrandText
-                    )
-                    Text(
-                        text = "Calificación",
-                        style = LeoCaption,
-                        color = BrandTextSecondary,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        modifier = Modifier.padding(top = 4.dp)
-                    ) {
-                        (1..5).forEach { rating ->
-                            FilterChip(
-                                selected = uiState.reviewRating == rating,
-                                onClick = { viewModel.updateReviewRating(rating) },
-                                label = { Text("$rating") }
-                            )
+                item {
+                    Column(Modifier.fillMaxWidth()) {
+                        Text(
+                            text = "Dejá tu reseña",
+                            style = LeoCaption,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandText
+                        )
+                        Text(
+                            text = "Calificación",
+                            style = LeoCaption,
+                            color = BrandTextSecondary,
+                            modifier = Modifier.padding(top = 8.dp)
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            modifier = Modifier.padding(top = 4.dp)
+                        ) {
+                            (1..5).forEach { rating ->
+                                LeoFilterChip(
+                                    label = "$rating",
+                                    selected = uiState.reviewRating == rating,
+                                    onClick = { viewModel.updateReviewRating(rating) }
+                                )
+                            }
                         }
                     }
                 }
-            }
-            item {
-                OutlinedTextField(
-                    value = uiState.reviewComment,
-                    onValueChange = viewModel::updateReviewComment,
-                    label = { Text("Comentario (opcional)") },
-                    modifier = Modifier.fillMaxWidth(),
-                    minLines = 2
-                )
-            }
+                item {
+                    LeoTextField(
+                        value = uiState.reviewComment,
+                        onValueChange = viewModel::updateReviewComment,
+                        label = "Comentario (opcional)",
+                        singleLine = false,
+                        minLines = 2
+                    )
+                }
             item {
                 LeoPrimaryButton(
                     text = if (uiState.isSubmittingReview) "Enviando…" else "Publicar reseña",

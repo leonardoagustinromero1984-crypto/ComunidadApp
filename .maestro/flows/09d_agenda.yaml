@@ -1,0 +1,20 @@
+appId: ${APP_ID}
+name: "Agenda QA10"
+tags:
+  - community-care
+  - agenda
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA10_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Agenda"
+- tapOn: "Nuevo turno"
+- inputText: "QA-MAESTRO-TURNO"
+- tapOn: "Confirmar"
+- takeScreenshot: agenda_created
+- tapOn: "Atendido"
+- takeScreenshot: agenda_attended

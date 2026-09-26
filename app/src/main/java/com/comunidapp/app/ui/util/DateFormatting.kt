@@ -52,3 +52,24 @@ fun formatRelativeTime(millis: Long): String {
     }
     return SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date(millis))
 }
+
+/** Compact memory day label, e.g. "7 sep 2026" / "7 sep" when same year. */
+fun formatMemoryDay(millis: Long): String {
+    if (millis <= 0L) return ""
+    val locale = Locale("es", "AR")
+    val zone = java.time.ZoneId.systemDefault()
+    val date = Instant.ofEpochMilli(millis).atZone(zone).toLocalDate()
+    val pattern = if (date.year == LocalDate.now(zone).year) "d MMM" else "d MMM yyyy"
+    return DateTimeFormatter.ofPattern(pattern, locale).format(date)
+}
+
+/** Memory / history timestamp with hour when a real clock time exists. */
+fun formatMemoryDateTime(millis: Long): String {
+    if (millis <= 0L) return ""
+    val locale = Locale("es", "AR")
+    val zone = java.time.ZoneId.systemDefault()
+    val zoned = Instant.ofEpochMilli(millis).atZone(zone)
+    val sameYear = zoned.year == LocalDate.now(zone).year
+    val pattern = if (sameYear) "d MMM · HH:mm" else "d MMM yyyy · HH:mm"
+    return DateTimeFormatter.ofPattern(pattern, locale).format(zoned)
+}

@@ -142,6 +142,7 @@ class FakeStage5PetRepository(
 ) : PetRepository {
 
     private val petFlow = MutableStateFlow(pet)
+    var listCachePet: Pet? = null
     var pet: Pet?
         get() = petFlow.value
         set(value) {
@@ -167,6 +168,7 @@ class FakeStage5PetRepository(
 
     override fun observePet(petId: String): Flow<Pet?> = flow {
         observeError?.let { throw it }
+        listCachePet?.takeIf { it.id == petId }?.let { emit(it) }
         petFlow.collect { current ->
             emit(current?.takeIf { it.id == petId })
         }
@@ -175,7 +177,8 @@ class FakeStage5PetRepository(
     override fun getPetsByOwner(ownerId: String): List<Pet> =
         listOfNotNull(pet).filter { it.ownerId == ownerId }
 
-    override fun getPetById(petId: String): Pet? = pet?.takeIf { it.id == petId }
+    override fun getPetById(petId: String): Pet? =
+        listCachePet?.takeIf { it.id == petId } ?: pet?.takeIf { it.id == petId }
 
     override suspend fun fetchPetById(petId: String): Pet? {
         fetchError?.let { throw it }
@@ -242,6 +245,9 @@ class FakeStage5PetRepository(
         microchip: String?,
         name: String?
     ): Result<List<PetDuplicateCandidateRow>> = duplicateCandidatesResult
+
+    override suspend fun listPetsForPersonProfile(personUserId: String): Result<List<Pet>> =
+        Result.success(emptyList())
 }
 
 class FakeStage5UserRepository(
@@ -394,6 +400,8 @@ class FakeStage5TransferRepository : PetTransferRepository {
 
     val items = mutableListOf<PetTransfer>()
     var listFailure: Throwable? = null
+    var incomingFailure: Throwable? = null
+    var incomingItems: List<PetTransfer> = emptyList()
     var mutationFailure: Throwable? = null
     var createCalls = 0
     var acceptCalls = 0
@@ -444,6 +452,11 @@ class FakeStage5TransferRepository : PetTransferRepository {
         return items.filter { it.petId == petId }
     }
 
+    override suspend fun listIncoming(): List<PetTransfer> {
+        incomingFailure?.let { throw it }
+        return incomingItems
+    }
+
     private fun resolve(
         transferId: PetTransferId,
         target: PetTransferStatus,
@@ -466,3 +479,54 @@ fun stage5Profile(id: String = "user_2", name: String = "Carlos Prueba"): Public
 
 fun stage5OrgHolder(orgId: String = "org-1"): PetPrincipalHolder =
     PetPrincipalHolder.Organization(OrganizationId(orgId))
+
+class FakeCareNetworkRepository : com.comunidapp.app.data.repository.CareNetworkRepository {
+    var invites: List<com.comunidapp.app.domain.pets.CareNetworkInvite> = emptyList()
+    var carePets: List<com.comunidapp.app.domain.pets.CareNetworkPet> = emptyList()
+    var invitesFailure: Throwable? = null
+    var petsFailure: Throwable? = null
+    var inviteCalls = 0
+    var lastInvitedPersonId: String? = null
+    var lastInvitedRole: com.comunidapp.app.domain.pets.CareNetworkRole? = null
+    var inviteFailure: Throwable? = null
+    var acceptCalls = 0
+    var rejectCalls = 0
+    var leaveCalls = 0
+
+    override suspend fun invite(
+        petId: String,
+        personId: String,
+        role: com.comunidapp.app.domain.pets.CareNetworkRole
+    ): Result<String> {
+        inviteCalls++
+        lastInvitedPersonId = personId
+        lastInvitedRole = role
+        inviteFailure?.let { return Result.failure(it) }
+        return Result.success("link-invited")
+    }
+
+    override suspend fun accept(linkId: String): Result<Unit> {
+        acceptCalls++
+        return Result.success(Unit)
+    }
+
+    override suspend fun reject(linkId: String): Result<Unit> {
+        rejectCalls++
+        return Result.success(Unit)
+    }
+
+    override suspend fun leave(linkId: String): Result<Unit> {
+        leaveCalls++
+        return Result.success(Unit)
+    }
+
+    override suspend fun listMyInvites(): Result<List<com.comunidapp.app.domain.pets.CareNetworkInvite>> {
+        invitesFailure?.let { return Result.failure(it) }
+        return Result.success(invites)
+    }
+
+    override suspend fun listMyCarePets(): Result<List<com.comunidapp.app.domain.pets.CareNetworkPet>> {
+        petsFailure?.let { return Result.failure(it) }
+        return Result.success(carePets)
+    }
+}

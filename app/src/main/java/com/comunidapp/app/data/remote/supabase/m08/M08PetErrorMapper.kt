@@ -37,6 +37,11 @@ object M08PetErrorMapper {
         "PET_TRANSFER_EXPIRES_INVALID",
         "PET_TRANSFER_EXPIRED",
         "PET_TRANSFER_DEST_XOR_REQUIRED",
+        "PET_TRANSFER_SAME_ACTOR",
+        "PET_TRANSFER_TARGET_INVALID",
+        "PET_TRANSFER_SOURCE_STALE",
+        "RELATIONSHIP_REQUIRED",
+        "CURRENT_CUSTODIAN_REQUIRED",
         "PET_TRANSFER_SAME_PRINCIPAL",
         "PET_DECEASED_NOT_TRANSFERABLE",
         "PET_ARCHIVED_NOT_TRANSFERABLE",
@@ -72,6 +77,10 @@ object M08PetErrorMapper {
         "M08_FEATURE_UNAVAILABLE",
         "PET_HOLDER_REVOKE_DEFERRED",
         "LAST_OWNER_REQUIRED",
+        "RESPONSIBLE_INVITE_INVALID_PERSON",
+        "RESPONSIBLE_INVITE_DUPLICATE",
+        "PERSON_NOT_FOUND",
+        "RPC_UNAVAILABLE",
         "NETWORK",
         "TIMEOUT",
         "SERIALIZATION"
@@ -86,7 +95,12 @@ object M08PetErrorMapper {
         val upper = raw.uppercase()
         knownCodes.firstOrNull { upper.contains(it) }?.let { return it }
         return when {
-            upper.contains("JWT") || upper.contains("AUTH") || upper.contains("401") ->
+            upper.contains("PGRST202") || upper.contains("COULD NOT FIND THE FUNCTION") ->
+                "RPC_UNAVAILABLE"
+            upper.contains("NOT_AUTHENTICATED") ||
+                upper.contains("PGRST301") ||
+                upper.contains("JWT EXPIRED") ||
+                upper.contains("UNAUTHOR") ->
                 "NOT_AUTHENTICATED"
             upper.contains("403") || upper.contains("PERMISSION") || upper.contains("RLS") ->
                 "FORBIDDEN"
@@ -104,6 +118,13 @@ object M08PetErrorMapper {
 
     fun userMessage(code: String): String = when (code) {
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión para continuar."
+        "RPC_UNAVAILABLE" ->
+            "No pudimos enviar la invitación. El servidor todavía no tiene esta función."
+        "PERSON_NOT_FOUND" -> "No encontramos a esa persona."
+        "RESPONSIBLE_INVITE_INVALID_PERSON" ->
+            "Elegí otra persona de LeoVer para invitar."
+        "RESPONSIBLE_INVITE_DUPLICATE" ->
+            "Esa persona ya es responsable o ya tiene una invitación pendiente."
         "FORBIDDEN" -> "No tenés permiso para esta acción."
         "PET_NOT_FOUND" -> "No encontramos esa mascota."
         "PET_NOT_ACTIVE" -> "La mascota no está activa."
@@ -162,8 +183,16 @@ object M08PetErrorMapper {
             "El vencimiento lo administra el servidor."
         "PET_TRANSFER_DEST_XOR_REQUIRED" ->
             "Elegí una persona o una organización de destino (no ambas)."
-        "PET_TRANSFER_SAME_PRINCIPAL" ->
-            "El destino elegido ya es el responsable principal."
+        "PET_TRANSFER_SAME_ACTOR", "PET_TRANSFER_SAME_PRINCIPAL" ->
+            "Esa persona u organización ya tiene la mascota bajo su cuidado."
+        "PET_TRANSFER_TARGET_INVALID" ->
+            "No encontramos a esa persona u organización."
+        "PET_TRANSFER_SOURCE_STALE" ->
+            "El cuidado de la mascota ya cambió. Actualizá e intentá de nuevo."
+        "RELATIONSHIP_REQUIRED" ->
+            "Primero conectate con esta persona en Mi manada."
+        "CURRENT_CUSTODIAN_REQUIRED" ->
+            "Ese vínculo es de quien tiene la mascota bajo su cuidado."
         "PET_DECEASED_NOT_TRANSFERABLE" ->
             "No se puede transferir una mascota fallecida."
         "PET_ARCHIVED_NOT_TRANSFERABLE" ->

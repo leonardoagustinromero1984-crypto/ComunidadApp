@@ -22,7 +22,8 @@ private data class TutorialProgressRow(
 
 object CanonicalTutorialProgressRepository {
 
-    suspend fun hydrate(store: Onb02Store, userId: String): Result<Unit> = runCatching {
+    suspend fun hydrate(store: Onb02Store, userId: String): Result<Boolean> = runCatching {
+        var flowCompleted = false
         val element: JsonElement = supabase.postgrest.rpc(
             function = CanonicalBackend.RPC_LIST_TUTORIAL_PROGRESS
         ).decodeAs()
@@ -31,6 +32,7 @@ object CanonicalTutorialProgressRepository {
             if (row.tutorialKey == Onb02RemoteKeys.FLOW && state == "COMPLETED") {
                 store.markCompleted(userId)
                 store.markSelectionConfirmed(userId)
+                flowCompleted = true
                 return@forEach
             }
             val id = TutorialId.fromKey(row.tutorialKey) ?: return@forEach
@@ -43,6 +45,7 @@ object CanonicalTutorialProgressRepository {
                 completed = state == "COMPLETED"
             )
         }
+        flowCompleted
     }
 
     suspend fun upsert(tutorial: TutorialId, state: String): Result<Unit> =

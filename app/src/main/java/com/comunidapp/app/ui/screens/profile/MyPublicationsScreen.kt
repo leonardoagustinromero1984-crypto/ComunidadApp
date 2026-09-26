@@ -26,6 +26,7 @@ import com.comunidapp.app.viewmodel.ProfileViewModel
 fun MyPublicationsScreen(
     onNavigateBack: () -> Unit,
     onAuthorClick: (String) -> Unit = {},
+    onPostClick: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -56,16 +57,14 @@ fun MyPublicationsScreen(
                     .fillMaxSize()
                     .padding(top = padding.calculateTopPadding()),
                 contentPadding = PaddingValues(
-                    start = LeoDimens.SpaceMd,
-                    end = LeoDimens.SpaceMd,
                     bottom = padding.calculateBottomPadding() + LeoDimens.SpaceMd
-                ),
-                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+                )
             ) {
                 items(uiState.posts, key = { it.id }) { post ->
                     LeoSocialPostCard(
                         post = post,
-                        onAuthorClick = onAuthorClick
+                        onAuthorClick = onAuthorClick,
+                        onPostClick = { onPostClick(post.id) }
                     )
                 }
             }

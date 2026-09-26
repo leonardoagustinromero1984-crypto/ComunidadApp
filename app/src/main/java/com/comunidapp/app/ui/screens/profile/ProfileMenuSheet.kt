@@ -135,7 +135,7 @@ fun ProfileMenuContent(
 
         MenuGroup("Contenido") {
             MenuRow("Mis publicaciones", Icons.Default.PostAdd) { onItemClick(actions.onMyPosts) }
-            MenuRow("Mis reels", Icons.Default.PlayCircle) { onItemClick(actions.onMyReels) }
+            MenuRow("Mis clips", Icons.Default.PlayCircle) { onItemClick(actions.onMyReels) }
             MenuRow("Mis historias", Icons.Default.WatchLater) { onItemClick(actions.onMyStories) }
             MenuRow("Borradores", Icons.Default.Drafts, "Privado") { onItemClick(actions.onDrafts) }
             MenuRow("Guardados", Icons.Default.Bookmark, "Privado") { onItemClick(actions.onSaved) }

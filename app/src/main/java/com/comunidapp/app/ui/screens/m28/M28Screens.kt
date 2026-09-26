@@ -1,17 +1,19 @@
 package com.comunidapp.app.ui.screens.m28
 
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -23,11 +25,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.model.M28GrantPurpose
 import com.comunidapp.app.data.model.M28ProposalDecision
 import com.comunidapp.app.data.model.M28ProposalStatus
+import com.comunidapp.app.data.model.VitacoraAccessTarget
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
@@ -47,7 +56,7 @@ fun M28PetGrantsScreen(
     val state by viewModel.uiState.collectAsState()
     Scaffold(
         containerColor = BrandBackground,
-        topBar = { LeoTopAppBar(title = "Acceso profesional", showBackButton = true, onBackClick = onNavigateBack) }
+        topBar = { LeoTopAppBar(title = "Gestionar accesos", showBackButton = true, onBackClick = onNavigateBack) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
             Text(
@@ -63,34 +72,127 @@ fun M28PetGrantsScreen(
             when (val s = state) {
                 M28GrantsUiState.Loading -> LoadingState()
                 is M28GrantsUiState.Error -> ErrorState(message = s.message)
-                is M28GrantsUiState.Content -> if (s.grants.isEmpty()) {
-                    EmptyState(
-                        title = "Sin accesos activos",
-                        message = "Todavía no autorizaste a ningún profesional o entidad."
+                is M28GrantsUiState.Content -> {
+                    OutlinedTextField(
+                        value = s.searchQuery,
+                        onValueChange = viewModel::updateSearchQuery,
+                        modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                        label = { Text("Buscar veterinario, profesional o veterinaria") },
+                        singleLine = true
                     )
-                } else {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(s.grants) { g ->
-                            Card(Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(
-                                        g.clinicName ?: "Profesional o entidad autorizada",
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                    if (s.searchInProgress) {
+                        Text("Buscando…", style = MaterialTheme.typography.bodySmall)
+                    }
+                    if (s.searchResults.isNotEmpty()) {
+                        LazyColumn(
+                            modifier = Modifier.fillMaxWidth().weight(1f, fill = false),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(s.searchResults) { target ->
+                                AccessTargetRow(target = target, onClick = { viewModel.selectTarget(target) })
+                            }
+                        }
+                    }
+                    s.actionMessage?.let { msg ->
+                        Text(msg, color = MaterialTheme.colorScheme.error, modifier = Modifier.padding(vertical = 4.dp))
+                    }
+                    Text(
+                        "Accesos actuales",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.padding(top = 12.dp, bottom = 8.dp)
+                    )
+                    if (s.grants.isEmpty()) {
+                        EmptyState(
+                            title = "Sin accesos activos",
+                            message = "Todavía no autorizaste a ningún profesional o entidad."
+                        )
+                    } else {
+                        LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            items(s.grants) { g ->
+                                Column(Modifier.fillMaxWidth()) {
+                                    LeoListRow(
+                                        title = g.clinicName ?: "Profesional o entidad autorizada",
+                                        subtitle = "Permisos: ${humanGrantPurposes(g.purposes)} · Estado: ${grantStatusLabel(g.status)}",
+                                        showDivider = g.status.name != "ACTIVE"
                                     )
-                                    Text("Permisos: ${humanGrantPurposes(g.purposes)}")
-                                    Text("Estado: ${grantStatusLabel(g.status)}")
                                     if (g.status.name == "ACTIVE") {
-                                        TextButton(onClick = { viewModel.revoke(g.id) }) {
-                                            Text("Revocar acceso")
-                                        }
+                                        LeoOutlinedButton(text = "Quitar acceso", onClick = { viewModel.revoke(g.id) })
                                     }
                                 }
                             }
                         }
                     }
+                    s.selectedTarget?.let { target ->
+                        GrantPermissionsDialog(
+                            target = target,
+                            onDismiss = { viewModel.selectTarget(null) },
+                            onConfirm = { purposes -> viewModel.grantSelectedTarget(purposes) }
+                        )
+                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun AccessTargetRow(target: VitacoraAccessTarget, onClick: () -> Unit) {
+    LeoListRow(
+        title = target.displayName,
+        subtitle = target.subtitle + if (target.verified) " · Verificado" else "",
+        onClick = onClick
+    )
+}
+
+@Composable
+private fun GrantPermissionsDialog(
+    target: VitacoraAccessTarget,
+    onDismiss: () -> Unit,
+    onConfirm: (List<M28GrantPurpose>) -> Unit
+) {
+    var viewVitacora by remember { mutableStateOf(true) }
+    var viewHealth by remember { mutableStateOf(false) }
+    var proposeChanges by remember { mutableStateOf(false) }
+    var registerInfo by remember { mutableStateOf(false) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Dar acceso") },
+        text = {
+            Column {
+                Text(target.displayName, fontWeight = FontWeight.SemiBold)
+                Text(target.subtitle, style = MaterialTheme.typography.bodySmall)
+                GrantPermissionRow("Ver VitaCora", viewVitacora) { viewVitacora = it }
+                GrantPermissionRow("Ver información de salud", viewHealth) { viewHealth = it }
+                GrantPermissionRow("Proponer cambios", proposeChanges) { proposeChanges = it }
+                GrantPermissionRow("Registrar información", registerInfo) { registerInfo = it }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = {
+                val purposes = buildList {
+                    if (viewVitacora) add(M28GrantPurpose.HISTORICAL_READ)
+                    if (viewHealth) add(M28GrantPurpose.DOCUMENTS)
+                    if (proposeChanges) add(M28GrantPurpose.PASSPORT_PROPOSAL)
+                    if (registerInfo) add(M28GrantPurpose.CURRENT_CARE)
+                }
+                onConfirm(purposes)
+            }) { Text("Dar acceso") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("Cancelar") }
+        }
+    )
+}
+
+@Composable
+private fun GrantPermissionRow(label: String, checked: Boolean, onChecked: (Boolean) -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth().clickable { onChecked(!checked) },
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Checkbox(checked = checked, onCheckedChange = onChecked)
+        Text(label)
     }
 }
 
@@ -101,50 +203,34 @@ fun M28PassportProposalsScreen(
     viewModel: M28PassportProposalsViewModel = viewModel(factory = M28PassportProposalsViewModel.factory(petId))
 ) {
     val state by viewModel.uiState.collectAsState()
-    var note by remember { mutableStateOf("") }
     Scaffold(
         containerColor = BrandBackground,
         topBar = { LeoTopAppBar(title = "Propuestas VitaCora", showBackButton = true, onBackClick = onNavigateBack) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().padding(16.dp)) {
-            Text(
-                "Un profesional o persona autorizada puede proponer cambios. Vos revisás y decidís qué se aplica en la VitaCora.",
-                style = MaterialTheme.typography.bodyMedium
-            )
             when (val s = state) {
                 M28ProposalsUiState.Loading -> LoadingState()
                 is M28ProposalsUiState.Error -> ErrorState(message = s.message)
                 is M28ProposalsUiState.Content -> if (s.proposals.isEmpty()) {
-                    EmptyState(
-                        title = "Sin propuestas",
-                        message = "Cuando alguien proponga un cambio, lo vas a ver acá."
-                    )
+                    EmptyState(title = "Sin propuestas", message = "No hay propuestas pendientes.")
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(s.proposals) { p ->
-                            Card(Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(
-                                        p.professionalName ?: "Propuesta recibida",
-                                        fontWeight = androidx.compose.ui.text.font.FontWeight.SemiBold
+                            Column(Modifier.fillMaxWidth()) {
+                                LeoListRow(
+                                    title = proposalTypeLabel(p.proposalType),
+                                    subtitle = "Estado: ${proposalStatusLabel(p.status)}",
+                                    showDivider = p.status != M28ProposalStatus.PENDING
+                                )
+                                if (p.status == M28ProposalStatus.PENDING) {
+                                    LeoPrimaryButton(
+                                        text = "Aceptar",
+                                        onClick = { viewModel.decide(p.id, M28ProposalDecision.ACCEPT, null) }
                                     )
-                                    Text("Cambio: ${proposalTypeLabel(p.proposalType)}")
-                                    Text("Estado: ${proposalStatusLabel(p.status)}")
-                                    Text("Detalle: ${p.proposedValueJson.take(160)}")
-                                    if (p.status == M28ProposalStatus.PENDING) {
-                                        OutlinedTextField(
-                                            value = note,
-                                            onValueChange = { note = it },
-                                            label = { Text("Nota para el profesional (opcional)") },
-                                            modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp)
-                                        )
-                                        Button(onClick = { viewModel.decide(p.id, M28ProposalDecision.ACCEPT, note) }) {
-                                            Text("Aceptar")
-                                        }
-                                        TextButton(onClick = { viewModel.decide(p.id, M28ProposalDecision.REJECT, note) }) {
-                                            Text("Rechazar")
-                                        }
-                                    }
+                                    LeoOutlinedButton(
+                                        text = "Rechazar",
+                                        onClick = { viewModel.decide(p.id, M28ProposalDecision.REJECT, null) }
+                                    )
                                 }
                             }
                         }
@@ -155,13 +241,13 @@ fun M28PassportProposalsScreen(
     }
 }
 
-private fun humanGrantPurposes(purposes: List<com.comunidapp.app.data.model.M28GrantPurpose>): String =
+private fun humanGrantPurposes(purposes: List<M28GrantPurpose>): String =
     purposes.joinToString { purpose ->
         when (purpose) {
-            com.comunidapp.app.data.model.M28GrantPurpose.HISTORICAL_READ -> "Ver historial"
-            com.comunidapp.app.data.model.M28GrantPurpose.CURRENT_CARE -> "Agregar eventos"
-            com.comunidapp.app.data.model.M28GrantPurpose.PASSPORT_PROPOSAL -> "Proponer cambios"
-            com.comunidapp.app.data.model.M28GrantPurpose.DOCUMENTS -> "Ver documentos"
+            M28GrantPurpose.HISTORICAL_READ -> "Ver VitaCora"
+            M28GrantPurpose.CURRENT_CARE -> "Registrar información"
+            M28GrantPurpose.PASSPORT_PROPOSAL -> "Proponer cambios"
+            M28GrantPurpose.DOCUMENTS -> "Ver información de salud"
         }
     }
 
@@ -202,15 +288,25 @@ fun M28ClinicCareScreen(
     var weight by remember { mutableStateOf("") }
     Scaffold(
         containerColor = BrandBackground,
-        topBar = { LeoTopAppBar(title = "Registrar atención", showBackButton = true, onBackClick = onNavigateBack) }
+        topBar = { LeoTopAppBar(title = "Atención clínica", showBackButton = true, onBackClick = onNavigateBack) }
     ) { padding ->
         Column(Modifier.padding(padding).fillMaxSize().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Registro operativo LeoVer — no constituye historia clínica oficial.")
+            Text("La identidad de la mascota no se edita desde acá.", style = MaterialTheme.typography.bodySmall)
             OutlinedTextField(value = reason, onValueChange = { reason = it }, label = { Text("Motivo") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(value = weight, onValueChange = { weight = it }, label = { Text("Peso (kg)") }, modifier = Modifier.fillMaxWidth())
-            Button(onClick = { viewModel.createAndFinalize(reason, weight.toDoubleOrNull()) }) {
-                Text("Finalizar atención")
-            }
+            var notes by remember { mutableStateOf("") }
+            var treatment by remember { mutableStateOf("") }
+            OutlinedTextField(value = notes, onValueChange = { notes = it }, label = { Text("Observaciones / nota") }, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(value = treatment, onValueChange = { treatment = it }, label = { Text("Tratamiento / indicaciones") }, modifier = Modifier.fillMaxWidth())
+            Text("Los adjuntos quedan en el historial privado de esta veterinaria hasta que el dueño acepte una propuesta.", style = MaterialTheme.typography.bodySmall)
+            Button(
+                onClick = { viewModel.createAndFinalize(reason, weight.toDoubleOrNull()) },
+                modifier = Modifier.fillMaxWidth()
+            ) { Text("Finalizar atención") }
+            LeoOutlinedButton(
+                text = "Proponer a VitaCora",
+                onClick = { viewModel.proposeToVitacora(reason, notes) }
+            )
             message?.let { Text(it) }
         }
     }

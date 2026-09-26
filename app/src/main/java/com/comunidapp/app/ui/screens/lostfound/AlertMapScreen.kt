@@ -2,8 +2,6 @@ package com.comunidapp.app.ui.screens.lostfound
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.PackageManager
-import android.net.Uri
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -34,12 +32,10 @@ import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -63,11 +59,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.core.content.ContextCompat
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.LostFoundPost
 import com.comunidapp.app.data.model.LostFoundStatus
@@ -78,12 +72,12 @@ import com.comunidapp.app.domain.alerts.AlertMapTypeFilter
 import com.comunidapp.app.domain.alerts.AlertMapViewMode
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.leo.LeoEmptyState
-import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoListRow
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandGreen
 import com.comunidapp.app.ui.theme.BrandOrange
 import com.comunidapp.app.ui.theme.BrandOrangeSoft
@@ -182,70 +176,70 @@ fun LostFoundMapScreen(
             verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
+                LeoFilterChip(
+                    label = "Mapa",
                     selected = ui.viewMode == AlertMapViewMode.MAP,
-                    onClick = { viewModel.setViewMode(AlertMapViewMode.MAP) },
-                    label = { Text("Mapa") }
+                    onClick = { viewModel.setViewMode(AlertMapViewMode.MAP) }
                 )
-                FilterChip(
+                LeoFilterChip(
+                    label = "Lista",
                     selected = ui.viewMode == AlertMapViewMode.LIST,
-                    onClick = { viewModel.setViewMode(AlertMapViewMode.LIST) },
-                    label = { Text("Lista") }
+                    onClick = { viewModel.setViewMode(AlertMapViewMode.LIST) }
                 )
             }
             Row(
                 modifier = Modifier.horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FilterChip(
+                LeoFilterChip(
+                    label = "Todas",
                     selected = ui.typeFilter == AlertMapTypeFilter.ALL,
-                    onClick = { viewModel.setTypeFilter(AlertMapTypeFilter.ALL) },
-                    label = { Text("Todas") }
+                    onClick = { viewModel.setTypeFilter(AlertMapTypeFilter.ALL) }
                 )
-                FilterChip(
+                LeoFilterChip(
+                    label = "Perdidas",
                     selected = ui.typeFilter == AlertMapTypeFilter.LOST,
-                    onClick = { viewModel.setTypeFilter(AlertMapTypeFilter.LOST) },
-                    label = { Text("Perdidas") }
+                    onClick = { viewModel.setTypeFilter(AlertMapTypeFilter.LOST) }
                 )
-                FilterChip(
+                LeoFilterChip(
+                    label = "Encontradas",
                     selected = ui.typeFilter == AlertMapTypeFilter.FOUND,
-                    onClick = { viewModel.setTypeFilter(AlertMapTypeFilter.FOUND) },
-                    label = { Text("Encontradas") }
+                    onClick = { viewModel.setTypeFilter(AlertMapTypeFilter.FOUND) }
                 )
                 listOf(1, 5, 10, 25).forEach { km ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = "${km} km",
                         selected = ui.distanceKm == km,
-                        onClick = { viewModel.setDistanceKm(km) },
-                        label = { Text("${km} km") }
+                        onClick = { viewModel.setDistanceKm(km) }
                     )
                 }
-                FilterChip(
+                LeoFilterChip(
+                    label = "7 días",
                     selected = ui.dateFilter == AlertDateFilter.LAST_7_DAYS,
                     onClick = {
                         viewModel.setDateFilter(
                             if (ui.dateFilter == AlertDateFilter.LAST_7_DAYS) AlertDateFilter.ANY
                             else AlertDateFilter.LAST_7_DAYS
                         )
-                    },
-                    label = { Text("7 días") }
+                    }
                 )
-                FilterChip(
+                LeoFilterChip(
+                    label = "30 días",
                     selected = ui.dateFilter == AlertDateFilter.LAST_30_DAYS,
                     onClick = {
                         viewModel.setDateFilter(
                             if (ui.dateFilter == AlertDateFilter.LAST_30_DAYS) AlertDateFilter.ANY
                             else AlertDateFilter.LAST_30_DAYS
                         )
-                    },
-                    label = { Text("30 días") }
+                    }
                 )
                 PetSpecies.entries.take(3).forEach { species ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = species.toDisplayName(),
                         selected = ui.species == species,
                         onClick = {
                             viewModel.setSpecies(if (ui.species == species) null else species)
-                        },
-                        label = { Text(species.toDisplayName()) }
+                        }
                     )
                 }
             }
@@ -518,40 +512,22 @@ private fun LegendDot(color: Color, label: String) {
 
 @Composable
 private fun AlertListCard(item: AlertMapItem, onClick: () -> Unit) {
-    Surface(
-        onClick = onClick,
-        shape = RoundedCornerShape(LeoDimens.RadiusCard),
-        color = BrandWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, NeutralBorder),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Row(modifier = Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+    val typeLabel = if (item.post.type == LostFoundType.LOST) "Perdida" else "Encontrada"
+    val distance = item.distanceKm?.let { "≈ ${"%.1f".format(it)} km" }
+    LeoListRow(
+        title = item.post.petName ?: item.post.species.toDisplayName(),
+        subtitle = listOfNotNull(typeLabel, item.zoneLabel, distance, item.post.date)
+            .joinToString(" · "),
+        leading = {
             PetImage(
                 imageUrl = item.post.photoUrl,
                 modifier = Modifier.size(64.dp),
                 cornerRadius = 8.dp,
                 contentDescription = item.post.petName
             )
-            Column(modifier = Modifier.padding(start = 12.dp).weight(1f)) {
-                Text(
-                    text = if (item.post.type == LostFoundType.LOST) "Perdida" else "Encontrada",
-                    color = if (item.post.type == LostFoundType.LOST) BrandOrange else BrandGreen,
-                    style = LeoCaption,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    text = item.post.petName ?: item.post.species.toDisplayName(),
-                    style = LeoCardTitle,
-                    color = BrandText
-                )
-                Text(text = item.zoneLabel, style = LeoCaption, color = MutedText)
-                item.distanceKm?.let {
-                    Text(text = "≈ ${"%.1f".format(it)} km", style = LeoCaption, color = MutedText)
-                }
-                Text(text = item.post.date, style = LeoCaption, color = MutedText)
-            }
-        }
-    }
+        },
+        onClick = onClick
+    )
 }
 
 @Composable
@@ -602,10 +578,34 @@ private fun AlertPreviewCard(item: AlertMapItem, onOpen: () -> Unit) {
 fun LostFoundDetailScreen(
     postId: String,
     onNavigateBack: () -> Unit,
+    onCompleteAnimal: (String) -> Unit = {},
     viewModel: AlertMapViewModel = viewModel()
 ) {
     val alerts by viewModel.alerts.collectAsState()
     val item = alerts.find { it.post.id == postId }
+    val posts by com.comunidapp.app.data.provider.DataProvider.lostFoundRepository
+        .observeLostFoundPosts()
+        .collectAsState()
+    val post = item?.post ?: posts.find { it.id == postId }
+    var claimMessage by remember { mutableStateOf<String?>(null) }
+    var claimedPetId by remember { mutableStateOf<String?>(null) }
+    var matchCandidates by remember {
+        mutableStateOf<List<com.comunidapp.app.data.repository.LostFoundMatchCandidate>>(emptyList())
+    }
+    val currentUserId = com.comunidapp.app.data.repository.AuthProvider.repository.getCurrentUser()?.id
+    val myLost = posts.filter {
+        it.type == LostFoundType.LOST &&
+            it.status == LostFoundStatus.ACTIVE &&
+            it.authorId == currentUserId
+    }
+    val scope = rememberCoroutineScope()
+    val repo = com.comunidapp.app.data.provider.DataProvider.lostFoundRepository
+    LaunchedEffect(post?.id, post?.isCustodian, post?.status) {
+        val found = post
+        if (found != null && found.type == LostFoundType.FOUND && found.isCustodian) {
+            matchCandidates = repo.listFoundMatchCandidates(found.id).getOrDefault(emptyList())
+        }
+    }
     Scaffold(
         containerColor = BrandBackground,
         topBar = {
@@ -616,7 +616,7 @@ fun LostFoundDetailScreen(
             )
         }
     ) { padding ->
-        if (item == null) {
+        if (post == null) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -633,17 +633,152 @@ fun LostFoundDetailScreen(
                     .padding(LeoDimens.SpaceMd),
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                AlertPreviewCard(item = item, onOpen = {})
+                if (item != null) {
+                    AlertPreviewCard(item = item, onOpen = {})
+                }
                 Text(
-                    text = "Contacto: ${item.post.contactInfo}",
-                    style = LeoCaption,
-                    color = BrandText
-                )
-                Text(
-                    text = "Zona aproximada: ${item.zoneLabel}",
+                    text = "Zona aproximada: ${item?.zoneLabel ?: post.location}",
                     style = LeoCaption,
                     color = MutedText
                 )
+                Text(
+                    text = when (post.status) {
+                        LostFoundStatus.CLAIMED -> "Caso tomado"
+                        LostFoundStatus.IN_CARE -> "Animal en cuidado"
+                        LostFoundStatus.RESOLVED -> "Resuelto"
+                        LostFoundStatus.CANCELLED -> "Cancelado"
+                        LostFoundStatus.ACTIVE -> "Abierto"
+                    },
+                    style = LeoCaption,
+                    color = BrandGreen
+                )
+                claimMessage?.let { Text(it, style = LeoCaption, color = BrandText) }
+                if (post.type == LostFoundType.FOUND && post.status == LostFoundStatus.ACTIVE && post.canClaim) {
+                    LeoPrimaryButton(
+                        text = if (claimMessage == "Procesando aceptación…") "Procesando aceptación…" else "Tomar caso",
+                        onClick = {
+                            scope.launch {
+                                claimMessage = "Procesando aceptación…"
+                                val result = repo.claimLostFound(post.id)
+                                result.onSuccess { claimed ->
+                                    if (claimed.alreadyTaken) {
+                                        claimMessage = "El caso fue asignado a un colaborador más cercano."
+                                    } else {
+                                        claimMessage = "Tomaste el caso."
+                                        claimedPetId = claimed.petId
+                                    }
+                                }.onFailure { error ->
+                                    val raw = error.message.orEmpty()
+                                    claimMessage = when {
+                                        raw.contains("ALERT_CLAIM_NOT_NEAREST", true) ->
+                                            "El caso fue asignado a un colaborador más cercano."
+                                        raw.contains("ALERT_ALREADY_CLAIMED", true) ->
+                                            "El caso fue asignado a un colaborador más cercano."
+                                        else -> "No se pudo tomar el caso."
+                                    }
+                                }
+                            }
+                        }
+                    )
+                }
+                val petId = claimedPetId ?: post.petId
+                if (!petId.isNullOrBlank() && (post.isCustodian || post.status == LostFoundStatus.CLAIMED || claimedPetId != null)) {
+                    LeoPrimaryButton(
+                        text = "Completar datos del animal",
+                        onClick = { onCompleteAnimal(petId.orEmpty()) }
+                    )
+                }
+                if (post.type == LostFoundType.FOUND &&
+                    post.status in setOf(LostFoundStatus.ACTIVE, LostFoundStatus.CLAIMED) &&
+                    myLost.isNotEmpty() &&
+                    currentUserId != null &&
+                    currentUserId != post.authorId
+                ) {
+                    Text(
+                        text = "Si reconocés al animal, podés avisar sin cerrar el caso.",
+                        style = LeoCaption,
+                        color = MutedText
+                    )
+                    myLost.forEach { lost ->
+                        LeoPrimaryButton(
+                            text = "Podría ser mi mascota" +
+                                (lost.petName?.takeIf { it.isNotBlank() }?.let { " ($it)" } ?: ""),
+                            onClick = {
+                                scope.launch {
+                                    val result = repo.assertFoundMightBeMine(post.id, lost.id)
+                                    claimMessage = if (result.isSuccess) {
+                                        "Avisamos a quien tiene al animal. Eso no te convierte en dueño todavía."
+                                    } else {
+                                        "No se pudo enviar el aviso."
+                                    }
+                                }
+                            }
+                        )
+                        LeoPrimaryButton(
+                            text = "No es mi mascota",
+                            onClick = {
+                                scope.launch {
+                                    val result = repo.rejectFoundMightBeMine(post.id, lost.id)
+                                    claimMessage = if (result.isSuccess) {
+                                        "Registramos que no es tu mascota. El caso sigue abierto."
+                                    } else {
+                                        "No se pudo registrar el rechazo."
+                                    }
+                                }
+                            }
+                        )
+                    }
+                }
+                if (post.status == LostFoundStatus.CLAIMED && post.isCustodian) {
+                    LeoPrimaryButton(
+                        text = "Animal recibido / En cuidado",
+                        onClick = {
+                            scope.launch {
+                                val result = repo.markLostFoundInCare(post.id)
+                                claimMessage = if (result.isSuccess) {
+                                    "El animal quedó registrado bajo cuidado."
+                                } else {
+                                    "No se pudo confirmar la recepción."
+                                }
+                            }
+                        }
+                    )
+                }
+                if (post.isCustodian) {
+                    matchCandidates.filter { it.status.equals("PENDING", true) && it.assertedBy != null }
+                        .forEach { candidate ->
+                            LeoPrimaryButton(
+                                text = "Sí, corresponde",
+                                onClick = {
+                                    scope.launch {
+                                        val result = repo.confirmFoundOwnerMatch(candidate.id)
+                                        claimMessage = if (result.isSuccess) {
+                                            "Match confirmado. Se unificó con la mascota perdida."
+                                        } else {
+                                            "No se pudo confirmar el match."
+                                        }
+                                        matchCandidates = repo.listFoundMatchCandidates(post.id)
+                                            .getOrDefault(emptyList())
+                                    }
+                                }
+                            )
+                            LeoPrimaryButton(
+                                text = "No corresponde",
+                                onClick = {
+                                    scope.launch {
+                                        val result = repo.rejectFoundOwnerMatch(candidate.id)
+                                        claimMessage = if (result.isSuccess) {
+                                            "Candidato rechazado. El caso y los demás avisos siguen."
+                                        } else {
+                                            "No se pudo rechazar."
+                                        }
+                                        matchCandidates = repo.listFoundMatchCandidates(post.id)
+                                            .getOrDefault(emptyList())
+                                    }
+                                }
+                            )
+                        }
+                }
             }
         }
     }

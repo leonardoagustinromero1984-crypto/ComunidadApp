@@ -19,14 +19,13 @@ import java.util.Locale
 object VitaCoraHistoryPresentation {
 
     private val dateFormatter = DateTimeFormatter.ofPattern("d MMM yyyy", Locale("es", "AR"))
-
-
+    private val dateTimeFormatter = DateTimeFormatter.ofPattern("d MMM yyyy · HH:mm", Locale("es", "AR"))
 
     fun titleFor(item: M14PassportHistory): String {
 
         item.metadataEvent?.let { kind ->
 
-            momentTitle(kind)?.let { return it }
+            momentTitle(kind, item)?.let { return it }
 
         }
 
@@ -64,10 +63,17 @@ object VitaCoraHistoryPresentation {
     fun detailFor(item: M14PassportHistory): String? {
 
         item.metadataEvent?.let { kind ->
+            if (kind.equals("CARE_CREATED", ignoreCase = true) ||
+                kind.equals("CARE_TRANSFER", ignoreCase = true)
+            ) {
+                return null
+            }
 
-            item.reason?.takeIf { it.isNotBlank() && !looksTechnical(it) }?.let { return it }
-
-            momentTitle(kind)?.let { return item.reason?.takeIf { r -> r.isNotBlank() } }
+            val reason = item.reason?.trim().orEmpty()
+            if (reason in GENERIC_SOCIAL_TITLES) return null
+            reason.takeIf { it.isNotBlank() && !looksTechnical(it) }?.let { return it }
+            momentTitle(kind, item)
+            return null
 
         }
 
@@ -78,24 +84,43 @@ object VitaCoraHistoryPresentation {
 
 
     fun formatDate(epochMs: Long): String {
-
         if (epochMs <= 0L) return ""
-
         return runCatching {
-
-            Instant.ofEpochMilli(epochMs)
-
-                .atZone(ZoneId.systemDefault())
-
-                .format(dateFormatter)
-
+            val zoned = Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault())
+            // Real timestamptz events always carry clock time; show date + hour.
+            zoned.format(dateTimeFormatter)
         }.getOrDefault("")
+    }
 
+    /** Date-only when no reliable clock time exists (midnight local from date-only sources). */
+    fun formatDatePreferringTime(epochMs: Long, hasRealClockTime: Boolean = true): String {
+        if (epochMs <= 0L) return ""
+        return runCatching {
+            val zoned = Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault())
+            if (!hasRealClockTime) zoned.format(dateFormatter) else zoned.format(dateTimeFormatter)
+        }.getOrDefault("")
     }
 
 
 
-    private fun momentTitle(kind: String): String? = when (kind.uppercase()) {
+    fun isPlayableVideo(item: M14PassportHistory): Boolean =
+        com.comunidapp.app.domain.vitacora.VitaCoraSocialMedia.isVideo(
+            item.mediaMime,
+            item.sourceContentKind,
+            item.mediaDisplayUrl
+        )
+
+    fun isPlayableImage(item: M14PassportHistory): Boolean =
+        !item.mediaDisplayUrl.isNullOrBlank() && !isPlayableVideo(item)
+
+    private val GENERIC_SOCIAL_TITLES = setOf(
+        "Clip en VitaCora",
+        "Reel en VitaCora",
+        "Historia en VitaCora",
+        "Publicación en VitaCora"
+    )
+
+    private fun momentTitle(kind: String, item: M14PassportHistory): String? = when (kind.uppercase()) {
 
         "ARRIVAL" -> "Llegada a la familia"
 
@@ -109,7 +134,17 @@ object VitaCoraHistoryPresentation {
 
         "TRIP" -> "Viaje registrado"
 
-        "SOCIAL" -> "Se guardó una historia"
+        "SOCIAL" -> when {
+            item.sourceContentKind.equals("REEL", ignoreCase = true) ||
+                isPlayableVideo(item) -> "Se guardó un Clip"
+            item.sourceContentKind.equals("POST", ignoreCase = true) -> "Se guardó una publicación"
+            else -> "Se guardó una historia"
+        }
+
+        "CARE_CREATED" -> item.reason?.trim()?.takeIf { it.isNotBlank() }
+            ?: "Se creó la VitaCora"
+        "CARE_TRANSFER" -> item.reason?.trim()?.takeIf { it.isNotBlank() }
+            ?: "La mascota pasó a estar bajo un nuevo cuidado"
 
         "WEIGHT" -> "Se actualizó el peso"
 

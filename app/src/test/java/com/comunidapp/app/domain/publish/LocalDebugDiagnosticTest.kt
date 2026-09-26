@@ -12,7 +12,7 @@ class LocalDebugDiagnosticTest {
         assertFalse(LocalDebugDiagnostic.isCopyEnabled(debug = false, env = "production"))
         assertFalse(LocalDebugDiagnostic.isCopyEnabled(debug = false, env = "local"))
         assertFalse(LocalDebugDiagnostic.isCopyEnabled(debug = true, env = "production"))
-        assertFalse(LocalDebugDiagnostic.isCopyEnabled(debug = true, env = "staging"))
+        assertTrue(LocalDebugDiagnostic.isCopyEnabled(debug = true, env = "staging"))
     }
 
     @Test

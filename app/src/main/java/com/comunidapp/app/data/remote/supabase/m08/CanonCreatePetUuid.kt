@@ -1,13 +1,10 @@
 package com.comunidapp.app.data.remote.supabase.m08
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.decodeFromJsonElement
 
 /**
  * SQL contract (1020, no later override):
@@ -19,12 +16,7 @@ import kotlinx.serialization.json.decodeFromJsonElement
 internal object CanonCreatePetUuid {
     data class Decoded(val kind: String, val id: String?)
 
-    @Serializable
-    private data class NamedScalar(
-        @SerialName("canon_create_pet") val id: String? = null
-    )
-
-    fun decode(raw: String): Decoded {
+    fun decode(raw: String, functionName: String = "canon_create_pet"): Decoded {
         if (raw.isBlank()) return Decoded("empty", null)
         uuidOrNull(raw.trim().trim('"'))?.let { return Decoded("primitive", it) }
         val element = runCatching { Json.parseToJsonElement(raw) }.getOrNull()
@@ -36,18 +28,17 @@ internal object CanonCreatePetUuid {
                 val first = element.firstOrNull() ?: return Decoded("empty", null)
                 when (first) {
                     is JsonPrimitive -> Decoded("array", uuidOrNull(first.content))
-                    is JsonObject -> Decoded("array", namedScalar(first))
+                    is JsonObject -> Decoded("array", namedScalar(first, functionName))
                     else -> Decoded("array", null)
                 }
             }
-            is JsonObject -> Decoded("object", namedScalar(element))
+            is JsonObject -> Decoded("object", namedScalar(element, functionName))
         }
     }
 
-    private fun namedScalar(element: JsonObject): String? {
-        val named = runCatching {
-            Json.decodeFromJsonElement<NamedScalar>(element)
-        }.getOrNull()?.id
+    private fun namedScalar(element: JsonObject, functionName: String): String? {
+        val named = element[functionName]?.let { (it as? JsonPrimitive)?.content }
+            ?: element.values.firstOrNull()?.let { (it as? JsonPrimitive)?.content }
         return uuidOrNull(named)
     }
 

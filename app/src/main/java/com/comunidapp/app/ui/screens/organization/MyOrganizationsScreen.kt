@@ -1,6 +1,5 @@
 package com.comunidapp.app.ui.screens.organization
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -11,10 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,7 +21,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.organization.Organization
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
@@ -59,15 +59,11 @@ fun MyOrganizationsScreen(
                     .fillMaxSize()
                     .padding(padding)
             ) {
-                Button(
+                LeoPrimaryButton(
+                    text = "Crear organización",
                     onClick = onCreateOrganization,
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    shape = RoundedCornerShape(14.dp)
-                ) {
-                    Text("Crear organización")
-                }
+                    modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm)
+                )
                 uiState.errorMessage?.let { msg ->
                     Text(
                         text = msg,
@@ -108,48 +104,31 @@ private fun OrganizationListItem(
     onEdit: () -> Unit,
     onOpenPublic: () -> Unit
 ) {
-    OutlinedCard(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onManage),
-        shape = RoundedCornerShape(14.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = organization.publicName,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "@${organization.slug.value} · ${organization.type.name}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            Spacer(modifier = Modifier.height(4.dp))
-            Text(
-                text = "${organization.status.name} · ${organization.verificationStatus.name}",
-                style = MaterialTheme.typography.labelMedium
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = "Administrar",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(onClick = onManage)
-            )
-            Text(
-                text = "Editar perfil",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(onClick = onEdit)
-            )
-            Text(
-                text = "Ver perfil público",
-                color = MaterialTheme.colorScheme.primary,
-                style = MaterialTheme.typography.labelLarge,
-                modifier = Modifier.clickable(onClick = onOpenPublic)
-            )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            text = organization.publicName,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "@${organization.slug.value} · ${organization.type.name}",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        Text(
+            text = "${organization.status.name} · ${organization.verificationStatus.name}",
+            style = MaterialTheme.typography.labelMedium
+        )
+        Column(
+            modifier = Modifier.padding(top = LeoDimens.SpaceSm),
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+        ) {
+            LeoPrimaryButton(text = "Administrar", onClick = onManage)
+            LeoOutlinedButton(text = "Editar perfil", onClick = onEdit)
+            LeoOutlinedButton(text = "Ver perfil público", onClick = onOpenPublic)
         }
+        LeoHairline(modifier = Modifier.padding(top = LeoDimens.SpaceCompact))
     }
 }

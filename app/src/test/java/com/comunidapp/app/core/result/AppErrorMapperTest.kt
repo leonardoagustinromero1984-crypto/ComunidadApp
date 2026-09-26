@@ -45,6 +45,25 @@ class AppErrorMapperTest {
         assertEquals(AppErrorKind.NOT_FOUND, AppErrorMapper.notFound().kind)
         assertEquals(AppErrorKind.SERVER, AppErrorMapper.server("500").kind)
         assertEquals(AppErrorKind.RATE_LIMITED, AppErrorMapper.rateLimited().kind)
+        assertEquals(AppErrorKind.QUOTA_EXCEEDED, AppErrorMapper.quotaExceeded().kind)
+        assertEquals(AppErrorKind.FEATURE_TEMPORARILY_DISABLED, AppErrorMapper.featureTemporarilyDisabled().kind)
         assertEquals(AppErrorKind.CONFLICT, AppErrorMapper.conflict().kind)
+    }
+
+    @Test
+    fun fromThrowable_mapsSecurityLimitCodes() {
+        val rate = AppErrorMapper.fromThrowable(IllegalStateException("P0001 RATE_LIMITED"))
+        // IllegalStateException is classified as VALIDATION before code scan.
+        assertEquals(AppErrorKind.VALIDATION, rate.kind)
+
+        val rateRpc = AppErrorMapper.fromThrowable(RuntimeException("ERROR: RATE_LIMITED"))
+        assertEquals(AppErrorKind.RATE_LIMITED, rateRpc.kind)
+        assertEquals("RATE_LIMITED", rateRpc.code)
+
+        val quota = AppErrorMapper.fromThrowable(RuntimeException("QUOTA_EXCEEDED"))
+        assertEquals(AppErrorKind.QUOTA_EXCEEDED, quota.kind)
+
+        val disabled = AppErrorMapper.fromThrowable(RuntimeException("FEATURE_TEMPORARILY_DISABLED"))
+        assertEquals(AppErrorKind.FEATURE_TEMPORARILY_DISABLED, disabled.kind)
     }
 }

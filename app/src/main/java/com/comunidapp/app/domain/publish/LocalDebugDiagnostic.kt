@@ -16,7 +16,9 @@ object LocalDebugDiagnostic {
     fun isCopyEnabled(
         debug: Boolean = BuildConfig.DEBUG,
         env: String = BuildConfig.LEOVER_ENV
-    ): Boolean = debug && env.equals("local", ignoreCase = true)
+    ): Boolean = debug && (
+        env.equals("local", ignoreCase = true) || env.equals("staging", ignoreCase = true)
+    )
 
     fun forOperation(
         operation: String,
@@ -62,14 +64,16 @@ object LocalDebugDiagnostic {
             }
         }
         val hint = extractBackendHint(raw)
-        val safeHint = SensitiveDataSanitizer.sanitize(hint, maxLength = 220)
-        val code = extractErrorCode(raw)
+        val safeHint = SensitiveDataSanitizer.sanitize(hint, maxLength = 280)
+        val code = LostFoundPublishError.codeOf(error)
         val stamp = isoUtc(nowMillis)
         return buildString {
             appendLine("LEOVER_DIAGNOSTIC")
             appendLine("operation=lost_found_create")
             appendLine("type=${type.uppercase(Locale.US)}")
             appendLine("errorCode=$code")
+            appendLine("exception=${error.javaClass.simpleName}")
+            appendLine("sqlstate=${extractErrorCode(raw)}")
             appendLine("message=$safeHint")
             appendLine("timestamp=$stamp")
             append("appVersion=$appVersion")
@@ -91,7 +95,12 @@ object LocalDebugDiagnostic {
                 lower.contains("sqlstate") ||
                 lower.contains("42883") ||
                 lower.contains("pgrst") ||
-                lower.contains("function")
+                lower.contains("function") ||
+                lower.contains("st_makepoint") ||
+                lower.contains("st_setsrid") ||
+                lower.contains("lf-create") ||
+                lower.contains("detail") ||
+                lower.contains("hint")
         }
         val safeFallback = lines.filter { line ->
             val lower = line.lowercase(Locale.US)

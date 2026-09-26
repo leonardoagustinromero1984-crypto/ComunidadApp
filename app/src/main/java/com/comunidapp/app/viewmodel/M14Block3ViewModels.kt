@@ -211,7 +211,8 @@ class M14RevokeCredentialViewModel(
 
 class M14SharePassportViewModel(
     private val passportId: String,
-    private val repository: M14PassportRepository = DataProvider.m14PassportRepository
+    private val repository: M14PassportRepository = DataProvider.m14PassportRepository,
+    private val resolveByPet: Boolean = false
 ) : ViewModel() {
     private val _passport = MutableStateFlow<M14PetPassport?>(null)
     val passport: StateFlow<M14PetPassport?> = _passport.asStateFlow()
@@ -224,7 +225,12 @@ class M14SharePassportViewModel(
 
     init {
         viewModelScope.launch {
-            repository.observePassport(passportId).collect { p ->
+            val source = if (resolveByPet) {
+                repository.observePassportForPet(passportId)
+            } else {
+                repository.observePassport(passportId)
+            }
+            source.collect { p ->
                 _passport.value = p
                 val code = p?.publicCode
                 if (code.isNullOrBlank()) {
@@ -270,6 +276,12 @@ class M14SharePassportViewModel(
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 M14SharePassportViewModel(passportId) as T
+        }
+
+        fun factoryForPet(petId: String): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                M14SharePassportViewModel(petId, resolveByPet = true) as T
         }
     }
 }

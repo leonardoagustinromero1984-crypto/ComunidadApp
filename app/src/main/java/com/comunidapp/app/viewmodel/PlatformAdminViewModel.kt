@@ -11,6 +11,7 @@ import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PermissionRepository
 import com.comunidapp.app.data.repository.PlatformAdministrationRepository
+import com.comunidapp.app.domain.authorization.AdminAccessPolicy
 import com.comunidapp.app.domain.authorization.PermissionCode
 import com.comunidapp.app.domain.authorization.PlatformRoleCode
 import com.comunidapp.app.domain.user.AccountStatus
@@ -37,6 +38,7 @@ data class PlatformAdminUiState(
     val canAssignRoles: Boolean = false,
     val canRevokeRoles: Boolean = false,
     val canViewAudit: Boolean = false,
+    val actorIsSuperadmin: Boolean = false,
     val pendingStatus: AccountStatus? = null,
     val pendingRole: PlatformRoleCode? = null,
     val reasonCode: String = "manual_admin",
@@ -67,9 +69,8 @@ class PlatformAdminViewModel(
                 return@launch
             }
             permissionRepository.refresh(user.id)
-            val allowed = permissionRepository.hasPermission(user.id, PermissionCode.ROLES_VIEW) ||
-                permissionRepository.hasPermission(user.id, PermissionCode.USERS_CHANGE_STATUS) ||
-                permissionRepository.hasPermission(user.id, PermissionCode.MODERATION_VIEW)
+            val ctx = permissionRepository.getAuthorizationContext(user.id)
+            val allowed = AdminAccessPolicy.canSeeUsers(ctx)
             _uiState.update {
                 it.copy(
                     accessChecked = true,
@@ -93,7 +94,8 @@ class PlatformAdminViewModel(
                     canViewAudit = permissionRepository.hasPermission(
                         user.id,
                         PermissionCode.AUDIT_VIEW
-                    )
+                    ),
+                    actorIsSuperadmin = com.comunidapp.app.domain.authorization.PlatformRoleCode.SUPERADMIN in ctx.roles
                 )
             }
         }
@@ -198,6 +200,13 @@ class PlatformAdminViewModel(
     fun confirmPendingAction() {
         val state = _uiState.value
         val target = state.selectedUserId ?: return
+        val reason = state.reasonCode.trim()
+        if (reason.isEmpty()) {
+            _uiState.update {
+                it.copy(message = "Indicá un motivo para continuar.", confirmAction = null)
+            }
+            return
+        }
         when (state.confirmAction) {
             "status" -> {
                 val status = state.pendingStatus ?: return
@@ -206,7 +215,7 @@ class PlatformAdminViewModel(
                     adminRepository.changeAccountStatus(
                         target,
                         status,
-                        state.reasonCode.ifBlank { "manual_admin" }
+                        reason
                     ).onSuccess {
                         selectUser(target)
                         _uiState.update {
@@ -226,7 +235,7 @@ class PlatformAdminViewModel(
                     adminRepository.assignRole(
                         target,
                         role,
-                        state.reasonCode.ifBlank { "manual_admin" }
+                        reason
                     ).onSuccess {
                         selectUser(target)
                         _uiState.update {
@@ -246,7 +255,7 @@ class PlatformAdminViewModel(
                     adminRepository.revokeRole(
                         target,
                         role,
-                        state.reasonCode.ifBlank { "manual_admin" }
+                        reason
                     ).onSuccess {
                         selectUser(target)
                         _uiState.update {

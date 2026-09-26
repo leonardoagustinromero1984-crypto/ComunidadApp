@@ -31,6 +31,7 @@ class MockAuthRepositoryTest {
     fun tearDown() {
         runBlocking { repo.logout() }
         MockAuthDatabase.resetToFixtures()
+        MockAdministrativeIdentityStore.reset()
     }
 
     @Test
@@ -173,6 +174,95 @@ class MockAuthRepositoryTest {
         val reset = repo.resetPassword(MockData.currentUser.email, token!!, "newpass12")
         assertTrue(reset.isSuccess)
         assertTrue(repo.login(MockData.currentUser.email, "newpass12").isSuccess)
+    }
+
+    @Test
+    fun loginAdministrative_valid_testIdentity() = runBlocking {
+        MockAdministrativeIdentityStore.seed(
+            MockAdministrativeIdentityStore.Entry(
+                username = "qa.admin",
+                password = "test-admin-pass",
+                user = com.comunidapp.app.data.model.User(
+                    id = "admin-tech-1",
+                    name = "",
+                    email = "hidden-internal@invalid",
+                    emailVerified = true
+                ),
+                session = com.comunidapp.app.domain.authorization.AdminSessionInfo(
+                    userId = "admin-tech-1",
+                    mustChangePassword = false,
+                    isRoot = true
+                )
+            )
+        )
+        val ok = repo.loginAdministrative("qa.admin", "test-admin-pass")
+        assertTrue(ok.isSuccess)
+        assertEquals("admin-tech-1", ok.getOrNull()?.id)
+        val bad = repo.loginAdministrative("qa.admin", "wrong")
+        assertTrue(bad.isFailure)
+        assertEquals(
+            "Usuario o contraseña incorrectos.",
+            bad.exceptionOrNull()?.message
+        )
+        val unknown = repo.loginAdministrative("nobody", "test-admin-pass")
+        assertTrue(unknown.isFailure)
+        assertEquals(
+            "Usuario o contraseña incorrectos.",
+            unknown.exceptionOrNull()?.message
+        )
+    }
+
+    @Test
+    fun loginWithUsername_person_before_staff() = runBlocking {
+        val personOk = repo.loginWithUsername("maria.demo", MockAuthDatabase.DEMO_PASSWORD)
+        assertTrue(personOk.isSuccess)
+        assertEquals(MockData.currentUser.id, personOk.getOrNull()?.id)
+
+        val personBad = repo.loginWithUsername("maria.demo", "wrongpass")
+        assertTrue(personBad.isFailure)
+
+        MockAdministrativeIdentityStore.seed(
+            MockAdministrativeIdentityStore.Entry(
+                username = "maria.demo",
+                password = "test-admin-pass",
+                user = com.comunidapp.app.data.model.User(
+                    id = "admin-tech-1",
+                    name = "",
+                    email = "hidden-internal@invalid",
+                    emailVerified = true
+                ),
+                session = com.comunidapp.app.domain.authorization.AdminSessionInfo(
+                    userId = "admin-tech-1",
+                    mustChangePassword = false,
+                    isRoot = true
+                )
+            )
+        )
+        val collision = repo.loginWithUsername("maria.demo", "test-admin-pass")
+        assertTrue(collision.isFailure)
+
+        val staff = repo.loginWithUsername("qa.admin", "test-admin-pass")
+        assertTrue(staff.isFailure)
+        MockAdministrativeIdentityStore.seed(
+            MockAdministrativeIdentityStore.Entry(
+                username = "qa.admin",
+                password = "test-admin-pass",
+                user = com.comunidapp.app.data.model.User(
+                    id = "admin-tech-1",
+                    name = "",
+                    email = "hidden-internal@invalid",
+                    emailVerified = true
+                ),
+                session = com.comunidapp.app.domain.authorization.AdminSessionInfo(
+                    userId = "admin-tech-1",
+                    mustChangePassword = false,
+                    isRoot = true
+                )
+            )
+        )
+        val staffOk = repo.loginWithUsername("qa.admin", "test-admin-pass")
+        assertTrue(staffOk.isSuccess)
+        assertEquals("admin-tech-1", staffOk.getOrNull()?.id)
     }
 
     @Test

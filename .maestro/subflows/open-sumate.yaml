@@ -1,0 +1,6 @@
+appId: ${APP_ID}
+---
+- tapOn: "Sumate"
+- extendedWaitUntil:
+    visible: "Sumate"
+    timeout: 10000

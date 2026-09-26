@@ -9,6 +9,8 @@ data class PetAccessContext(
     val relationCode: String,
     val principalPersonId: String?,
     val principalOrganizationId: String?,
+    /** Resolved from canon_list_pet_holders display_name when available. */
+    val principalDisplayName: String? = null,
     val capabilities: List<String>,
     val canRead: Boolean,
     val canUpdate: Boolean,

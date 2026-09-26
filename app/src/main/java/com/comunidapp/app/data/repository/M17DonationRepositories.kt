@@ -230,7 +230,8 @@ class M17MemoryStore {
         endsAt = now + 30 * 86_400_000L,
         createdBy = actor,
         createdAt = now,
-        updatedAt = now
+        updatedAt = now,
+        paymentAlias = "leover.ayuda"
     )
 
     private fun seedContributions(
@@ -300,6 +301,15 @@ interface M17DonationRepository {
     suspend fun observeFinancialSummary(campaignId: String): Result<M17CampaignFinancialSummary>
     suspend fun observePublicContributions(campaignId: String): Result<List<M17PublicContribution>>
     suspend fun registerMockContribution(input: RegisterM17MockContributionInput): Result<M17Contribution>
+    suspend fun declareContribution(
+        campaignId: String,
+        amountMinor: Long,
+        note: String? = null,
+        currency: String = "ARS"
+    ): Result<M17Contribution>
+    suspend fun confirmContribution(contributionId: String): Result<M17Contribution>
+    suspend fun rejectContribution(contributionId: String): Result<M17Contribution>
+    suspend fun listManagedContributions(campaignId: String): Result<List<M17Contribution>>
     suspend fun refreshCampaign(campaignId: String): Result<M17DonationCampaign>
     suspend fun canManageOrganization(organizationId: String): Boolean
     suspend fun isOrganizationEligible(organizationId: String): Boolean
@@ -564,6 +574,58 @@ class MockM17DonationRepository(
             onFailure = { M17DonationErrorMapper.failure(it) }
         )
     }
+
+    override suspend fun declareContribution(
+        campaignId: String,
+        amountMinor: Long,
+        note: String?,
+        currency: String
+    ): Result<M17Contribution> = registerMockContribution(
+        RegisterM17MockContributionInput(
+            campaignId = campaignId,
+            amountMinor = amountMinor,
+            currency = currency,
+            visibility = M17DonorVisibility.PRIVATE,
+            message = note,
+            status = M17ContributionStatus.PENDING
+        )
+    )
+
+    override suspend fun confirmContribution(contributionId: String): Result<M17Contribution> =
+        store.withLock {
+            runCatching {
+                val current = store.contributions.value.firstOrNull { it.id == contributionId }
+                    ?: failM17("M17_CONTRIBUTION_NOT_FOUND")
+                val campaign = getCampaignOrFail(current.campaignId)
+                if (campaign.createdBy != requireActor()) failM17("M17_PERMISSION_DENIED")
+                if (current.status == M17ContributionStatus.CONFIRMED) return@runCatching current
+                if (current.status != M17ContributionStatus.PENDING) failM17("M17_INVALID_STATUS")
+                val updated = current.copy(status = M17ContributionStatus.CONFIRMED)
+                store.upsertContribution(updated)
+                updated
+            }.fold(onSuccess = { Result.success(it) }, onFailure = { M17DonationErrorMapper.failure(it) })
+        }
+
+    override suspend fun rejectContribution(contributionId: String): Result<M17Contribution> =
+        store.withLock {
+            runCatching {
+                val current = store.contributions.value.firstOrNull { it.id == contributionId }
+                    ?: failM17("M17_CONTRIBUTION_NOT_FOUND")
+                val campaign = getCampaignOrFail(current.campaignId)
+                if (campaign.createdBy != requireActor()) failM17("M17_PERMISSION_DENIED")
+                if (current.status == M17ContributionStatus.REJECTED) return@runCatching current
+                if (current.status != M17ContributionStatus.PENDING) failM17("M17_INVALID_STATUS")
+                val updated = current.copy(status = M17ContributionStatus.REJECTED)
+                store.upsertContribution(updated)
+                updated
+            }.fold(onSuccess = { Result.success(it) }, onFailure = { M17DonationErrorMapper.failure(it) })
+        }
+
+    override suspend fun listManagedContributions(campaignId: String): Result<List<M17Contribution>> =
+        runCatching { store.contributionsFor(campaignId) }.fold(
+            onSuccess = { Result.success(it) },
+            onFailure = { M17DonationErrorMapper.failure(it) }
+        )
 
     override suspend fun refreshCampaign(campaignId: String): Result<M17DonationCampaign> =
         runCatching { getCampaignOrFail(campaignId) }.fold(

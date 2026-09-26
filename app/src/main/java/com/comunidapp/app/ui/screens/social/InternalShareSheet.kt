@@ -35,6 +35,13 @@ import com.comunidapp.app.domain.social.SocialShare
 import com.comunidapp.app.ui.theme.LeoDimens
 import kotlinx.coroutines.launch
 
+private data class ShareTarget(
+    val userId: String,
+    val displayName: String,
+    val username: String?,
+    val conversation: Conversation?
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InternalShareSheet(
@@ -71,6 +78,9 @@ fun InternalShareSheet(
         deepLink = SocialShare.deepLink(kind, post.id),
         expiresAtEpochMs = post.expiresAt
     )
+    val targets = remember(conversations, people) {
+        buildShareTargets(conversations, people)
+    }
     ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Column(Modifier.padding(LeoDimens.SpaceMd)) {
             Text("Enviar por LeoVer")
@@ -81,34 +91,12 @@ fun InternalShareSheet(
                 label = { Text("Buscar persona") }
             )
             status?.let { Text(it, modifier = Modifier.padding(vertical = 8.dp)) }
-            Text("Conversaciones recientes", modifier = Modifier.padding(top = 8.dp))
             LazyColumn {
-                items(conversations, key = { it.id }) { conversation ->
-                    ShareRow(conversation.peerName, conversation.peerUserId.takeIf { it.isNotBlank() }?.let { "@$it" }) {
+                items(targets, key = { it.userId }) { target ->
+                    ShareRow(target.displayName, target.username?.let { "@$it" }) {
                         scope.launch {
-                            sendShare(conversation, reference)
-                            onShared()
-                            onDismiss()
-                        }
-                    }
-                }
-                if (people.isNotEmpty()) {
-                    item { Text("Personas", modifier = Modifier.padding(top = 8.dp)) }
-                    items(people, key = { it.userId }) { person ->
-                        ShareRow(person.displayName, "@${person.username}") {
-                            scope.launch {
-                                val user = AuthProvider.repository.getCurrentUser() ?: return@launch
-                                DataProvider.chatRepository.getOrCreateConversation(
-                                    user, person.userId, person.displayName
-                                ).onSuccess { id ->
-                                    DataProvider.chatRepository.sendMessage(
-                                        id, user, InternalShareCodec.encode(reference)
-                                    )
-                                    onShared()
-                                    onDismiss()
-                                }.onFailure {
-                                    status = "No pudimos enviar el mensaje."
-                                }
+                            shareToTarget(target, reference, onShared, onDismiss) { msg ->
+                                status = msg
                             }
                         }
                     }
@@ -117,6 +105,37 @@ fun InternalShareSheet(
             TextButton(onClick = onDismiss) { Text("Cancelar") }
         }
     }
+}
+
+private fun buildShareTargets(
+    conversations: List<Conversation>,
+    people: List<ChatPersonHit>
+): List<ShareTarget> {
+    val byUserId = linkedMapOf<String, ShareTarget>()
+    conversations.forEach { conversation ->
+        val userId = conversation.peerUserId.trim()
+        if (userId.isEmpty()) return@forEach
+        byUserId[userId] = ShareTarget(
+            userId = userId,
+            displayName = conversation.peerName,
+            username = conversation.peerUsername,
+            conversation = conversation
+        )
+    }
+    people.forEach { person ->
+        val userId = person.userId.trim()
+        if (userId.isEmpty()) return@forEach
+        byUserId.putIfAbsent(
+            userId,
+            ShareTarget(
+                userId = userId,
+                displayName = person.displayName,
+                username = person.username,
+                conversation = null
+            )
+        )
+    }
+    return byUserId.values.toList()
 }
 
 @Composable
@@ -131,6 +150,34 @@ private fun ShareRow(name: String, username: String?, onClick: () -> Unit) {
             Text(name)
             if (!username.isNullOrBlank() && username != "@") Text(username)
         }
+    }
+}
+
+private suspend fun shareToTarget(
+    target: ShareTarget,
+    reference: SharedContentReference,
+    onShared: () -> Unit,
+    onDismiss: () -> Unit,
+    onError: (String) -> Unit
+) {
+    val user = AuthProvider.repository.getCurrentUser() ?: return
+    val conversation = target.conversation
+    if (conversation != null) {
+        sendShare(conversation, reference)
+        onShared()
+        onDismiss()
+        return
+    }
+    DataProvider.chatRepository.getOrCreateConversation(
+        user, target.userId, target.displayName
+    ).onSuccess { id ->
+        DataProvider.chatRepository.sendMessage(
+            id, user, InternalShareCodec.encode(reference)
+        )
+        onShared()
+        onDismiss()
+    }.onFailure {
+        onError("No pudimos enviar el mensaje.")
     }
 }
 

@@ -1,0 +1,42 @@
+appId: ${APP_ID}
+name: "LOST owner QA01 Mora"
+tags:
+  - community-care
+  - lost
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA01_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- tapOn: "Perdí a mi mascota"
+- extendedWaitUntil:
+    visible: "Perdí a mi mascota"
+    timeout: 10000
+- assertVisible: "Foto *"
+- assertVisible: "Mascota LeoVer *"
+- assertNotVisible: "Sin nombre"
+- tapOn: "QA - Mora"
+- assertNotVisible: "LF-CREATE"
+- takeScreenshot: lost_form_mora
+- addMedia:
+    - "../fixtures/qa-pet.jpg"
+- tapOn: "Agregar foto"
+# Photo Picker is OS-owned. If Maestro cannot pick the fixture, the runner marks MANUAL.
+- takeScreenshot: lost_after_add_photo
+- scrollUntilVisible:
+    element: "Publicar"
+    direction: DOWN
+    timeout: 8000
+- tapOn: "Publicar"
+- extendedWaitUntil:
+    visible: "Perdí a mi mascota"
+    timeout: 20000
+- assertNotVisible: "LF-CREATE"
+- takeScreenshot: lost_published

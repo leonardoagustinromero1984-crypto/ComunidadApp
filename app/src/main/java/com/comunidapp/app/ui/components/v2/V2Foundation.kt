@@ -85,8 +85,7 @@ fun V2SurfaceCard(
             ),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = BrandWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = BorderStroke(1.dp, NeutralBorder.copy(alpha = 0.7f)),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
         content = {
             Column(
                 modifier = Modifier.padding(LeoDimens.SpaceCompact),
@@ -150,49 +149,46 @@ fun V2NavRow(
     description: String,
     icon: ImageVector,
     onClick: () -> Unit,
-    iconTint: Color = BrandGreenDark,
+    iconTint: Color = BrandText,
     iconContainer: Color = BrandGreenContainer,
     modifier: Modifier = Modifier
 ) {
-    V2SurfaceCard(modifier = modifier, onClick = onClick) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
-        ) {
-            Surface(
-                shape = CircleShape,
-                color = iconContainer,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.padding(11.dp)
-                )
-            }
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    text = title,
-                    style = LeoCardTitle,
-                    color = BrandText,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = description,
-                    style = LeoCaption,
-                    color = BrandTextSecondary,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
-                contentDescription = null,
-                tint = BrandTextSecondary
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = LeoDimens.TouchMin)
+            .clickable(onClick = onClick)
+            .padding(horizontal = LeoDimens.SpaceSm, vertical = LeoDimens.SpaceCompact),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = iconTint,
+            modifier = Modifier.size(24.dp)
+        )
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = LeoCardTitle,
+                color = BrandText,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+            Text(
+                text = description,
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
+        Icon(
+            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+            contentDescription = null,
+            tint = BrandTextSecondary
+        )
     }
 }
 
@@ -298,22 +294,18 @@ fun V2CompactCta(
     onClick: () -> Unit,
     modifier: Modifier = Modifier
 ) {
-    Surface(
-        onClick = onClick,
-        modifier = modifier.semantics { contentDescription = text },
-        shape = RoundedCornerShape(LeoDimens.RadiusChip),
-        color = BrandGreen,
-        contentColor = BrandWhite
-    ) {
-        Text(
-            text = text,
-            modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
-            style = LeoCaption,
-            fontWeight = FontWeight.SemiBold,
-            color = BrandWhite,
-            maxLines = 1
-        )
-    }
+    Text(
+        text = text,
+        style = LeoCaption,
+        fontWeight = FontWeight.SemiBold,
+        color = BrandOrangeDeep,
+        maxLines = 1,
+        modifier = modifier
+            .heightIn(min = LeoDimens.TouchMin)
+            .clickable(onClick = onClick)
+            .padding(horizontal = LeoDimens.SpaceS, vertical = LeoDimens.SpaceS)
+            .semantics { contentDescription = text }
+    )
 }
 
 fun petAgeSummary(pet: Pet): String? = when {

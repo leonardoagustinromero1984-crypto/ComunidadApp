@@ -89,6 +89,24 @@ class CanonicalFriendRepository : FriendRepository {
         )
     }
 
+    override suspend fun removeAcceptedConnection(
+        connectionId: String,
+        actorUserId: String
+    ): Result<Unit> = try {
+        supabase.postgrest.rpc(
+            function = CanonicalBackend.RPC_REMOVE_FRIENDSHIP,
+            parameters = buildJsonObject { put("p_connection_id", connectionId) }
+        )
+        Result.success(Unit)
+    } catch (e: Exception) {
+        AppLog.warning("Friendships", "REMOVE failed", e)
+        Result.failure(
+            IllegalArgumentException(
+                FriendshipErrorMapper.userMessage(e, FriendshipErrorMapper.Operation.REMOVE)
+            )
+        )
+    }
+
     override suspend fun cancelRequest(connectionId: String, requesterId: String): Result<Unit> = try {
         supabase.postgrest.rpc(
             function = CanonicalBackend.RPC_CANCEL_FRIEND_REQUEST,

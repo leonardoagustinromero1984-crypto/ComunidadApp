@@ -26,6 +26,7 @@ interface ChatRepository {
     ): Result<String>
     suspend fun sendMessage(conversationId: String, sender: User, content: String): Result<String>
     suspend fun searchPeople(query: String): List<ChatPersonHit> = emptyList()
+    suspend fun loadOlderMessages(conversationId: String): Result<Boolean> = Result.success(false)
 }
 
 class MockChatRepository : ChatRepository {

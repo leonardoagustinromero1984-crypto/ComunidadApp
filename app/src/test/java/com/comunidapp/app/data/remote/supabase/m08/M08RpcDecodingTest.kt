@@ -213,4 +213,32 @@ class M08RpcDecodingTest {
         assertEquals("c3febf69-e1a5-45d8-98aa-e5f07e2ec085", row.avatarFileAssetId)
         assertEquals(null, row.photoUrl)
     }
+
+    @kotlinx.serialization.Serializable
+    private data class VitacoraSearchRow(
+        @kotlinx.serialization.SerialName("target_kind") val targetKind: String,
+        @kotlinx.serialization.SerialName("target_id") val targetId: String,
+        @kotlinx.serialization.SerialName("display_name") val displayName: String,
+        val subtitle: String? = null,
+        val verified: Boolean = false
+    )
+
+    @Test
+    fun decodeRows_acceptsVitacoraAccessTargetJsonbArray() {
+        val element = json.parseToJsonElement(
+            """
+            [{
+              "target_kind": "ORGANIZATION",
+              "target_id": "c9b96602-18cf-40d8-a932-0bc533a32863",
+              "display_name": "vet prueba",
+              "subtitle": "VETERINARY_CLINIC",
+              "verified": false
+            }]
+            """.trimIndent()
+        )
+        val rows = M08RpcDecoding.decodeRows<VitacoraSearchRow>(element)
+        assertEquals(1, rows.size)
+        assertEquals("vet prueba", rows.first().displayName)
+        assertEquals("ORGANIZATION", rows.first().targetKind)
+    }
 }

@@ -389,6 +389,9 @@ class EditProfileViewModel(
                             }
                         )
                     )
+                    // Re-evaluate social surfaces; authorization is dynamic on read.
+                    runCatching { DataProvider.feedRepository.refreshPosts() }
+                    runCatching { DataProvider.feedRepository.refreshStories() }
                 }
                 _uiState.update {
                     it.copy(

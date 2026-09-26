@@ -9,6 +9,7 @@ import com.comunidapp.app.data.remote.supabase.UserSupabaseDataSource
 import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.auth.AuthErrorCode
 import com.comunidapp.app.domain.auth.AuthErrorMapper
+import com.comunidapp.app.domain.auth.AuthException
 import com.comunidapp.app.domain.auth.ConsentMetadata
 import com.comunidapp.app.domain.auth.GoogleAuthPolicy
 import com.comunidapp.app.domain.auth.GoogleAuthTrace
@@ -31,6 +32,7 @@ import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.put
 import java.io.OutputStreamWriter
 import java.net.HttpURLConnection
@@ -86,6 +88,138 @@ class SupabaseAuthRepository(
                 exceptionClass = e::class.java.simpleName
             )
             Result.failure(mapSupabaseException(e))
+        }
+    }
+
+    override suspend fun loginAdministrative(username: String, password: String): Result<User> {
+        if (!com.comunidapp.app.core.config.SupabaseUrlPolicy.credentialsPresent()) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.CONFIGURATION_ERROR,
+                    "supabase credentials missing or non-remote"
+                )
+            )
+        }
+        if (username.trim().length < 3 || password.isEmpty()) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.INVALID_CREDENTIALS,
+                    "Usuario o contraseña incorrectos."
+                )
+            )
+        }
+        return try {
+            val element = supabase.postgrest.rpc(
+                function = "admin_begin_login",
+                parameters = buildJsonObject {
+                    put("p_username", username.trim())
+                    put("p_password", password)
+                }
+            ).decodeAs<kotlinx.serialization.json.JsonElement>()
+            val email = runCatching {
+                kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    .decodeFromJsonElement(AdminBeginLoginRow.serializer(), element)
+                    .email
+            }.getOrNull()
+            if (email.isNullOrBlank()) {
+                return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.INVALID_CREDENTIALS,
+                        "Usuario o contraseña incorrectos."
+                    )
+                )
+            }
+            supabase.auth.signInWith(Email) {
+                this.email = email
+                this.password = password
+            }
+            val authUser = supabase.auth.currentUserOrNull()
+                ?: return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.INVALID_CREDENTIALS,
+                        "Usuario o contraseña incorrectos."
+                    )
+                )
+            Result.success(authUser.toUser())
+        } catch (_: Exception) {
+            runCatching { supabase.auth.signOut() }
+            Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.INVALID_CREDENTIALS,
+                    "Usuario o contraseña incorrectos."
+                )
+            )
+        }
+    }
+
+    override suspend fun loginWithUsername(username: String, password: String): Result<User> {
+        if (!com.comunidapp.app.core.config.SupabaseUrlPolicy.credentialsPresent()) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.CONFIGURATION_ERROR,
+                    "supabase credentials missing or non-remote"
+                )
+            )
+        }
+        val normalized = com.comunidapp.app.domain.user.UsernameValidators.normalize(username)
+        if (normalized.length < 3 || password.isEmpty()) {
+            return Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.INVALID_CREDENTIALS,
+                    "Usuario o contraseña incorrectos."
+                )
+            )
+        }
+        return try {
+            val element = supabase.postgrest.rpc(
+                function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_BEGIN_USERNAME_LOGIN,
+                parameters = buildJsonObject {
+                    put("p_username", normalized)
+                    put("p_password", password)
+                }
+            ).decodeAs<kotlinx.serialization.json.JsonElement>()
+            val email = runCatching {
+                kotlinx.serialization.json.Json { ignoreUnknownKeys = true }
+                    .decodeFromJsonElement(AdminBeginLoginRow.serializer(), element)
+                    .email
+            }.getOrNull()
+            if (email.isNullOrBlank()) {
+                return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.INVALID_CREDENTIALS,
+                        "Usuario o contraseña incorrectos."
+                    )
+                )
+            }
+            supabase.auth.signInWith(Email) {
+                this.email = email
+                this.password = password
+            }
+            val authUser = supabase.auth.currentUserOrNull()
+                ?: return Result.failure(
+                    AuthErrorMapper.toException(
+                        AuthErrorCode.INVALID_CREDENTIALS,
+                        "Usuario o contraseña incorrectos."
+                    )
+                )
+            if (!authUser.isEmailConfirmed()) {
+                runCatching { supabase.auth.signOut() }
+                return Result.failure(
+                    AuthErrorMapper.toException(AuthErrorCode.EMAIL_NOT_VERIFIED, email)
+                )
+            }
+            Result.success(fetchUserProfile(authUser, email))
+        } catch (e: Exception) {
+            runCatching { supabase.auth.signOut() }
+            if (e is AuthException && e.code == AuthErrorCode.EMAIL_NOT_VERIFIED.name) {
+                return Result.failure(e)
+            }
+            Result.failure(
+                AuthErrorMapper.toException(
+                    AuthErrorCode.INVALID_CREDENTIALS,
+                    "Usuario o contraseña incorrectos."
+                )
+            )
         }
     }
 
@@ -638,8 +772,10 @@ class SupabaseAuthRepository(
             .onFailure { error ->
                 val mapped = AuthErrorMapper.fromThrowable(error)
                 AppLog.warning(TAG, "signOut remote failed ${mapped.code}; clearing local session")
-                runCatching { supabase.auth.signOut(SignOutScope.LOCAL) }
             }
+        if (supabase.auth.currentUserOrNull() != null) {
+            runCatching { supabase.auth.signOut(SignOutScope.LOCAL) }
+        }
     }
 
     override fun observeAuthState(): Flow<User?> = kotlinx.coroutines.flow.flow {
@@ -666,16 +802,15 @@ class SupabaseAuthRepository(
                     emit(null)
                 }
                 else -> {
-                    // Initializing / RefreshFailure must not log the user out.
-                    // Profile publish can refresh the JWT; that is not a Google login.
+                    // Initializing / RefreshFailure must not log the user out,
+                    // and must not re-emit a previous account during an account switch.
                     val current = supabase.auth.currentUserOrNull()?.takeIf { user ->
                         com.comunidapp.app.domain.auth.SignupSessionPolicy.appAccessAllowed(
                             hasAuthenticatedSession = true,
                             emailConfirmed = user.isEmailConfirmed()
                         )
                     }?.toUser()
-                    if (current != null) {
-                        lastEmitted = current
+                    if (current != null && current.id == lastEmitted?.id) {
                         emit(current)
                     }
                 }
@@ -728,6 +863,11 @@ class SupabaseAuthRepository(
     @Serializable
     private data class UserConsentRow(
         val id: String? = null
+    )
+
+    @Serializable
+    private data class AdminBeginLoginRow(
+        val email: String? = null
     )
 
     companion object {

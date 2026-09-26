@@ -100,11 +100,35 @@ class PermissionAndAdminRepositoryTest {
     }
 
     @Test
-    fun private_email_hidden_without_permission() = runTest {
+    fun user_cannot_search_users() = runTest {
+        val result = admin.searchUsers("maria")
+        assertTrue(result.isFailure)
+        assertEquals("FORBIDDEN", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun moderator_cannot_search_users() = runTest {
         val id = MockData.currentUser.id
         permissions.setRolesForTests(id, setOf(PlatformRoleCode.MODERATOR))
-        admin.seedRolesForTests(id, setOf(PlatformRoleCode.MODERATOR))
+        val result = admin.searchUsers("maria")
+        assertTrue(result.isFailure)
+        assertEquals("FORBIDDEN", result.exceptionOrNull()?.message)
+    }
+
+    @Test
+    fun admin_search_includes_email_with_private_permission() = runTest {
+        val id = MockData.currentUser.id
+        permissions.setRolesForTests(id, setOf(PlatformRoleCode.ADMIN))
         val results = admin.searchUsers("maria").getOrThrow()
-        assertTrue(results.all { it.email == null })
+        assertTrue(results.isNotEmpty())
+        assertTrue(results.any { !it.email.isNullOrBlank() })
+    }
+
+    @Test
+    fun unauthorized_assign_is_forbidden() = runTest {
+        permissions.setRolesForTests(MockData.currentUser.id, setOf(PlatformRoleCode.USER))
+        val result = admin.assignRole("user_2", PlatformRoleCode.MODERATOR, "manual_admin")
+        assertTrue(result.isFailure)
+        assertEquals("FORBIDDEN", result.exceptionOrNull()?.message)
     }
 }

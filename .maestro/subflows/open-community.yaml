@@ -1,0 +1,6 @@
+appId: ${APP_ID}
+---
+- tapOn: "Comunidad"
+- extendedWaitUntil:
+    visible: "Comunidad"
+    timeout: 10000

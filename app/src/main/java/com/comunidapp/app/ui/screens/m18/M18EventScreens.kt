@@ -16,13 +16,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -59,6 +54,13 @@ import com.comunidapp.app.viewmodel.M18EventsListViewModel
 import com.comunidapp.app.viewmodel.m18EventStatusLabel
 import com.comunidapp.app.viewmodel.m18EventTypeLabel
 import com.comunidapp.app.viewmodel.m18RegistrationStatusLabel
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
+import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
 fun M18EventsListScreen(
@@ -88,39 +90,47 @@ fun M18EventsListScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = query,
                 onValueChange = { query = it; viewModel.setQuery(it) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Buscar evento") },
-                singleLine = true
+                label = "Buscar evento"
             )
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
+                LeoFilterChip(
+                    label = "Con cupos",
                     selected = filter.withOpenSpotsOnly,
-                    onClick = { viewModel.setWithOpenSpotsOnly(!filter.withOpenSpotsOnly) },
-                    label = { Text("Con cupos") }
+                    onClick = { viewModel.setWithOpenSpotsOnly(!filter.withOpenSpotsOnly) }
                 )
-                FilterChip(
+                LeoFilterChip(
+                    label = "Completados",
                     selected = filter.completedOnly,
-                    onClick = { viewModel.setCompletedOnly(!filter.completedOnly) },
-                    label = { Text("Completados") }
+                    onClick = { viewModel.setCompletedOnly(!filter.completedOnly) }
                 )
-                FilterChip(
+                LeoFilterChip(
+                    label = "Adopciones",
                     selected = filter.type == M18EventType.ADOPTION_FAIR,
                     onClick = {
                         viewModel.setType(
                             if (filter.type == M18EventType.ADOPTION_FAIR) null else M18EventType.ADOPTION_FAIR
                         )
-                    },
-                    label = { Text("Adopciones") }
+                    }
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { viewModel.clearFilters() }) { Text("Limpiar filtros") }
+                LeoOutlinedButton(
+                    text = "Limpiar filtros",
+                    onClick = { viewModel.clearFilters() }
+                )
                 if (canAdminister) {
-                    OutlinedButton(onClick = onManage) { Text("Administrar") }
-                    Button(onClick = onCreate, modifier = Modifier.wrapContentWidth()) { Text("Nuevo") }
+                    LeoOutlinedButton(
+                        text = "Administrar",
+                        onClick = onManage
+                    )
+                    LeoPrimaryButton(
+                        text = "Nuevo",
+                        onClick = onCreate,
+                        modifier = Modifier.wrapContentWidth()
+                    )
                 }
             }
             when (val s = state) {
@@ -142,8 +152,12 @@ fun M18EventsListScreen(
 
 @Composable
 private fun M18EventCard(event: M18PublicEvent, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(event.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(event.organizationDisplayName, style = MaterialTheme.typography.bodySmall)
             Text(m18EventTypeLabel(event.eventType), style = MaterialTheme.typography.labelMedium)
@@ -170,6 +184,7 @@ private fun M18EventCard(event: M18PublicEvent, onClick: () -> Unit) {
                 Text("Inscripciones abiertas", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
             }
         }
+        LeoHairline()
     }
 }
 
@@ -246,29 +261,34 @@ fun M18EventDetailScreen(
                             Text("Iniciá sesión para inscribirte.")
                         }
                         M18EventParticipationUiState.Available -> {
-                            Button(onClick = { viewModel.register() }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Inscribirme")
-                            }
+                            LeoPrimaryButton(
+                                text = "Inscribirme",
+                                onClick = { viewModel.register() }
+                            )
                         }
                         M18EventParticipationUiState.Registered -> {
-                            OutlinedButton(onClick = { viewModel.cancelRegistration() }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Cancelar inscripción")
-                            }
-                            OutlinedButton(onClick = { viewModel.scheduleReminder() }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Programar recordatorio")
-                            }
+                            LeoOutlinedButton(
+                                text = "Cancelar inscripción",
+                                onClick = { viewModel.cancelRegistration() }
+                            )
+                            LeoOutlinedButton(
+                                text = "Programar recordatorio",
+                                onClick = { viewModel.scheduleReminder() }
+                            )
                         }
                         M18EventParticipationUiState.Waitlisted -> {
                             Text("Estás en lista de espera.", color = MaterialTheme.colorScheme.primary)
-                            OutlinedButton(onClick = { viewModel.cancelRegistration() }, modifier = Modifier.fillMaxWidth()) {
-                                Text("Salir de la lista de espera")
-                            }
+                            LeoOutlinedButton(
+                                text = "Salir de la lista de espera",
+                                onClick = { viewModel.cancelRegistration() }
+                            )
                         }
                         M18EventParticipationUiState.Cancelled -> {
                             if (e.isRegistrationOpen) {
-                                Button(onClick = { viewModel.register() }, modifier = Modifier.fillMaxWidth()) {
-                                    Text("Volver a inscribirme")
-                                }
+                                LeoPrimaryButton(
+                                    text = "Volver a inscribirme",
+                                    onClick = { viewModel.register() }
+                                )
                             }
                         }
                         M18EventParticipationUiState.EventFull -> {
@@ -327,8 +347,8 @@ fun M18EventOperationsScreen(
                 is M18EventOperationsUiState.Error -> ErrorState(message = s.message, onRetry = { viewModel.refresh() })
                 is M18EventOperationsUiState.Content -> {
                     val summary = s.summary
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Column(Modifier.fillMaxWidth()) {
+                        Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                             Text("Resumen operativo", fontWeight = FontWeight.Bold)
                             Text("Capacidad: ${summary.registeredCount}/${summary.maxCapacity}")
                             Text("Lista de espera: ${summary.waitlistCount}")
@@ -342,34 +362,40 @@ fun M18EventOperationsScreen(
                                 Text("⚠ Inconsistencia de capacidad detectada", color = MaterialTheme.colorScheme.error)
                             }
                         }
+                        LeoHairline()
                     }
-                    OutlinedButton(onClick = { viewModel.promoteWaitlist() }) {
-                        Text("Promover lista de espera (manual)")
-                    }
+                    LeoOutlinedButton(
+                        text = "Promover lista de espera (manual)",
+                        onClick = { viewModel.promoteWaitlist() }
+                    )
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(s.participants, key = { it.registrationId }) { p ->
-                            Card(Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(Modifier.fillMaxWidth()) {
+                                Column(Modifier.padding(LeoDimens.SpaceCompact), verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceXs)) {
                                     Text(p.displayAlias, fontWeight = FontWeight.Medium)
                                     Text(m18RegistrationStatusLabel(p.status), style = MaterialTheme.typography.bodySmall)
                                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                         if (p.canCheckIn) {
-                                            OutlinedButton(onClick = { viewModel.checkIn(p.registrationId) }) {
-                                                Text("Check-in")
-                                            }
+                                            LeoOutlinedButton(
+                                                text = "Check-in",
+                                                onClick = { viewModel.checkIn(p.registrationId) }
+                                            )
                                         }
                                         if (p.canMarkAttendance) {
-                                            OutlinedButton(onClick = { viewModel.markAttendance(p.registrationId) }) {
-                                                Text("Asistió")
-                                            }
+                                            LeoOutlinedButton(
+                                                text = "Asistió",
+                                                onClick = { viewModel.markAttendance(p.registrationId) }
+                                            )
                                         }
                                         if (p.canMarkNoShow) {
-                                            OutlinedButton(onClick = { viewModel.markNoShow(p.registrationId) }) {
-                                                Text("No-show")
-                                            }
+                                            LeoOutlinedButton(
+                                                text = "No-show",
+                                                onClick = { viewModel.markNoShow(p.registrationId) }
+                                            )
                                         }
                                     }
                                 }
+                                LeoHairline()
                             }
                         }
                     }
@@ -401,14 +427,17 @@ fun M18EventManageScreen(
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 M18MockOrganizations.MANAGE_ORGANIZATION_IDS.forEach { orgId ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = orgId.removePrefix("org_"),
                         selected = selectedOrg == orgId,
-                        onClick = { viewModel.selectOrganization(orgId) },
-                        label = { Text(orgId.removePrefix("org_")) }
+                        onClick = { viewModel.selectOrganization(orgId) }
                     )
                 }
             }
-            Button(onClick = onCreate) { Text("Nuevo evento") }
+            LeoPrimaryButton(
+                text = "Nuevo evento",
+                onClick = onCreate
+            )
             when (val s = state) {
                 M18EventManageUiState.Loading -> LoadingState()
                 M18EventManageUiState.PermissionDenied -> ErrorState(message = "No tenés permiso para administrar esta organización.")
@@ -420,28 +449,47 @@ fun M18EventManageScreen(
                 is M18EventManageUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(s.events, key = { it.id }) { ev ->
                         val summary = s.summaryById[ev.id]
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
                                 Text(ev.title, fontWeight = FontWeight.Bold)
                                 Text("${m18EventStatusLabel(ev.status)} · ${m18EventTypeLabel(ev.eventType)}")
                                 summary?.let {
                                     Text("Inscriptos: ${it.registeredCount}/${it.maxCapacity}")
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(onClick = { onEditEvent(ev.id) }) { Text("Editar") }
-                                    OutlinedButton(onClick = { onOperations(ev.id) }) { Text("Operaciones") }
+                                    LeoOutlinedButton(
+                                        text = "Editar",
+                                        onClick = { onEditEvent(ev.id) }
+                                    )
+                                    LeoOutlinedButton(
+                                        text = "Operaciones",
+                                        onClick = { onOperations(ev.id) }
+                                    )
                                     if (ev.status == com.comunidapp.app.data.model.M18EventStatus.DRAFT) {
-                                        Button(onClick = { viewModel.publish(ev.id) }) { Text("Publicar") }
+                                        LeoPrimaryButton(
+                                            text = "Publicar",
+                                            onClick = { viewModel.publish(ev.id) }
+                                        )
                                     }
                                     if (ev.status == com.comunidapp.app.data.model.M18EventStatus.PUBLISHED) {
-                                        OutlinedButton(onClick = { viewModel.pause(ev.id) }) { Text("Pausar") }
-                                        OutlinedButton(onClick = { viewModel.complete(ev.id) }) { Text("Completar") }
+                                        LeoOutlinedButton(
+                                            text = "Pausar",
+                                            onClick = { viewModel.pause(ev.id) }
+                                        )
+                                        LeoOutlinedButton(
+                                            text = "Completar",
+                                            onClick = { viewModel.complete(ev.id) }
+                                        )
                                     }
                                     if (!ev.status.isTerminal) {
-                                        OutlinedButton(onClick = { viewModel.cancel(ev.id) }) { Text("Cancelar") }
+                                        LeoOutlinedButton(
+                                            text = "Cancelar",
+                                            onClick = { viewModel.cancel(ev.id) }
+                                        )
                                     }
                                 }
                             }
+                            LeoHairline()
                         }
                     }
                 }
@@ -481,65 +529,58 @@ fun M18EventEditScreen(
             Modifier.padding(padding).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.title,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(title = it) } },
-                label = { Text("Título") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Título"
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.description,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(description = it) } },
-                label = { Text("Descripción") },
-                modifier = Modifier.fillMaxWidth(),
+                label = "Descripción",
+                singleLine = false,
                 minLines = 3
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.maxCapacity.toString(),
                 onValueChange = { v ->
                     v.toIntOrNull()?.let { cap ->
                         viewModel.updateDraft { d -> d.copy(maxCapacity = cap) }
                     }
                 },
-                label = { Text("Cupo máximo") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Cupo máximo"
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.venueName,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(venueName = it) } },
-                label = { Text("Nombre del lugar (público)") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Nombre del lugar (público)"
             )
             V2LocationStringPicker(
                 value = draft.publicLocationText,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(publicLocationText = it) } }
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.petPublicName,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(petPublicName = it) } },
-                label = { Text("Mascota (opcional, nombre público)") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Mascota (opcional, nombre público)"
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.durationHours.toString(),
                 onValueChange = { v ->
                     v.toIntOrNull()?.let { h ->
                         viewModel.updateDraft { d -> d.copy(durationHours = h.coerceAtLeast(1)) }
                     }
                 },
-                label = { Text("Duración (horas)") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Duración (horas)"
             )
             if (state is M18EventEditUiState.Error) {
                 Text((state as M18EventEditUiState.Error).message, color = MaterialTheme.colorScheme.error)
             }
-            Button(
+            LeoPrimaryButton(
+                text = if (state is M18EventEditUiState.Saving) "Guardando…" else "Guardar borrador",
                 onClick = { viewModel.save() },
-                enabled = state !is M18EventEditUiState.Saving,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (state is M18EventEditUiState.Saving) "Guardando…" else "Guardar borrador")
-            }
+                enabled = state !is M18EventEditUiState.Saving
+            )
         }
     }
 }

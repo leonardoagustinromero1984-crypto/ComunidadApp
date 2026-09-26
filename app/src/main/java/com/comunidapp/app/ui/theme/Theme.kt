@@ -1,7 +1,6 @@
 package com.comunidapp.app.ui.theme
 
 import android.app.Activity
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
@@ -15,7 +14,7 @@ import androidx.core.view.WindowCompat
  * Tema claro LeoVer — paleta oficial UI-01.
  *
  * Background: BrandBackground (#FAFBF8). Surface: BrandWhite.
- * Primary UI green: BrandGreen (#49B749). Orange is scarce accent only.
+ * Surfaces: BrandBackground / BrandWhite. Orange = CTA accent. Green = success.
  * Cream (#FFF8E1) is an accent only (surfaceVariant), never a full-screen default.
  * ProfileGreen is profile/context-only; do not replace BrandGreen.
  * Logo foreground artwork is not recoloured here.
@@ -73,10 +72,11 @@ private val DarkColorScheme = darkColorScheme(
 
 @Composable
 fun ComunidappTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    /** LeoVer v1 — always light; system dark mode must not invert card/input text colors. */
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
-    val colorScheme = if (darkTheme) DarkColorScheme else LightColorScheme
+    val colorScheme = LightColorScheme
 
     val view = LocalView.current
     if (!view.isInEditMode) {

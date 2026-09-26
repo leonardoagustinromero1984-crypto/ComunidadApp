@@ -47,16 +47,22 @@ enum class AdoptionApplicationStatus {
     SUBMITTED,
     UNDER_REVIEW,
     ACCEPTED,
+    PAUSED,
     REJECTED,
-    WITHDRAWN;
+    WITHDRAWN,
+    COMPLETED,
+    CLOSED;
 
     val displayNameEs: String
         get() = when (this) {
             SUBMITTED -> "Enviada"
             UNDER_REVIEW -> "En revisión"
             ACCEPTED -> "Aceptada"
+            PAUSED -> "En pausa"
             REJECTED -> "Rechazada"
             WITHDRAWN -> "Retirada"
+            COMPLETED -> "Completada"
+            CLOSED -> "Cerrada"
         }
 
     companion object {
@@ -69,6 +75,6 @@ enum class AdoptionApplicationStatus {
         }
 
         fun isActive(status: AdoptionApplicationStatus): Boolean =
-            status == SUBMITTED || status == UNDER_REVIEW || status == ACCEPTED
+            status == SUBMITTED || status == UNDER_REVIEW || status == ACCEPTED || status == PAUSED
     }
 }

@@ -13,7 +13,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -33,26 +32,27 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.comunidapp.app.data.model.PetClinicalRecord
 import com.comunidapp.app.ui.components.ageDisplay
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandTextSecondary
-import com.comunidapp.app.ui.util.formatRelativeTime
+import com.comunidapp.app.ui.theme.LeoCardTitle
 import com.comunidapp.app.viewmodel.PetDetailViewModel
 
 @Composable
 fun PetDetailScreen(
     onNavigateBack: () -> Unit,
     onNavigateToEdit: (String) -> Unit = {},
+    onNavigateToEditHealth: (String) -> Unit = onNavigateToEdit,
     onDeleteSuccess: () -> Unit = {},
     onNavigateToResponsibilities: (String) -> Unit = {},
     onNavigateToAuthorizations: (String) -> Unit = {},
     onNavigateToTransfers: (String) -> Unit = {},
     onNavigateToStatusHistory: (String) -> Unit = {},
     onNavigateToPassport: (String) -> Unit = {},
+    onNavigateToShareQr: (String) -> Unit = onNavigateToPassport,
     onNavigateToM28Grants: (String) -> Unit = {},
     onNavigateToM28Proposals: (String) -> Unit = {},
     onNavigateToReportLost: () -> Unit = {},
@@ -61,6 +61,8 @@ fun PetDetailScreen(
     val pet by viewModel.pet.collectAsState()
     val photoDisplayUrl by viewModel.photoDisplayUrl.collectAsState()
     val isPetLoading by viewModel.isPetLoading.collectAsState()
+    val isHealthLoading by viewModel.isHealthLoading.collectAsState()
+    val healthLoadError by viewModel.healthLoadError.collectAsState()
     val petLoadError by viewModel.petLoadError.collectAsState()
     val statusReasonCode by viewModel.statusReasonCode.collectAsState()
     val canManage by viewModel.canManage.collectAsState()
@@ -70,9 +72,6 @@ fun PetDetailScreen(
     val canRestore by viewModel.canRestore.collectAsState()
     @Suppress("UNUSED_VARIABLE")
     val canViewHistory by viewModel.canViewHistory.collectAsState()
-    val clinicalRecords by viewModel.clinicalRecords.collectAsState()
-    val clinicalTitle by viewModel.clinicalTitle.collectAsState()
-    val clinicalNote by viewModel.clinicalNote.collectAsState()
     val deleteSuccess by viewModel.deleteSuccess.collectAsState()
     val lifecycleSuccess by viewModel.lifecycleSuccess.collectAsState()
     val isSubmitting by viewModel.isSubmitting.collectAsState()
@@ -120,8 +119,7 @@ fun PetDetailScreen(
             title = { Text("Archivar mascota") },
             text = {
                 Text(
-                    "El perfil dejará de aparecer entre tus mascotas activas, pero conservará " +
-                        "toda su información. Podrás restaurarlo más adelante."
+                    com.comunidapp.app.domain.pets.PetCareTransferCopy.ARCHIVE_BODY
                 )
             },
             confirmButton = {
@@ -186,14 +184,14 @@ fun PetDetailScreen(
         topBar = {
             PetDetailV2TopBar(
                 onBack = onNavigateBack,
-                showMenu = canManage || canRestore,
+                showMenu = access?.canArchive == true || canRestore,
                 onMenuClick = { showAdminMenu = true }
             ) {
                 DropdownMenu(
                     expanded = showAdminMenu,
                     onDismissRequest = { showAdminMenu = false }
                 ) {
-                    if (canManage && pet?.status == "ACTIVE") {
+                    if (access?.canArchive == true && pet?.status == "ACTIVE") {
                         DropdownMenuItem(
                             text = { Text("Archivar mascota") },
                             onClick = {
@@ -282,17 +280,24 @@ fun PetDetailScreen(
                         status = data.status,
                         reasonCode = statusReasonCode
                     )
-                    Text(
-                        text = when {
-                            principalLoading -> "Cargando responsable…"
-                            !principalDisplayName.isNullOrBlank() ->
-                                "Responsable: $principalDisplayName"
-                            else -> "Responsable: no disponible"
-                        },
-                        style = MaterialTheme.typography.bodySmall,
-                        color = BrandTextSecondary,
-                        modifier = Modifier.padding(top = 8.dp)
-                    )
+                    Column(modifier = Modifier.padding(top = 16.dp)) {
+                        Text(
+                            text = com.comunidapp.app.domain.pets.PetCareTransferCopy.UNDER_THE_CARE_OF,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandText
+                        )
+                        Text(
+                            text = when {
+                                principalLoading -> "Cargando…"
+                                else -> principalDisplayName?.trim().orEmpty().ifBlank { "no disponible" }
+                            },
+                            style = LeoCardTitle,
+                            color = BrandText,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier.padding(top = 4.dp)
+                        )
+                    }
 
                     if (isArchived) {
                         Spacer(modifier = Modifier.height(16.dp))
@@ -310,8 +315,8 @@ fun PetDetailScreen(
                         Spacer(modifier = Modifier.height(18.dp))
                         PetPrimaryActions(
                             canEdit = canManage && isActive,
-                            onEdit = { onNavigateToEdit(data.id) },
-                            onShare = { onNavigateToPassport(data.id) }
+                            onOpenVitacora = { onNavigateToPassport(data.id) },
+                            onEdit = { onNavigateToEdit(data.id) }
                         )
                     }
 
@@ -323,7 +328,9 @@ fun PetDetailScreen(
                         PetHealthSummary(
                             pet = data,
                             canOpenHealth = healthEditable && isActive,
-                            onOpenHealth = { onNavigateToEdit(data.id) }
+                            onOpenHealth = { onNavigateToEditHealth(data.id) },
+                            healthLoading = isHealthLoading,
+                            healthLoadError = healthLoadError
                         )
                     }
 
@@ -332,14 +339,21 @@ fun PetDetailScreen(
                         petName = data.name,
                         onOpenPassport = { onNavigateToPassport(data.id) }
                     ) {
-                        OutlinedButton(
-                            onClick = { onNavigateToM28Proposals(data.id) },
-                            modifier = Modifier.fillMaxWidth().padding(top = 4.dp)
-                        ) { Text("Propuestas VitaCora") }
-                        OutlinedButton(
-                            onClick = { onNavigateToM28Grants(data.id) },
-                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp)
-                        ) { Text("Acceso profesional") }
+                        com.comunidapp.app.ui.components.leo.LeoListRow(
+                            title = "Compartir / QR",
+                            subtitle = "Vista pública y código QR",
+                            onClick = { onNavigateToShareQr(data.id) }
+                        )
+                        com.comunidapp.app.ui.components.leo.LeoListRow(
+                            title = "Propuestas VitaCora",
+                            subtitle = "Aportes de personas autorizadas",
+                            onClick = { onNavigateToM28Proposals(data.id) }
+                        )
+                        com.comunidapp.app.ui.components.leo.LeoListRow(
+                            title = "Acceso profesional",
+                            subtitle = "Quién puede consultar o colaborar",
+                            onClick = { onNavigateToM28Grants(data.id) }
+                        )
                     }
 
                     if (isActive) {
@@ -350,12 +364,23 @@ fun PetDetailScreen(
                         )
                     }
 
+                    if (access?.canAcceptTransfer == true && !isDeceased) {
+                        Spacer(modifier = Modifier.height(12.dp))
+                        Button(
+                            onClick = { onNavigateToTransfers(data.id) },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(com.comunidapp.app.domain.pets.PetCareTransferCopy.RECEIVER_TITLE)
+                        }
+                    }
+
                     if (canViewGovernance && !isDeceased) {
                         Spacer(modifier = Modifier.height(12.dp))
-                        PetCareNetworkSection(
+                        PetResponsiblesSection(
                             petName = data.name,
                             mutationsEnabled = isActive,
-                            onOpenCareNetwork = { onNavigateToResponsibilities(data.id) },
+                            showTransfer = access?.canInitiateTransfer == true,
+                            onOpenResponsibles = { onNavigateToResponsibilities(data.id) },
                             onOpenTransfers = { onNavigateToTransfers(data.id) }
                         )
                     }
@@ -364,19 +389,6 @@ fun PetDetailScreen(
                     onNavigateToAuthorizations
                     @Suppress("UNUSED_EXPRESSION")
                     onNavigateToStatusHistory
-
-                    if (!isDeceased) {
-                        Spacer(modifier = Modifier.height(12.dp))
-                        ClinicalRecordsSection(
-                            records = clinicalRecords,
-                            title = clinicalTitle,
-                            note = clinicalNote,
-                            canManage = healthEditable && isActive,
-                            onTitleChange = viewModel::updateClinicalTitle,
-                            onNoteChange = viewModel::updateClinicalNote,
-                            onAdd = viewModel::addClinicalNote
-                        )
-                    }
 
                     errorMessage?.let {
                         Text(
@@ -446,21 +458,22 @@ internal fun PetLifecycleStatusBadge(
 }
 
 @Composable
-private fun PetCareNetworkSection(
+private fun PetResponsiblesSection(
     petName: String,
     mutationsEnabled: Boolean,
-    onOpenCareNetwork: () -> Unit,
+    showTransfer: Boolean,
+    onOpenResponsibles: () -> Unit,
     onOpenTransfers: () -> Unit
 ) {
     PetV2Card {
         Text(
-            text = "Red de cuidado",
+            text = "Responsables",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = BrandText
         )
         Text(
-            text = "Personas que colaboran en el cuidado de $petName.",
+            text = "Comparten el cuidado de $petName.",
             style = MaterialTheme.typography.bodySmall,
             color = BrandTextSecondary,
             modifier = Modifier.padding(top = 4.dp, bottom = 8.dp)
@@ -474,91 +487,17 @@ private fun PetCareNetworkSection(
             )
         }
         Button(
-            onClick = onOpenCareNetwork,
+            onClick = onOpenResponsibles,
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text("Ver red de cuidado")
+            Text("Compartir mascota")
         }
-        TextButton(
-            onClick = onOpenTransfers,
-            enabled = mutationsEnabled
-        ) {
-            Text("Transferencias")
-        }
-    }
-}
-
-@Composable
-private fun ClinicalRecordsSection(
-    records: List<PetClinicalRecord>,
-    title: String,
-    note: String,
-    canManage: Boolean,
-    onTitleChange: (String) -> Unit,
-    onNoteChange: (String) -> Unit,
-    onAdd: () -> Unit
-) {
-    PetV2Card {
-        Text(
-            text = "Historial clínico",
-            style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.SemiBold,
-            color = BrandText
-        )
-        if (records.isEmpty()) {
-            Text(
-                text = "Sin registros clínicos todavía.",
-                style = MaterialTheme.typography.bodySmall,
-                color = BrandTextSecondary,
-                modifier = Modifier.padding(top = 8.dp)
-            )
-        } else {
-            records.forEach { record ->
-                Text(
-                    text = record.title,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
-                    modifier = Modifier.padding(top = 10.dp),
-                    color = BrandText
-                )
-                Text(
-                    text = record.notes,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = BrandText
-                )
-                Text(
-                    text = "${record.authorName} · ${record.recordedAt?.let(::formatRelativeTime).orEmpty()}",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = BrandTextSecondary
-                )
-            }
-        }
-        if (canManage) {
-            OutlinedTextField(
-                value = title,
-                onValueChange = onTitleChange,
-                label = { Text("Título") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp),
-                singleLine = true
-            )
-            OutlinedTextField(
-                value = note,
-                onValueChange = onNoteChange,
-                label = { Text("Nota clínica") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                minLines = 2
-            )
-            Button(
-                onClick = onAdd,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp)
+        if (showTransfer) {
+            TextButton(
+                onClick = onOpenTransfers,
+                enabled = mutationsEnabled
             ) {
-                Text("Agregar nota")
+                Text(com.comunidapp.app.domain.pets.PetCareTransferCopy.SCREEN_TITLE)
             }
         }
     }

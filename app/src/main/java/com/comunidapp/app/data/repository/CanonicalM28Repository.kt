@@ -3,6 +3,7 @@ package com.comunidapp.app.data.repository
 import com.comunidapp.app.data.model.M28GrantProfessionalAccessInput
 import com.comunidapp.app.data.model.M28PassportUpdateProposal
 import com.comunidapp.app.data.model.M28ProfessionalAccessGrant
+import com.comunidapp.app.data.model.VitacoraAccessTarget
 import com.comunidapp.app.data.model.M28ProposalDecision
 import com.comunidapp.app.data.model.M28ProposalStatus
 import com.comunidapp.app.data.model.M28ProposalType
@@ -87,4 +88,6 @@ class CanonicalM28Repository(
                 createdAtEpochMs = 0L
             )
         }
+
+    override suspend fun searchAccessTargets(query: String) = access.searchAccessTargets(query)
 }

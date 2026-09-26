@@ -226,6 +226,8 @@ import com.comunidapp.app.data.repository.CanonicalDaycareRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationInvitationRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationPermissionRepository
+import com.comunidapp.app.data.repository.CanonicalPlatformRepository
+import com.comunidapp.app.data.repository.CanonicalSupportRepository
 import com.comunidapp.app.data.repository.CanonicalServiceRepository
 import com.comunidapp.app.data.repository.LegacyPetRepositoryAdapter
 import com.comunidapp.app.data.repository.MockPetRepository
@@ -286,6 +288,7 @@ import com.comunidapp.app.data.repository.SupabaseShelterVolunteerRepository
 import com.comunidapp.app.data.repository.SupabasePetAuthorizationRepository
 import com.comunidapp.app.data.repository.SupabasePetDomainRepository
 import com.comunidapp.app.data.repository.SupabasePetResponsibilityRepository
+import com.comunidapp.app.data.repository.CanonicalCareTransferRepository
 import com.comunidapp.app.data.repository.SupabasePetTransferRepository
 import com.comunidapp.app.domain.pets.PetAuthorizationRepository
 import com.comunidapp.app.domain.pets.PetDomainRepository
@@ -337,7 +340,13 @@ import com.comunidapp.app.data.repository.MockOrganizationMembershipRepository
 import com.comunidapp.app.data.repository.MockOrganizationPermissionRepository
 import com.comunidapp.app.data.repository.MockOrganizationRepository
 import com.comunidapp.app.data.repository.MockOrganizationVerificationRepository
+import com.comunidapp.app.data.repository.AdminMfaRepository
+import com.comunidapp.app.data.repository.AdminSessionRepository
+import com.comunidapp.app.data.repository.MockAdminMfaRepository
+import com.comunidapp.app.data.repository.MockAdminSessionRepository
+import com.comunidapp.app.data.repository.SupabaseAdminMfaRepository
 import com.comunidapp.app.data.repository.MockPermissionRepository
+import com.comunidapp.app.data.repository.SupabaseAdminSessionRepository
 import com.comunidapp.app.data.repository.MockPlatformAdministrationRepository
 import com.comunidapp.app.data.repository.MockPlatformRepository
 import com.comunidapp.app.data.repository.MockServiceRepository
@@ -455,7 +464,22 @@ object DataProvider {
     }
 
     val petTransferRepository: PetTransferRepository? by lazy {
-        if (useLegacyRemoteModules) SupabasePetTransferRepository() else null
+        when {
+            useLegacyRemoteModules -> SupabasePetTransferRepository()
+            useSupabase -> CanonicalCareTransferRepository()
+            else -> null
+        }
+    }
+
+    val incomingCareTransferInbox: com.comunidapp.app.domain.pets.IncomingCareTransferInbox by lazy {
+        com.comunidapp.app.domain.pets.IncomingCareTransferInbox(
+            repository = { petTransferRepository },
+            currentUserId = { AuthProvider.repository.getCurrentUser()?.id }
+        )
+    }
+
+    val personalMemoriesRepository: com.comunidapp.app.data.repository.PersonalMemoriesRepository by lazy {
+        com.comunidapp.app.data.repository.PersonalMemoriesRepository()
     }
 
     val feedRepository: FeedRepository by lazy {
@@ -1406,7 +1430,11 @@ object DataProvider {
     }
 
     val platformRepository: PlatformRepository by lazy {
-        if (useLegacyRemoteModules) SupabasePlatformRepository() else MockPlatformRepository()
+        when {
+            useLegacyRemoteModules -> SupabasePlatformRepository()
+            useSupabase -> CanonicalPlatformRepository()
+            else -> MockPlatformRepository()
+        }
     }
 
     /**
@@ -1533,7 +1561,15 @@ object DataProvider {
     }
 
     val permissionRepository: PermissionRepository by lazy {
-        if (useLegacyRemoteModules) SupabasePermissionRepository() else MockPermissionRepository()
+        if (useSupabase) SupabasePermissionRepository() else MockPermissionRepository()
+    }
+
+    val adminSessionRepository: AdminSessionRepository by lazy {
+        if (useSupabase) SupabaseAdminSessionRepository() else MockAdminSessionRepository()
+    }
+
+    val adminMfaRepository: AdminMfaRepository by lazy {
+        if (useSupabase) SupabaseAdminMfaRepository() else MockAdminMfaRepository()
     }
 
     /**
@@ -1594,10 +1630,18 @@ object DataProvider {
     }
 
     val platformAdministrationRepository: PlatformAdministrationRepository by lazy {
-        if (useLegacyRemoteModules) {
+        if (useSupabase) {
             SupabasePlatformAdministrationRepository()
         } else {
             MockPlatformAdministrationRepository(permissionRepository)
+        }
+    }
+
+    val adminStaffRepository: com.comunidapp.app.data.repository.AdminStaffRepository by lazy {
+        if (useSupabase) {
+            com.comunidapp.app.data.repository.SupabaseAdminStaffRepository()
+        } else {
+            com.comunidapp.app.data.repository.MockAdminStaffRepository()
         }
     }
 
@@ -1605,7 +1649,7 @@ object DataProvider {
      * M04 Etapa 3: repositorios Supabase cuando useSupabase; mocks locales en caso contrario.
      */
     val moderationRepository: ModerationRepository by lazy {
-        if (useLegacyRemoteModules) SupabaseModerationRepository() else MockModerationRepository()
+        if (useSupabase) SupabaseModerationRepository() else MockModerationRepository()
     }
 
     val organizationVerificationRepository: OrganizationVerificationRepository by lazy {
@@ -1617,7 +1661,11 @@ object DataProvider {
     }
 
     val supportRepository: SupportRepository by lazy {
-        if (useLegacyRemoteModules) SupabaseSupportRepository() else MockSupportRepository()
+        when {
+            useLegacyRemoteModules -> SupabaseSupportRepository()
+            useSupabase -> CanonicalSupportRepository()
+            else -> MockSupportRepository()
+        }
     }
 
     val administrativeAuditRepository: AdministrativeAuditRepository by lazy {

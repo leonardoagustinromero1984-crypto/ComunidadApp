@@ -1,0 +1,32 @@
+appId: ${APP_ID}
+---
+- runFlow:
+    when:
+      visible: "Permitir"
+    commands:
+      - tapOn: "Permitir"
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- runFlow:
+    when:
+      visible: "Mientras la app está en uso"
+    commands:
+      - tapOn: "Mientras la app está en uso"
+- runFlow:
+    when:
+      visible: "Saltar"
+    commands:
+      - tapOn: "Saltar"
+- runFlow:
+    when:
+      visible: "Ahora no"
+    commands:
+      - tapOn: "Ahora no"
+- runFlow:
+    when:
+      visible: "Cancelar"
+    commands:
+      - tapOn: "Cancelar"

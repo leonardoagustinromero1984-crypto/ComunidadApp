@@ -13,6 +13,7 @@ import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.domain.vitacora.VitaCoraHistoryPresentation
 import com.comunidapp.app.ui.components.PetImage
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,6 +26,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -98,17 +100,11 @@ fun M14PassportListScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(s.items, key = { it.id }) { item ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onPassportClick(item.petId) }
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(item.displayName, fontWeight = FontWeight.Bold)
-                                Text("Nº ${item.passportNumber}")
-                                Text("Estado: ${item.status}")
-                            }
-                        }
+                        com.comunidapp.app.ui.components.leo.LeoListRow(
+                            title = item.displayName,
+                            subtitle = "Nº ${item.passportNumber} · ${item.status}",
+                            onClick = { onPassportClick(item.petId) }
+                        )
                     }
                 }
             }
@@ -121,6 +117,7 @@ fun M14PetPassportScreen(
     petId: String,
     onNavigateBack: () -> Unit,
     onEdit: (String) -> Unit,
+    onEditHealth: (String) -> Unit = onEdit,
     onCredentials: (String) -> Unit,
     onVerification: (String) -> Unit,
     onShare: (String) -> Unit,
@@ -187,40 +184,39 @@ fun M14PetPassportScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Volver") }
                 } else {
+                    // Direct open: shell while passport is created / observed. No "Abrir VitaCora" bridge.
                     Text(
                         text = "VitaCora de $petName",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold
                     )
-                    Spacer(Modifier.height(8.dp))
-                    Text(
-                        text = "Reuní en un solo lugar su información más importante.",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Spacer(Modifier.height(12.dp))
-                    Button(
-                        onClick = { viewModel.createFromPet() },
-                        enabled = !busy && petId.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text(if (busy) "Abriendo…" else "Abrir VitaCora") }
+                    Spacer(Modifier.height(16.dp))
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 32.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        CircularProgressIndicator()
+                    }
                 }
             } else {
                 val currentPet = pet
                 VitaCoraHubHeader(
                     petName = p.displayName,
-                    vitacoraNumber = p.passportNumber,
+                    subtitle = buildVitacoraSubtitle(currentPet),
                     statusLabel = passportStatusLabel(p.status),
-                    visibilityLabel = passportVisibilityLabel(p.visibility),
+                    visibilityLabel = "Visible para: ${passportVisibilityLabel(p.visibility)}",
                     photoUrl = currentPet?.photoUrl,
                     avatarAssetId = currentPet?.avatarFileAssetId
                 )
-                Spacer(Modifier.height(16.dp))
+                Spacer(Modifier.height(20.dp))
                 VitaCoraSectionCard(
-                    title = "Resumen",
+                    title = "Identidad",
                     description = "Información clave de ${p.displayName}."
                 ) {
                     currentPet?.let { petSummary ->
-                        Text("Especie: ${petSummary.species.name}")
+                        Text("Especie: ${com.comunidapp.app.domain.pets.PetSpeciesCatalog.displayLabel(petSummary.species)}")
                         petSummary.breed?.takeIf { it.isNotBlank() }?.let { Text("Raza: $it") }
                         Text(
                             "Sexo: ${
@@ -249,14 +245,14 @@ fun M14PetPassportScreen(
                 }
                 Spacer(Modifier.height(12.dp))
                 VitaCoraSectionCard(
-                    title = "Salud",
+                    title = "Resumen",
                     description = "Vacunas, peso y cuidados registrados.",
                     actionLabel = "Ver salud",
-                    onAction = { onEdit(petId) }
+                    onAction = { onEditHealth(petId) }
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(20.dp))
                 VitaCoraSectionCard(
-                    title = "Últimos movimientos",
+                    title = "Momentos",
                     description = if (historyPreview.isEmpty()) {
                         "Todavía no hay eventos recientes."
                     } else {
@@ -267,34 +263,28 @@ fun M14PetPassportScreen(
                     actionLabel = "Ver historial completo",
                     onAction = { onHistory(p.id) }
                 )
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(20.dp))
                 VitaCoraSectionCard(
-                    title = "Compartir QR",
-                    description = "Compartí un QR para abrir la vista pública de la VitaCora de ${p.displayName}.",
+                    title = "Accesos",
+                    description = "Quién puede consultar o colaborar con la VitaCora de ${p.displayName}."
+                ) {
+                    TextButton(onClick = { onProfessionalAccess(petId) }) { Text("Gestionar accesos") }
+                    TextButton(onClick = { onProposals(petId) }) { Text("Ver propuestas") }
+                }
+                Spacer(Modifier.height(20.dp))
+                VitaCoraSectionCard(
+                    title = "Acciones",
+                    description = "Compartí un QR para abrir la vista pública de ${p.displayName}.",
                     actionLabel = "Compartir QR",
                     onAction = { onShare(p.id) }
                 )
-                Spacer(Modifier.height(12.dp))
-                VitaCoraSectionCard(
-                    title = "Acceso profesional",
-                    description = "Administrá quién puede consultar o colaborar con la VitaCora de ${p.displayName}.",
-                    actionLabel = "Gestionar accesos",
-                    onAction = { onProfessionalAccess(petId) }
-                )
-                Spacer(Modifier.height(12.dp))
-                VitaCoraSectionCard(
-                    title = "Propuestas VitaCora",
-                    description = "Revisá aportes o cambios enviados por profesionales o personas autorizadas.",
-                    actionLabel = "Ver propuestas",
-                    onAction = { onProposals(petId) }
-                )
                 if (p.status == M14PassportStatus.DRAFT) {
-                    Spacer(Modifier.height(12.dp))
-                    Button(
+                    Spacer(Modifier.height(20.dp))
+                    com.comunidapp.app.ui.components.leo.LeoPrimaryButton(
+                        text = "Activar VitaCora",
                         onClick = { viewModel.activate() },
-                        enabled = !busy,
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Activar VitaCora") }
+                        enabled = !busy
+                    )
                 }
             }
             message?.let {
@@ -445,24 +435,17 @@ fun M14CredentialsScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(items, key = { it.id }) { c ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onCredentialClick(c.id) }
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(c.title, fontWeight = FontWeight.Bold)
-                                Text("${c.type} · ${c.status}")
-                                Text(
-                                    when (c.status.name) {
-                                        "PENDING_VERIFICATION" -> "Pendiente de verificación"
-                                        "VERIFIED" -> "Verificado por una organización"
-                                        else -> c.status.name
-                                    },
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
+                        com.comunidapp.app.ui.components.leo.LeoListRow(
+                            title = c.title,
+                            subtitle = "${c.type} · ${
+                                when (c.status.name) {
+                                    "PENDING_VERIFICATION" -> "Pendiente de verificación"
+                                    "VERIFIED" -> "Verificado por una organización"
+                                    else -> c.status.name
+                                }
+                            }",
+                            onClick = { onCredentialClick(c.id) }
+                        )
                     }
                 }
             }
@@ -629,17 +612,11 @@ fun M14VerificationPrepScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(requests, key = { it.id }) { r ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onRequestClick(r.id) }
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(r.status.name, fontWeight = FontWeight.Bold)
-                                Text(r.id, style = MaterialTheme.typography.bodySmall)
-                                Text(r.resolutionReason ?: "—")
-                            }
-                        }
+                        com.comunidapp.app.ui.components.leo.LeoListRow(
+                            title = r.status.name,
+                            subtitle = r.resolutionReason?.takeIf { it.isNotBlank() } ?: "—",
+                            onClick = { onRequestClick(r.id) }
+                        )
                     }
                 }
             }
@@ -699,20 +676,18 @@ fun M14PublicPassportScreen(
 @Composable
 private fun VitaCoraHubHeader(
     petName: String,
-    vitacoraNumber: String,
+    subtitle: String?,
     statusLabel: String,
-    visibilityLabel: String,
+    visibilityLabel: String?,
     photoUrl: String?,
     avatarAssetId: String?
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = BrandCream)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
             PetImage(
                 imageUrl = photoUrl,
                 contentDescription = petName,
@@ -723,15 +698,52 @@ private fun VitaCoraHubHeader(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     "VitaCora de $petName",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = com.comunidapp.app.ui.theme.LeoCardTitle,
+                    color = com.comunidapp.app.ui.theme.BrandText,
+                    fontWeight = FontWeight.SemiBold
                 )
-                Text("N.º $vitacoraNumber", style = MaterialTheme.typography.bodyMedium)
-                Text("Estado: $statusLabel", style = MaterialTheme.typography.bodySmall)
-                Text("Visibilidad: $visibilityLabel", style = MaterialTheme.typography.bodySmall)
+                subtitle?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        it,
+                        style = com.comunidapp.app.ui.theme.LeoCaption,
+                        color = com.comunidapp.app.ui.theme.MutedText
+                    )
+                }
+                Text(
+                    statusLabel,
+                    style = com.comunidapp.app.ui.theme.LeoCaption,
+                    color = com.comunidapp.app.ui.theme.MutedText
+                )
+                visibilityLabel?.takeIf { it.isNotBlank() }?.let {
+                    Text(
+                        it,
+                        style = com.comunidapp.app.ui.theme.LeoCaption,
+                        color = com.comunidapp.app.ui.theme.MutedText
+                    )
+                }
             }
-        }
     }
+}
+
+private fun buildVitacoraSubtitle(pet: com.comunidapp.app.data.model.Pet?): String? {
+    pet ?: return null
+    val species = com.comunidapp.app.domain.pets.PetSpeciesCatalog.displayLabel(pet.species)
+    val sex = when (pet.sex) {
+        com.comunidapp.app.data.model.PetSex.MALE -> "Macho"
+        com.comunidapp.app.data.model.PetSex.FEMALE -> "Hembra"
+        com.comunidapp.app.data.model.PetSex.UNKNOWN -> null
+    }
+    val age = when {
+        pet.ageYears > 0 || pet.ageMonths > 0 -> {
+            val parts = buildList {
+                if (pet.ageYears > 0) add("${pet.ageYears}a")
+                if (pet.ageMonths > 0) add("${pet.ageMonths}m")
+            }
+            parts.joinToString(" ")
+        }
+        else -> null
+    }
+    return listOfNotNull(species, sex, age).joinToString(" · ").ifBlank { null }
 }
 
 @Composable
@@ -742,26 +754,35 @@ private fun VitaCoraSectionCard(
     onAction: (() -> Unit)? = null,
     content: (@Composable () -> Unit)? = null
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .then(if (onAction != null) Modifier.clickable(onClick = onAction) else Modifier),
-        shape = RoundedCornerShape(12.dp)
+            .then(if (onAction != null) Modifier.clickable(onClick = onAction) else Modifier)
+            .padding(vertical = com.comunidapp.app.ui.theme.LeoDimens.SpaceCompact)
     ) {
-        Column(Modifier.padding(16.dp)) {
-            Text(title, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold)
-            Text(
-                description,
-                style = MaterialTheme.typography.bodyMedium,
-                modifier = Modifier.padding(top = 6.dp)
-            )
-            content?.invoke()
-            actionLabel?.let { label ->
-                TextButton(onClick = { onAction?.invoke() }, modifier = Modifier.padding(top = 4.dp)) {
-                    Text(label, fontWeight = FontWeight.SemiBold)
-                }
+        Text(
+            title,
+            style = com.comunidapp.app.ui.theme.LeoCardTitle,
+            color = com.comunidapp.app.ui.theme.BrandText,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            description,
+            style = com.comunidapp.app.ui.theme.LeoCaption,
+            color = com.comunidapp.app.ui.theme.MutedText,
+            modifier = Modifier.padding(top = 6.dp)
+        )
+        content?.invoke()
+        actionLabel?.let { label ->
+            TextButton(onClick = { onAction?.invoke() }, modifier = Modifier.padding(top = 4.dp)) {
+                Text(label, fontWeight = FontWeight.SemiBold)
             }
         }
+        com.comunidapp.app.ui.components.leo.LeoHairline(
+            modifier = Modifier.padding(top = com.comunidapp.app.ui.theme.LeoDimens.SpaceMd),
+            color = androidx.compose.ui.graphics.Color(0xFFB4BAB2),
+            thickness = 1.dp
+        )
     }
 }
 

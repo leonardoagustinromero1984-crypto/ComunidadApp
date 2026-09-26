@@ -3,17 +3,21 @@ package com.comunidapp.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
-import com.comunidapp.app.data.model.M28CreatePassportProposalInput
+import com.comunidapp.app.data.model.M28CreateCareDraftInput
 import com.comunidapp.app.data.model.M28GrantProfessionalAccessInput
 import com.comunidapp.app.data.model.M28GrantPurpose
 import com.comunidapp.app.data.model.M28PassportUpdateProposal
 import com.comunidapp.app.data.model.M28ProfessionalAccessGrant
 import com.comunidapp.app.data.model.M28ProposalDecision
-import com.comunidapp.app.data.model.M28ProposalStatus
-import com.comunidapp.app.data.model.M28ProposalType
+import com.comunidapp.app.data.model.M28UpdateCareDraftInput
+import com.comunidapp.app.data.model.VitacoraAccessTarget
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.M28Repository
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.put
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -21,7 +25,14 @@ import kotlinx.coroutines.launch
 
 sealed class M28GrantsUiState {
     data object Loading : M28GrantsUiState()
-    data class Content(val grants: List<M28ProfessionalAccessGrant>) : M28GrantsUiState()
+    data class Content(
+        val grants: List<M28ProfessionalAccessGrant>,
+        val searchQuery: String = "",
+        val searchResults: List<VitacoraAccessTarget> = emptyList(),
+        val searchInProgress: Boolean = false,
+        val selectedTarget: VitacoraAccessTarget? = null,
+        val actionMessage: String? = null
+    ) : M28GrantsUiState()
     data class Error(val message: String) : M28GrantsUiState()
 }
 
@@ -31,15 +42,89 @@ class M28PetGrantsViewModel(
 ) : ViewModel() {
     private val _ui = MutableStateFlow<M28GrantsUiState>(M28GrantsUiState.Loading)
     val uiState: StateFlow<M28GrantsUiState> = _ui.asStateFlow()
+    private var searchJob: Job? = null
 
     init { refresh() }
 
     fun refresh() {
         viewModelScope.launch {
+            val previous = (_ui.value as? M28GrantsUiState.Content)
             _ui.value = M28GrantsUiState.Loading
             repository.listGrantsForResponsible(petId)
-                .onSuccess { _ui.value = M28GrantsUiState.Content(it) }
-                .onFailure { _ui.value = M28GrantsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
+                .onSuccess { grants ->
+                    _ui.value = M28GrantsUiState.Content(
+                        grants = grants,
+                        searchQuery = previous?.searchQuery.orEmpty(),
+                        searchResults = previous?.searchResults.orEmpty()
+                    )
+                    if (previous?.searchResults.isNullOrEmpty()) {
+                        updateSearchQuery(previous?.searchQuery.orEmpty())
+                    }
+                }
+                .onFailure {
+                    _ui.value = M28GrantsUiState.Error(
+                        com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)
+                    )
+                }
+        }
+    }
+
+    fun updateSearchQuery(query: String) {
+        val current = _ui.value as? M28GrantsUiState.Content ?: return
+        _ui.value = current.copy(searchQuery = query, actionMessage = null)
+        searchJob?.cancel()
+        if (query.trim().isNotEmpty() && query.trim().length < 2) {
+            _ui.value = current.copy(searchQuery = query, searchResults = emptyList(), searchInProgress = false)
+            return
+        }
+        searchJob = viewModelScope.launch {
+            if (query.trim().isNotEmpty()) delay(350)
+            _ui.value = (_ui.value as? M28GrantsUiState.Content)?.copy(searchInProgress = true) ?: return@launch
+            repository.searchAccessTargets(query.trim())
+                .onSuccess { results ->
+                    val state = _ui.value as? M28GrantsUiState.Content ?: return@onSuccess
+                    _ui.value = state.copy(searchResults = results, searchInProgress = false)
+                }
+                .onFailure {
+                    val state = _ui.value as? M28GrantsUiState.Content ?: return@onFailure
+                    _ui.value = state.copy(
+                        searchResults = emptyList(),
+                        searchInProgress = false,
+                        actionMessage = com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)
+                    )
+                }
+        }
+    }
+
+    fun selectTarget(target: VitacoraAccessTarget?) {
+        val current = _ui.value as? M28GrantsUiState.Content ?: return
+        _ui.value = current.copy(selectedTarget = target, actionMessage = null)
+    }
+
+    fun grantSelectedTarget(purposes: List<M28GrantPurpose>) {
+        val current = _ui.value as? M28GrantsUiState.Content ?: return
+        val target = current.selectedTarget ?: return
+        if (purposes.isEmpty()) {
+            _ui.value = current.copy(actionMessage = "Elegí al menos un permiso")
+            return
+        }
+        viewModelScope.launch {
+            val input = M28GrantProfessionalAccessInput(
+                petId = petId,
+                clinicId = target.targetId.takeIf { target.targetKind == "ORGANIZATION" },
+                professionalId = target.targetId.takeIf { target.targetKind == "PERSON" },
+                purposes = purposes
+            )
+            repository.grantAccess(input)
+                .onSuccess {
+                    selectTarget(null)
+                    refresh()
+                }
+                .onFailure {
+                    _ui.value = current.copy(
+                        actionMessage = com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)
+                    )
+                }
         }
     }
 
@@ -57,14 +142,22 @@ class M28PetGrantsViewModel(
                 )
             )
             repository.grantAccess(input).onSuccess { refresh() }
-                .onFailure { _ui.value = M28GrantsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
+                .onFailure {
+                    _ui.value = M28GrantsUiState.Error(
+                        com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)
+                    )
+                }
         }
     }
 
     fun revoke(grantId: String) {
         viewModelScope.launch {
             repository.revokeAccess(grantId).onSuccess { refresh() }
-                .onFailure { _ui.value = M28GrantsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
+                .onFailure {
+                    _ui.value = M28GrantsUiState.Error(
+                        com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)
+                    )
+                }
         }
     }
 
@@ -98,7 +191,11 @@ class M28PassportProposalsViewModel(
             _ui.value = M28ProposalsUiState.Loading
             repository.listProposalsForResponsible(petId, actorId)
                 .onSuccess { _ui.value = M28ProposalsUiState.Content(it) }
-                .onFailure { _ui.value = M28ProposalsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
+                .onFailure {
+                    _ui.value = M28ProposalsUiState.Error(
+                        com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)
+                    )
+                }
         }
     }
 
@@ -106,7 +203,11 @@ class M28PassportProposalsViewModel(
         viewModelScope.launch {
             repository.decideProposal(proposalId, decision, note, actorId)
                 .onSuccess { refresh() }
-                .onFailure { _ui.value = M28ProposalsUiState.Error(com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)) }
+                .onFailure {
+                    _ui.value = M28ProposalsUiState.Error(
+                        com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it)
+                    )
+                }
         }
     }
 
@@ -132,7 +233,7 @@ class M28ClinicCareViewModel(
     fun createAndFinalize(reason: String, weight: Double?) {
         viewModelScope.launch {
             val draft = repository.createCareDraft(
-                com.comunidapp.app.data.model.M28CreateCareDraftInput(
+                M28CreateCareDraftInput(
                     clinicId = clinicId,
                     petId = petId,
                     appointmentId = appointmentId,
@@ -144,7 +245,7 @@ class M28ClinicCareViewModel(
                 return@launch
             }
             val updated = repository.updateCareDraft(
-                com.comunidapp.app.data.model.M28UpdateCareDraftInput(
+                M28UpdateCareDraftInput(
                     careId = draft.id,
                     reason = reason,
                     weightKg = weight
@@ -157,6 +258,22 @@ class M28ClinicCareViewModel(
             repository.finalizeCare(updated.id, actorId)
                 .onSuccess { _message.value = "Atención finalizada" }
                 .onFailure { _message.value = com.comunidapp.app.domain.m28.M28UserErrorMapper.message(it) }
+        }
+    }
+
+    fun proposeToVitacora(reason: String, notes: String) {
+        viewModelScope.launch {
+            runCatching {
+                com.comunidapp.app.data.remote.supabase.supabase.postgrest.rpc(
+                    function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_CREATE_PROPOSAL,
+                    parameters = kotlinx.serialization.json.buildJsonObject {
+                        put("p_pet_id", petId)
+                        put("p_origin", "PROFESSIONAL")
+                        put("p_payload", "{\"reason\":\"$reason\",\"notes\":\"$notes\"}")
+                    }
+                )
+            }.onSuccess { _message.value = "Propuesta enviada al dueño." }
+                .onFailure { _message.value = "No se pudo proponer a VitaCora." }
         }
     }
 

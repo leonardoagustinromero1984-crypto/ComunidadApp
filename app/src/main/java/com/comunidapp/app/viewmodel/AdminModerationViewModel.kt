@@ -28,6 +28,8 @@ import kotlinx.coroutines.launch
 data class AdminModerationUiState(
     val accessAllowed: Boolean = false,
     val accessChecked: Boolean = false,
+    val canManageReports: Boolean = false,
+    val canViewSensitive: Boolean = false,
     val reports: List<ContentReport> = emptyList(),
     val message: String? = null
 )
@@ -58,6 +60,14 @@ class AdminModerationViewModel(
             }
             permissionRepository.refresh(user.id)
             val allowed = permissionRepository.hasPermission(user.id, PermissionCode.MODERATION_VIEW)
+            val canManage = permissionRepository.hasPermission(
+                user.id,
+                PermissionCode.MODERATION_MANAGE_REPORTS
+            )
+            val canSensitive = permissionRepository.hasPermission(
+                user.id,
+                PermissionCode.MODERATION_VIEW_SENSITIVE
+            )
             if (!allowed) {
                 _uiState.update {
                     AdminModerationUiState(accessAllowed = false, accessChecked = true)
@@ -70,6 +80,8 @@ class AdminModerationViewModel(
                         it.copy(
                             accessAllowed = true,
                             accessChecked = true,
+                            canManageReports = canManage,
+                            canViewSensitive = canSensitive,
                             reports = result.data.map { r -> r.toLegacyContentReport() }
                         )
                     }
@@ -79,6 +91,8 @@ class AdminModerationViewModel(
                         it.copy(
                             accessAllowed = true,
                             accessChecked = true,
+                            canManageReports = canManage,
+                            canViewSensitive = canSensitive,
                             reports = emptyList(),
                             message = result.error.userMessage
                         )
@@ -91,7 +105,11 @@ class AdminModerationViewModel(
     fun dismissReport(id: String) = triage(id, ModerationReportStatus.DISMISSED, "Reporte desestimado")
 
     fun actionReport(id: String) =
-        triage(id, ModerationReportStatus.ACTION_REQUIRED, "Acción aplicada al reporte")
+        triage(
+            id,
+            ModerationReportStatus.ACTION_REQUIRED,
+            "El reporte quedó marcado para acción. Esto no suspende al usuario ni oculta el contenido."
+        )
 
     fun clearMessage() = _uiState.update { it.copy(message = null) }
 
@@ -145,7 +163,7 @@ class AdminModerationViewModel(
         }
         return ContentReport(
             id = id,
-            reporterId = reporterId,
+            reporterId = "",
             targetType = targetType,
             targetId = target.targetId,
             reason = reasonCode,

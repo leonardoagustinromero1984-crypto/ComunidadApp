@@ -146,6 +146,45 @@ class LegacyPetRepositoryAdapterTest {
         assertNull(pet.ownerId)
     }
 
+    @Test
+    fun fetchPetById_keepsHealthFromRemoteRow_notListCache() = runTest {
+        val id = "78068b30-03f1-4d41-82bc-81318a143471"
+        fake.seedAccessible(
+            AccessiblePetM08Row(
+                id = id,
+                ownerId = "user-1",
+                name = "Samu",
+                species = "DOG",
+                sex = "MALE",
+                size = "MEDIUM",
+                status = "ACTIVE"
+            )
+        )
+        fake.pets[id] = fake.pets.getValue(id).copy(
+            sterilized = "YES",
+            lastVetVisit = "2026-08-07",
+            vaccinations = listOf(
+                com.comunidapp.app.data.remote.supabase.VaccinationRecordDto(
+                    name = "Rabia",
+                    date = "2026-08-11"
+                )
+            ),
+            lastDeworming = "2026-08-11",
+            dewormingProduct = "Piperazina",
+            lastFleaTreatment = "2026-08-05",
+            fleaTreatmentProduct = "Permetrina (spray)"
+        )
+        val fetched = adapter.fetchPetById(id)
+        assertNotNull(fetched)
+        assertEquals("YES", fetched!!.sterilized?.name)
+        assertEquals(1, fetched.vaccinations.size)
+        assertEquals("Rabia", fetched.vaccinations.first().name)
+        assertEquals("Piperazina", fetched.dewormingProduct)
+        assertEquals("Permetrina (spray)", fetched.fleaTreatmentProduct)
+        assertEquals("2026-08-07", fetched.lastVetVisit)
+        assertFalse(fetched.healthReadFailed)
+    }
+
     // --- S06–S12 create / partial ---
 
     @Test
@@ -220,6 +259,21 @@ class LegacyPetRepositoryAdapterTest {
     }
 
     @Test
+    fun updatePet_otherFieldKeepsBreed() = runTest {
+        val id = adapter.createPet(samplePet().copy(breed = "Y")).getOrThrow()
+        adapter.updatePet(samplePet(id = id).copy(breed = "Y", description = "otro")).getOrThrow()
+        assertEquals("Y", fake.pets[id]?.breed)
+    }
+
+    @Test
+    fun updatePet_changesBreedYtoZ() = runTest {
+        val id = adapter.createPet(samplePet().copy(breed = "Y")).getOrThrow()
+        adapter.updatePet(samplePet(id = id).copy(breed = "Y")).getOrThrow()
+        adapter.updatePet(samplePet(id = id).copy(breed = "Z")).getOrThrow()
+        assertEquals("Z", fake.pets[id]?.breed)
+    }
+
+    @Test
     fun s14_updatePet_microchipConflict() = runTest {
         val id = adapter.createPet(samplePet()).getOrThrow()
         val result = adapter.updatePet(samplePet(id = id).copy(microchipId = "CONFLICT"))
@@ -282,10 +336,12 @@ class LegacyPetRepositoryAdapterTest {
 
     @Test
     fun s17_getPetAccessContext_mapsFlags() = runTest {
+        val petId = "11111111-1111-4111-8111-111111111111"
         fake.seedAccessible(
             AccessiblePetM08Row(
-                id = "p1",
+                id = petId,
                 ownerId = "user-1",
+                createdByUserId = "user-1",
                 name = "Luna",
                 species = "DOG",
                 sex = "FEMALE",
@@ -295,10 +351,36 @@ class LegacyPetRepositoryAdapterTest {
                 capabilities = listOf("pet.update", "pet.archive")
             )
         )
-        val ctx = adapter.getPetAccessContext("p1").getOrThrow()
+        val ctx = adapter.getPetAccessContext(petId).getOrThrow()
         assertTrue(ctx.canUpdate)
         assertTrue(ctx.canArchive)
-        assertEquals("p1", ctx.petId)
+        assertEquals(petId, ctx.petId)
+    }
+
+    @Test
+    fun invitedOwnerFallback_cannotArchiveOrManageResponsibilities() = runTest {
+        val petId = "22222222-2222-4222-8222-222222222222"
+        fake.seedAccessible(
+            AccessiblePetM08Row(
+                id = petId,
+                ownerId = "user-1",
+                createdByUserId = "creator-a",
+                name = "Luna",
+                species = "DOG",
+                sex = "FEMALE",
+                size = "MEDIUM",
+                canUpdate = true,
+                canArchive = true,
+                canMarkDeceased = true
+            )
+        )
+        fake.contexts.clear()
+        val ctx = adapter.getPetAccessContext(petId).getOrThrow()
+        assertTrue(ctx.canUpdate)
+        assertFalse(ctx.canArchive)
+        assertFalse(ctx.canManageResponsibilities)
+        assertFalse(ctx.canMarkDeceased)
+        assertFalse(ctx.canInitiateTransfer)
     }
 
     @Test
@@ -333,6 +415,26 @@ class LegacyPetRepositoryAdapterTest {
     @Test
     fun s23_errorMapper_serialization() {
         assertEquals("SERIALIZATION", M08PetErrorMapper.codeOf(Exception("Json decode error")))
+    }
+
+    @Test
+    fun inviteRpcMissing_isNotLogin() {
+        assertEquals(
+            "RPC_UNAVAILABLE",
+            M08PetErrorMapper.codeOf(
+                Exception("PGRST202 Could not find the function public.canon_invite_pet_responsible")
+            )
+        )
+        val message = M08PetErrorMapper.userMessage("RPC_UNAVAILABLE")
+        assertFalse(message.contains("iniciar sesión", ignoreCase = true))
+    }
+
+    @Test
+    fun uuidContaining401_isNotLogin() {
+        assertEquals(
+            "UNKNOWN",
+            M08PetErrorMapper.codeOf(Exception("holder 401a7c2e-1111-4bf2-8b5e-4c8b0a8703dd"))
+        )
     }
 
     @Test

@@ -7,7 +7,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Switch
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -22,6 +22,7 @@ import androidx.compose.ui.Modifier
 import com.comunidapp.app.domain.schedule.OpenNowStatus
 import com.comunidapp.app.domain.schedule.ProviderScheduleClock
 import com.comunidapp.app.domain.schedule.ProviderWeeklySchedule
+import com.comunidapp.app.domain.schedule.WeeklyHoursBulkApply
 import com.comunidapp.app.domain.schedule.WeeklyHoursDay
 import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoDimens
@@ -36,92 +37,84 @@ fun LeoVerWeeklyHoursEditor(
     modifier: Modifier = Modifier
 ) {
     val visual = leoVisual()
-    var picking by remember { mutableStateOf<Pair<WeeklyHoursDay, Boolean>?>(null) }
+    val labels = listOf("Lun" to 1, "Mar" to 2, "Mié" to 3, "Jue" to 4, "Vie" to 5, "Sáb" to 6, "Dom" to 7)
+    var selectedDays by remember { mutableStateOf(setOf(1, 2, 3, 4, 5)) }
+    var opensAt by remember { mutableStateOf("09:00") }
+    var closesAt by remember { mutableStateOf("18:00") }
+    var pickingOpen by remember { mutableStateOf<Boolean?>(null) }
+    var addingExtra by remember { mutableStateOf(false) }
+    val remaining = WeeklyHoursBulkApply.daysWithoutRule(schedule)
+
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
         Text("Horarios", color = visual.textPrimary)
         Text(
-            "Indicá cada día con el selector de hora. Si no hay horarios guardados, el perfil público muestra “Horarios no informados”.",
+            "Elegí varios días, definí un rango y aplicá. Después podés agregar otro horario para los días que faltan.",
             style = LeoCaption,
             color = visual.textSecondary
         )
-        val days = if (schedule.days.isEmpty()) ProviderWeeklySchedule.emptyTemplate().days else schedule.days
-        days.sortedBy { it.weekday }.forEach { day ->
-            Column(verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceXs)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(day.label, color = visual.textPrimary)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Text(if (day.closed) "Cerrado" else "Abierto", style = LeoCaption, color = visual.textSecondary)
-                        Switch(
-                            checked = !day.closed,
-                            onCheckedChange = { open ->
-                                onChange(schedule.replace(day.copy(closed = !open, open24Hours = if (!open) false else day.open24Hours)))
-                            }
-                        )
-                    }
-                }
-                if (!day.closed) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Abierto 24 horas", style = LeoCaption, color = visual.textSecondary)
-                        Switch(
-                            checked = day.open24Hours,
-                            onCheckedChange = { allDay ->
-                                onChange(
-                                    schedule.replace(
-                                        day.copy(
-                                            open24Hours = allDay,
-                                            opensAt = if (allDay) "00:00" else day.opensAt,
-                                            closesAt = if (allDay) "23:59" else day.closesAt
-                                        )
-                                    )
-                                )
-                            }
-                        )
-                    }
-                    if (!day.open24Hours) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
-                            TimeField(
-                                label = "Desde",
-                                value = day.opensAt.orEmpty(),
-                                onClick = { picking = day to true },
-                                modifier = Modifier.weight(1f)
-                            )
-                            TimeField(
-                                label = "Hasta",
-                                value = day.closesAt.orEmpty(),
-                                onClick = { picking = day to false },
-                                modifier = Modifier.weight(1f)
-                            )
-                        }
-                    }
-                }
+        Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceXs)) {
+            labels.forEach { (label, day) ->
+                val enabled = addingExtra && remaining.contains(day) || !addingExtra
+                FilterChip(
+                    selected = selectedDays.contains(day),
+                    onClick = {
+                        if (!enabled) return@FilterChip
+                        selectedDays = if (selectedDays.contains(day)) selectedDays - day else selectedDays + day
+                    },
+                    enabled = enabled,
+                    label = { Text(label) }
+                )
             }
         }
+        Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
+            TimeField("Desde", opensAt, { pickingOpen = true }, Modifier.weight(1f))
+            TimeField("Hasta", closesAt, { pickingOpen = false }, Modifier.weight(1f))
+        }
+        LeoOutlinedButton(
+            text = "Aplicar horario",
+            onClick = {
+                onChange(
+                    WeeklyHoursBulkApply.apply(
+                        schedule,
+                        WeeklyHoursBulkApply.Range(selectedDays, opensAt, closesAt)
+                    )
+                )
+                addingExtra = false
+            }
+        )
+        if (remaining.isNotEmpty()) {
+            LeoOutlinedButton(
+                text = "+ Agregar otro horario",
+                onClick = {
+                    addingExtra = true
+                    selectedDays = remaining
+                    opensAt = "09:00"
+                    closesAt = "13:00"
+                }
+            )
+        }
+        schedule.visibleDays().forEach { day ->
+            val hours = when {
+                day.closed -> "Cerrado"
+                day.open24Hours -> "Abierto 24 horas"
+                else -> "${day.opensAt.orEmpty()} – ${day.closesAt.orEmpty()}"
+            }
+            Text("${day.label}: $hours", style = LeoCaption, color = visual.textSecondary)
+        }
     }
-    picking?.let { (day, isOpen) ->
-        val initial = ProviderWeeklySchedule.parseHm(if (isOpen) day.opensAt else day.closesAt) ?: LocalTime.of(9, 0)
+    pickingOpen?.let { isOpen ->
+        val initial = ProviderWeeklySchedule.parseHm(if (isOpen) opensAt else closesAt) ?: LocalTime.of(9, 0)
         val state = rememberTimePickerState(initialHour = initial.hour, initialMinute = initial.minute, is24Hour = true)
         AlertDialog(
-            onDismissRequest = { picking = null },
+            onDismissRequest = { pickingOpen = null },
             confirmButton = {
                 TextButton(onClick = {
                     val formatted = "%02d:%02d".format(state.hour, state.minute)
-                    onChange(
-                        schedule.replace(
-                            if (isOpen) day.copy(opensAt = formatted) else day.copy(closesAt = formatted)
-                        )
-                    )
-                    picking = null
+                    if (isOpen) opensAt = formatted else closesAt = formatted
+                    pickingOpen = null
                 }) { Text("Listo") }
             },
-            dismissButton = { TextButton(onClick = { picking = null }) { Text("Cancelar") } },
+            dismissButton = { TextButton(onClick = { pickingOpen = null }) { Text("Cancelar") } },
             text = { TimePicker(state = state) }
         )
     }
@@ -157,7 +150,7 @@ fun LeoVerHoursDisplay(
             },
             color = visual.textPrimary
         )
-        schedule.days.sortedBy { it.weekday }.forEach { day ->
+        schedule.visibleDays().forEach { day ->
             val hours = when {
                 day.closed -> "Cerrado"
                 day.open24Hours -> "Abierto 24 horas"

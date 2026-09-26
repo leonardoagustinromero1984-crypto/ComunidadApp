@@ -12,11 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -51,6 +47,12 @@ import com.comunidapp.app.viewmodel.M19SocialFeedViewModel
 import com.comunidapp.app.viewmodel.m19FeedFilterKindLabel
 import com.comunidapp.app.viewmodel.m19PostStatusLabel
 import com.comunidapp.app.viewmodel.m19ReactionTypeLabel
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
 fun M19SocialFeedScreen(
@@ -87,19 +89,28 @@ fun M19SocialFeedScreen(
                 singleLine = true
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { viewModel.clearFilters() }) { Text("Limpiar filtros") }
-                OutlinedButton(onClick = onManage) { Text("Administrar") }
-                Button(onClick = onCreate) { Text("Nueva") }
+                LeoOutlinedButton(
+                    text = "Limpiar filtros",
+                    onClick = { viewModel.clearFilters() }
+                )
+                LeoOutlinedButton(
+                    text = "Administrar",
+                    onClick = onManage
+                )
+                LeoPrimaryButton(
+                    text = "Nueva",
+                    onClick = onCreate
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 M19FeedFilterKind.entries.forEach { kind ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = m19FeedFilterKindLabel(kind),
                         selected = filter.kind == kind,
-                        onClick = { viewModel.setKind(kind) },
-                        label = { Text(m19FeedFilterKindLabel(kind)) }
+                        onClick = { viewModel.setKind(kind) }
                     )
                 }
             }
@@ -124,13 +135,11 @@ fun M19SocialFeedScreen(
                     }
                     if (s.hasMore) {
                         item {
-                            OutlinedButton(
+                            LeoOutlinedButton(
+                                text = if (s.loadingMore) "Cargando…" else "Cargar más",
                                 onClick = { viewModel.loadMore() },
-                                modifier = Modifier.fillMaxWidth(),
                                 enabled = !s.loadingMore
-                            ) {
-                                Text(if (s.loadingMore) "Cargando…" else "Cargar más")
-                            }
+                            )
                         }
                     }
                 }
@@ -141,8 +150,12 @@ fun M19SocialFeedScreen(
 
 @Composable
 private fun M19PostCard(post: M19PublicPost, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(post.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(post.organizationDisplayName, style = MaterialTheme.typography.bodySmall)
             Text(post.authorDisplayName, style = MaterialTheme.typography.labelMedium)
@@ -156,6 +169,7 @@ private fun M19PostCard(post: M19PublicPost, onClick: () -> Unit) {
                 color = MaterialTheme.colorScheme.primary
             )
         }
+        LeoHairline()
     }
 }
 
@@ -205,24 +219,24 @@ fun M19PostDetailScreen(
                         M19ReactionType.entries.forEach { type ->
                             val selected = myReaction == type
                             if (selected) {
-                                OutlinedButton(onClick = { viewModel.removeReaction() }) {
-                                    Text("${m19ReactionTypeLabel(type)} ✓")
-                                }
+                                LeoOutlinedButton(
+                                    text = m19ReactionTypeLabel(type),
+                                    onClick = { viewModel.removeReaction() }
+                                )
                             } else {
-                                Button(onClick = { viewModel.react(type) }) {
-                                    Text(m19ReactionTypeLabel(type))
-                                }
+                                LeoPrimaryButton(
+                                    text = m19ReactionTypeLabel(type),
+                                    onClick = { viewModel.react(type) }
+                                )
                             }
                         }
                     }
                     Text("Comentarios (${comments.size})", style = MaterialTheme.typography.titleMedium)
                     comments.forEach { c ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(c.authorDisplayName, fontWeight = FontWeight.SemiBold)
-                                Text(c.content)
-                            }
-                        }
+                        LeoListRow(
+                            title = c.authorDisplayName,
+                            subtitle = c.content
+                        )
                     }
                     OutlinedTextField(
                         value = commentText,
@@ -230,13 +244,14 @@ fun M19PostDetailScreen(
                         modifier = Modifier.fillMaxWidth(),
                         label = { Text("Tu comentario") }
                     )
-                    Button(
+                    LeoPrimaryButton(
+                        text = "Comentar",
                         onClick = {
                             viewModel.addComment(commentText)
                             commentText = ""
                         },
                         enabled = commentText.isNotBlank()
-                    ) { Text("Comentar") }
+                    )
                 }
             }
         }
@@ -264,26 +279,44 @@ fun M19PostsManageScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
-            Button(onClick = onCreate, modifier = Modifier.padding(bottom = 12.dp)) { Text("Nueva publicación") }
+            LeoPrimaryButton(
+                text = "Nueva publicación",
+                onClick = onCreate,
+                modifier = Modifier.padding(bottom = 12.dp)
+            )
             when (val s = state) {
                 M19PostsManageUiState.Loading -> LoadingState()
                 M19PostsManageUiState.Empty -> EmptyState(title = "Sin publicaciones", message = "Creá la primera.")
                 is M19PostsManageUiState.Error -> ErrorState(message = s.message)
                 is M19PostsManageUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(s.items, key = { it.id }) { item ->
-                        Card(Modifier.fillMaxWidth().clickable { onEditPost(item.id) }) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onEditPost(item.id) }
+                        ) {
+                            Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
                                 Text(item.title, fontWeight = FontWeight.Bold)
                                 Text(m19PostStatusLabel(item.status), style = MaterialTheme.typography.labelMedium)
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
                                     if (item.status == M19PostStatus.DRAFT || item.status == M19PostStatus.HIDDEN) {
-                                        Button(onClick = { viewModel.publish(item.id) }) { Text("Publicar") }
+                                        LeoPrimaryButton(
+                                            text = "Publicar",
+                                            onClick = { viewModel.publish(item.id) },
+                                            modifier = Modifier.weight(1f),
+                                            fillMaxWidth = false
+                                        )
                                     }
                                     if (item.status == M19PostStatus.PUBLISHED) {
-                                        OutlinedButton(onClick = { viewModel.hide(item.id) }) { Text("Ocultar") }
+                                        LeoOutlinedButton(
+                                            text = "Ocultar",
+                                            onClick = { viewModel.hide(item.id) },
+                                            modifier = Modifier.weight(1f)
+                                        )
                                     }
                                 }
                             }
+                            LeoHairline()
                         }
                     }
                 }
@@ -345,9 +378,10 @@ fun M19PostEditScreen(
                     label = { Text("Contenido") },
                     minLines = 4
                 )
-                Button(onClick = { viewModel.save(title, content, onSaved) }) {
-                    Text(if (s.isEdit) "Guardar" else "Crear borrador")
-                }
+                LeoPrimaryButton(
+                    text = if (s.isEdit) "Guardar" else "Crear borrador",
+                    onClick = { viewModel.save(title, content, onSaved) }
+                )
             }
         }
     }

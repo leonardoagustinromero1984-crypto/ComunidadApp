@@ -4,6 +4,7 @@ import com.comunidapp.app.data.mock.MockAuthDatabase
 import com.comunidapp.app.data.mock.MockData
 import com.comunidapp.app.data.repository.MockAuthRepository
 import com.comunidapp.app.data.repository.MockPermissionRepository
+import com.comunidapp.app.domain.authorization.AdminAccessPolicy
 import com.comunidapp.app.domain.authorization.PermissionCode
 import com.comunidapp.app.domain.authorization.PlatformRoleCode
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -59,5 +60,50 @@ class AdministrativeNavigationAuthorizationTest {
             auth, permissions, PermissionCode.AUDIT_VIEW
         )
         assertTrue(decision.allowed)
+    }
+
+    @Test
+    fun user_denied_admin_hub() = runTest {
+        auth.login(MockData.currentUser.email, MockAuthDatabase.DEMO_PASSWORD)
+        permissions.setRolesForTests(MockData.currentUser.id, setOf(PlatformRoleCode.USER))
+        val ctx = permissions.getAuthorizationContext(MockData.currentUser.id)
+        assertFalse(AdminAccessPolicy.canEnterAdministration(ctx))
+    }
+
+    @Test
+    fun moderator_denied_users_module() = runTest {
+        auth.login(MockData.currentUser.email, MockAuthDatabase.DEMO_PASSWORD)
+        permissions.setRolesForTests(MockData.currentUser.id, setOf(PlatformRoleCode.MODERATOR))
+        val ctx = permissions.getAuthorizationContext(MockData.currentUser.id)
+        assertTrue(AdminAccessPolicy.canEnterAdministration(ctx))
+        assertTrue(AdminAccessPolicy.canSeeModeration(ctx))
+        assertFalse(AdminAccessPolicy.canSeeUsers(ctx))
+    }
+
+    @Test
+    fun superadmin_sees_block1_modules() = runTest {
+        auth.login(MockData.currentUser.email, MockAuthDatabase.DEMO_PASSWORD)
+        permissions.setRolesForTests(MockData.currentUser.id, setOf(PlatformRoleCode.SUPERADMIN))
+        val ctx = permissions.getAuthorizationContext(MockData.currentUser.id)
+        assertTrue(AdminAccessPolicy.canEnterAdministration(ctx))
+        assertTrue(AdminAccessPolicy.canSeeUsers(ctx))
+        assertTrue(AdminAccessPolicy.canSeeModeration(ctx))
+    }
+
+    @Test
+    fun account_switch_does_not_leak_admin_visibility() = runTest {
+        permissions.setRolesForTests("admin-a", setOf(PlatformRoleCode.SUPERADMIN))
+        permissions.setRolesForTests("user-b", setOf(PlatformRoleCode.USER))
+        assertTrue(
+            AdminAccessPolicy.canEnterAdministration(
+                permissions.getAuthorizationContext("admin-a")
+            )
+        )
+        permissions.invalidate()
+        assertFalse(
+            AdminAccessPolicy.canEnterAdministration(
+                permissions.getAuthorizationContext("user-b")
+            )
+        )
     }
 }

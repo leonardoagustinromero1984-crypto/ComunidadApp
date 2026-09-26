@@ -19,8 +19,9 @@ import androidx.compose.ui.unit.dp
 import com.comunidapp.app.data.model.ServiceCategory
 import com.comunidapp.app.data.model.ServiceProfile
 import com.comunidapp.app.ui.components.PetImage
-import com.comunidapp.app.ui.components.v2.V2CompactCta
-import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandTextSecondary
 import com.comunidapp.app.ui.theme.LeoCaption
@@ -44,8 +45,9 @@ fun LeoVerProviderCard(
         if (km < 10) String.format("%.1f km", km) else "${km.toInt()} km"
     }
     val placeLine = listOfNotNull(distance, place).joinToString(" · ")
-    V2SurfaceCard(onClick = onClick, radius = LeoDimens.RadiusCard) {
+    Column(modifier = Modifier.fillMaxWidth().clickable(onClick = onClick)) {
         Row(
+            modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceM)
         ) {
@@ -102,8 +104,13 @@ fun LeoVerProviderCard(
                     )
                 }
             }
-            V2CompactCta(text = "Ver perfil", onClick = onClick)
+            Text(
+                text = "Ver perfil",
+                style = LeoCaption,
+                color = BrandText
+            )
         }
+        LeoHairline(modifier = Modifier.padding(start = LeoDimens.SpaceMd))
     }
 }
 

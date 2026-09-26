@@ -5,8 +5,6 @@ import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.material3.Switch
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -16,12 +14,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,7 +33,17 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.R
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandOrange
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.ui.theme.VisualDirectionPilot
 import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.data.model.displayOf
@@ -52,6 +57,7 @@ import com.comunidapp.app.ui.components.v2.V2LocationPicker
 import com.comunidapp.app.ui.components.v2.v2KeepVisibleOnFocus
 import com.comunidapp.app.ui.media.LeoVerAvatarCropKind
 import com.comunidapp.app.ui.media.rememberLeoVerAvatarCropLauncher
+import com.comunidapp.app.ui.media.rememberLeoVerPhotoSourcePicker
 import com.comunidapp.app.viewmodel.EditProfileViewModel
 
 @Composable
@@ -67,9 +73,10 @@ fun EditProfileScreen(
         onCancel = viewModel::cancelPhotoEditor,
         onError = viewModel::onPhotoCropFailed
     )
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> uri?.let(cropPhoto) }
+    val pickPhoto = rememberLeoVerPhotoSourcePicker(
+        sheetTitle = "Cambiar foto",
+        onSourceSelected = cropPhoto
+    )
 
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
@@ -95,7 +102,7 @@ fun EditProfileScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 24.dp)
+                    .padding(horizontal = LeoDimens.SpaceXl)
                     .verticalScroll(rememberScrollState()),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
@@ -116,42 +123,35 @@ fun EditProfileScreen(
                     )
                 }
                 Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = {
-                        pickImageLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
+                LeoOutlinedButton(
+                    text = if (uiState.pendingImageUri != null || !uiState.profileImageUrl.isNullOrBlank()) {
+                        stringResource(R.string.change_photo)
+                    } else {
+                        "Agregar foto"
                     },
+                    onClick = pickPhoto,
                     enabled = !uiState.isSaving && !uiState.isProcessingPhoto
-                ) {
-                    Text(
-                        if (uiState.pendingImageUri != null || !uiState.profileImageUrl.isNullOrBlank()) {
-                            stringResource(R.string.change_photo)
-                        } else {
-                            "Agregar foto"
-                        }
-                    )
-                }
+                )
                 Spacer(modifier = Modifier.height(24.dp))
 
-                OutlinedTextField(
+                LeoTextField(
                     value = uiState.name,
                     onValueChange = viewModel::onNameChange,
-                    label = { Text(stringResource(R.string.profile_name)) },
+                    label = stringResource(R.string.profile_name),
                     modifier = Modifier
                         .fillMaxWidth()
                         .v2KeepVisibleOnFocus(),
-                    singleLine = true,
                     enabled = !uiState.isSaving
                 )
-                Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
+                Spacer(modifier = Modifier.height(LeoDimens.SpaceCompact))
+                LeoTextField(
                     value = uiState.bio,
                     onValueChange = viewModel::onBioChange,
-                    label = { Text(stringResource(R.string.profile_bio)) },
+                    label = stringResource(R.string.profile_bio),
                     modifier = Modifier
                         .fillMaxWidth()
                         .v2KeepVisibleOnFocus(),
+                    singleLine = false,
                     minLines = 3,
                     enabled = !uiState.isSaving
                 )
@@ -198,12 +198,11 @@ fun EditProfileScreen(
                     enabled = !uiState.isSaving
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                OutlinedTextField(
+                LeoTextField(
                     value = uiState.phone,
                     onValueChange = viewModel::onPhoneChange,
-                    label = { Text(stringResource(R.string.profile_phone)) },
+                    label = stringResource(R.string.profile_phone),
                     modifier = Modifier.fillMaxWidth(),
-                    singleLine = true,
                     enabled = !uiState.isSaving
                 )
                 Spacer(modifier = Modifier.height(16.dp))
@@ -214,12 +213,13 @@ fun EditProfileScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = stringResource(R.string.profile_private_title),
-                            style = MaterialTheme.typography.titleSmall
+                            style = LeoCardTitle,
+                            color = BrandText
                         )
                         Text(
                             text = stringResource(R.string.profile_private_hint),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            style = LeoCaption,
+                            color = BrandTextSecondary
                         )
                     }
                     Switch(
@@ -233,26 +233,20 @@ fun EditProfileScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        color = UrgentRed,
+                        style = LeoCaption
                     )
                     if (uiState.photoUploadFailed) {
                         Spacer(modifier = Modifier.height(8.dp))
                         if (uiState.pendingImageUri != null) {
-                            OutlinedButton(
+                            LeoOutlinedButton(
+                                text = "Reintentar",
                                 onClick = viewModel::saveProfile,
-                                modifier = Modifier.fillMaxWidth(),
                                 enabled = !uiState.isSaving
-                            ) {
-                                Text("Reintentar")
-                            }
+                            )
                         }
                         TextButton(
-                            onClick = {
-                                pickImageLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                )
-                            },
+                            onClick = pickPhoto,
                             enabled = !uiState.isSaving
                         ) {
                             Text("Cambiar foto")
@@ -267,19 +261,18 @@ fun EditProfileScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = viewModel::saveProfile,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isSaving && !uiState.photoUploadFailed && !uiState.isProcessingPhoto
-                ) {
-                    if (uiState.isSaving) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(stringResource(R.string.save_profile))
-                    }
+                if (uiState.isSaving) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = BrandOrange,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    LeoPrimaryButton(
+                        text = stringResource(R.string.save_profile),
+                        onClick = viewModel::saveProfile,
+                        enabled = !uiState.photoUploadFailed && !uiState.isProcessingPhoto
+                    )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }

@@ -1,0 +1,32 @@
+appId: ${APP_ID}
+name: "VitaCora proposals QA11 QA01"
+tags:
+  - community-care
+  - vitacora
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA11_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Pacientes"
+- tapOn: "QA - Mora"
+- takeScreenshot: proposal_professional
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person-keep.yaml
+    env:
+      USERNAME: ${QA01_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      APP_ID: ${APP_ID}
+- tapOn: "QA - Mora"
+- tapOn: "Propuestas"
+- assertVisible: "Aceptar"
+- assertVisible: "Rechazar"
+- takeScreenshot: proposal_owner
+# Does not consume ACCEPT/REJECT so the seed fixture stays rerunnable.

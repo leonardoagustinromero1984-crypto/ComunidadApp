@@ -89,7 +89,7 @@ fun PetFormUiState.toDraft(userId: String, editPetId: String?): PetFormDraft = P
     userId = userId,
     editPetId = editPetId?.takeIf { it.isNotBlank() },
     name = name,
-    species = species.name,
+    species = speciesCode.ifBlank { species.name },
     sex = sex.name,
     ageYears = ageYears,
     ageYearsInput = ageYearsInput,
@@ -118,9 +118,26 @@ fun PetFormUiState.toDraft(userId: String, editPetId: String?): PetFormDraft = P
     breed = breed
 )
 
+fun PetFormDraft.isRecoverableForEdit(fetched: PetFormUiState): Boolean {
+    if (editPetId?.takeIf { it.isNotBlank() } != fetched.petId.takeIf { it.isNotBlank() }) return false
+    if (fetched.name.isNotBlank() && name.isBlank()) return false
+    if (fetched.name.isNotBlank() && name == fetched.name) {
+        return (species != fetched.speciesCode && species != fetched.species.name) ||
+            sex != fetched.sex.name ||
+            breed != fetched.breed ||
+            description != fetched.description ||
+            pendingImageUri != null ||
+            sterilized != fetched.sterilized?.name ||
+            lastVetVisit != fetched.lastVetVisit ||
+            vaccinations != fetched.vaccinations.map { DraftVaccination(it.name, it.date, it.nextDueDate) }
+    }
+    return name.isNotBlank()
+}
+
 fun PetFormDraft.applyTo(state: PetFormUiState): PetFormUiState = state.copy(
-    name = name,
-    species = runCatching { PetSpecies.valueOf(species) }.getOrDefault(state.species),
+    name = name.takeIf { it.isNotBlank() } ?: state.name,
+    species = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toPetSpecies(species),
+    speciesCode = species.ifBlank { state.speciesCode },
     sex = runCatching { PetSex.valueOf(sex) }.getOrDefault(state.sex),
     ageYears = ageYears,
     ageYearsInput = ageYearsInput,

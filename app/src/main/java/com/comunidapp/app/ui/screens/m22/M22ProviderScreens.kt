@@ -1,6 +1,5 @@
 package com.comunidapp.app.ui.screens.m22
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,10 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +19,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M22ProviderStatus
 import com.comunidapp.app.data.model.M22PublicProviderListing
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
@@ -51,8 +50,8 @@ fun M22HubScreen(onNavigateBack: () -> Unit, onOpenCatalog: () -> Unit, onOpenMa
                 is M22HubUiState.Content -> {
                     Text("Catálogo local de servicios.", color = MaterialTheme.colorScheme.primary)
                     Text("${s.providerCount} prestadores disponibles")
-                    Button(onClick = onOpenCatalog, modifier = Modifier.fillMaxWidth()) { Text("Explorar catálogo") }
-                    OutlinedButton(onClick = onOpenManage, modifier = Modifier.fillMaxWidth()) { Text("Gestionar mis prestadores") }
+                    LeoPrimaryButton(text = "Explorar catálogo", onClick = onOpenCatalog)
+                    LeoOutlinedButton(text = "Gestionar mis prestadores", onClick = onOpenManage)
                 }
             }
         }
@@ -99,8 +98,8 @@ fun M22ProviderDetailScreen(
                     s.provider.branches.forEach { Text("${it.name} · ${it.coverage}") }
                     Text("Servicios", fontWeight = FontWeight.Bold)
                     s.provider.offerings.forEach { Text("${it.name} · ${it.priceType}${it.priceAmount?.let { amount -> " ARS $amount" }.orEmpty()}") }
-                    Button(onClick = onViewAvailability, modifier = Modifier.fillMaxWidth()) { Text("Ver disponibilidad") }
-                    OutlinedButton(onClick = onBook, modifier = Modifier.fillMaxWidth()) { Text("Reservar") }
+                    LeoPrimaryButton(text = "Ver disponibilidad", onClick = onViewAvailability)
+                    LeoOutlinedButton(text = "Reservar", onClick = onBook)
                 }
             }
         }
@@ -118,25 +117,28 @@ fun M22ManageScreen(onNavigateBack: () -> Unit, viewModel: M22ManageViewModel = 
                 is M22ManageUiState.Error -> ErrorState(message = s.message)
                 is M22ManageUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(s.providers, key = { it.id }) { provider ->
-                        Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp)) {
-                            Text(provider.displayName, fontWeight = FontWeight.Bold)
-                            Text("${provider.category} · ${provider.status}")
+                        Column(Modifier.fillMaxWidth()) {
+                            LeoListRow(
+                                title = provider.displayName,
+                                subtitle = "${provider.category} · ${provider.status}",
+                                showDivider = provider.status == M22ProviderStatus.ARCHIVED
+                            )
                             when (provider.status) {
-                                M22ProviderStatus.DRAFT -> Button(
-                                    onClick = { viewModel.publish(provider.id) },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) { Text("Publicar") }
-                                M22ProviderStatus.ACTIVE -> OutlinedButton(
-                                    onClick = { viewModel.suspend(provider.id) },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) { Text("Suspender") }
-                                M22ProviderStatus.SUSPENDED -> Button(
-                                    onClick = { viewModel.publish(provider.id) },
-                                    modifier = Modifier.fillMaxWidth()
-                                ) { Text("Reactivar") }
+                                M22ProviderStatus.DRAFT -> LeoPrimaryButton(
+                                    text = "Publicar",
+                                    onClick = { viewModel.publish(provider.id) }
+                                )
+                                M22ProviderStatus.ACTIVE -> LeoOutlinedButton(
+                                    text = "Suspender",
+                                    onClick = { viewModel.suspend(provider.id) }
+                                )
+                                M22ProviderStatus.SUSPENDED -> LeoPrimaryButton(
+                                    text = "Reactivar",
+                                    onClick = { viewModel.publish(provider.id) }
+                                )
                                 M22ProviderStatus.ARCHIVED -> Unit
                             }
-                        } }
+                        }
                     }
                 }
             }
@@ -146,12 +148,10 @@ fun M22ManageScreen(onNavigateBack: () -> Unit, viewModel: M22ManageViewModel = 
 
 @Composable
 private fun M22ProviderCard(item: M22PublicProviderListing, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(item.displayName, fontWeight = FontWeight.Bold)
-            Text("${item.category} · ${item.city}")
-            Text(item.description, maxLines = 2)
-            item.priceSummary?.let { Text(it, style = MaterialTheme.typography.labelMedium) }
-        }
-    }
+    LeoListRow(
+        title = item.displayName,
+        subtitle = "${item.category} · ${item.city} · ${item.description}" +
+            (item.priceSummary?.let { " · $it" }.orEmpty()),
+        onClick = onClick
+    )
 }

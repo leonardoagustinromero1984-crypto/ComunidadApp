@@ -1,19 +1,14 @@
 package com.comunidapp.app.ui.screens.search
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -24,6 +19,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.ui.components.AdoptionCard
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoSearchBar
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
@@ -60,14 +57,11 @@ fun SearchScreen(
                 .padding(padding)
                 .padding(horizontal = 16.dp)
         ) {
-            OutlinedTextField(
+            LeoSearchBar(
                 value = query,
                 onValueChange = viewModel::onQueryChange,
-                label = { Text("Usuarios, mascotas, publicaciones…") },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 8.dp),
-                singleLine = true
+                placeholder = "Usuarios, mascotas, publicaciones…",
+                modifier = Modifier.padding(vertical = 8.dp)
             )
             if (isSearching) {
                 CircularProgressIndicator(modifier = Modifier.padding(16.dp))
@@ -85,27 +79,11 @@ fun SearchScreen(
                 if (results.users.isNotEmpty()) {
                     item { SectionTitle("Personas") }
                     items(results.users, key = { it.id }) { user ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onAuthorClick(user.id) },
-                            elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(12.dp)) {
-                                Text(
-                                    text = user.name,
-                                    style = MaterialTheme.typography.titleSmall,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                user.locationText?.takeIf { it.isNotBlank() }?.let { location ->
-                                    Text(
-                                        text = location,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                            }
-                        }
+                        LeoListRow(
+                            title = user.name,
+                            subtitle = user.locationText?.takeIf { it.isNotBlank() },
+                            onClick = { onAuthorClick(user.id) }
+                        )
                     }
                 }
                 if (results.pets.isNotEmpty()) {

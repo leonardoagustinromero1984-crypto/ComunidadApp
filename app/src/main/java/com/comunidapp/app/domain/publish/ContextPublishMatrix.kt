@@ -31,7 +31,7 @@ object ContextPublishMatrix {
     fun optionsFor(context: OperationalContext): List<PublishOptionSpec> {
         val social = listOf(
             PublishOptionSpec(PublishAction.SOCIAL_POST, "Publicación", "Foto, video o texto para el feed"),
-            PublishOptionSpec(PublishAction.REEL, "Reel", "Video corto vertical"),
+            PublishOptionSpec(PublishAction.REEL, "Clip", "Video corto vertical"),
             PublishOptionSpec(PublishAction.STORY, "Historia", "Contenido efímero · 24 horas")
         )
         return when (context.kind) {

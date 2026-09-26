@@ -11,10 +11,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -30,11 +27,15 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.LocationLevel
 import com.comunidapp.app.data.model.LocationNode
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.ui.components.v2.V2SearchableCatalogField
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.LocationCatalogAdminViewModel
 
 @Composable
@@ -82,10 +83,10 @@ fun LocationCatalogAdminScreen(
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     LocationLevel.entries.forEach { level ->
-                        FilterChip(
+                        LeoFilterChip(
+                            label = levelLabel(level),
                             selected = uiState.level == level,
-                            onClick = { viewModel.onLevel(level) },
-                            label = { Text(levelLabel(level)) }
+                            onClick = { viewModel.onLevel(level) }
                         )
                     }
                 }
@@ -111,15 +112,13 @@ fun LocationCatalogAdminScreen(
                     )
                     Text("Incluir inactivos", modifier = Modifier.padding(start = 8.dp))
                 }
-                OutlinedButton(
+                LeoOutlinedButton(
+                    text = "Crear ${levelLabel(uiState.level).lowercase()}",
                     onClick = viewModel::startCreate,
                     enabled = uiState.level == LocationLevel.PROVINCE ||
                         uiState.level == LocationLevel.COUNTRY ||
-                        uiState.parentId != null,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Crear ${levelLabel(uiState.level).lowercase()}")
-                }
+                        uiState.parentId != null
+                )
                 uiState.message?.let { msg ->
                     Text(msg, color = MaterialTheme.colorScheme.primary)
                     TextButton(onClick = viewModel::clearMessage) { Text("OK") }
@@ -167,10 +166,7 @@ private fun LocationRow(
     onMoveUp: () -> Unit,
     onMoveDown: () -> Unit
 ) {
-    Column(
-        modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(node.name, style = MaterialTheme.typography.titleMedium)
         Text(
             buildString {
@@ -181,7 +177,7 @@ private fun LocationRow(
             },
             style = MaterialTheme.typography.bodySmall
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceXs)) {
             TextButton(onClick = onEdit) { Text("Editar") }
             TextButton(onClick = onToggle) {
                 Text(if (node.active) "Desactivar" else "Activar")
@@ -189,6 +185,7 @@ private fun LocationRow(
             TextButton(onClick = onMoveUp) { Text("Subir") }
             TextButton(onClick = onMoveDown) { Text("Bajar") }
         }
+        LeoHairline()
     }
 }
 
@@ -238,9 +235,18 @@ private fun LocationEditor(
             label = { Text("Aliases (coma)") },
             modifier = Modifier.fillMaxWidth()
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onSave, modifier = Modifier.weight(1f)) { Text("Guardar") }
-            OutlinedButton(onClick = onCancel, modifier = Modifier.weight(1f)) { Text("Cancelar") }
+        Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
+            LeoPrimaryButton(
+                text = "Guardar",
+                onClick = onSave,
+                modifier = Modifier.weight(1f),
+                fillMaxWidth = false
+            )
+            LeoOutlinedButton(
+                text = "Cancelar",
+                onClick = onCancel,
+                modifier = Modifier.weight(1f)
+            )
         }
     }
 }

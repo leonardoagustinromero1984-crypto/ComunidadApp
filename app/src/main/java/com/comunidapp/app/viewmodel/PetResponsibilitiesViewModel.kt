@@ -8,9 +8,12 @@ import com.comunidapp.app.data.remote.supabase.m08.M08PetErrorMapper
 import com.comunidapp.app.data.remote.supabase.m08.PetAccessContext
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.AuthRepository
+import com.comunidapp.app.data.repository.CareNetworkRepository
 import com.comunidapp.app.data.repository.PetRepository
+import com.comunidapp.app.data.repository.SupabaseCareNetworkRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.organization.OrganizationId
+import com.comunidapp.app.domain.pets.CareNetworkRole
 import com.comunidapp.app.domain.pets.PetId
 import com.comunidapp.app.domain.pets.PetLinkStatus
 import com.comunidapp.app.domain.pets.PetPrincipalHolder
@@ -37,12 +40,17 @@ data class PetResponsibilitiesUiState(
     val loadErrorMessage: String? = null,
     val access: PetAccessContext? = null,
     val petStatus: String = "ACTIVE",
+    val petName: String = "",
     val principal: PetResponsibility? = null,
     val coResponsibles: List<PetResponsibility> = emptyList(),
     val custodians: List<PetResponsibility> = emptyList(),
+    val pendingInvites: List<PetResponsibility> = emptyList(),
     val inactiveLinks: List<PetResponsibility> = emptyList(),
     /** Clave holder → nombre amigable (nunca UUID). */
     val displayNames: Map<String, String> = emptyMap(),
+    /** Clave holder → username sin @. */
+    val displayUsernames: Map<String, String> = emptyMap(),
+    val currentUserId: String? = null,
     val isSubmitting: Boolean = false,
     val actionMessage: String? = null,
     val searchQuery: String = "",
@@ -52,12 +60,29 @@ data class PetResponsibilitiesUiState(
     val isEmpty: Boolean
         get() = !isLoading && loadErrorMessage == null &&
             principal == null && coResponsibles.isEmpty() &&
-            custodians.isEmpty() && inactiveLinks.isEmpty()
+            custodians.isEmpty() && pendingInvites.isEmpty() && inactiveLinks.isEmpty()
 
     val canManage: Boolean get() = access?.canManageResponsibilities == true
 
     /** Mutaciones bloqueadas para mascotas ARCHIVED/DECEASED. */
     val mutationsLocked: Boolean get() = petStatus != "ACTIVE"
+
+    val isPrincipalViewer: Boolean
+        get() = when (val holder = principal?.holder) {
+            is PetPrincipalHolder.Person -> holder.userId == currentUserId
+            else -> false
+        }
+
+    val ownActiveLinkId: String?
+        get() {
+            val uid = currentUserId ?: return null
+            return (listOfNotNull(principal) + coResponsibles + custodians).firstOrNull { link ->
+                (link.holder as? PetPrincipalHolder.Person)?.userId == uid
+            }?.id?.value
+        }
+
+    val canLeave: Boolean
+        get() = !mutationsLocked && ownActiveLinkId != null && !isPrincipalViewer
 }
 
 class PetResponsibilitiesViewModel(
@@ -66,6 +91,7 @@ class PetResponsibilitiesViewModel(
     private val petRepository: PetRepository = DataProvider.petRepository,
     private val userRepository: UserRepository = DataProvider.userRepository,
     private val authRepository: AuthRepository = AuthProvider.repository,
+    private val careNetworkRepository: CareNetworkRepository = SupabaseCareNetworkRepository(),
     private val nowEpochMs: () -> Long = { System.currentTimeMillis() },
     private val searchDebounceMs: Long = 300L
 ) : ViewModel() {
@@ -91,7 +117,8 @@ class PetResponsibilitiesViewModel(
                 failLoad("PET_NOT_FOUND")
                 return@launch
             }
-            if (authRepository.getCurrentUser() == null) {
+            val actorId = authRepository.getCurrentUser()?.id
+            if (actorId == null) {
                 failLoad("NOT_AUTHENTICATED")
                 return@launch
             }
@@ -103,8 +130,9 @@ class PetResponsibilitiesViewModel(
                 failLoad("FORBIDDEN")
                 return@launch
             }
-            val petStatus = runCatching { petRepository.fetchPetById(petId)?.status }
-                .getOrNull() ?: "ACTIVE"
+            val loadedPet = runCatching { petRepository.fetchPetById(petId) }.getOrNull()
+            val petStatus = loadedPet?.status ?: "ACTIVE"
+            val petName = loadedPet?.name.orEmpty()
             val links = runCatching { repo.listForPet(PetId(petId)) }.getOrElse { error ->
                 failLoad(M08PetErrorMapper.codeOf(error))
                 return@launch
@@ -113,19 +141,27 @@ class PetResponsibilitiesViewModel(
             val principal = active.firstOrNull { r -> r.role == PetResponsibilityRole.PRINCIPAL }
             val co = active.filter { r -> r.role == PetResponsibilityRole.CO_RESPONSIBLE }
             val custodians = active.filter { r -> r.role == PetResponsibilityRole.TEMPORARY_CUSTODIAN }
-            val names = resolveDisplayNames(listOfNotNull(principal) + co + custodians)
-            val inactive = links.filter { it.status != PetLinkStatus.ACTIVE }
+            val pending = links.filter { it.status == PetLinkStatus.PENDING_ACCEPTANCE }
+            val names = resolveDisplayNames(listOfNotNull(principal) + co + custodians + pending)
+            val usernames = resolveDisplayUsernames(listOfNotNull(principal) + co + custodians + pending)
+            val inactive = links.filter {
+                it.status != PetLinkStatus.ACTIVE && it.status != PetLinkStatus.PENDING_ACCEPTANCE
+            }
             _uiState.update {
                 it.copy(
                     isLoading = false,
                     loadErrorMessage = null,
                     access = access,
                     petStatus = petStatus,
+                    petName = petName,
                     principal = principal,
                     coResponsibles = co,
                     custodians = custodians,
+                    pendingInvites = pending,
                     inactiveLinks = inactive,
-                    displayNames = names
+                    displayNames = names,
+                    displayUsernames = usernames,
+                    currentUserId = actorId
                 )
             }
         }
@@ -152,6 +188,23 @@ class PetResponsibilitiesViewModel(
         return out
     }
 
+    private suspend fun resolveDisplayUsernames(links: List<PetResponsibility>): Map<String, String> {
+        val out = linkedMapOf<String, String>()
+        links.forEach { link ->
+            when (val holder = link.holder) {
+                is PetPrincipalHolder.Person -> {
+                    val username = runCatching { userRepository.getUser(holder.userId)?.username?.trim() }
+                        .getOrNull()
+                        ?.removePrefix("@")
+                        ?.takeIf { it.isNotBlank() }
+                    if (username != null) out["p:${holder.userId}"] = username
+                }
+                is PetPrincipalHolder.Organization -> Unit
+            }
+        }
+        return out
+    }
+
     fun updateSearchQuery(query: String) {
         _uiState.update { it.copy(searchQuery = query) }
         searchJob?.cancel()
@@ -171,6 +224,66 @@ class PetResponsibilitiesViewModel(
                 .getOrDefault(emptyList())
                 .filter { it.id != viewerId }
             _uiState.update { it.copy(isSearching = false, searchResults = results) }
+        }
+    }
+
+    fun inviteResponsible(personId: String) {
+        inviteCarePerson(personId, CareNetworkRole.OTHER)
+    }
+
+    fun inviteCarePerson(personId: String, role: CareNetworkRole) {
+        val state = _uiState.value
+        if (state.isSubmitting) return
+        if (!guardMutationAllowed()) return
+        if (personId.isBlank()) {
+            _uiState.update {
+                it.copy(actionMessage = "Elegí una persona de LeoVer.")
+            }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmitting = true, actionMessage = null) }
+            careNetworkRepository.invite(petId, personId, role)
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            actionMessage = "Invitación enviada. Esperando aceptación.",
+                            searchQuery = "",
+                            searchResults = emptyList()
+                        )
+                    }
+                    load()
+                }
+                .onFailure { error ->
+                    submitFailed(error)
+                }
+        }
+    }
+
+    fun leaveThisPet() {
+        val state = _uiState.value
+        if (state.isSubmitting) return
+        val linkId = state.ownActiveLinkId
+        if (!state.canLeave || linkId.isNullOrBlank()) {
+            _uiState.update {
+                it.copy(actionMessage = "Solo un responsable agregado puede salir de esta mascota.")
+            }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSubmitting = true, actionMessage = null) }
+            careNetworkRepository.leave(linkId)
+                .onSuccess {
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            actionMessage = "Dejaste de ser responsable. La mascota sigue existiendo."
+                        )
+                    }
+                    load()
+                }
+                .onFailure { error -> submitFailed(error) }
         }
     }
 
@@ -202,7 +315,8 @@ class PetResponsibilitiesViewModel(
         val state = _uiState.value
         if (state.isSubmitting) return
         if (!guardMutationAllowed()) return
-        val target = (listOfNotNull(state.principal) + state.coResponsibles + state.custodians)
+        val target = (listOfNotNull(state.principal) + state.coResponsibles +
+            state.custodians + state.pendingInvites)
             .firstOrNull { it.id.value == responsibilityId }
         if (target == null) {
             _uiState.update {

@@ -15,12 +15,9 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Dashboard
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -60,7 +57,6 @@ import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
-import com.comunidapp.app.ui.components.v2.V2SurfaceCard
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandText
@@ -82,6 +78,11 @@ import com.comunidapp.app.viewmodel.ShelterPetsViewModel
 import com.comunidapp.app.viewmodel.ShelterPublicListViewModel
 import com.comunidapp.app.viewmodel.ShelterVolunteerInviteViewModel
 import com.comunidapp.app.viewmodel.ShelterVolunteersViewModel
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 
 @Composable
 fun ShelterOpsListScreen(
@@ -140,18 +141,21 @@ fun ShelterOpsListScreen(
                 val rescuer = active is OperationalContext.Rescuer
                 if (org != null || rescuer) {
                     if (org != null) {
-                        OutlinedButton(onClick = { onImportPets(org.entityId, org.displayName) }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Importar mascotas")
-                        }
+                        LeoOutlinedButton(
+                            text = "Importar mascotas",
+                            onClick = { onImportPets(org.entityId, org.displayName) }
+                        )
                     } else {
-                        OutlinedButton(onClick = onImportRescuer, modifier = Modifier.fillMaxWidth()) {
-                            Text("Importar mascotas")
-                        }
+                        LeoOutlinedButton(
+                            text = "Importar mascotas",
+                            onClick = onImportRescuer
+                        )
                     }
                     Spacer(Modifier.height(LeoDimens.SpaceCompact))
-                    OutlinedButton(onClick = onAddPet, modifier = Modifier.fillMaxWidth()) {
-                        Text("+ Agregar mascota")
-                    }
+                    LeoOutlinedButton(
+                        text = "+ Agregar mascota",
+                        onClick = onAddPet
+                    )
                     Spacer(Modifier.height(LeoDimens.SpaceCompact))
                 }
                 LeoEmptyState(
@@ -161,21 +165,26 @@ fun ShelterOpsListScreen(
                 )
                 }
             } else {
-            OutlinedButton(onClick = onMyShelters, modifier = Modifier.fillMaxWidth()) {
-                Text("Mis refugios")
-            }
-            OutlinedButton(onClick = onPublicCampaigns, modifier = Modifier.fillMaxWidth()) {
-                Text("Campañas")
-            }
-            OutlinedButton(onClick = onPublicSupplyRequests, modifier = Modifier.fillMaxWidth()) {
-                Text("Pedidos de insumos")
-            }
-            OutlinedButton(onClick = onPublicEmergencies, modifier = Modifier.fillMaxWidth()) {
-                Text("Urgencias")
-            }
-            OutlinedButton(onClick = onPublicEvents, modifier = Modifier.fillMaxWidth()) {
-                Text("Eventos")
-            }
+            LeoOutlinedButton(
+                text = "Mis refugios",
+                onClick = onMyShelters
+            )
+            LeoOutlinedButton(
+                text = "Campañas",
+                onClick = onPublicCampaigns
+            )
+            LeoOutlinedButton(
+                text = "Pedidos de insumos",
+                onClick = onPublicSupplyRequests
+            )
+            LeoOutlinedButton(
+                text = "Urgencias",
+                onClick = onPublicEmergencies
+            )
+            LeoOutlinedButton(
+                text = "Eventos",
+                onClick = onPublicEvents
+            )
             Spacer(Modifier.height(LeoDimens.SpaceCompact))
             when (val s = state) {
                 ShelterListUiState.Loading -> LoadingState()
@@ -185,26 +194,33 @@ fun ShelterOpsListScreen(
                     verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
                 ) {
                     s.items.forEach { item ->
-                        V2SurfaceCard(onClick = { onShelterClick(item.id) }) {
-                            Text(item.displayName, style = LeoCardTitle, color = BrandText)
-                            Text(
-                                item.publicZoneText ?: "Zona no informada",
-                                style = LeoCaption,
-                                color = BrandTextSecondary
-                            )
-                            Text(
-                                "Disponibilidad: ${item.availability.name} · cupos ~${item.freeSlotsApproximate}",
-                                style = LeoCaption,
-                                color = BrandTextSecondary
-                            )
-                            Text(
-                                "Especies: ${item.acceptedSpecies.joinToString()}",
-                                style = LeoCaption,
-                                color = BrandTextSecondary
-                            )
-                            if (item.acceptsEmergencies) {
-                                Text("Acepta emergencias", style = LeoCaption, color = BrandText)
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onShelterClick(item.id) }
+                        ) {
+                            Column(Modifier.padding(vertical = LeoDimens.SpaceCompact)) {
+                                Text(item.displayName, style = LeoCardTitle, color = BrandText)
+                                Text(
+                                    item.publicZoneText ?: "Zona no informada",
+                                    style = LeoCaption,
+                                    color = BrandTextSecondary
+                                )
+                                Text(
+                                    "Disponibilidad: ${item.availability.name} · cupos ~${item.freeSlotsApproximate}",
+                                    style = LeoCaption,
+                                    color = BrandTextSecondary
+                                )
+                                Text(
+                                    "Especies: ${item.acceptedSpecies.joinToString()}",
+                                    style = LeoCaption,
+                                    color = BrandTextSecondary
+                                )
+                                if (item.acceptsEmergencies) {
+                                    Text("Acepta emergencias", style = LeoCaption, color = BrandText)
+                                }
                             }
+                            LeoHairline()
                         }
                     }
                 }
@@ -241,18 +257,22 @@ fun MySheltersScreen(
         Column(Modifier.padding(padding).padding(LeoDimens.SpaceMd)) {
             val org = active as? OperationalContext.Organization
             if (org != null) {
-                OutlinedButton(
-                    onClick = { onImportPets(org.entityId, org.displayName) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Importar mascotas") }
+                LeoOutlinedButton(
+                    text = "Importar mascotas",
+                    onClick = { onImportPets(org.entityId, org.displayName) }
+                )
                 Spacer(Modifier.height(LeoDimens.SpaceCompact))
-                OutlinedButton(onClick = onAddPet, modifier = Modifier.fillMaxWidth()) {
-                    Text("+ Agregar mascota")
-                }
+                LeoOutlinedButton(
+                    text = "+ Agregar mascota",
+                    onClick = onAddPet
+                )
                 Spacer(Modifier.height(LeoDimens.SpaceCompact))
             }
             if (!orgContext && !canonical) {
-                Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) { Text("Crear refugio") }
+                LeoPrimaryButton(
+                    text = "Crear refugio",
+                    onClick = onCreate
+                )
                 Spacer(Modifier.height(LeoDimens.SpaceCompact))
             }
             when (val s = state) {
@@ -269,18 +289,11 @@ fun MySheltersScreen(
                     verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
                 ) {
                     items(s.items, key = { it.id }) { item ->
-                        V2SurfaceCard(onClick = { onShelterClick(item.id) }) {
-                            Text(
-                                "${item.displayName} · ${item.status.name}",
-                                style = LeoCardTitle,
-                                color = BrandText
-                            )
-                            Text(
-                                "Ocupación ${item.currentOccupancy}+${item.reservedCapacity}/${item.totalCapacity}",
-                                style = LeoCaption,
-                                color = BrandTextSecondary
-                            )
-                        }
+                        LeoListRow(
+                            title = "${item.displayName} · ${item.status.name}",
+                            subtitle = "Ocupación ${item.currentOccupancy}+${item.reservedCapacity}/${item.totalCapacity}",
+                            onClick = { onShelterClick(item.id) }
+                        )
                     }
                 }
             }
@@ -347,10 +360,10 @@ fun ShelterOpsFormScreen(
                     )
                 } else {
                     managedOrgs.forEach { org ->
-                        FilterChip(
+                        LeoFilterChip(
+                            label = org.publicName,
                             selected = orgId == org.id.value,
-                            onClick = { orgId = org.id.value },
-                            label = { Text(org.publicName) }
+                            onClick = { orgId = org.id.value }
                         )
                     }
                 }
@@ -394,8 +407,8 @@ fun ShelterOpsFormScreen(
                     }
                 )
             }
-            Button(
-                enabled = !submitting && (editShelterId != null || orgId.isNotBlank()),
+            LeoPrimaryButton(
+                text = if (submitting) "Guardando…" else "Guardar",
                 onClick = {
                     val caps = capacity.toIntOrNull() ?: 0
                     val specs = selectedSpecies
@@ -428,8 +441,8 @@ fun ShelterOpsFormScreen(
                         )
                     }
                 },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(if (submitting) "Guardando…" else "Guardar") }
+                enabled = !submitting && (editShelterId != null || orgId.isNotBlank())
+            )
         }
     }
 }
@@ -460,9 +473,10 @@ fun ShelterOpsDetailScreen(
                     Text("Cupos ~${sh.freeSlots} / ${sh.totalCapacity}")
                     Text("Especies: ${sh.acceptedSpecies.joinToString()}")
                     // never show internalAddressRef publicly
-                    Button(onClick = { onDashboard(sh.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Panel operativo")
-                    }
+                    LeoPrimaryButton(
+                        text = "Panel operativo",
+                        onClick = { onDashboard(sh.id) }
+                    )
                 }
             }
         }
@@ -510,30 +524,48 @@ fun ShelterDashboardScreen(
                     Text("Mascotas activas: $active · Cuarentena: $quar · Médica: $med")
                     Text("Voluntarios activos: $vols")
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                    OutlinedButton(onClick = { onPets(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Mascotas") }
-                    OutlinedButton(onClick = { onVolunteers(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Voluntarios") }
-                    OutlinedButton(onClick = { onCampaigns(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Campañas") }
-                    OutlinedButton(onClick = { onSupplyRequests(sh.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Pedidos de insumos")
-                    }
-                    OutlinedButton(onClick = { onEmergencies(sh.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Urgencias")
-                    }
-                    OutlinedButton(onClick = { onEvents(sh.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Eventos")
-                    }
-                    OutlinedButton(onClick = { onReports(sh.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Reportes")
-                    }
-                    OutlinedButton(onClick = { onEdit(sh.id) }, modifier = Modifier.fillMaxWidth()) { Text("Editar perfil") }
+                    LeoOutlinedButton(
+                        text = "Mascotas",
+                        onClick = { onPets(sh.id) }
+                    )
+                    LeoOutlinedButton(
+                        text = "Voluntarios",
+                        onClick = { onVolunteers(sh.id) }
+                    )
+                    LeoOutlinedButton(
+                        text = "Campañas",
+                        onClick = { onCampaigns(sh.id) }
+                    )
+                    LeoOutlinedButton(
+                        text = "Pedidos de insumos",
+                        onClick = { onSupplyRequests(sh.id) }
+                    )
+                    LeoOutlinedButton(
+                        text = "Urgencias",
+                        onClick = { onEmergencies(sh.id) }
+                    )
+                    LeoOutlinedButton(
+                        text = "Eventos",
+                        onClick = { onEvents(sh.id) }
+                    )
+                    LeoOutlinedButton(
+                        text = "Reportes",
+                        onClick = { onReports(sh.id) }
+                    )
+                    LeoOutlinedButton(
+                        text = "Editar perfil",
+                        onClick = { onEdit(sh.id) }
+                    )
                     if (sh.status == ShelterStatus.ACTIVE) {
-                        OutlinedButton(onClick = { viewModel.changeStatus(ShelterStatus.PAUSED) }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Pausar")
-                        }
+                        LeoOutlinedButton(
+                            text = "Pausar",
+                            onClick = { viewModel.changeStatus(ShelterStatus.PAUSED) }
+                        )
                     } else if (sh.status == ShelterStatus.PAUSED || sh.status == ShelterStatus.DRAFT) {
-                        OutlinedButton(onClick = { viewModel.changeStatus(ShelterStatus.ACTIVE) }, modifier = Modifier.fillMaxWidth()) {
-                            Text("Activar")
-                        }
+                        LeoOutlinedButton(
+                            text = "Activar",
+                            onClick = { viewModel.changeStatus(ShelterStatus.ACTIVE) }
+                        )
                     }
                 }
             }
@@ -558,8 +590,14 @@ fun ShelterOpsPetsScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
-            Button(onClick = onIntake, modifier = Modifier.fillMaxWidth()) { Text("Ingresar mascota") }
-            OutlinedButton(onClick = onImportPets, modifier = Modifier.fillMaxWidth()) { Text("Importar mascotas") }
+            LeoPrimaryButton(
+                text = "Ingresar mascota",
+                onClick = onIntake
+            )
+            LeoOutlinedButton(
+                text = "Importar mascotas",
+                onClick = onImportPets
+            )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             if (pets.isEmpty()) EmptyState(title = "Sin alojamientos.")
             else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -568,15 +606,24 @@ fun ShelterOpsPetsScreen(
                         Text("${p.petName ?: p.petId} · ${p.status.name}", fontWeight = FontWeight.SemiBold)
                         Text("Ingreso: ${p.intakeType.name}")
                         if (p.status.isOpen) {
-                            OutlinedButton(onClick = {
+                            LeoOutlinedButton(
+                                text = "Cuarentena",
+                                onClick = {
                                 viewModel.changeStatus(p.id, ShelterPetPlacementStatus.QUARANTINE)
-                            }) { Text("Cuarentena") }
-                            OutlinedButton(onClick = {
+                            }
+                            )
+                            LeoOutlinedButton(
+                                text = "Atención médica",
+                                onClick = {
                                 viewModel.changeStatus(p.id, ShelterPetPlacementStatus.MEDICAL_CARE)
-                            }) { Text("Atención médica") }
-                            OutlinedButton(onClick = {
+                            }
+                            )
+                            LeoOutlinedButton(
+                                text = "Egresar",
+                                onClick = {
                                 viewModel.release(p.id, ShelterPetEndReason.RELEASED_TO_OWNER)
-                            }) { Text("Egresar") }
+                            }
+                            )
                         }
                     }
                 }
@@ -615,11 +662,11 @@ fun ShelterIntakeScreen(
             OutlinedTextField(notes, { notes = it }, label = { Text("Notas") }, modifier = Modifier.fillMaxWidth())
             RowCheck("Solo reservar", reserveOnly) { reserveOnly = it }
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
-                enabled = !submitting,
+            LeoPrimaryButton(
+                text = if (submitting) "Guardando…" else "Confirmar",
                 onClick = { viewModel.admit(petId, type, notes.ifBlank { null }, reserveOnly) },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(if (submitting) "Guardando…" else "Confirmar") }
+                enabled = !submitting
+            )
         }
     }
 }
@@ -678,7 +725,10 @@ fun ShelterOpsVolunteersScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp)) {
-            Button(onClick = onInvite, modifier = Modifier.fillMaxWidth()) { Text("Invitar") }
+            LeoPrimaryButton(
+                text = "Invitar",
+                onClick = onInvite
+            )
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             Text("La asignación no otorga permisos administrativos.")
             if (list.isEmpty()) EmptyState(title = "Sin voluntarios.")
@@ -687,13 +737,22 @@ fun ShelterOpsVolunteersScreen(
                     Column(Modifier.padding(8.dp)) {
                         Text("${v.userId} · ${v.role.name} · ${v.status.name}", fontWeight = FontWeight.SemiBold)
                         if (v.status.name == "INVITED") {
-                            OutlinedButton(onClick = { viewModel.accept(v.id) }) { Text("Aceptar") }
+                            LeoOutlinedButton(
+                                text = "Aceptar",
+                                onClick = { viewModel.accept(v.id) }
+                            )
                         }
                         if (v.status.name == "ACTIVE") {
-                            OutlinedButton(onClick = { viewModel.pause(v.id) }) { Text("Pausar") }
+                            LeoOutlinedButton(
+                                text = "Pausar",
+                                onClick = { viewModel.pause(v.id) }
+                            )
                         }
                         if (v.status.isOpen) {
-                            OutlinedButton(onClick = { viewModel.end(v.id) }) { Text("Finalizar") }
+                            LeoOutlinedButton(
+                                text = "Finalizar",
+                                onClick = { viewModel.end(v.id) }
+                            )
                         }
                     }
                 }
@@ -730,11 +789,11 @@ fun ShelterVolunteerInviteScreen(
             }
             OutlinedTextField(notes, { notes = it }, label = { Text("Notas") }, modifier = Modifier.fillMaxWidth())
             error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
-                enabled = !submitting,
+            LeoPrimaryButton(
+                text = if (submitting) "Enviando…" else "Invitar",
                 onClick = { viewModel.invite(userId, role, notes.ifBlank { null }) },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(if (submitting) "Enviando…" else "Invitar") }
+                enabled = !submitting
+            )
         }
     }
 }

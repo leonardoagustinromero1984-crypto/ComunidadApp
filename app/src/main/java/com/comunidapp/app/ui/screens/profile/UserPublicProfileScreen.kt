@@ -84,7 +84,7 @@ import com.comunidapp.app.ui.components.LoadingState
 
 import com.comunidapp.app.ui.components.PetCard
 
-import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.ResolvedProfileAvatar
 
 import com.comunidapp.app.ui.components.toDisplayName
 
@@ -97,6 +97,8 @@ import com.comunidapp.app.viewmodel.UserPublicProfileViewModel
 fun UserPublicProfileScreen(
 
     userId: String,
+
+    hideSocialHistory: Boolean = false,
 
     onNavigateBack: () -> Unit,
 
@@ -206,9 +208,9 @@ fun UserPublicProfileScreen(
 
                             ) {
 
-                                PetImage(
+                                ResolvedProfileAvatar(
 
-                                    imageUrl = user.profileImageUrl,
+                                    user = user,
 
                                     modifier = Modifier.fillMaxSize(),
 
@@ -231,6 +233,24 @@ fun UserPublicProfileScreen(
                                 fontWeight = FontWeight.Bold
 
                             )
+
+                            user.username?.trim()?.takeIf { it.isNotEmpty() }?.let { handle ->
+                                Text(
+                                    text = "@$handle",
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 4.dp)
+                                )
+                            }
+
+                            if (!user.bio.isNullOrBlank()) {
+                                Text(
+                                    text = user.bio.orEmpty(),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    modifier = Modifier.padding(top = 8.dp),
+                                    textAlign = TextAlign.Center
+                                )
+                            }
 
                             Text(
 
@@ -424,7 +444,7 @@ fun UserPublicProfileScreen(
 
 
 
-                    if (uiState.canViewFullProfile && uiState.posts.isNotEmpty()) {
+                    if (!hideSocialHistory && uiState.canViewFullProfile && uiState.posts.isNotEmpty()) {
 
                         item {
 
@@ -456,7 +476,7 @@ fun UserPublicProfileScreen(
 
                         uiState.pets.isEmpty() &&
 
-                        uiState.posts.isEmpty() &&
+                        (hideSocialHistory || uiState.posts.isEmpty()) &&
 
                         uiState.relation != ProfileRelation.SELF
 
@@ -466,7 +486,11 @@ fun UserPublicProfileScreen(
 
                             Text(
 
-                                text = "Este usuario aún no tiene mascotas ni publicaciones.",
+                                text = if (hideSocialHistory) {
+                                    "Este usuario aún no tiene mascotas."
+                                } else {
+                                    "Este usuario aún no tiene mascotas ni publicaciones."
+                                },
 
                                 style = MaterialTheme.typography.bodyMedium,
 

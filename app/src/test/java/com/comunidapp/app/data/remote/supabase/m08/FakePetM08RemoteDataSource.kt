@@ -48,7 +48,8 @@ class FakePetM08RemoteDataSource : PetM08RemoteDataSource {
             status = row.status,
             avatarFileAssetId = row.avatarFileAssetId,
             microchipId = row.microchipId,
-            microchipNormalized = row.microchipNormalized
+            microchipNormalized = row.microchipNormalized,
+            createdByUserId = row.createdByUserId ?: row.ownerId
         )
         contexts[row.id] = PetAccessContextRow(
             petId = row.id,
@@ -315,4 +316,7 @@ class FakePetM08RemoteDataSource : PetM08RemoteDataSource {
 
     override suspend fun listStatusHistory(petId: String): List<PetStatusHistoryM08Row> =
         history.filter { it.petId == petId }
+
+    override suspend fun listPetsForPersonProfile(personUserId: String): List<ProfilePetRow> =
+        emptyList()
 }

@@ -37,7 +37,10 @@ object M17DonationErrorMapper {
         "M17_APPLICATION_NOT_FOUND",
         "M17_INVALID_QUANTITY",
         "M17_INVALID_AMOUNT",
-        "NOT_AUTHENTICATED"
+        "NOT_AUTHENTICATED",
+        "FORBIDDEN",
+        "VALIDATION",
+        "NOT_FOUND"
     )
 
     fun userMessage(code: String): String = when (code) {
@@ -72,6 +75,9 @@ object M17DonationErrorMapper {
         "M17_INVALID_QUANTITY" -> "La cantidad no es válida."
         "M17_INVALID_AMOUNT" -> "El monto no es válido."
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión."
+        "FORBIDDEN" -> "No tenés permiso para esta acción."
+        "VALIDATION" -> "Revisá el monto declarado."
+        "NOT_FOUND" -> "No encontramos esa campaña."
         else -> "No se pudo completar la operación."
     }
 

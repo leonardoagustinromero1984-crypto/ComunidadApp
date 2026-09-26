@@ -12,11 +12,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -49,6 +46,7 @@ import com.comunidapp.app.domain.RolePermissions
 import com.comunidapp.app.domain.canonical.CanonicalProviderWrite
 import com.comunidapp.app.domain.schedule.AppointmentSlotPolicy
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.leo.LeoValidationSummary
 import com.comunidapp.app.ui.components.v2.V2SurfaceCard
@@ -69,6 +67,7 @@ import java.util.Locale
 @Composable
 fun MiNegocioScreen(
     onNavigateToEditProfile: () -> Unit,
+    onPublished: () -> Unit = {},
     viewModel: MiNegocioViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -79,10 +78,11 @@ fun MiNegocioScreen(
     val activeContext by com.comunidapp.app.domain.context.OperationalContextProvider.active.collectAsState()
     val title = RolePermissions.businessPanelTitle(activeContext)
 
-    LaunchedEffect(uiState.message) {
+    LaunchedEffect(uiState.message, uiState.published) {
         uiState.message?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearMessage()
+            if (uiState.published) onPublished()
         }
     }
 
@@ -165,14 +165,30 @@ fun MiNegocioScreen(
                 OutlinedTextField(
                     value = uiState.name,
                     onValueChange = viewModel::updateName,
-                    label = { Text("Nombre comercial") },
+                    label = { Text(com.comunidapp.app.ui.components.leo.LeoRequiredField.label("Nombre comercial")) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
             item {
-                V2LocationStringPicker(
-                    value = uiState.location,
-                    onValueChange = viewModel::updateLocation
+                com.comunidapp.app.ui.screens.location.LocationPinPicker(
+                    selected = if (uiState.pinLat != null && uiState.pinLng != null) {
+                        LeoVerGeoPoint(uiState.pinLat!!, uiState.pinLng!!)
+                    } else {
+                        null
+                    },
+                    onSelected = { point ->
+                        viewModel.updateMapPin(point.latitude, point.longitude, publicPremises = true)
+                    },
+                    address = uiState.location.takeIf { it.isNotBlank() },
+                    onAddressChange = { suggestion ->
+                        viewModel.updateLocation(suggestion.label)
+                        viewModel.updateMapPin(
+                            suggestion.point.latitude,
+                            suggestion.point.longitude,
+                            publicPremises = true
+                        )
+                    },
+                    required = true
                 )
             }
             item {
@@ -188,36 +204,20 @@ fun MiNegocioScreen(
                 OutlinedTextField(
                     value = uiState.contactInfo,
                     onValueChange = viewModel::updateContact,
-                    label = { Text("Teléfono de contacto") },
+                    label = { Text(com.comunidapp.app.ui.components.leo.LeoRequiredField.label("Teléfono")) },
                     modifier = Modifier.fillMaxWidth(),
                     singleLine = true
                 )
             }
             item {
                 LeoVerWeeklyHoursEditor(
-                    schedule = ProviderWeeklySchedule(uiState.weeklyHours),
+                    schedule = ProviderWeeklySchedule.forEditor(uiState.weeklyHours),
                     onChange = { viewModel.updateWeeklyHours(it.days) }
                 )
             }
             item {
                 val storage = uiState.profile?.category?.let { CanonicalProviderWrite.storageCategory(it) }.orEmpty()
-                val fixed = LeoVerMapPolicy.isFixedPublicPremisesCategory(storage)
-                if (fixed) {
-                    Text("Ubicación en el mapa", fontWeight = FontWeight.SemiBold)
-                    Text("Mové el mapa y tocá para confirmar el pin. Esa coordenada es la autoridad geográfica.")
-                    LeoVerMap(
-                        markers = emptyList(),
-                        modifier = Modifier.fillMaxWidth().height(220.dp),
-                        camera = LeoVerMapCameraState.cameraOrFallback(uiState.pinLat, uiState.pinLng),
-                        pinMode = true,
-                        onMapClick = { point ->
-                            viewModel.updateMapPin(point.latitude, point.longitude, publicPremises = true)
-                        }
-                    )
-                    if (uiState.pinLat != null) {
-                        Text("Ubicación confirmada")
-                    }
-                } else if (storage.isNotBlank()) {
+                if (storage.isNotBlank() && !LeoVerMapPolicy.isFixedPublicPremisesCategory(storage)) {
                     Text("Los servicios móviles no publican la coordenada del domicilio.")
                 }
             }
@@ -251,13 +251,11 @@ fun MiNegocioScreen(
                 LeoValidationSummary(summary = uiState.missingRequirements)
             }
             item {
-                Button(
+                LeoPrimaryButton(
+                    text = if (uiState.isSaving) "Guardando…" else "Publicar / actualizar ficha",
                     onClick = viewModel::saveProfile,
-                    enabled = !uiState.isSaving,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text(if (uiState.isSaving) "Guardando…" else "Publicar / actualizar ficha")
-                }
+                    enabled = !uiState.isSaving
+                )
             }
 
             if (activeContext is com.comunidapp.app.domain.context.OperationalContext.Shop) {
@@ -295,13 +293,11 @@ fun MiNegocioScreen(
                     }
                 }
                 item {
-                    Button(
+                    LeoPrimaryButton(
+                        text = if (uiState.isSavingProduct) "Guardando…" else "Agregar producto",
                         onClick = viewModel::addProduct,
-                        enabled = !uiState.isSavingProduct,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text(if (uiState.isSavingProduct) "Guardando…" else "Agregar producto")
-                    }
+                        enabled = !uiState.isSavingProduct
+                    )
                 }
                 if (products.isEmpty()) {
                     item {

@@ -14,6 +14,7 @@ import com.comunidapp.app.data.model.M17PublicCampaign
 import com.comunidapp.app.data.model.M17PublicContribution
 import com.comunidapp.app.data.remote.supabase.supabase
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -71,8 +72,15 @@ private fun parseGallery(arr: JsonElement?): List<String> =
     arr?.jsonArray?.mapNotNull { it.jsonPrimitive.contentOrNull }?.filter { it.isNotBlank() }.orEmpty()
 
 private fun safeEnumCampaignStatus(raw: String?): M17CampaignStatus =
-    runCatching { M17CampaignStatus.valueOf(raw.orEmpty()) }
-        .getOrDefault(M17CampaignStatus.DRAFT)
+    when (raw?.uppercase()) {
+        "OPEN", "PUBLISHED" -> M17CampaignStatus.PUBLISHED
+        "CLOSED", "COMPLETED" -> M17CampaignStatus.COMPLETED
+        "PAUSED" -> M17CampaignStatus.PAUSED
+        "CANCELLED" -> M17CampaignStatus.CANCELLED
+        "DRAFT" -> M17CampaignStatus.DRAFT
+        else -> runCatching { M17CampaignStatus.valueOf(raw.orEmpty()) }
+            .getOrDefault(M17CampaignStatus.DRAFT)
+    }
 
 private fun safeEnumCampaignType(raw: String?): M17CampaignType =
     runCatching { M17CampaignType.valueOf(raw.orEmpty()) }
@@ -102,7 +110,8 @@ fun JsonObject.toM17DonationCampaign(): M17DonationCampaign {
         endsAt = string("ends_at")?.let { parseTs(it) },
         createdBy = string("created_by").orEmpty(),
         createdAt = parseTs(string("created_at")),
-        updatedAt = parseTs(string("updated_at"))
+        updatedAt = parseTs(string("updated_at")),
+        paymentAlias = string("payment_alias") ?: string("alias_cbu")
     )
 }
 
@@ -124,7 +133,10 @@ fun JsonObject.toM17PublicCampaign(): M17PublicCampaign {
         publicUpdates = parseUpdates(this["public_updates"]?.jsonArray),
         startsAt = parseTs(string("starts_at")),
         endsAt = string("ends_at")?.let { parseTs(it) },
-        confirmedContributionCount = int("confirmed_contribution_count")
+        confirmedContributionCount = int("confirmed_contribution_count"),
+        paymentAlias = string("payment_alias") ?: string("alias_cbu"),
+        createdBy = string("created_by"),
+        organizationId = string("organization_id")
     )
 }
 
@@ -165,7 +177,7 @@ fun JsonObject.toM17ContributionInternal(): M17Contribution {
         status = status,
         visibility = visibility,
         donorDisplayName = string("donor_display_name"),
-        message = string("public_message") ?: string("message"),
+        message = string("public_message") ?: string("message") ?: string("note"),
         providerReference = string("provider_reference"),
         createdAt = parseTs(string("created_at"))
     )
@@ -179,28 +191,53 @@ class SupabaseM17RemoteDataSource {
     private suspend inline fun <reified T : Any> decodeList(function: String, parameters: JsonObject): List<T> =
         supabase.postgrest.rpc(function = function, parameters = parameters).decodeList()
 
+    private fun parseJsonObjectList(raw: String): List<JsonObject> =
+        when (val el = Json.parseToJsonElement(raw)) {
+            is JsonArray -> el.mapNotNull { it as? JsonObject }
+            is JsonObject -> listOf(el)
+            else -> emptyList()
+        }
+
     suspend fun listPublic(params: JsonObject): List<JsonObject> =
-        decodeList("m17_list_public_campaigns", params)
+        runCatching { decodeList<JsonObject>("m17_list_public_campaigns", params) }
+            .getOrElse {
+                parseJsonObjectList(supabase.postgrest.rpc(function = "canon_list_donation_campaigns").data)
+            }
 
-    suspend fun getPublic(campaignId: String): JsonObject = decodeOne(
-        "m17_get_public_campaign",
-        buildJsonObject { put("p_campaign_id", campaignId) }
-    )
+    suspend fun getPublic(campaignId: String): JsonObject = runCatching {
+        decodeOne<JsonObject>(
+            "m17_get_public_campaign",
+            buildJsonObject { put("p_campaign_id", campaignId) }
+        )
+    }.getOrElse {
+        decodeOne("canon_get_donation_campaign", buildJsonObject { put("p_campaign_id", campaignId) })
+    }
 
-    suspend fun listPublicContributions(campaignId: String): List<JsonObject> = decodeList(
-        "m17_list_public_contributions",
-        buildJsonObject { put("p_campaign_id", campaignId) }
-    )
+    suspend fun listPublicContributions(campaignId: String): List<JsonObject> =
+        runCatching {
+            decodeList<JsonObject>(
+                "m17_list_public_contributions",
+                buildJsonObject { put("p_campaign_id", campaignId) }
+            )
+        }.getOrDefault(emptyList())
 
-    suspend fun getFinancialSummary(campaignId: String): JsonObject = decodeOne(
-        "m17_get_financial_summary",
-        buildJsonObject { put("p_campaign_id", campaignId) }
-    )
+    suspend fun getFinancialSummary(campaignId: String): JsonObject = runCatching {
+        decodeOne<JsonObject>(
+            "m17_get_financial_summary",
+            buildJsonObject { put("p_campaign_id", campaignId) }
+        )
+    }.getOrElse {
+        decodeOne("canon_get_donation_campaign", buildJsonObject { put("p_campaign_id", campaignId) })
+    }
 
-    suspend fun getCampaign(campaignId: String): JsonObject = decodeOne(
-        "m17_get_campaign",
-        buildJsonObject { put("p_campaign_id", campaignId) }
-    )
+    suspend fun getCampaign(campaignId: String): JsonObject = runCatching {
+        decodeOne<JsonObject>(
+            "m17_get_campaign",
+            buildJsonObject { put("p_campaign_id", campaignId) }
+        )
+    }.getOrElse {
+        decodeOne("canon_get_donation_campaign", buildJsonObject { put("p_campaign_id", campaignId) })
+    }
 
     suspend fun listOrgCampaigns(organizationId: String): List<JsonObject> = decodeList(
         "m17_list_org_campaigns",
@@ -237,5 +274,43 @@ class SupabaseM17RemoteDataSource {
             put("p_campaign_id", campaignId)
             put("p_message", message)
         }
+    )
+
+    suspend fun declareContribution(
+        campaignId: String,
+        amountMinor: Long,
+        note: String?,
+        currency: String
+    ): JsonObject = decodeOne(
+        "canon_declare_campaign_contribution",
+        buildJsonObject {
+            put("p_campaign_id", campaignId)
+            put("p_amount_minor", amountMinor)
+            put("p_note", note)
+            put("p_currency", currency)
+        }
+    )
+
+    suspend fun confirmContribution(contributionId: String): JsonObject = decodeOne(
+        "canon_confirm_campaign_contribution",
+        buildJsonObject { put("p_contribution_id", contributionId) }
+    )
+
+    suspend fun rejectContribution(contributionId: String): JsonObject = decodeOne(
+        "canon_reject_campaign_contribution",
+        buildJsonObject { put("p_contribution_id", contributionId) }
+    )
+
+    suspend fun listManagedContributions(campaignId: String): List<JsonObject> {
+        val raw = supabase.postgrest.rpc(
+            function = "canon_list_campaign_contributions",
+            parameters = buildJsonObject { put("p_campaign_id", campaignId) }
+        ).data
+        return parseJsonObjectList(raw)
+    }
+
+    suspend fun getCanonicalCampaign(campaignId: String): JsonObject = decodeOne(
+        "canon_get_donation_campaign",
+        buildJsonObject { put("p_campaign_id", campaignId) }
     )
 }

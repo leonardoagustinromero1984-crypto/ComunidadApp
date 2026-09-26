@@ -61,12 +61,11 @@ object TutorialQueueResolver {
             }
             CanonicalTutorialEvent.FUNCTION_ACTIVATED -> {
                 newlyActivated.forEach { fn ->
-                    if (fn != LeoverFunction.PROFILE_PERSONAL) {
+                    if (fn != LeoverFunction.PROFILE_PERSONAL && fn != LeoverFunction.ORGANIZATION) {
                         addIfNeeded(fn.tutorialId)
                     }
                     if (fn == LeoverFunction.ORGANIZATION) {
-                        addIfNeeded(TutorialId.T10_ORGANIZATION)
-                        organizationKind?.let { addIfNeeded(it.microTutorialId) }
+                        addOrganizationTutorials(organizationKind, commercialOrg, ::addIfNeeded)
                     }
                 }
                 if (newlyActivated.any { it.isCommercialPerson }) {
@@ -80,9 +79,7 @@ object TutorialQueueResolver {
                 addIfNeeded(TutorialId.T11_USE_LEOVER_AS)
             }
             CanonicalTutorialEvent.ORGANIZATION_CREATED -> {
-                addIfNeeded(TutorialId.T10_ORGANIZATION)
-                if (commercialOrg) addIfNeeded(TutorialId.T13_COMMERCIAL_ORGANIZATION)
-                organizationKind?.let { addIfNeeded(it.microTutorialId) }
+                addOrganizationTutorials(organizationKind, commercialOrg, ::addIfNeeded)
             }
             CanonicalTutorialEvent.ORGANIZATION_INVITATION_ACCEPTED -> {
                 addIfNeeded(
@@ -97,6 +94,26 @@ object TutorialQueueResolver {
             }
         }
         return TutorialQueueResult(out.toList(), landingRouteHint)
+    }
+
+    private fun addOrganizationTutorials(
+        organizationKind: OrganizationKindOption?,
+        commercialOrg: Boolean,
+        addIfNeeded: (TutorialId) -> Unit
+    ) {
+        when (organizationKind) {
+            OrganizationKindOption.SHELTER -> addIfNeeded(TutorialId.T10B_SHELTER)
+            OrganizationKindOption.VETERINARY_CLINIC -> {
+                addIfNeeded(TutorialId.T10_ORGANIZATION)
+                if (commercialOrg) addIfNeeded(TutorialId.T13_COMMERCIAL_ORGANIZATION)
+                addIfNeeded(TutorialId.T10A_VETERINARY_CLINIC)
+            }
+            else -> {
+                addIfNeeded(TutorialId.T10_ORGANIZATION)
+                if (commercialOrg) addIfNeeded(TutorialId.T13_COMMERCIAL_ORGANIZATION)
+                organizationKind?.let { addIfNeeded(it.microTutorialId) }
+            }
+        }
     }
 
     private val LeoverFunction.isCommercialPerson: Boolean

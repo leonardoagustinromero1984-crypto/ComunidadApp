@@ -31,7 +31,8 @@ data class PetResponsibility(
     val revokedAtEpochMs: Long? = null,
     val revokeReason: String? = null,
     val createdAtEpochMs: Long,
-    val holderDisplayName: String? = null
+    val holderDisplayName: String? = null,
+    val careRole: String? = null
 )
 
 data class PetAuthorization(
@@ -69,7 +70,18 @@ data class PetTransfer(
     val expiresAtEpochMs: Long,
     val requestedByUserId: String,
     val resolvedAtEpochMs: Long? = null,
-    val correlationId: String? = null
+    val correlationId: String? = null,
+    val sharePersonalMedia: Boolean = false,
+    val sourceDisplayName: String? = null,
+    val targetDisplayName: String? = null,
+    val petDisplayName: String? = null
+)
+
+data class PetTransferTargetHit(
+    val kind: String,
+    val id: String,
+    val displayName: String,
+    val subtitle: String? = null
 )
 
 data class PetStatusHistoryEntry(

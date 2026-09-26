@@ -16,10 +16,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -39,12 +36,14 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.AdoptionApplication
 import com.comunidapp.app.data.model.AdoptionApplicationStatus
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoListRow
 import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.AdoptionApplyUiState
 import com.comunidapp.app.viewmodel.AdoptionApplyViewModel
 import com.comunidapp.app.viewmodel.AdoptionApplicationDetailViewModel
@@ -113,9 +112,7 @@ fun AdoptionApplyScreen(
                     Text("Mascota: ${state.post.name}")
                     if (form.submitted) {
                         Text("¡Postulación enviada! El responsable la revisará.")
-                        Button(onClick = onSubmitted, modifier = Modifier.fillMaxWidth()) {
-                            Text("Continuar")
-                        }
+                        LeoPrimaryButton(text = "Continuar", onClick = onSubmitted)
                     } else {
                         OutlinedTextField(
                             value = form.message,
@@ -171,13 +168,11 @@ fun AdoptionApplyScreen(
                         form.submitError?.let {
                             Text(it, color = MaterialTheme.colorScheme.error)
                         }
-                        Button(
+                        LeoPrimaryButton(
+                            text = if (form.submitting) "Enviando…" else "Enviar postulación",
                             onClick = viewModel::submit,
-                            modifier = Modifier.fillMaxWidth(),
                             enabled = !form.submitting && !form.submitted
-                        ) {
-                            Text(if (form.submitting) "Enviando…" else "Enviar postulación")
-                        }
+                        )
                     }
                 }
             }
@@ -290,8 +285,8 @@ fun ReceivedAdoptionApplicationsScreen(
             title = { Text("Aceptar postulación") },
             text = {
                 Text(
-                    "Se aceptará este candidato, se rechazarán las demás postulaciones activas " +
-                        "y la publicación se pausará. Esto no finaliza la adopción."
+                    "Se aceptará este candidato. Las demás postulaciones quedan en pausa, no se rechazan. " +
+                        "Esto no transfiere la mascota."
                 )
             },
             confirmButton = {
@@ -352,20 +347,20 @@ fun ReceivedAdoptionApplicationsScreen(
                     .padding(horizontal = 16.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                FilterChip(
+                LeoFilterChip(
+                    label = "Todas",
                     selected = filter == null,
-                    onClick = { viewModel.onStatusFilterChange(null) },
-                    label = { Text("Todas") }
+                    onClick = { viewModel.onStatusFilterChange(null) }
                 )
                 AdoptionApplicationStatus.entries.forEach { status ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = status.displayNameEs,
                         selected = filter == status,
                         onClick = {
                             viewModel.onStatusFilterChange(
                                 if (filter == status) null else status
                             )
-                        },
-                        label = { Text(status.displayNameEs) }
+                        }
                     )
                 }
             }
@@ -416,6 +411,10 @@ fun ReceivedAdoptionApplicationsScreen(
                                         TextButton(onClick = { confirmReject = app.id }) {
                                             Text("Rechazar")
                                         }
+                                    }
+                                } else if (app.status == AdoptionApplicationStatus.PAUSED) {
+                                    TextButton(onClick = { viewModel.reactivate(app.id) }) {
+                                        Text("Reactivar")
                                     }
                                 }
                             }
@@ -571,33 +570,33 @@ fun AdoptionApplicationDetailScreen(
                         (app.status == AdoptionApplicationStatus.SUBMITTED ||
                             app.status == AdoptionApplicationStatus.UNDER_REVIEW)
                     ) {
-                        OutlinedButton(
+                        LeoOutlinedButton(
+                            text = "Retirar postulación",
                             onClick = { confirmWithdraw = true },
-                            modifier = Modifier.fillMaxWidth(),
                             enabled = !state.actionInFlight
-                        ) { Text("Retirar postulación") }
+                        )
                     }
                     if (state.isManager &&
                         (app.status == AdoptionApplicationStatus.SUBMITTED ||
                             app.status == AdoptionApplicationStatus.UNDER_REVIEW)
                     ) {
                         if (app.status == AdoptionApplicationStatus.SUBMITTED) {
-                            OutlinedButton(
+                            LeoOutlinedButton(
+                                text = "Marcar en revisión",
                                 onClick = viewModel::markUnderReview,
-                                modifier = Modifier.fillMaxWidth(),
                                 enabled = !state.actionInFlight
-                            ) { Text("Marcar en revisión") }
+                            )
                         }
-                        Button(
+                        LeoPrimaryButton(
+                            text = "Aceptar",
                             onClick = { confirmAccept = true },
-                            modifier = Modifier.fillMaxWidth(),
                             enabled = !state.actionInFlight
-                        ) { Text("Aceptar") }
-                        OutlinedButton(
+                        )
+                        LeoOutlinedButton(
+                            text = "Rechazar",
                             onClick = { confirmReject = true },
-                            modifier = Modifier.fillMaxWidth(),
                             enabled = !state.actionInFlight
-                        ) { Text("Rechazar") }
+                        )
                     }
                 }
             }
@@ -612,31 +611,30 @@ private fun ApplicationListItem(
     onClick: () -> Unit,
     trailing: @Composable () -> Unit = {}
 ) {
-    Column(
-        Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .padding(vertical = 4.dp)
-    ) {
-        Text(
-            app.adoptionTitle.ifBlank { "Publicación" },
-            fontWeight = FontWeight.SemiBold
+    Column(Modifier.fillMaxWidth()) {
+        val subtitle = buildString {
+            append("Mascota: ${app.petName.ifBlank { "—" }}")
+            if (showApplicant) {
+                append(" · Postulante: ${app.applicantName.ifBlank { app.applicantUserId }}")
+            }
+            append(" · ${app.status.displayNameEs}")
+            append(" · ${formatAppDate(app.submittedAt)}")
+            if (app.status == AdoptionApplicationStatus.ACCEPTED) {
+                append(" · Aceptada (adopción no finalizada)")
+            }
+            val preview = app.messagePreview()
+            if (preview.isNotBlank()) {
+                append(" · $preview")
+            }
+        }
+        LeoListRow(
+            title = app.adoptionTitle.ifBlank { "Publicación" },
+            subtitle = subtitle,
+            onClick = onClick,
+            showDivider = false
         )
-        Text("Mascota: ${app.petName.ifBlank { "—" }}")
-        if (showApplicant) {
-            Text("Postulante: ${app.applicantName.ifBlank { app.applicantUserId }}")
-        }
-        Text("Estado: ${app.status.displayNameEs}")
-        Text(formatAppDate(app.submittedAt), style = MaterialTheme.typography.bodySmall)
-        Text(app.messagePreview(), style = MaterialTheme.typography.bodyMedium)
-        if (app.status == AdoptionApplicationStatus.ACCEPTED) {
-            Text(
-                "Aceptada (adopción no finalizada)",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
         trailing()
+        LeoHairline()
     }
 }
 

@@ -1,0 +1,34 @@
+appId: ${APP_ID}
+name: "FOUND finder QA02"
+tags:
+  - community-care
+  - found
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA02_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- tapOn: "Encontré un animal"
+- extendedWaitUntil:
+    visible: "Encontré un animal"
+    timeout: 10000
+- assertVisible: "Foto *"
+- assertNotVisible: "LF-CREATE"
+- addMedia:
+    - "../fixtures/qa-pet.jpg"
+- tapOn: "Agregar foto"
+- takeScreenshot: found_form
+- scrollUntilVisible:
+    element: "Publicar"
+    direction: DOWN
+    timeout: 8000
+- tapOn: "Publicar"
+- assertNotVisible: "LF-CREATE"
+- takeScreenshot: found_published

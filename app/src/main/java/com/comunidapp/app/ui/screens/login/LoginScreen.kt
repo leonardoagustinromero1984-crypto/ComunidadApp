@@ -12,8 +12,6 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -44,9 +42,12 @@ import com.comunidapp.app.ui.components.leo.AuthMethodDivider
 import com.comunidapp.app.ui.components.leo.ContinueWithGoogleButton
 import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.components.v2.v2KeepVisibleOnFocus
-import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.LeoSecondary
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.ui.theme.VisualDirectionPilot
 import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.viewmodel.LoginViewModel
@@ -96,12 +97,15 @@ fun LoginScreen(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             BrandLogo(widthFraction = 0.82f, height = 150.dp)
-            Spacer(modifier = Modifier.height(LeoDimens.SpaceCompact))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceSm))
             Text(
                 text = stringResource(R.string.brand_tagline),
-                style = MaterialTheme.typography.bodyMedium,
-                color = BrandText,
-                textAlign = TextAlign.Center
+                style = LeoSecondary,
+                color = leoVisual().textSecondary,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = LeoDimens.SpaceMd)
             )
             Spacer(modifier = Modifier.height(LeoDimens.SpaceLg + LeoDimens.SpaceMicro))
 
@@ -116,16 +120,15 @@ fun LoginScreen(
             AuthMethodDivider()
             Spacer(modifier = Modifier.height(LeoDimens.SpaceMd))
 
-            OutlinedTextField(
+            LeoTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
-                label = { Text("Email") },
+                label = "Correo o usuario",
                 modifier = Modifier
                     .fillMaxWidth()
                     .v2KeepVisibleOnFocus(),
-                singleLine = true,
                 keyboardOptions = KeyboardOptions(
-                    keyboardType = KeyboardType.Email,
+                    keyboardType = KeyboardType.Ascii,
                     imeAction = ImeAction.Next
                 ),
                 keyboardActions = KeyboardActions(
@@ -150,8 +153,8 @@ fun LoginScreen(
                 Spacer(modifier = Modifier.height(LeoDimens.SpaceSm))
                 Text(
                     text = error,
-                    color = MaterialTheme.colorScheme.error,
-                    style = MaterialTheme.typography.bodySmall
+                    color = UrgentRed,
+                    style = LeoCaption
                 )
             }
 
@@ -175,6 +178,7 @@ fun LoginScreen(
                 onClick = onNavigateToRegister,
                 enabled = !uiState.isBusy
             )
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceLg))
         }
     }
     }

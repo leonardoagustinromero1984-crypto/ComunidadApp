@@ -39,11 +39,21 @@ Cursor y humanos: **no inventar alcance** ni implementar módulos futuros sin sp
 
 ## Antes de abrir un PR
 
+Regresión local barata (sin emulador ni Maestro):
+
+```powershell
+.\scripts\qa\run-regression.ps1 -Affected
+```
+
+O el gate histórico:
+
 ```bash
 ./gradlew.bat :app:assembleDebug
 ./gradlew.bat :app:testDebugUnitTest
 ./gradlew.bat :app:lintDebug
 ```
+
+Maestro / LeoVer-QA solo bajo demanda (`-SmokeE2E` / `-FullE2E`). Ver `docs/qa/LEOVER-REGRESSION-FRAMEWORK.md`.
 
 Lint puede fallar por deuda conocida ([plan de calidad](docs/04-calidad/M00-plan-de-calidad.md)); no introduzcan **nuevos** errores de lint en archivos tocados.
 

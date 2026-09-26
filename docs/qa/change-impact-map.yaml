@@ -1,0 +1,259 @@
+# LeoVer change → suite map. Used by check-regression-coverage.ps1 and run-regression.ps1 -Affected.
+# Paths are prefix or glob-style. First match wins per file; modules accumulate.
+# maestro_required never auto-starts Maestro. It only flags the report.
+
+version: 1
+default_suite: FAST
+maestro_auto: false
+
+mappings:
+  - id: AUTH
+    paths:
+      - app/src/main/java/com/comunidapp/app/domain/auth/
+      - app/src/main/java/com/comunidapp/app/data/repository/SupabaseAuthRepository.kt
+      - app/src/main/java/com/comunidapp/app/data/repository/AuthRepository.kt
+      - app/src/main/java/com/comunidapp/app/viewmodel/LoginViewModel.kt
+      - app/src/main/java/com/comunidapp/app/ui/screens/login/
+      - app/src/main/java/com/comunidapp/app/domain/authorization/
+    modules: [AUTH, SECURITY]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.auth.*
+      - com.comunidapp.app.domain.authorization.*
+      - com.comunidapp.app.viewmodel.Auth*
+      - com.comunidapp.app.data.repository.MockAuthRepositoryTest
+    maestro_required: false
+
+  - id: PERSON
+    paths:
+      - app/src/main/java/com/comunidapp/app/domain/user/
+      - app/src/main/java/com/comunidapp/app/domain/ProfilePrivacy.kt
+      - app/src/main/java/com/comunidapp/app/ui/screens/onboarding/
+      - app/src/main/java/com/comunidapp/app/data/repository/UserRepository.kt
+    modules: [PERSON]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.user.*
+      - com.comunidapp.app.viewmodel.ProfileOnboardingViewModelTest
+      - com.comunidapp.app.viewmodel.AccountSecurityViewModelTest
+    maestro_required: false
+
+  - id: PET
+    paths:
+      - app/src/main/java/com/comunidapp/app/domain/pets/
+      - app/src/main/java/com/comunidapp/app/data/remote/supabase/m08/
+      - app/src/main/java/com/comunidapp/app/data/repository/PetRepository.kt
+      - app/src/main/java/com/comunidapp/app/data/repository/LegacyPetRepositoryAdapter.kt
+      - app/src/main/java/com/comunidapp/app/ui/screens/pets/
+      - shared/src/commonMain/kotlin/com/comunidapp/shared/pets/
+    modules: [PET, VITACORA]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.pets.*
+      - com.comunidapp.app.data.remote.supabase.m08.*
+      - com.comunidapp.app.viewmodel.PetResponsibilitiesViewModelTest
+    maestro_required: false
+
+  - id: VITACORA
+    paths:
+      - app/src/main/java/com/comunidapp/app/domain/vitacora/
+      - app/src/main/java/com/comunidapp/app/data/repository/CanonicalVitaCora
+      - app/src/main/java/com/comunidapp/app/data/repository/CanonicalVitacora
+    modules: [VITACORA, SECURITY]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.vitacora.*
+      - com.comunidapp.app.data.repository.CanonicalVitaCoraCareHistoryGuardTest
+    maestro_required: false
+
+  - id: SOCIAL
+    paths:
+      - app/src/main/java/com/comunidapp/app/domain/social/
+      - app/src/main/java/com/comunidapp/app/data/repository/FeedRepository.kt
+      - app/src/main/java/com/comunidapp/app/ui/screens/social/
+    modules: [SOCIAL]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.social.*
+      - com.comunidapp.app.ui.components.leo.SocialPostBodyDedupTest
+    maestro_required: false
+
+  - id: LOST_FOUND
+    paths:
+      - app/src/main/java/com/comunidapp/app/domain/lostfound/
+      - app/src/main/java/com/comunidapp/app/domain/location/
+      - app/src/main/java/com/comunidapp/app/data/repository/LostFoundRepository.kt
+      - app/src/main/java/com/comunidapp/app/ui/screens/lostfound/
+      - app/src/main/java/com/comunidapp/app/ui/screens/publish/
+      - shared/src/commonMain/kotlin/com/comunidapp/shared/lostfound/
+    modules: [LOST_FOUND, VITACORA, SECURITY]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.lostfound.*
+      - com.comunidapp.app.domain.location.*
+    maestro_required: false
+
+  - id: NOTIFICATIONS
+    paths:
+      - app/src/main/java/com/comunidapp/app/domain/notifications/
+      - app/src/main/java/com/comunidapp/app/data/repository/SupabaseNotificationRepositories.kt
+    modules: [NOTIFICATIONS]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.notifications.*
+    maestro_required: false
+
+  - id: VERIFICATION
+    paths:
+      - app/src/main/java/com/comunidapp/app/domain/verification/
+      - app/src/main/java/com/comunidapp/app/ui/screens/verification/
+      - app/src/main/java/com/comunidapp/app/viewmodel/LeoverVerificationRequestViewModel.kt
+    modules: [VERIFICATION]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.verification.*
+      - com.comunidapp.app.viewmodel.verification.*
+    maestro_required: false
+
+  - id: TRANSIT
+    paths:
+      - app/src/main/java/com/comunidapp/app/viewmodel/M10
+      - app/src/main/java/com/comunidapp/app/data/repository/CareNetworkRepository.kt
+    modules: [TRANSIT]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.viewmodel.M10FosterCareManagementTest
+      - com.comunidapp.app.viewmodel.CareNetworkPersonViewModelTest
+    maestro_required: false
+
+  - id: ADOPTION
+    paths:
+      - app/src/main/java/com/comunidapp/app/ui/screens/adoptions/
+      - app/src/main/java/com/comunidapp/app/data/repository/Adoption
+      - app/src/main/java/com/comunidapp/app/data/model/Adoption
+      - shared/src/commonMain/kotlin/com/comunidapp/shared/adoption/
+    modules: [ADOPTION]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.viewmodel.AdoptionFormOpenSmokeTest
+      - com.comunidapp.app.viewmodel.M09AdoptionCompletionTest
+    maestro_required: false
+
+  - id: COMMUNITY
+    paths:
+      - app/src/main/java/com/comunidapp/app/data/repository/CanonicalCommunityNearbyRepository.kt
+      - app/src/main/java/com/comunidapp/app/ui/screens/business/
+      - app/src/main/java/com/comunidapp/app/ui/components/leo/LeoVerHours.kt
+    modules: [COMMUNITY]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.location.ServiceLocationFilterTest
+    maestro_required: false
+
+  - id: PROFESSIONAL
+    paths:
+      - app/src/main/java/com/comunidapp/app/ui/screens/m28/
+      - app/src/main/java/com/comunidapp/app/data/repository/CanonicalM28Repository.kt
+      - app/src/main/java/com/comunidapp/app/data/repository/CanonicalServiceRepository.kt
+    modules: [PROFESSIONAL, SECURITY]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.viewmodel.M12Veterinary*
+    maestro_required: false
+
+  - id: MEDIA
+    paths:
+      - app/src/main/java/com/comunidapp/app/data/files/
+      - app/src/main/java/com/comunidapp/app/domain/files/
+      - app/src/main/java/com/comunidapp/app/domain/media/
+    modules: [MEDIA, SECURITY]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.files.*
+      - com.comunidapp.app.domain.media.*
+      - com.comunidapp.app.data.files.*
+    maestro_required: false
+
+  - id: SECURITY
+    paths:
+      - infra/supabase-canonical/supabase/migrations/
+      - app/src/main/java/com/comunidapp/app/domain/authorization/
+    modules: [SECURITY]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.domain.authorization.*
+      - com.comunidapp.app.core.config.SupabaseUrlPolicyTest
+    maestro_required: false
+
+  - id: UI_CONTRACT
+    paths:
+      - app/src/main/java/com/comunidapp/app/ui/
+      - app/src/main/java/com/comunidapp/app/navigation/
+    modules: [UI]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.ui.UiRegressionGateTest
+      - com.comunidapp.app.ui.AndroidPolish06ContractTest
+    maestro_required: false
+
+  - id: MAESTRO_INFRA
+    paths:
+      - .maestro/
+      - scripts/qa/run-maestro-e2e.ps1
+      - scripts/qa/start-leover-emulator.ps1
+    modules: [QA_INFRA]
+    suites: [FAST]
+    gradle_tests: []
+    maestro_required: true
+
+  - id: VIEWMODEL_FALLBACK
+    paths:
+      - app/src/main/java/com/comunidapp/app/viewmodel/
+    modules: [UI]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.viewmodel.*
+    maestro_required: false
+
+  - id: REPOSITORY_FALLBACK
+    paths:
+      - app/src/main/java/com/comunidapp/app/data/repository/
+      - app/src/main/java/com/comunidapp/app/data/provider/
+      - app/src/main/java/com/comunidapp/app/data/remote/
+      - app/src/main/java/com/comunidapp/app/data/model/
+      - app/src/main/java/com/comunidapp/app/data/local/
+    modules: [CORE_DATA]
+    suites: [FAST]
+    gradle_tests: []
+    maestro_required: false
+
+  - id: DOMAIN_FALLBACK
+    paths:
+      - app/src/main/java/com/comunidapp/app/domain/
+      - shared/src/commonMain/
+    modules: [DOMAIN]
+    suites: [FAST]
+    gradle_tests: []
+    maestro_required: false
+
+  - id: APP_SHELL_FALLBACK
+    paths:
+      - app/src/main/java/com/comunidapp/app/LeoverApplication.kt
+      - app/src/main/java/com/comunidapp/app/MainActivity.kt
+      - app/src/main/java/com/comunidapp/app/core/
+      - app/src/main/AndroidManifest.xml
+      - app/src/main/res/
+    modules: [UI]
+    suites: [FAST]
+    gradle_tests:
+      - com.comunidapp.app.ui.UiRegressionGateTest
+    maestro_required: false
+
+ignore_prefixes:
+  - docs/
+  - artifacts/
+  - apk/
+  - .gradle/
+  - build/
+  - .claude/
+  - web/

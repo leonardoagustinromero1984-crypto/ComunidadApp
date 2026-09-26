@@ -1,0 +1,486 @@
+# LeoVer regression catalog. Status is honest: COVERED | PARTIAL | MISSING | MANUAL_ONLY.
+# suite: SMOKE | CORE | FULL | MANUAL | FAST
+# layer: unit | contract | viewmodel | repository | sql | rls | compose | maestro | manual
+version: 1
+updated: 2026-09-25
+actors: [QA01, QA02, QA03, QA04, QA05, QA06, QA07, QA08, QA09, QA10, QA11, QA12, QA13, QA14, QA15, QA16]
+seed: scripts/qa/seed-community-care-actors.ps1
+default_local_suite: FAST
+
+rules:
+  # ----- AUTH -----
+  - id: REG-AUTH-001
+    module: AUTH
+    rule: PERSON inicia sesión por username + password; no cae a staff/admin primero.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/auth/PersonUsernameLoginContractTest.kt, layer: contract }
+      - { file: .maestro/flows/00_smoke_login.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-AUTH-002
+    module: AUTH
+    rule: PERSON inicia sesión por email + password cuando el identificador contiene @.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/auth/validation/AuthValidatorsTest.kt, layer: unit }
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/AuthViewModelsTest.kt, layer: viewmodel }
+    suite: CORE
+    actors: []
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-AUTH-003
+    module: AUTH
+    rule: Logout vuelve a la pantalla de credenciales.
+    tests:
+      - { file: .maestro/subflows/logout-person.yaml, layer: maestro }
+    suite: SMOKE
+    actors: [QA01, QA02, QA03]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  - id: REG-AUTH-004
+    module: AUTH
+    rule: Google Sign-In usa el chooser; no auto-selecciona cuenta.
+    tests: []
+    suite: MANUAL
+    actors: []
+    status: MANUAL_ONLY
+    priority: P1
+    manual_required: true
+    reason: OS account picker
+
+  - id: REG-AUTH-005
+    module: AUTH
+    rule: Staff/admin login y MFA no se mezclan con PERSON username.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/authorization/AdminAccessPolicyTest.kt, layer: unit }
+      - { file: app/src/test/java/com/comunidapp/app/domain/authorization/AdminStaffEdgeAuthContractTest.kt, layer: contract }
+      - { file: infra/supabase-canonical/qa/sec02_aal2_enforcement.sql, layer: rls }
+    suite: FULL
+    actors: []
+    status: PARTIAL
+    priority: P1
+    manual_required: false
+    maestro_required: false
+
+  # ----- PERSON -----
+  - id: REG-PERSON-001
+    module: PERSON
+    rule: Perfil PERSON, username y privacidad no filtran datos ajenos al feed.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/ProfilePrivacyFeedVisibilityTest.kt, layer: unit }
+      - { file: app/src/test/java/com/comunidapp/app/domain/ConnectionProfileVisibilityTest.kt, layer: unit }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P1
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-PERSON-002
+    module: PERSON
+    rule: Cambio de contexto/función no deja el selector abierto.
+    tests:
+      - { file: .maestro/flows/05b_profile_switch.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  # ----- PET -----
+  - id: REG-PET-001
+    module: PET
+    rule: Crear mascota exige foto y campos marcados; no usa "Sin nombre" como default de negocio.
+    tests:
+      - { file: shared/src/commonTest/kotlin/com/comunidapp/shared/pets/PetCreateVerticalTest.kt, layer: unit }
+      - { file: app/src/test/java/com/comunidapp/app/data/remote/supabase/m08/PetFormBreedHydrationTest.kt, layer: unit }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-PET-002
+    module: PET
+    rule: Update, responsabilidades y shared pet no rompen un solo petId/VitaCora.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/pets/SharedPetResponsibilityTest.kt, layer: unit }
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/PetResponsibilitiesViewModelTest.kt, layer: viewmodel }
+      - { file: shared/src/commonTest/kotlin/com/comunidapp/shared/pets/PetEditVerticalTest.kt, layer: unit }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-PET-003
+    module: PET
+    rule: QR/código público se genera y comparte sin escanear cámara real.
+    tests:
+      - { file: .maestro/flows/05c_qr_mora.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P1
+    manual_required: true
+    reason: QR scan físico es MANUAL_REQUIRED
+
+  # ----- VITACORA -----
+  - id: REG-VITA-001
+    module: VITACORA
+    rule: Historia de usuario no expone eventos internos (CREATED_OWNER, rotación de código).
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/vitacora/VitaCoraUserHistoryFilterTest.kt, layer: unit }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-VITA-002
+    module: VITACORA
+    rule: Propuestas profesionales owner accept/reject; aislamiento de provider.
+    tests:
+      - { file: .maestro/flows/09b_vitacora_proposals.yaml, layer: maestro }
+      - { file: app/src/test/java/com/comunidapp/app/data/repository/CanonicalVitaCoraCareHistoryGuardTest.kt, layer: contract }
+    suite: CORE
+    actors: [QA11, QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  # ----- SOCIAL -----
+  - id: REG-SOC-001
+    module: SOCIAL
+    rule: Feed, autor y privacidad; no filtrar cuerpo duplicado.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/social/SocialFeedCompositionTest.kt, layer: unit }
+      - { file: app/src/test/java/com/comunidapp/app/domain/social/SocialFeedAuthorPrivacyAbcTest.kt, layer: unit }
+    suite: FULL
+    actors: []
+    status: PARTIAL
+    priority: P1
+    manual_required: false
+    maestro_required: false
+
+  # ----- LOST / FOUND -----
+  - id: REG-LF-001
+    module: LOST_FOUND
+    rule: Owner publica LOST sobre mascota LeoVer existente; foto obligatoria.
+    tests:
+      - { file: .maestro/flows/01_lost_owner.yaml, layer: maestro }
+      - { file: shared/src/commonTest/kotlin/com/comunidapp/shared/lostfound/LostFoundPublishVerticalTest.kt, layer: unit }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  - id: REG-LF-002
+    module: LOST_FOUND
+    rule: Finder publica FOUND; ficha provisional no aparece en selector LOST.
+    tests:
+      - { file: .maestro/flows/02_found_finder.yaml, layer: maestro }
+      - { file: app/src/test/java/com/comunidapp/app/domain/location/LeoVerLocationAlerts01ContractTest.kt, layer: contract }
+    suite: CORE
+    actors: [QA02]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  - id: REG-LF-003
+    module: LOST_FOUND
+    rule: Matching notifica al owner; candidato visible en app.
+    tests:
+      - { file: .maestro/flows/03_match_owner_notification.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: true
+    reason: Shade de push OS es MANUAL_REQUIRED; in-app notification list is automatable
+
+  - id: REG-LF-004
+    module: LOST_FOUND
+    rule: Geo RPC usa extensions.ST_MakePoint y search_path public, extensions.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/location/LeoVerCommunityCare02PhysicalQa02ContractTest.kt, layer: contract }
+    suite: CORE
+    actors: []
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-LF-005
+    module: LOST_FOUND
+    rule: Claim FOUND y exclusiones de responder (foster no es FOUND responder).
+    tests:
+      - { file: .maestro/flows/04_found_claim.yaml, layer: maestro }
+      - { file: .maestro/flows/04b_responder_exclusions.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA03, QA05, QA06, QA04, QA07]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  # ----- VERIFICATION -----
+  - id: REG-VER-001
+    module: VERIFICATION
+    rule: Estados NOT_REQUESTED / PENDING / REQUIRES_CORRECTION / VERIFIED / REJECTED / SUSPENDED.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/verification/OrganizationVerificationRulesTest.kt, layer: unit }
+      - { file: .maestro/flows/05_verification.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA07, QA08, QA09]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  # ----- TRANSIT -----
+  - id: REG-TRANSIT-001
+    module: TRANSIT
+    rule: Solicitud, postulación foster, selección; mismo Pet/VitaCora.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/M10FosterCareManagementTest.kt, layer: viewmodel }
+      - { file: .maestro/flows/08_transit.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA07, QA06]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  # ----- ADOPTION -----
+  - id: REG-ADOPT-001
+    module: ADOPTION
+    rule: Multi-applicant, selección, PAUSED de otros, follow-up separado de transfer.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/M09AdoptionCompletionTest.kt, layer: viewmodel }
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/AdoptionFormOpenSmokeTest.kt, layer: viewmodel }
+      - { file: .maestro/flows/07_adoption.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA14, QA15, QA07]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  # ----- COMMUNITY -----
+  - id: REG-COM-001
+    module: COMMUNITY
+    rule: Nearby list/map/radius/filters; no GPS físico.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/location/ServiceLocationFilterTest.kt, layer: unit }
+      - { file: .maestro/flows/06_community.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: true
+    reason: Pin GPS exacto es MANUAL_REQUIRED
+
+  # ----- PROFESSIONAL -----
+  - id: REG-PRO-001
+    module: PROFESSIONAL
+    rule: Hub, pacientes, aislamiento de historia privada entre providers.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/M12VeterinaryAppointmentsTest.kt, layer: viewmodel }
+      - { file: .maestro/flows/09_professional.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA10, QA16]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  - id: REG-PRO-002
+    module: PROFESSIONAL
+    rule: Invite de paciente por email externo.
+    tests:
+      - { file: .maestro/flows/09c_vet_patient_email.yaml, layer: maestro }
+    suite: MANUAL
+    actors: [QA10]
+    status: MANUAL_ONLY
+    priority: P1
+    manual_required: true
+    reason: Inbox de email externo
+
+  # ----- MEDIA / SECURITY -----
+  - id: REG-MEDIA-001
+    module: MEDIA
+    rule: Upload MIME, TUS, visibilidad de purpose; buckets privados.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/files/FilePurposeAndVisibilityTest.kt, layer: unit }
+      - { file: app/src/test/java/com/comunidapp/app/data/files/FileUploadCoordinatorVideoTest.kt, layer: unit }
+    suite: FULL
+    actors: []
+    status: PARTIAL
+    priority: P1
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-SEC-001
+    module: SECURITY
+    rule: Least privilege, RLS, aislamiento admin/staff vs PERSON.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/authorization/AuthorizationServiceTest.kt, layer: unit }
+      - { file: infra/supabase-canonical/qa/_sec_probe_1052.sql, layer: rls }
+    suite: FULL
+    actors: []
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  # ----- HISTORICAL BUGS -----
+  - id: REG-BUG-001
+    module: AUTH
+    rule: PERSON username no debe ir a admin_begin_login primero.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/auth/PersonUsernameLoginContractTest.kt, layer: contract }
+    suite: CORE
+    actors: [QA01]
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-BUG-002
+    module: LOST_FOUND
+    rule: FOUND PostGIS ST_MakePoint requiere search_path extensions.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/location/LeoVerCommunityCare02PhysicalQa02ContractTest.kt, layer: contract }
+    suite: CORE
+    actors: []
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-BUG-003
+    module: LOST_FOUND
+    rule: Matching notify RPC search_path (migración 1096).
+    tests:
+      - { file: infra/supabase-canonical/qa/_r3_after_1096.sql, layer: sql }
+    suite: CORE
+    actors: []
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-BUG-004
+    module: LOST_FOUND
+    rule: Provisional FOUND no aparece en selector LOST.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/location/LeoVerLocationAlerts01ContractTest.kt, layer: contract }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-BUG-005
+    module: VERIFICATION
+    rule: UI refresca estado PENDING tras enviar verificación.
+    tests:
+      - { file: .maestro/flows/05_verification.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA08]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  - id: REG-BUG-006
+    module: PERSON
+    rule: Profile switch no queda trabado en el selector.
+    tests:
+      - { file: .maestro/flows/05b_profile_switch.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P0
+    manual_required: false
+    maestro_required: true
+
+  - id: REG-BUG-007
+    module: PET
+    rule: QR no navega por VitaCora.
+    tests:
+      - { file: .maestro/flows/05c_qr_mora.yaml, layer: maestro }
+    suite: CORE
+    actors: [QA01]
+    status: PARTIAL
+    priority: P1
+    manual_required: false
+    maestro_required: true
+
+  - id: REG-BUG-008
+    module: UI
+    rule: Required fields muestran asterisco.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/ui/AndroidPolish06ContractTest.kt, layer: contract }
+      - { file: app/src/test/java/com/comunidapp/app/ui/UiRegressionGateTest.kt, layer: contract }
+    suite: FAST
+    actors: []
+    status: PARTIAL
+    priority: P1
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-BUG-009
+    module: UI
+    rule: No duplicate labels en formularios tocados por polish.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/ui/AndroidPolish06ContractTest.kt, layer: contract }
+    suite: FAST
+    actors: []
+    status: PARTIAL
+    priority: P1
+    manual_required: false
+    maestro_required: false
+
+  - id: REG-BUG-010
+    module: COMMUNITY
+    rule: Formulario Community no pierde datos al abrir mapa.
+    tests: []
+    suite: CORE
+    actors: [QA01]
+    status: MISSING
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
+  # ----- MANUAL HARDWARE -----
+  - id: REG-HW-001
+    module: MANUAL
+    rule: Cámara física, GPS real, push OS shade, QR scan real, email externo.
+    tests: []
+    suite: MANUAL
+    actors: []
+    status: MANUAL_ONLY
+    priority: P2
+    manual_required: true
+    reason: Hardware / OS / inbox

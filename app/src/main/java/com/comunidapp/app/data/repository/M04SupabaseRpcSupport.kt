@@ -56,6 +56,12 @@ internal object M04SupabaseRpcSupport {
                 code = "VALIDATION"
             )
             upper.contains("CONFLICT") -> AppErrorMapper.conflict(technical)
+            upper.contains("FEATURE_TEMPORARILY_DISABLED") ->
+                AppErrorMapper.featureTemporarilyDisabled(technical, throwable)
+            upper.contains("QUOTA_EXCEEDED") ->
+                AppErrorMapper.quotaExceeded(technical, throwable)
+            upper.contains("RATE_LIMITED") || upper.contains("RATE_LIMIT_EXCEEDED") ->
+                AppErrorMapper.rateLimited(technical).copy(cause = throwable)
             else -> AppErrorMapper.fromThrowable(throwable, fallbackUserMessage)
         }
         return AppResult.Failure(mapped)

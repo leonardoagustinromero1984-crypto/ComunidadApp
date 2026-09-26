@@ -7,6 +7,8 @@
 .externalNativeBuild/
 .cxx/
 local.properties
+local.properties.bak
+scripts/qa/_tmp_*
 iosApp/Config/Secrets.xcconfig
 iosApp/Config/Secrets.local.xcconfig
 
@@ -33,11 +35,15 @@ supabase/.env
 *.keystore
 apk/
 /artifacts/
+.maestro/screenshots/
+.maestro/config/local.env
 supabase/.temp/
 
 # Logs
 *.log
 scripts/ops/*_last_run.txt
+scripts/qa/.qa-*.local.json
+scripts/qa/*.local.json
 
 # Web / Node (LeoVer web workspace)
 web/node_modules/

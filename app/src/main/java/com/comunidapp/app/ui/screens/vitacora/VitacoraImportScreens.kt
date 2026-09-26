@@ -17,10 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -45,9 +42,14 @@ import com.comunidapp.app.domain.vitacora.import.VitacoraImportJobStatus
 import com.comunidapp.app.domain.vitacora.import.VitacoraImportMode
 import com.comunidapp.app.domain.vitacora.import.VitacoraImportOrgHit
 import com.comunidapp.app.domain.vitacora.import.VitacoraImportPolicy
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.leo.LeoVerTutorialPager
 import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.VitacoraImportUiState
 import com.comunidapp.app.viewmodel.VitacoraImportViewModel
 import com.comunidapp.app.viewmodel.labelEs
@@ -112,7 +114,8 @@ fun VitacoraImportScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text("Importá varias mascotas a la vez con la plantilla oficial de LeoVer. Se crean VitaCoras; no se publican en adopción ni se agregan fotos.")
-            Button(
+            LeoPrimaryButton(
+                text = VitacoraImportCopy.DOWNLOAD,
                 onClick = {
                     val bytes = viewModel.templateBytes()
                     val file = File(context.cacheDir, VitacoraImportPolicy.PUBLISHED_FILENAME)
@@ -124,18 +127,18 @@ fun VitacoraImportScreen(
                         addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                     }
                     context.startActivity(Intent.createChooser(intent, VitacoraImportCopy.DOWNLOAD))
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(VitacoraImportCopy.DOWNLOAD) }
-            OutlinedButton(onClick = { viewModel.showTutorial(true) }, modifier = Modifier.fillMaxWidth()) {
-                Text(VitacoraImportCopy.HOW_TO)
-            }
-            OutlinedButton(
+                }
+            )
+            LeoOutlinedButton(
+                text = VitacoraImportCopy.HOW_TO,
+                onClick = { viewModel.showTutorial(true) }
+            )
+            LeoOutlinedButton(
+                text = VitacoraImportCopy.SELECT_FILE,
                 onClick = {
                     picker.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/octet-stream"))
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(VitacoraImportCopy.SELECT_FILE) }
+                }
+            )
             Spacer(Modifier.height(8.dp))
             Text(VitacoraImportCopy.ASSISTED_TITLE, fontWeight = FontWeight.SemiBold)
             Text(VitacoraImportCopy.ASSISTED_BODY)
@@ -145,12 +148,12 @@ fun VitacoraImportScreen(
                 modifier = Modifier.fillMaxWidth(),
                 label = { Text("Comentario (opcional)") }
             )
-            OutlinedButton(
+            LeoOutlinedButton(
+                text = VitacoraImportCopy.ASSISTED_CTA,
                 onClick = {
                     assistedPicker.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(VitacoraImportCopy.ASSISTED_CTA) }
+                }
+            )
             ui.message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
             if (ui.busy) Text("Analizando…")
         }
@@ -184,18 +187,23 @@ private fun ImportPreview(
             Text(VitacoraImportCopy.COMPLETED, fontWeight = FontWeight.Bold)
             Text("${s.created} VitaCoras creadas")
             Text("${job.rows.count { it.createdPetId != null }} ${VitacoraImportCopy.NEEDS_PHOTO.lowercase()}")
-            OutlinedButton(onClick = onViewImported, modifier = Modifier.fillMaxWidth()) {
-                Text("Ver mascotas importadas")
-            }
+            LeoOutlinedButton(
+                text = "Ver mascotas importadas",
+                onClick = onViewImported
+            )
         } else if (job.status == VitacoraImportJobStatus.PENDING || job.status == VitacoraImportJobStatus.UPLOADED) {
-            OutlinedButton(onClick = onAnalyze, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text("Analizar")
-            }
+            LeoOutlinedButton(
+                text = "Analizar",
+                onClick = onAnalyze,
+                enabled = !busy
+            )
         } else if (importable > 0 && job.status == VitacoraImportJobStatus.READY) {
             Text("$importable mascotas están listas para crear.")
-            Button(onClick = onConfirm, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text(VitacoraImportCopy.CREATE_N.format(importable))
-            }
+            LeoPrimaryButton(
+                text = VitacoraImportCopy.CREATE_N.format(importable),
+                onClick = onConfirm,
+                enabled = !busy
+            )
         }
         message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         job.rows.filter { it.issues.isNotEmpty() }.take(40).forEach { row ->
@@ -225,9 +233,12 @@ fun AdminVitacoraImportQueueScreen(
         topBar = { LeoTopAppBar(title = "Importaciones", showBackButton = true, onBackClick = onNavigateBack) }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Button(onClick = onNew, modifier = Modifier.fillMaxWidth()) { Text("Nueva importación") }
+            LeoPrimaryButton(
+                text = "Nueva importación",
+                onClick = onNew
+            )
             Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS),
                 modifier = Modifier.horizontalScroll(rememberScrollState())
             ) {
                 listOf(
@@ -238,15 +249,20 @@ fun AdminVitacoraImportQueueScreen(
                     "COMPLETED" to "Completadas",
                     "FAILED" to "Con errores"
                 ).forEach { (code, label) ->
-                    FilterChip(selected = ui.filter == code, onClick = { viewModel.loadJobs(code) }, label = { Text(label) })
+                    LeoFilterChip(
+                        label = label,
+                        selected = ui.filter == code,
+                        onClick = { viewModel.loadJobs(code) }
+                    )
                 }
             }
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.weight(1f, fill = true)) {
+            LazyColumn(verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS), modifier = Modifier.weight(1f, fill = true)) {
                 items(ui.jobs, key = { it.id }) { job ->
-                    Column(Modifier.fillMaxWidth().clickable { viewModel.openJob(job) }.padding(8.dp)) {
-                        Text(job.organizationName ?: "Organización", fontWeight = FontWeight.SemiBold)
-                        Text("${job.status.labelEs()} · ${job.mode.name}")
-                    }
+                    LeoListRow(
+                        title = job.organizationName ?: "Organización",
+                        subtitle = "${job.status.labelEs()} · ${job.mode.name}",
+                        onClick = { viewModel.openJob(job) }
+                    )
                 }
             }
             ui.job?.let { job ->
@@ -319,11 +335,11 @@ private fun AdminImportSelected(
                 )
             }
             selected?.let { Text("Seleccionada: ${it.name}", fontWeight = FontWeight.SemiBold) }
-            OutlinedButton(
+            LeoOutlinedButton(
+                text = VitacoraImportCopy.SELECT_FILE,
                 onClick = { picker.launch(arrayOf("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")) },
-                enabled = selected != null,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(VitacoraImportCopy.SELECT_FILE) }
+                enabled = selected != null
+            )
             importUi.job?.let { job ->
                 ImportPreview(job, importUi.busy, importUi.message, importVm::confirm, importVm::analyzeCurrent, {}, Modifier)
             }

@@ -158,7 +158,8 @@ fun Onb02HostScreen(
             },
             onSelect = viewModel::selectProfessionalSpecialty,
             onContinue = viewModel::confirmProfessionalSpecialty,
-            onBack = viewModel::backToActorSelector
+            onBack = viewModel::backToActorSelector,
+            errorMessage = ui.errorMessage
         )
         Onb02Phase.BUSINESS_SETUP -> BusinessKindSelectorScreen(
             selected = ui.selection.organizationKind,
@@ -310,15 +311,8 @@ private fun ActorRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(LeoDimens.RadiusCard))
-            .background(BrandWhite)
-            .border(
-                1.dp,
-                if (selected) leoVisual().primary else leoVisual().borderSoft,
-                RoundedCornerShape(LeoDimens.RadiusCard)
-            )
             .clickable(enabled = !locked, onClick = onSelect)
-            .padding(LeoDimens.SpaceCompact)
+            .padding(vertical = LeoDimens.SpaceCompact)
             .semantics { contentDescription = "actor_${actor.name}" },
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
@@ -341,7 +335,8 @@ fun ProfessionalServiceSelectorScreen(
     specialties: List<IndependentProfessionalSpecialty> = ProfileActorTaxonomy.professionalSpecialties,
     onSelect: (IndependentProfessionalSpecialty) -> Unit,
     onContinue: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    errorMessage: String? = null
 ) {
     Scaffold(
         containerColor = leoVisual().background,
@@ -375,6 +370,9 @@ fun ProfessionalServiceSelectorScreen(
                     RadioButton(selected = selected == specialty, onClick = { onSelect(specialty) })
                     Text(specialty.visibleLabel, style = LeoCardTitle, color = BrandText)
                 }
+            }
+            errorMessage?.takeIf { it.isNotBlank() }?.let { message ->
+                Text(message, style = LeoCaption, color = BrandText)
             }
             LeoPrimaryButton(
                 text = "Continuar",
@@ -534,7 +532,8 @@ fun OrganizationFunctionSetupScreen(
 @Composable
 fun UseLeoverAsScreen(
     @Suppress("UNUSED_PARAMETER") onAddFunction: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    onSelected: () -> Unit = onNavigateBack
 ) {
     val available by OperationalContextProvider.available.collectAsState()
     val active by OperationalContextProvider.active.collectAsState()
@@ -566,7 +565,12 @@ fun UseLeoverAsScreen(
                     title = ctx.displayName,
                     description = if (selected) "$subtitle · Activo" else subtitle,
                     icon = if (ctx is OperationalContext.Personal) Icons.Default.Person else Icons.Default.SwapHoriz,
-                    onClick = { scope.launch { OperationalContextProvider.select(ctx) } }
+                    onClick = {
+                        scope.launch {
+                            OperationalContextProvider.select(ctx)
+                            onSelected()
+                        }
+                    }
                 )
             }
             // Add-function lives in Settings. Keep callback for tests/nav wiring.

@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -23,13 +22,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
 import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.viewmodel.AdoptionFormState
 import com.comunidapp.app.viewmodel.AdoptionFormViewModel
@@ -162,10 +161,10 @@ private fun AdoptionFormBody(
                 fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
             )
             state.selectablePets.forEach { pet ->
-                FilterChip(
+                LeoFilterChip(
+                    label = pet.name,
                     selected = state.selectedPetId == pet.id,
                     onClick = { onPetSelected(pet.id) },
-                    label = { Text(pet.name) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }

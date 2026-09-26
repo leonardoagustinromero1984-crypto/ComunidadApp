@@ -85,7 +85,9 @@ object FileValidationRules {
             purpose = request.purpose,
             safeFilename = safe,
             declaredMimeType = request.declaredMimeType,
-            detectedMimeType = null,
+            detectedMimeType = request.declaredMimeType?.takeIf {
+                it.startsWith("video/", ignoreCase = true)
+            },
             sizeBytes = request.sizeBytes
         ).getOrElse { return Result.failure(it) }
         val maxCount = FilePurposePolicy.spec(request.purpose).maxCountPerResource
@@ -127,8 +129,12 @@ object FileValidationRules {
         if (ext !in spec.allowedExtensions) return fileFailure("EXTENSION_NOT_ALLOWED")
         val effective = detectedMimeType?.trim()?.takeIf { it.isNotEmpty() }
             ?: declaredMimeType?.trim()?.takeIf { it.isNotEmpty() }
+            ?: inferMimeFromExtension(ext)
             ?: return fileFailure("MIME_REQUIRED")
-        val mime = effective.lowercase()
+        val mime = when (val raw = effective.lowercase()) {
+            "application/octet-stream" -> inferMimeFromExtension(ext) ?: raw
+            else -> canonicalizeVideoMime(raw, spec.allowedMimeTypes)
+        }
         if (mime !in spec.allowedMimeTypes) return fileFailure("MIME_NOT_ALLOWED")
         // mismatch MIME/extensión peligroso
         if (!mimeMatchesExtension(mime, ext)) {
@@ -155,13 +161,40 @@ object FileValidationRules {
         return Result.success(Unit)
     }
 
+    internal fun canonicalizeVideoMime(mime: String, allowed: Set<String>): String {
+        if (mime in allowed) return mime
+        if (!mime.startsWith("video/")) return mime
+        val container = com.comunidapp.app.domain.media.VerifiedVideoPipeline.normalizeContainerMime(mime)
+        return if (container in allowed) container else mime
+    }
+
     fun mimeMatchesExtension(mime: String, ext: String): Boolean = when (mime) {
         "image/jpeg" -> ext == "jpg" || ext == "jpeg"
         "image/png" -> ext == "png"
         "image/webp" -> ext == "webp"
         "image/heic", "image/heif" -> ext == "heic" || ext == "heif"
+        "video/mp4" -> ext == "mp4" || ext == "m4v"
+        "video/quicktime" -> ext == "mov" || ext == "qt"
+        "video/3gpp" -> ext == "3gp" || ext == "3gpp"
+        "video/webm" -> ext == "webm"
+        "video/x-matroska" -> ext == "mkv" || ext == "webm"
         "application/pdf" -> ext == "pdf"
         else -> false
+    }
+
+    fun inferMimeFromExtension(ext: String): String? = when (ext.lowercase()) {
+        "jpg", "jpeg" -> "image/jpeg"
+        "png" -> "image/png"
+        "webp" -> "image/webp"
+        "heic" -> "image/heic"
+        "heif" -> "image/heif"
+        "mp4", "m4v" -> "video/mp4"
+        "mov", "qt" -> "video/quicktime"
+        "3gp", "3gpp" -> "video/3gpp"
+        "webm" -> "video/webm"
+        "mkv" -> "video/x-matroska"
+        "pdf" -> "application/pdf"
+        else -> null
     }
 
     /** Capacidad futura: no implementada. */

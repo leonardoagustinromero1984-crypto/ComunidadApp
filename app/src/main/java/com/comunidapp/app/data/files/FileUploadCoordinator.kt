@@ -24,6 +24,7 @@ import com.comunidapp.app.domain.media.ImageIngest
 import com.comunidapp.app.domain.media.MediaDiagnostic
 import com.comunidapp.app.domain.media.MediaIngestionPolicy
 import com.comunidapp.app.domain.media.ProfileMediaPipeline
+import com.comunidapp.app.domain.media.ReelPublishTrace
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.atomic.AtomicBoolean
@@ -65,7 +66,8 @@ class FileUploadCoordinator(
         visibility: FileAssetVisibility,
         resourceRef: FileResourceRef? = null,
         actorUserId: String,
-        existingCount: Int = 0
+        existingCount: Int = 0,
+        validationHint: FileUploadRequest? = null
     ): AppResult<FileLocalMetadata> {
         mutableUiState.value = FileUploadUiState(
             phase = FileUploadPhase.Validating,
@@ -85,7 +87,24 @@ class FileUploadCoordinator(
                 metadata
             }
             is AppResult.Success -> {
-                val request = FileUploadRequest(
+                val trustedVideoMime = validationHint?.declaredMimeType?.takeIf {
+                    it.startsWith("video/", ignoreCase = true)
+                }?.let { FileValidationRules.canonicalizeVideoMime(it.lowercase(), FilePurposePolicy.spec(purpose).allowedMimeTypes) }
+                val request = validationHint?.copy(
+                    purpose = purpose,
+                    owner = owner,
+                    resourceRef = resourceRef,
+                    requestedVisibility = visibility,
+                    originalFilename = if (trustedVideoMime != null) {
+                        validationHint.originalFilename
+                    } else {
+                        metadata.data.originalFilename
+                    },
+                    declaredMimeType = trustedVideoMime
+                        ?: validationHint.declaredMimeType
+                        ?: metadata.data.declaredMimeType,
+                    sizeBytes = metadata.data.sizeBytes.coerceAtLeast(validationHint.sizeBytes)
+                ) ?: FileUploadRequest(
                     purpose = purpose,
                     owner = owner,
                     resourceRef = resourceRef,
@@ -115,26 +134,48 @@ class FileUploadCoordinator(
         actorUserId: String
     ): AppResult<PreparedFileUpload> {
         if (!submitting.compareAndSet(false, true)) return fail("DOUBLE_SUBMIT")
-        val ingested = runCatching { imageIngest.normalize(uriString, request.purpose) }
+        val sourceIsVideo = MediaIngestionPolicy.isVideoMime(request.declaredMimeType)
+        val ingested = if (sourceIsVideo) {
+            Result.success(
+                com.comunidapp.app.domain.media.ImageIngestResult(
+                    uriString = uriString,
+                    mimeType = request.declaredMimeType ?: "video/mp4",
+                    sizeBytes = request.sizeBytes,
+                    normalized = true
+                )
+            )
+        } else {
+            runCatching { imageIngest.normalize(uriString, request.purpose) }
+        }
         if (ingested.isFailure) {
             submitting.set(false)
             return fail(MediaDiagnostic.fromThrowable(ingested.exceptionOrNull()))
         }
         val ingestedResult = ingested.getOrThrow()
-        val imageLike = MediaIngestionPolicy.isImageMime(request.declaredMimeType) ||
-            MediaIngestionPolicy.isImageMime(ingestedResult.mimeType)
+        val imageLike = !sourceIsVideo && (
+            MediaIngestionPolicy.isImageMime(request.declaredMimeType) ||
+                MediaIngestionPolicy.isImageMime(ingestedResult.mimeType)
+            )
         if (imageLike && ingestedResult.normalized != true) {
             submitting.set(false)
             return fail(MediaDiagnostic.DECODE)
         }
-        val workUri = if (ingestedResult.normalized) ingestedResult.uriString else uriString
+        val workUri = if (!sourceIsVideo && ingestedResult.normalized) ingestedResult.uriString else uriString
         val resolvedSize = ProfileMediaPipeline.resolvedSizeBytes(
             workUri,
             ingestedResult.sizeBytes.takeIf { it > 1L } ?: request.sizeBytes
         )
         val workRequest = request.copy(
-            originalFilename = if (ingestedResult.normalized) "photo.jpg" else request.originalFilename,
-            declaredMimeType = ingestedResult.mimeType.ifBlank { request.declaredMimeType },
+            originalFilename = if (!sourceIsVideo && ingestedResult.normalized) {
+                "photo.jpg"
+            } else {
+                request.originalFilename
+            },
+            declaredMimeType = if (sourceIsVideo) {
+                request.declaredMimeType
+            } else {
+                ingestedResult.mimeType.ifBlank { request.declaredMimeType }
+            },
             sizeBytes = resolvedSize
         )
         if (ingestedResult.normalized) {
@@ -166,21 +207,39 @@ class FileUploadCoordinator(
                     owner = workRequest.owner,
                     visibility = workRequest.requestedVisibility,
                     resourceRef = workRequest.resourceRef,
-                    actorUserId = actorUserId
+                    actorUserId = actorUserId,
+                    validationHint = workRequest.takeIf {
+                        it.declaredMimeType?.startsWith("video/", ignoreCase = true) == true
+                    }
                 )
             ) {
                 is AppResult.Success -> selected.data
                 is AppResult.Failure -> return selected
             }
+            val trustedVideoMime = workRequest.declaredMimeType?.takeIf {
+                it.startsWith("video/", ignoreCase = true)
+            }
             val normalizedRequest = workRequest.copy(
-                originalFilename = metadata.originalFilename,
-                declaredMimeType = metadata.declaredMimeType,
-                sizeBytes = metadata.sizeBytes
+                originalFilename = if (trustedVideoMime != null) {
+                    workRequest.originalFilename
+                } else {
+                    metadata.originalFilename
+                },
+                declaredMimeType = trustedVideoMime ?: metadata.declaredMimeType ?: workRequest.declaredMimeType,
+                sizeBytes = metadata.sizeBytes.coerceAtLeast(workRequest.sizeBytes)
             )
             mutableUiState.value = mutableUiState.value.copy(
                 phase = FileUploadPhase.Preparing,
                 submittingLocked = true
             )
+            if (resume == null) {
+                markReel(
+                    normalizedRequest,
+                    ReelPublishTrace.Stage.REGISTER_START,
+                    fileSize = normalizedRequest.sizeBytes,
+                    mime = normalizedRequest.declaredMimeType
+                )
+            }
             val prepared = resume?.prepared ?: when (
                 val result = uploadRepository.prepareUploadSession(
                     request = normalizedRequest,
@@ -188,8 +247,24 @@ class FileUploadCoordinator(
                     nowEpochMs = clock()
                 )
             ) {
-                is AppResult.Success -> result.data
+                is AppResult.Success -> {
+                    markReel(
+                        normalizedRequest,
+                        ReelPublishTrace.Stage.REGISTER_SUCCESS,
+                        fileSize = normalizedRequest.sizeBytes,
+                        mime = normalizedRequest.declaredMimeType,
+                        result = "OK"
+                    )
+                    result.data
+                }
                 is AppResult.Failure -> {
+                    markReel(
+                        normalizedRequest,
+                        ReelPublishTrace.Stage.REGISTER_FAIL,
+                        fileSize = normalizedRequest.sizeBytes,
+                        mime = normalizedRequest.declaredMimeType,
+                        result = reelErrorCategory(result.error.code, result.error.technicalMessage)
+                    )
                     updateFailure(result)
                     return result
                 }
@@ -212,24 +287,66 @@ class FileUploadCoordinator(
                     is AppResult.Success -> Unit
                 }
             }
-            val useTus = ResumableUploadPolicy.shouldUseTus(normalizedRequest.sizeBytes)
-            val uploaded = if (useTus) {
+            val useTus = ResumableUploadPolicy.shouldUseTus(
+                normalizedRequest.sizeBytes,
+                normalizedRequest.declaredMimeType
+            )
+            val streamVideo = MediaIngestionPolicy.isVideoMime(normalizedRequest.declaredMimeType) ||
+                MediaIngestionPolicy.isVideoMime(request.declaredMimeType)
+            markReel(
+                normalizedRequest,
+                ReelPublishTrace.Stage.UPLOAD_START,
+                fileSize = normalizedRequest.sizeBytes,
+                mime = normalizedRequest.declaredMimeType
+            )
+            val uploaded = if (useTus || streamVideo) {
                 val file = resume?.localFilePath?.let { File(it).takeIf { f -> f.exists() } }
                     ?: when (val materialized = bytesReader.materializeForUpload(workUri)) {
                         is AppResult.Success -> materialized.data
                         is AppResult.Failure -> {
+                            markReel(
+                                normalizedRequest,
+                                ReelPublishTrace.Stage.UPLOAD_FAIL,
+                                fileSize = normalizedRequest.sizeBytes,
+                                mime = normalizedRequest.declaredMimeType,
+                                result = "URI_READ"
+                            )
                             uploadRepository.failUpload(sessionId, materialized.error.code ?: "FILE_READ_FAILED")
                             updateFailure(materialized)
                             return materialized
                         }
                     }
+                val actualSize = file.length().takeIf { it > 0L } ?: normalizedRequest.sizeBytes
+                markReel(
+                    normalizedRequest,
+                    ReelPublishTrace.Stage.MATERIALIZE_READY,
+                    fileSize = actualSize,
+                    mime = normalizedRequest.declaredMimeType,
+                    result = if (workUri.startsWith("file:", ignoreCase = true)) "REUSED" else "COPIED"
+                )
+                val cap = MediaIngestionPolicy.processedMaxBytes(
+                    normalizedRequest.purpose,
+                    normalizedRequest.declaredMimeType
+                )
+                if (actualSize > cap) {
+                    markReel(
+                        normalizedRequest,
+                        ReelPublishTrace.Stage.UPLOAD_FAIL,
+                        fileSize = actualSize,
+                        mime = normalizedRequest.declaredMimeType,
+                        result = "FILE_TOO_LARGE"
+                    )
+                    val tooLarge = fail("SIZE")
+                    uploadRepository.failUpload(sessionId, "SIZE")
+                    return tooLarge
+                }
                 lastAttempt = LastAttempt(workUri, normalizedRequest, actorUserId, prepared, file.absolutePath, resume?.tusHint)
                 objectUploader.uploadFile(
                     physicalBucket = prepared.physicalBucket,
                     storagePath = prepared.storagePath,
                     file = file,
                     mimeType = normalizedRequest.declaredMimeType ?: "application/octet-stream",
-                    sizeBytes = normalizedRequest.sizeBytes,
+                    sizeBytes = actualSize,
                     onProgress = { progress ->
                         if (sessionId !in cancelledSessions) {
                             mutableUiState.value = mutableUiState.value.copy(
@@ -280,6 +397,13 @@ class FileUploadCoordinator(
                 return fail("CANCELLED", preserveCancelled = true)
             }
             if (uploaded is AppResult.Failure) {
+                markReel(
+                    normalizedRequest,
+                    ReelPublishTrace.Stage.UPLOAD_FAIL,
+                    fileSize = normalizedRequest.sizeBytes,
+                    mime = normalizedRequest.declaredMimeType,
+                    result = reelErrorCategory(uploaded.error.code, uploaded.error.technicalMessage)
+                )
                 MediaDiagnostic.logUpload(uploaded.error)
                 val resumable = lastTusHint.get() != null && uploaded.error.code != "CANCELLED"
                 if (!resumable) {
@@ -289,6 +413,13 @@ class FileUploadCoordinator(
                 updateFailure(uploaded)
                 return uploaded
             }
+            markReel(
+                normalizedRequest,
+                ReelPublishTrace.Stage.UPLOAD_SUCCESS,
+                fileSize = normalizedRequest.sizeBytes,
+                mime = normalizedRequest.declaredMimeType,
+                result = "OK"
+            )
             uploadRepository.updateProgress(sessionId, 100)
             mutableUiState.value = mutableUiState.value.copy(
                 phase = FileUploadPhase.Completing,
@@ -402,6 +533,25 @@ class FileUploadCoordinator(
             is AppResult.Failure -> result
         }
 
+    fun lastPreparedOrNull(): PreparedFileUpload? = lastAttempt?.prepared
+
+    fun primeRegisteredResume(
+        uriString: String,
+        request: FileUploadRequest,
+        actorUserId: String,
+        prepared: PreparedFileUpload,
+        localFilePath: String?
+    ) {
+        lastAttempt = LastAttempt(
+            uriString = uriString,
+            request = request,
+            actorUserId = actorUserId,
+            prepared = prepared,
+            localFilePath = localFilePath,
+            tusHint = null
+        )
+    }
+
     fun clearAllSensitiveState() {
         activeSessions.clear()
         cancelledSessions.clear()
@@ -412,6 +562,28 @@ class FileUploadCoordinator(
     }
 
     fun activeSessionIdsForTests(): Set<String> = activeSessions.toSet()
+
+    private fun markReel(
+        request: FileUploadRequest,
+        stage: ReelPublishTrace.Stage,
+        fileSize: Long? = null,
+        mime: String? = null,
+        result: String? = null
+    ) {
+        if (request.purpose != FileAssetPurpose.REEL_MEDIA) return
+        ReelPublishTrace.mark(stage, fileSize = fileSize, mime = mime, result = result)
+    }
+
+    private fun reelErrorCategory(code: String?, technical: String?): String {
+        val signal = "${code.orEmpty()} ${technical.orEmpty()}".uppercase()
+        return when {
+            "FILE_TOO_LARGE" in signal || "TOO_LARGE" in signal || code.equals("SIZE", true) -> "FILE_TOO_LARGE"
+            "RATE_LIMITED" in signal -> "RATE_LIMITED"
+            "QUOTA" in signal -> "DAILY_QUOTA"
+            "TIMEOUT" in signal -> "TIMEOUT"
+            else -> "FAILED"
+        }
+    }
 
     private fun fail(
         code: String,

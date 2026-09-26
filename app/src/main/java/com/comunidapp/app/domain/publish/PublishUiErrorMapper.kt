@@ -13,6 +13,9 @@ object PublishUiErrorMapper {
 
     fun lostFoundUserMessage(): String = LOST_FOUND_USER_MESSAGE
 
+    fun lostFoundUserMessage(error: Throwable?): String =
+        LostFoundPublishError.userMessage(error)
+
     fun userFacing(raw: String?, fallback: String): String {
         val text = raw?.trim().orEmpty()
         return if (text.isNotEmpty() && !isUnsafeToShow(text)) text else fallback

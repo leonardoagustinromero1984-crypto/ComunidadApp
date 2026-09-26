@@ -25,6 +25,8 @@ import com.comunidapp.app.data.repository.FosterRequestRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.SubmitFosterRequestInput
 import com.comunidapp.app.data.repository.UpdateFosterHomeInput
+import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.put
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -145,6 +147,9 @@ data class FosterHomeFormState(
     val sizeL: Boolean = false,
     val acceptsSpecialNeeds: Boolean = false,
     val acceptsEmergencies: Boolean = false,
+    val speciesPref: String = "",
+    val agePref: String = "",
+    val notes: String = "",
     val activate: Boolean = true,
     val submitting: Boolean = false,
     val error: String? = null,
@@ -242,6 +247,19 @@ class FosterHomeFormViewModel(
                 )
             }
             result.onSuccess {
+                runCatching {
+                    com.comunidapp.app.data.remote.supabase.supabase.postgrest.rpc(
+                        function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_UPDATE_FOSTER_PREFERENCES,
+                        parameters = kotlinx.serialization.json.buildJsonObject {
+                            put("p_capacity", capacity.coerceIn(1, 3))
+                            s.localityId?.let { put("p_locality_id", it) }
+                            put("p_active", s.activate)
+                            put("p_species_pref", s.speciesPref)
+                            put("p_age_pref", s.agePref)
+                            put("p_notes", s.notes)
+                        }
+                    )
+                }
                 val uid = authRepository.getCurrentUser()?.id
                 if (!uid.isNullOrBlank()) {
                     runCatching { com.comunidapp.app.domain.context.OperationalContextProvider.refresh(uid) }
@@ -337,6 +355,13 @@ class FosterRequestFormViewModel(
             val pets = if (uid == null) emptyList()
             else runCatching { petRepository.getPetsByOwner(uid) }.getOrElse { emptyList() }
                 .filter { !it.status.equals("DECEASED", true) && !it.status.equals("ARCHIVED", true) }
+                .let { listed ->
+                    com.comunidapp.app.domain.pets.PetManagementContext.filter(
+                        listed,
+                        com.comunidapp.app.domain.context.OperationalContextProvider.active.value,
+                        uid
+                    )
+                }
             _form.value = _form.value.copy(pets = pets, selectedPetId = pets.firstOrNull()?.id)
         }
     }

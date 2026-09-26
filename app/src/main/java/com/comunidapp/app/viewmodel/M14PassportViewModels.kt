@@ -86,13 +86,28 @@ class M14PetPassportViewModel(
     private val _historyPreview = MutableStateFlow<List<com.comunidapp.app.data.model.M14PassportHistory>>(emptyList())
     val historyPreview: StateFlow<List<com.comunidapp.app.data.model.M14PassportHistory>> =
         _historyPreview.asStateFlow()
+    @Volatile
+    private var autoOpenAttempted = false
 
     init {
         viewModelScope.launch {
-            petRepository.observePet(petId).collect { _pet.value = it }
+            petRepository.observePet(petId).collect { incoming ->
+                if (incoming != null) {
+                    _pet.value = com.comunidapp.app.domain.pets.PetHealthMerge.preferRicherHealth(
+                        _pet.value,
+                        incoming
+                    )
+                }
+            }
         }
         viewModelScope.launch {
-            passportRepository.observePassportForPet(petId).collect { _passport.value = it }
+            passportRepository.observePassportForPet(petId).collect { observed ->
+                _passport.value = observed
+                if (observed == null && !autoOpenAttempted && petId.isNotBlank()) {
+                    autoOpenAttempted = true
+                    createFromPet()
+                }
+            }
         }
         viewModelScope.launch {
             runCatching {
@@ -149,7 +164,11 @@ class M14PetPassportViewModel(
             result.onSuccess { created ->
                 // observePassportForPet is a one-shot cold flow; apply create result directly.
                 _passport.value = created
-                _message.value = "VitaCora lista"
+                if (!autoOpenAttempted) {
+                    _message.value = "VitaCora lista"
+                } else {
+                    _message.value = null
+                }
             }.onFailure { e ->
                 val code = M14ErrorMapper.codeOf(e)
                 if (code == "PASSPORT_ALREADY_EXISTS") {

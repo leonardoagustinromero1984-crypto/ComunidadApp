@@ -1,9 +1,11 @@
 package com.comunidapp.app.ui.screens.pets
 
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -11,16 +13,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Person
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -34,17 +37,25 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.comunidapp.app.domain.pets.PetLinkStatus
 import com.comunidapp.app.domain.pets.PetPrincipalHolder
 import com.comunidapp.app.domain.pets.PetResponsibility
 import com.comunidapp.app.domain.pets.PetResponsibilityRole
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
@@ -78,8 +89,8 @@ fun PetResponsibilitiesScreen(
     revokeTargetId?.let { targetId ->
         AlertDialog(
             onDismissRequest = { revokeTargetId = null },
-            title = { Text("Revocar vínculo") },
-            text = { Text("¿Seguro que querés revocar este vínculo de responsabilidad?") },
+            title = { Text("Quitar responsable") },
+            text = { Text("¿Quitar a esta persona como responsable? La mascota y su VitaCora no se eliminan.") },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -87,7 +98,7 @@ fun PetResponsibilitiesScreen(
                         viewModel.revoke(targetId)
                     }
                 ) {
-                    Text("Revocar", color = MaterialTheme.colorScheme.error)
+                    Text("Quitar", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
@@ -100,7 +111,7 @@ fun PetResponsibilitiesScreen(
         containerColor = BrandBackground,
         topBar = {
             LeoTopAppBar(
-                title = "Red de cuidado",
+                title = "Responsables",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -130,17 +141,19 @@ fun PetResponsibilitiesScreen(
                     .padding(padding)
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp)
-                    .semantics { contentDescription = "Red de cuidado de la mascota" }
+                    .semantics { contentDescription = "Responsables de la mascota" }
             ) {
                 Text(
-                    text = "Personas que colaboran en el cuidado.",
+                    text = state.petName.takeIf { it.isNotBlank() }?.let {
+                        "Personas responsables de $it. Todas ven la misma mascota y la misma VitaCora."
+                    } ?: "Personas responsables de esta mascota. Todas ven la misma mascota y la misma VitaCora.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(bottom = 12.dp)
                 )
                 if (state.mutationsLocked) {
                     Text(
-                        text = "La mascota no está activa: no se puede modificar la red de cuidado.",
+                        text = "La mascota no está activa: no se puede modificar responsables.",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.padding(bottom = 12.dp)
@@ -148,7 +161,7 @@ fun PetResponsibilitiesScreen(
                 }
 
                 Text(
-                    text = "Responsable principal",
+                    text = "Responsable original",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -162,6 +175,7 @@ fun PetResponsibilitiesScreen(
                     else -> ResponsibilityCard(
                         responsibility = principal,
                         displayName = state.displayNames[holderKey(principal.holder)],
+                        username = state.displayUsernames[holderKey(principal.holder)],
                         canRevoke = false,
                         onRevoke = {}
                     )
@@ -169,32 +183,36 @@ fun PetResponsibilitiesScreen(
 
                 Spacer(modifier = Modifier.height(16.dp))
                 Text(
-                    text = "Personas de confianza",
+                    text = "Otros responsables",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
-                if (state.coResponsibles.isEmpty() && state.custodians.isEmpty()) {
+                if (state.coResponsibles.isEmpty() && state.custodians.isEmpty() &&
+                    state.pendingInvites.isEmpty()
+                ) {
                     Text(
-                        text = "Todavía no agregaste personas de confianza.",
+                        text = "Todavía no invitaste a otra persona responsable.",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(top = 4.dp)
                     )
                 }
-                state.coResponsibles.forEach { item ->
+                (state.pendingInvites + state.coResponsibles + state.custodians).forEach { item ->
                     ResponsibilityCard(
                         responsibility = item,
                         displayName = state.displayNames[holderKey(item.holder)],
+                        username = state.displayUsernames[holderKey(item.holder)],
                         canRevoke = state.canManage && !state.mutationsLocked && !state.isSubmitting,
                         onRevoke = { revokeTargetId = item.id.value }
                     )
                 }
-                state.custodians.forEach { item ->
-                    ResponsibilityCard(
-                        responsibility = item,
-                        displayName = state.displayNames[holderKey(item.holder)],
-                        canRevoke = state.canManage && !state.mutationsLocked && !state.isSubmitting,
-                        onRevoke = { revokeTargetId = item.id.value }
+
+                if (state.canLeave) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    LeoOutlinedButton(
+                        text = "Dejar de ser responsable / Salir de esta mascota",
+                        onClick = viewModel::leaveThisPet,
+                        enabled = !state.isSubmitting
                     )
                 }
 
@@ -210,50 +228,32 @@ fun PetResponsibilitiesScreen(
 @Composable
 private fun AddResponsibilitySection(viewModel: PetResponsibilitiesViewModel) {
     val state by viewModel.uiState.collectAsState()
-    var roleIsCustody by remember { mutableStateOf(false) }
     var selectedPersonId by remember { mutableStateOf<String?>(null) }
     var selectedPersonLabel by remember { mutableStateOf<String?>(null) }
-    var organizationId by remember { mutableStateOf("") }
-    var endsAtText by remember { mutableStateOf("") }
-    var dateError by remember { mutableStateOf(false) }
     var showConfirm by remember { mutableStateOf(false) }
 
     if (showConfirm) {
-        val destinationLabel = selectedPersonLabel
-            ?: organizationId.trim().takeIf { it.isNotBlank() }?.let { "Organización $it" }
-            ?: ""
         AlertDialog(
             onDismissRequest = { showConfirm = false },
-            title = {
+            title = { Text("Enviar invitación") },
+            text = {
                 Text(
-                    if (roleIsCustody) "Agregar ayuda temporal"
-                    else "Agregar persona de confianza"
+                    "¿Invitar a ${selectedPersonLabel.orEmpty()} como responsable de esta mascota? " +
+                        "Al aceptar verá la misma mascota y la misma VitaCora en su perfil personal."
                 )
             },
-            text = { Text("¿Confirmás el vínculo para $destinationLabel?") },
             confirmButton = {
                 TextButton(
                     onClick = {
                         showConfirm = false
-                        val orgId = organizationId.trim().takeIf { it.isNotBlank() }
-                        if (roleIsCustody) {
-                            viewModel.addTemporaryCustodian(
-                                personId = selectedPersonId,
-                                organizationId = if (selectedPersonId == null) orgId else null,
-                                endsAtEpochMs = parseDateToEpochMs(endsAtText)
-                            )
-                        } else {
-                            viewModel.addCoResponsible(
-                                personId = selectedPersonId,
-                                organizationId = if (selectedPersonId == null) orgId else null
-                            )
+                        val personId = selectedPersonId
+                        if (personId != null) {
+                            viewModel.inviteResponsible(personId)
                         }
                         selectedPersonId = null
                         selectedPersonLabel = null
-                        organizationId = ""
-                        endsAtText = ""
                     }
-                ) { Text("Confirmar") }
+                ) { Text("Enviar") }
             },
             dismissButton = {
                 TextButton(onClick = { showConfirm = false }) { Text("Cancelar") }
@@ -261,39 +261,17 @@ private fun AddResponsibilitySection(viewModel: PetResponsibilitiesViewModel) {
         )
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Agregar vínculo",
+                text = "+ Agregar responsable",
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                FilterChip(
-                    selected = !roleIsCustody,
-                    onClick = { roleIsCustody = false },
-                    label = { Text("Persona de confianza") }
-                )
-                FilterChip(
-                    selected = roleIsCustody,
-                    onClick = { roleIsCustody = true },
-                    label = { Text("Ayuda temporal") }
-                )
-            }
-
             OutlinedTextField(
                 value = state.searchQuery,
                 onValueChange = viewModel::updateSearchQuery,
                 label = { Text("Buscar persona") },
-                supportingText = { Text("Búsqueda controlada de perfiles públicos") },
+                supportingText = { Text("Nombre o @usuario de LeoVer") },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 8.dp)
@@ -304,81 +282,90 @@ private fun AddResponsibilitySection(viewModel: PetResponsibilitiesViewModel) {
                 CircularProgressIndicator(modifier = Modifier.padding(top = 8.dp))
             }
             state.searchResults.forEach { profile ->
-                TextButton(
-                    onClick = {
-                        selectedPersonId = profile.id
-                        selectedPersonLabel = profile.displayName
-                        viewModel.updateSearchQuery("")
-                    }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable {
+                            selectedPersonId = profile.id
+                            selectedPersonLabel = buildString {
+                                append(profile.displayName)
+                                profile.username?.takeIf { it.isNotBlank() }?.let { append(" @$it") }
+                            }
+                            viewModel.updateSearchQuery("")
+                        }
+                        .padding(vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("${profile.displayName}${profile.username?.let { " (@$it)" }.orEmpty()}")
+                    Box(
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primaryContainer),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val avatar = profile.avatarUrl ?: profile.avatarPath
+                        if (avatar.isNullOrBlank()) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                        } else {
+                            AsyncImage(
+                                model = avatar,
+                                contentDescription = profile.displayName,
+                                modifier = Modifier.size(40.dp),
+                                contentScale = ContentScale.Crop
+                            )
+                        }
+                    }
+                    Column(modifier = Modifier.padding(start = 12.dp)) {
+                        Text(
+                            text = profile.displayName,
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        profile.username?.takeIf { it.isNotBlank() }?.let { username ->
+                            Text(
+                                text = "@$username",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
                 }
             }
             selectedPersonLabel?.let { label ->
                 Row(
-                    modifier = Modifier.padding(top = 4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Text(
-                        text = "Persona seleccionada: $label",
-                        style = MaterialTheme.typography.bodyMedium
+                        text = "Seleccionada: $label",
+                        style = MaterialTheme.typography.bodyMedium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f)
                     )
                     TextButton(
                         onClick = {
                             selectedPersonId = null
                             selectedPersonLabel = null
-                        }
-                    ) { Text("Quitar") }
+                        },
+                        modifier = Modifier.wrapContentWidth()
+                    ) { Text("Quitar", maxLines = 1) }
                 }
             }
 
-            OutlinedTextField(
-                value = organizationId,
-                onValueChange = { organizationId = it },
-                label = { Text("O ID de organización (opcional)") },
-                enabled = selectedPersonId == null,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                singleLine = true
+            LeoPrimaryButton(
+                text = "Enviar invitación",
+                onClick = { showConfirm = true },
+                enabled = !state.isSubmitting && selectedPersonId != null,
+                modifier = Modifier.padding(top = 12.dp)
             )
-
-            if (roleIsCustody) {
-                OutlinedTextField(
-                    value = endsAtText,
-                    onValueChange = {
-                        endsAtText = it
-                        dateError = false
-                    },
-                    label = { Text("Fecha de fin (AAAA-MM-DD)") },
-                    isError = dateError,
-                    supportingText = {
-                        if (dateError) Text("Fecha inválida. Usá el formato AAAA-MM-DD.")
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 8.dp),
-                    singleLine = true
-                )
-            }
-
-            Button(
-                onClick = {
-                    if (roleIsCustody && parseDateToEpochMs(endsAtText) == null) {
-                        dateError = true
-                        return@Button
-                    }
-                    showConfirm = true
-                },
-                enabled = !state.isSubmitting &&
-                    (selectedPersonId != null || organizationId.isNotBlank()),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp)
-            ) {
-                Text(if (roleIsCustody) "Agregar ayuda temporal" else "Agregar persona de confianza")
-            }
-        }
     }
 }
 
@@ -386,46 +373,48 @@ private fun AddResponsibilitySection(viewModel: PetResponsibilitiesViewModel) {
 private fun ResponsibilityCard(
     responsibility: PetResponsibility,
     displayName: String? = null,
+    username: String? = null,
     canRevoke: Boolean,
     onRevoke: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(top = 8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = displayName?.takeIf { it.isNotBlank() }
-                    ?: friendlyHolderLabel(responsibility.holder),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = "${roleLabel(responsibility.role)} · ${linkStatusLabel(responsibility.status)}",
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = buildString {
-                    append("Desde: ${formatEpochDate(responsibility.validFromEpochMs)}")
-                    responsibility.validToEpochMs?.let {
-                        append(" · Hasta: ${formatEpochDate(it)}")
-                    }
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
+    val name = displayName?.takeIf { it.isNotBlank() }
+        ?: friendlyHolderLabel(responsibility.holder)
+    val handle = username?.trim()?.removePrefix("@")?.takeIf { it.isNotBlank() }
+    LeoListRow(
+        title = name,
+        subtitle = handle?.let { "@$it" }
+            ?: "${roleLabel(responsibility)} · ${linkStatusLabel(responsibility.status)}",
+        leading = {
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Person,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+        },
+        trailing = {
             if (canRevoke && responsibility.role != PetResponsibilityRole.PRINCIPAL) {
-                OutlinedButton(
+                TextButton(
                     onClick = onRevoke,
-                    modifier = Modifier.padding(top = 8.dp)
+                    modifier = Modifier.wrapContentWidth()
                 ) {
-                    Text("Quitar de la red de cuidado", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        text = "Quitar",
+                        color = MaterialTheme.colorScheme.error,
+                        maxLines = 1
+                    )
                 }
             }
         }
-    }
+    )
 }
 
 internal fun holderKey(holder: PetPrincipalHolder): String = when (holder) {
@@ -442,10 +431,12 @@ internal fun friendlyHolderLabel(holder: PetPrincipalHolder): String = when (hol
 @Deprecated("Usar friendlyHolderLabel + displayNames resueltos", ReplaceWith("friendlyHolderLabel(holder)"))
 internal fun holderLabel(holder: PetPrincipalHolder): String = friendlyHolderLabel(holder)
 
-private fun roleLabel(role: PetResponsibilityRole): String = when (role) {
-    PetResponsibilityRole.PRINCIPAL -> "Responsable principal"
-    PetResponsibilityRole.CO_RESPONSIBLE -> "Persona de confianza"
-    PetResponsibilityRole.TEMPORARY_CUSTODIAN -> "Ayuda temporal"
+private fun roleLabel(responsibility: PetResponsibility): String {
+    return when (responsibility.role) {
+        PetResponsibilityRole.PRINCIPAL -> "Responsable original"
+        PetResponsibilityRole.CO_RESPONSIBLE -> "Responsable"
+        PetResponsibilityRole.TEMPORARY_CUSTODIAN -> "Responsable"
+    }
 }
 
 internal fun linkStatusLabel(status: PetLinkStatus): String = when (status) {
@@ -456,11 +447,30 @@ internal fun linkStatusLabel(status: PetLinkStatus): String = when (status) {
     PetLinkStatus.SUPERSEDED -> "Reemplazado"
 }
 
-internal fun formatEpochDate(epochMs: Long): String =
-    Instant.ofEpochMilli(epochMs)
+internal fun validSinceLabel(fromEpochMs: Long, toEpochMs: Long?): String? {
+    val from = formatEpochDate(fromEpochMs) ?: return toEpochMs?.let { to ->
+        formatEpochDate(to)?.let { "Hasta: $it" }
+    }
+    return buildString {
+        append("Desde: $from")
+        toEpochMs?.let { formatEpochDate(it)?.let { to -> append(" · Hasta: $to") } }
+    }
+}
+
+internal fun formatEpochDate(epochMs: Long): String? {
+    if (epochMs <= 0L) return null
+    val formatted = Instant.ofEpochMilli(epochMs)
         .atZone(ZoneOffset.UTC)
         .toLocalDate()
         .format(DateTimeFormatter.ISO_LOCAL_DATE)
+    return formatted.takeIf { it != "1970-01-01" }
+}
+
+/** Real timestamptz events (transfers): local date + hour. */
+internal fun formatEpochDateTime(epochMs: Long): String? {
+    if (epochMs <= 0L) return null
+    return com.comunidapp.app.ui.util.formatMemoryDateTime(epochMs).takeIf { it.isNotBlank() }
+}
 
 internal fun parseDateToEpochMs(raw: String): Long? =
     runCatching {

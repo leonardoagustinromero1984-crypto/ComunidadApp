@@ -106,24 +106,29 @@ fun SupportTicketAdminDetailScreen(
                         modifier = Modifier.fillMaxWidth()
                     ) { Text("Adjuntar a respuesta") }
                 }
-                item {
-                    OutlinedTextField(
-                        value = uiState.internalDraft,
-                        onValueChange = viewModel::onInternalDraftChange,
-                        label = { Text("Nota interna") },
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                }
-                item {
-                    Button(onClick = { viewModel.sendInternalNote() }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Agregar nota interna")
+                if (uiState.canViewSensitive) {
+                    item {
+                        OutlinedTextField(
+                            value = uiState.internalDraft,
+                            onValueChange = viewModel::onInternalDraftChange,
+                            label = { Text("Nota interna") },
+                            modifier = Modifier.fillMaxWidth()
+                        )
                     }
-                    if (uiState.canViewSensitive) {
+                    item {
+                        Button(
+                            onClick = { viewModel.sendInternalNote() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text("Agregar nota interna")
+                        }
                         Button(
                             onClick = { internalAttachmentPicker.launch(PdfOrImageMimeTypes) },
                             modifier = Modifier.fillMaxWidth()
                         ) { Text("Adjuntar solo para staff") }
                     }
+                }
+                item {
                     FileUploadProgressSection(
                         state = uploadState,
                         onCancel = {

@@ -11,8 +11,6 @@ import com.comunidapp.app.data.remote.supabase.m17.toM17PublicCampaign
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicContribution
 import com.comunidapp.app.data.repository.M17DonationValidators
 import com.comunidapp.app.data.repository.MockM17DonationRepository
-import com.comunidapp.app.data.repository.SupabaseM17DonationRepository
-import com.comunidapp.app.data.model.RegisterM17MockContributionInput
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
@@ -104,22 +102,47 @@ class M17DonationRemoteMapperTest {
     }
 
     @Test
-    fun remoteMockContributionUnavailable() {
-        val repo = SupabaseM17DonationRepository(actorUserId = { "u1" })
-        val result = kotlinx.coroutines.runBlocking {
-            repo.registerMockContribution(
-                RegisterM17MockContributionInput(
-                    campaignId = "x",
-                    amountMinor = 100,
-                    currency = "ARS"
-                )
+    fun declaredContributionStaysPendingUntilConfirmedOnce() {
+        val repo = MockM17DonationRepository(actorUserId = { "mock_user_admin" })
+        kotlinx.coroutines.runBlocking {
+            val campaign = repo.searchPublicCampaigns(
+                com.comunidapp.app.data.model.M17CampaignSearchFilter()
+            ).getOrThrow().first { it.status == M17CampaignStatus.PUBLISHED }
+            val before = campaign.confirmedAmountMinor
+            val declared = repo.declareContribution(campaign.id, 2500, "nota", "ARS").getOrThrow()
+            assertEquals(M17ContributionStatus.PENDING, declared.status)
+            assertEquals(before, repo.getPublicCampaignById(campaign.id).getOrThrow().confirmedAmountMinor)
+            val confirmed = repo.confirmContribution(declared.id).getOrThrow()
+            assertEquals(M17ContributionStatus.CONFIRMED, confirmed.status)
+            val after = repo.getPublicCampaignById(campaign.id).getOrThrow()
+            assertEquals(before + 2500, after.confirmedAmountMinor)
+            repo.confirmContribution(declared.id).getOrThrow()
+            assertEquals(
+                before + 2500,
+                repo.getPublicCampaignById(campaign.id).getOrThrow().confirmedAmountMinor
             )
         }
-        assertTrue(result.isFailure)
-        val code = result.exceptionOrNull()?.let {
-            com.comunidapp.app.data.remote.supabase.m17.M17DonationErrorMapper.codeOf(it)
+    }
+
+    @Test
+    fun rejectedContributionDoesNotEnterTotal() {
+        val repo = MockM17DonationRepository(actorUserId = { "mock_user_admin" })
+        kotlinx.coroutines.runBlocking {
+            val campaign = repo.searchPublicCampaigns(
+                com.comunidapp.app.data.model.M17CampaignSearchFilter()
+            ).getOrThrow().first { it.status == M17CampaignStatus.PUBLISHED }
+            val before = campaign.confirmedAmountMinor
+            val declared = repo.declareContribution(campaign.id, 1800, null, "ARS").getOrThrow()
+            repo.rejectContribution(declared.id).getOrThrow()
+            assertEquals(before, repo.getPublicCampaignById(campaign.id).getOrThrow().confirmedAmountMinor)
         }
-        assertEquals("M17_PAYMENT_INFRASTRUCTURE_UNAVAILABLE", code)
+    }
+
+    @Test
+    fun parseDeclaredAmountToMinor() {
+        assertEquals(150050L, M17DonationValidators.parseDeclaredAmountToMinor("1500,50"))
+        assertEquals(20_00L, M17DonationValidators.parseDeclaredAmountToMinor("20"))
+        assertNull(M17DonationValidators.parseDeclaredAmountToMinor("0"))
     }
 
     @Test

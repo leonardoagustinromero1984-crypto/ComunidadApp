@@ -10,8 +10,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -26,7 +24,15 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.user.ProfileVisibility
 import com.comunidapp.app.domain.user.SocialProfileVisibility
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoBody
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.LeoSectionTitle
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.ui.theme.VisualDirectionPilot
 import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.viewmodel.ProfilePrivacyViewModel
@@ -63,23 +69,24 @@ fun ProfilePrivacyScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 24.dp)
+                    .padding(horizontal = LeoDimens.SpaceXl)
                     .verticalScroll(rememberScrollState())
             ) {
-                Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(LeoDimens.SpaceMd))
                 Text(
                     text = "Quién puede ver tu perfil",
-                    style = MaterialTheme.typography.titleMedium
+                    style = LeoSectionTitle,
+                    color = BrandText
                 )
-                Spacer(modifier = Modifier.height(8.dp))
+                Spacer(modifier = Modifier.height(LeoDimens.SpaceS))
                 Text(
                     text = if (uiState.visibility == ProfileVisibility.PRIVATE) {
                         "Solo las personas que apruebes pueden ver tu perfil social."
                     } else {
                         "Cualquier persona puede ver tu perfil social y el contenido que publiques como público."
                     },
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = LeoCaption,
+                    color = BrandTextSecondary
                 )
                 Spacer(modifier = Modifier.height(16.dp))
                 SocialProfileVisibility.selectable.forEach { visibility ->
@@ -100,7 +107,8 @@ fun ProfilePrivacyScreen(
                         )
                         Text(
                             text = SocialProfileVisibility.label(visibility),
-                            style = MaterialTheme.typography.bodyLarge
+                            style = LeoBody,
+                            color = BrandText
                         )
                     }
                 }
@@ -108,18 +116,16 @@ fun ProfilePrivacyScreen(
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = message,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        color = UrgentRed,
+                        style = LeoCaption
                     )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(
+                LeoPrimaryButton(
+                    text = "Guardar",
                     onClick = viewModel::save,
-                    enabled = !uiState.isSaving,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Guardar")
-                }
+                    enabled = !uiState.isSaving
+                )
             }
         }
     }

@@ -31,8 +31,16 @@ object SupabaseRowDecoding {
         "opening_hours",
         "public_contacts",
         "needs",
-        "services"
+        "services",
+        "allergies",
+        "medications",
+        "vaccinations",
+        "parasite_treatments",
+        "conditions",
+        "weights"
     )
+
+    private val jsonbObjectKeys = setOf("care_instructions")
 
     fun unwrapComposite(element: JsonElement): JsonElement = when (element) {
         is JsonArray -> JsonArray(element.map { unwrapComposite(it) })
@@ -88,6 +96,18 @@ object SupabaseRowDecoding {
     }
 
     private fun normalizeField(key: String, value: JsonElement): JsonElement {
+        if (key in jsonbObjectKeys) {
+            return when (value) {
+                JsonNull -> JsonNull
+                is JsonArray -> if (value.isEmpty()) JsonNull else value.firstOrNull() ?: JsonNull
+                is JsonPrimitive -> if (value.isString) {
+                    runCatching { json.parseToJsonElement(value.content) }.getOrDefault(JsonNull)
+                } else {
+                    value
+                }
+                else -> value
+            }
+        }
         if (key in jsonbKeys) {
             when (value) {
                 JsonNull -> return JsonArray(emptyList())

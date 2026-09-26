@@ -134,8 +134,8 @@ class Ux06PhysicalQaStabilizationTest {
     @Test
     fun VITACORA_MEANING_PRESENT() {
         val body = TutorialCatalog.definition(TutorialId.T00_MULTI_FUNCTION_INTRO).steps[1].body
-        assertTrue(body.contains("vita —vida—"))
-        assertTrue(body.contains("cora"))
+        assertTrue(body.contains("vita (vida)"))
+        assertTrue(body.contains("cora (corazón)"))
         assertFalse(body.contains("bitácora"))
         assertTrue(body.contains("Su vida. Su historia. Sus cuidados."))
     }

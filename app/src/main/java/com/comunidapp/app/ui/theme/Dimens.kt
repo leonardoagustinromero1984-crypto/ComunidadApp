@@ -8,6 +8,7 @@ object LeoDimens {
     val SpaceSm = 8.dp
     val SpaceCompact = 12.dp
     val SpaceMd = 16.dp
+    val Space20 = 20.dp
     val SpaceSection = 24.dp
     val SpaceLg = 32.dp
 
@@ -19,6 +20,7 @@ object LeoDimens {
     val SpaceXl = SpaceSection
     val SpaceXxl = SpaceLg
 
+    val RadiusSmall = 8.dp
     val RadiusChip = 12.dp
     val RadiusField = 14.dp
     val RadiusCard = 16.dp

@@ -15,11 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,6 +51,11 @@ import com.comunidapp.app.viewmodel.M13SightingDetailUiState
 import com.comunidapp.app.viewmodel.M13SightingDetailViewModel
 import com.comunidapp.app.viewmodel.M13SightingListUiState
 import com.comunidapp.app.viewmodel.M13SightingListViewModel
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
 fun M13SightingListScreen(
@@ -76,14 +77,16 @@ fun M13SightingListScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
-            OutlinedButton(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
-                Text("Reportar avistamiento")
-            }
+            LeoOutlinedButton(
+                text = "Reportar avistamiento",
+                onClick = onCreate
+            )
             if (onOpenMetrics != null) {
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = onOpenMetrics, modifier = Modifier.fillMaxWidth()) {
-                    Text("Métricas operativas (sin PII)")
-                }
+                LeoOutlinedButton(
+                    text = "Métricas operativas (sin PII)",
+                    onClick = onOpenMetrics
+                )
             }
             Spacer(Modifier.height(12.dp))
             when (val s = state) {
@@ -97,13 +100,12 @@ fun M13SightingListScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(s.items, key = { it.id }) { item ->
-                        Card(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onSightingClick(item.id) },
-                            elevation = CardDefaults.cardElevation(2.dp)
+                                .clickable { onSightingClick(item.id) }
                         ) {
-                            Column(Modifier.padding(12.dp)) {
+                            Column(Modifier.padding(LeoDimens.SpaceCompact)) {
                                 Text(
                                     "${item.species.name} · ${item.primaryColor}",
                                     fontWeight = FontWeight.Bold
@@ -119,6 +121,7 @@ fun M13SightingListScreen(
                                     style = MaterialTheme.typography.labelSmall
                                 )
                             }
+                            LeoHairline()
                         }
                     }
                 }
@@ -189,7 +192,8 @@ fun M13SightingCreateScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
-            Button(
+            LeoPrimaryButton(
+                text = if (busy) "Guardando…" else "Publicar avistamiento",
                 onClick = {
                     viewModel.create(
                         caseId = caseId,
@@ -201,11 +205,8 @@ fun M13SightingCreateScreen(
                             .orEmpty()
                     )
                 },
-                enabled = !busy,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (busy) "Guardando…" else "Publicar avistamiento")
-            }
+                enabled = !busy
+            )
             message?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = MaterialTheme.colorScheme.primary)
@@ -256,9 +257,10 @@ fun M13SightingDetailScreen(
                     Text("Estado: ${s.item.status}")
                     if (s.item.status.name == "ACTIVE") {
                         Spacer(Modifier.height(12.dp))
-                        OutlinedButton(onClick = { viewModel.withdraw() }) {
-                            Text("Retirar mi avistamiento")
-                        }
+                        LeoOutlinedButton(
+                            text = "Retirar mi avistamiento",
+                            onClick = { viewModel.withdraw() }
+                        )
                     }
                 }
             }
@@ -299,23 +301,11 @@ fun M13CaseMatchesScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(s.items, key = { it.id }) { item ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onMatchClick(item.id) }
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(
-                                    "Score ${item.score} · ${item.level}",
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text("Estado: ${item.status}")
-                                Text(
-                                    item.reasons.joinToString { it.labelEs },
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
-                        }
+                        LeoListRow(
+                            title = "Score ${item.score} · ${item.level}",
+                            subtitle = "Estado: ${item.status} · ${item.reasons.joinToString { it.labelEs }}",
+                            onClick = { onMatchClick(item.id) }
+                        )
                     }
                 }
             }
@@ -385,37 +375,37 @@ fun M13MatchDetailScreen(
                         style = MaterialTheme.typography.bodySmall
                     )
                 }
-                OutlinedButton(
+                LeoOutlinedButton(
+                    text = "Abrir revisión",
                     onClick = { viewModel.openReview() },
-                    enabled = canOpen,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Abrir revisión") }
-                Button(
+                    enabled = canOpen
+                )
+                LeoPrimaryButton(
+                    text = "Confirmar",
                     onClick = {
                         viewModel.decide(M13MatchDecisionType.CONFIRMED, "HUMAN_CONFIRM")
                     },
-                    enabled = canDecide,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Confirmar") }
-                OutlinedButton(
+                    enabled = canDecide
+                )
+                LeoOutlinedButton(
+                    text = "Rechazar",
                     onClick = {
                         viewModel.decide(M13MatchDecisionType.REJECTED, "HUMAN_REJECT")
                     },
-                    enabled = canDecide,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Rechazar") }
-                OutlinedButton(
+                    enabled = canDecide
+                )
+                LeoOutlinedButton(
+                    text = "Inconclusa",
                     onClick = {
                         viewModel.decide(M13MatchDecisionType.INCONCLUSIVE, "HUMAN_INCONCLUSIVE")
                     },
-                    enabled = canDecide,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Inconclusa") }
-                OutlinedButton(
+                    enabled = canDecide
+                )
+                LeoOutlinedButton(
+                    text = "Retirar coincidencia",
                     onClick = { viewModel.withdraw() },
-                    enabled = canWithdraw,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Retirar coincidencia") }
+                    enabled = canWithdraw
+                )
 
                 if (history.isNotEmpty()) {
                     Text(
@@ -504,12 +494,10 @@ fun M13MetricsScreen(
                         m.reasonDistribution.forEach { (k, v) -> Text("- $k: $v") }
                     }
                     Spacer(Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = { viewModel.refresh() },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Actualizar")
-                    }
+                    LeoOutlinedButton(
+                        text = "Actualizar",
+                        onClick = { viewModel.refresh() }
+                    )
                 }
             }
         }

@@ -10,6 +10,15 @@ enum class M28GrantPurpose {
 
 enum class M28GrantStatus { ACTIVE, REVOKED, EXPIRED }
 
+data class VitacoraAccessTarget(
+    val targetKind: String,
+    val targetId: String,
+    val displayName: String,
+    val subtitle: String,
+    val avatarAssetId: String? = null,
+    val verified: Boolean = false
+)
+
 data class M28ProfessionalAccessGrant(
     val id: String,
     val petId: String,

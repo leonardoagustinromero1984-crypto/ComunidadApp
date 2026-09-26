@@ -29,12 +29,18 @@ object CanonicalHolderMapping {
         val displayName: String?
     )
 
-    fun map(holders: List<HolderInput>): List<MappedHolder> {
-        val firstPersonOwnerId = holders.firstOrNull { isPersonOwner(it) }?.linkId
+    fun map(
+        holders: List<HolderInput>,
+        creatorPersonId: String? = null
+    ): List<MappedHolder> {
+        val creatorId = creatorPersonId?.trim()?.takeIf { it.isNotEmpty() }
+        val principalLinkId = holders.firstOrNull {
+            isPersonOwner(it) && creatorId != null && it.personId == creatorId
+        }?.linkId ?: holders.firstOrNull { isPersonOwner(it) }?.linkId
         return holders.map { holder ->
             MappedHolder(
                 linkId = holder.linkId,
-                uiRole = uiRole(holder, firstPersonOwnerId),
+                uiRole = uiRole(holder, principalLinkId),
                 holderKind = holder.holderKind.trim().uppercase(),
                 canonicalRole = holder.role.trim().uppercase(),
                 status = normalizeStatus(holder.status),

@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -28,10 +27,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.ContentReport
+import com.comunidapp.app.ui.components.leo.LeoHairline
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.AdminModerationViewModel
 
 @Composable
@@ -110,6 +110,7 @@ fun AdminModerationScreen(
                     items(uiState.reports, key = { it.id }) { report ->
                         ReportCard(
                             report = report,
+                            canManage = uiState.canManageReports,
                             onDismiss = { viewModel.dismissReport(report.id) },
                             onAction = { viewModel.actionReport(report.id) }
                         )
@@ -123,30 +124,54 @@ fun AdminModerationScreen(
 @Composable
 private fun ReportCard(
     report: ContentReport,
+    canManage: Boolean,
     onDismiss: () -> Unit,
     onAction: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(LeoDimens.SpaceMd)) {
             Text(
-                text = "${report.targetType.name} · ${report.targetId}",
+                text = targetLabel(report.targetType),
                 style = MaterialTheme.typography.titleSmall,
                 fontWeight = FontWeight.SemiBold
             )
             Text(
-                text = report.reason,
+                text = "Motivo: ${report.reason}",
                 style = MaterialTheme.typography.bodyMedium,
                 modifier = Modifier.padding(top = 4.dp)
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 8.dp),
-                horizontalArrangement = Arrangement.End
-            ) {
-                TextButton(onClick = onDismiss) { Text("Desestimar") }
-                TextButton(onClick = onAction) { Text("Tomar acción") }
+            Text(
+                text = "Estado: ${statusLabel(report.status)}",
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(top = 4.dp)
+            )
+            if (canManage) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(top = 8.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) { Text("Desestimar") }
+                    TextButton(onClick = onAction) { Text("Marcar para acción") }
+                }
             }
         }
+        LeoHairline()
     }
 }
+
+private fun targetLabel(type: com.comunidapp.app.data.model.ReportTargetType): String =
+    when (type) {
+        com.comunidapp.app.data.model.ReportTargetType.USER -> "Perfil"
+        com.comunidapp.app.data.model.ReportTargetType.COMMENT -> "Comentario"
+        com.comunidapp.app.data.model.ReportTargetType.POST -> "Publicación"
+    }
+
+private fun statusLabel(status: com.comunidapp.app.data.model.ReportStatus): String =
+    when (status) {
+        com.comunidapp.app.data.model.ReportStatus.OPEN -> "Abierto"
+        com.comunidapp.app.data.model.ReportStatus.REVIEWED -> "Revisado"
+        com.comunidapp.app.data.model.ReportStatus.DISMISSED -> "Desestimado"
+        com.comunidapp.app.data.model.ReportStatus.ACTIONED -> "Marcado para acción"
+    }

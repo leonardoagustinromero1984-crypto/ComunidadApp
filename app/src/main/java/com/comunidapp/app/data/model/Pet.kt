@@ -40,6 +40,7 @@ data class Pet(
     val conditions: List<String> = emptyList(),
     val color: String? = null,
     val breed: String? = null,
+    val breedId: String? = null,
     val personality: String? = null,
     val locationText: String? = null,
     val reminders: List<PetReminder> = emptyList(),
@@ -62,5 +63,14 @@ data class Pet(
     val ownerIds: List<String> = emptyList(),
     val organizationResponsibleId: String? = null,
     val publicVitacoraNumber: Long? = null,
-    val organizationExternalPetId: String? = null
+    val organizationExternalPetId: String? = null,
+    /** True when canon_get_pet_health failed after pet profile loaded. */
+    val healthReadFailed: Boolean = false,
+    val managementContextKind: String? = null,
+    val managementContextId: String? = null,
+    val originKind: String = "STANDARD",
+    /** Canonical public.species.code. Source of truth for persistence; enum is a display fallback. */
+    val speciesCode: String? = null,
+    val speciesName: String? = null,
+    val secondaryLabelSingular: String? = null
 )

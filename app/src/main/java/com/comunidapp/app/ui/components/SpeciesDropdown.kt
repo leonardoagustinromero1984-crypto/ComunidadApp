@@ -13,21 +13,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.comunidapp.app.data.model.PetSpecies
+import com.comunidapp.app.data.repository.CatalogSpecies
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SpeciesDropdown(
-    selected: PetSpecies,
-    onSelected: (PetSpecies) -> Unit,
+    selectedCode: String,
+    onSelected: (CatalogSpecies) -> Unit,
+    options: List<CatalogSpecies>,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
-    label: String = "Especie / tipo de animal",
-    options: List<PetSpecies> = PetSpecies.entries,
-    labels: Map<PetSpecies, String> = emptyMap()
+    label: String = com.comunidapp.app.ui.components.leo.LeoRequiredField.label("Especie / tipo de animal")
 ) {
     var expanded by remember { mutableStateOf(false) }
-    val visible = options.ifEmpty { PetSpecies.entries }
+    val selected = options.firstOrNull { it.code.equals(selectedCode, true) }
 
     ExposedDropdownMenuBox(
         expanded = expanded,
@@ -35,7 +34,7 @@ fun SpeciesDropdown(
         modifier = modifier
     ) {
         OutlinedTextField(
-            value = labels[selected] ?: selected.toDisplayName(),
+            value = selected?.name.orEmpty(),
             onValueChange = {},
             readOnly = true,
             enabled = enabled,
@@ -49,9 +48,9 @@ fun SpeciesDropdown(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            visible.forEach { species ->
+            options.forEach { species ->
                 DropdownMenuItem(
-                    text = { Text(labels[species] ?: species.toDisplayName()) },
+                    text = { Text(species.name) },
                     onClick = {
                         onSelected(species)
                         expanded = false

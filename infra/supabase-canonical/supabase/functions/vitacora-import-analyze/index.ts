@@ -56,6 +56,21 @@ serve(async (req) => {
   if (!jobId) return json({ error: "JOB_ID_REQUIRED" }, 400, cors);
 
   const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
+  const flagRes = await fetch(`${supabaseUrl}/rest/v1/rpc/security_feature_enabled`, {
+    method: "POST",
+    headers: {
+      Authorization: auth,
+      apikey,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ p_flag: "imports.enabled" }),
+  });
+  if (flagRes.ok) {
+    const enabled = await flagRes.json();
+    if (enabled === false) {
+      return json({ error: "FEATURE_TEMPORARILY_DISABLED" }, 403, cors);
+    }
+  }
   const jobRes = await fetch(`${supabaseUrl}/rest/v1/rpc/canon_import_get`, {
     method: "POST",
     headers: {

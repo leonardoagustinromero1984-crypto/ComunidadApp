@@ -1,8 +1,10 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.BuildConfig
 import com.comunidapp.app.core.config.AppConfigProvider
 import com.comunidapp.app.core.result.AppError
 import com.comunidapp.app.core.result.AppErrorKind
+import com.comunidapp.app.core.result.AppErrorMapper
 import com.comunidapp.app.core.result.AppResult
 import com.comunidapp.app.data.files.FileObjectUploader
 import com.comunidapp.app.data.files.SupabaseFileObjectUploader
@@ -43,7 +45,8 @@ import io.github.jan.supabase.auth.auth
 import io.github.jan.supabase.exceptions.RestException
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
-import io.github.jan.supabase.storage.storage
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonNull
@@ -51,9 +54,12 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
+import org.json.JSONObject
+import java.io.OutputStreamWriter
+import java.net.HttpURLConnection
+import java.net.URL
 import java.util.UUID
 import java.util.concurrent.ConcurrentHashMap
-import kotlin.time.Duration.Companion.seconds
 
 class CanonicalFileObjectUploader(
     private val inner: FileObjectUploader = SupabaseFileObjectUploader()
@@ -161,8 +167,9 @@ class CanonicalFileUploadRepository : FileUploadRepository {
         } catch (error: RegisterMediaParseException) {
             return stepFail(error.code, error.code)
         } catch (error: RegisterMediaException) {
-            return stepFail(error.code, error.code)
+            return mediaLimitFailure(error) ?: stepFail(error.code, error.code)
         } catch (error: Exception) {
+            mediaLimitFailure(error)?.let { return it }
             val classified = RegisterFailure.classify(error)
             return stepFail(classified.code, classified.code)
         }
@@ -339,6 +346,32 @@ class CanonicalFileUploadRepository : FileUploadRepository {
                 code = step
             )
         )
+
+    private fun mediaLimitFailure(error: Throwable): AppResult.Failure? {
+        val signal = generateSequence(error) { it.cause }
+            .mapNotNull { it.message }
+            .joinToString(" ")
+            .uppercase()
+        return when {
+            "FEATURE_TEMPORARILY_DISABLED" in signal ->
+                AppResult.Failure(AppErrorMapper.featureTemporarilyDisabled(signal, error))
+            "FILE_TOO_LARGE" in signal ->
+                AppResult.Failure(
+                    AppError(
+                        kind = AppErrorKind.VALIDATION,
+                        userMessage = "El video supera el tamaño máximo permitido.",
+                        technicalMessage = signal,
+                        cause = error,
+                        code = "FILE_TOO_LARGE"
+                    )
+                )
+            "QUOTA_EXCEEDED" in signal ->
+                AppResult.Failure(AppErrorMapper.quotaExceeded(signal, error))
+            "RATE_LIMITED" in signal || "RATE_LIMIT_EXCEEDED" in signal ->
+                AppResult.Failure(AppErrorMapper.rateLimited(signal).copy(cause = error))
+            else -> null
+        }
+    }
 }
 
 class CanonicalFileAssetRepository : FileAssetRepository {
@@ -406,56 +439,125 @@ class CanonicalFileDownloadRepository(
         context: FileAuthContext,
         nowEpochMs: Long
     ): AppResult<FileSignedAccess> {
-        val asset = when (val result = assets.getAsset(request.assetId)) {
-            is AppResult.Success -> result.data
-            is AppResult.Failure -> return result
+        val ttl = FileSignedAccessRules.ttlSeconds(request.ttlClass)
+        val asset = (assets.getAsset(request.assetId) as? AppResult.Success)?.data
+        if (asset != null &&
+            FileAuthorization.canRead(context, asset) == FileAccessDecision.ALLOWED
+        ) {
+            val row = runCatching { selectMedia(request.assetId) }.getOrNull()
+            if (row != null && CanonicalMedia.isPublicBucket(row.bucket)) {
+                val base = AppConfigProvider.get().supabaseUrl
+                    ?: BuildConfig.SUPABASE_URL
+                return AppResult.Success(
+                    FileSignedAccess(
+                        assetId = asset.id,
+                        temporaryUrl = CanonicalMedia.publicObjectUrl(base, row.bucket, row.objectPath),
+                        expiresAtEpochMs = nowEpochMs + ttl * 1000L,
+                        ttlClass = request.ttlClass
+                    )
+                )
+            }
         }
-        val decision = FileAuthorization.canRead(context, asset)
-        if (decision != FileAccessDecision.ALLOWED) {
-            return failureFromThrowable(IllegalStateException("FORBIDDEN_${decision.name}"))
-        }
-        val row = try {
-            selectMedia(request.assetId) ?: error(CanonicalMedia.STEP_MEDIA_SELECT)
-        } catch (error: Exception) {
-            return AppResult.Failure(
-                AppError(
-                    kind = AppErrorKind.NOT_FOUND,
-                    userMessage = "No pudimos mostrar la foto.",
-                    technicalMessage = "${CanonicalMedia.STEP_MEDIA_SELECT}: ${error.message}",
-                    code = CanonicalMedia.STEP_MEDIA_SELECT
+        // Backend ACL is authoritative. Client SELECT / FileAuthorization must not
+        // hide media the viewer is already allowed to see (post, avatar, reel).
+        return when (val signed = invokeCanonicalMediaSignedUrl(request.assetId)) {
+            is AppResult.Failure -> signed
+            is AppResult.Success -> AppResult.Success(
+                FileSignedAccess(
+                    assetId = asset?.id ?: request.assetId,
+                    temporaryUrl = signed.data.url,
+                    expiresAtEpochMs = nowEpochMs + signed.data.ttlSeconds * 1000L,
+                    ttlClass = request.ttlClass
                 )
             )
         }
-        val ttl = FileSignedAccessRules.ttlSeconds(request.ttlClass)
-        val temporaryUrl = try {
-            if (CanonicalMedia.isPublicBucket(row.bucket)) {
-                val base = AppConfigProvider.get().supabaseUrl
-                    ?: com.comunidapp.app.BuildConfig.SUPABASE_URL
-                CanonicalMedia.publicObjectUrl(base, row.bucket, row.objectPath)
-            } else {
-                supabase.storage.from(row.bucket).createSignedUrl(
-                    path = row.objectPath,
-                    expiresIn = ttl.seconds
+    }
+}
+
+private data class MintedMediaUrl(
+    val url: String,
+    val ttlSeconds: Int
+)
+
+internal suspend fun mintMediaUrl(assetId: String): String? =
+    when (val result = invokeCanonicalMediaSignedUrl(assetId)) {
+        is AppResult.Success -> result.data.url
+        is AppResult.Failure -> null
+    }
+
+private suspend fun invokeCanonicalMediaSignedUrl(assetId: String): AppResult<MintedMediaUrl> {
+    val session = supabase.auth.currentSessionOrNull()
+        ?: return AppResult.Failure(AppErrorMapper.unauthorized("NOT_AUTHENTICATED"))
+    return withContext(Dispatchers.IO) {
+        try {
+            val base = AppConfigProvider.get().supabaseUrl ?: BuildConfig.SUPABASE_URL
+            val url = URL("${base.trimEnd('/')}/functions/v1/${CanonicalBackend.EDGE_MEDIA_SIGNED_URL}")
+            val conn = (url.openConnection() as HttpURLConnection).apply {
+                requestMethod = "POST"
+                connectTimeout = 20_000
+                readTimeout = 20_000
+                doOutput = true
+                setRequestProperty("Authorization", "Bearer ${session.accessToken}")
+                setRequestProperty("apikey", BuildConfig.SUPABASE_ANON_KEY)
+                setRequestProperty("Content-Type", "application/json")
+            }
+            OutputStreamWriter(conn.outputStream, Charsets.UTF_8).use { writer ->
+                writer.write(JSONObject().put("asset_id", assetId).toString())
+            }
+            val code = conn.responseCode
+            val text = runCatching {
+                (if (code in 200..299) conn.inputStream else conn.errorStream)
+                    ?.bufferedReader()
+                    ?.readText()
+                    .orEmpty()
+            }.getOrDefault("")
+            conn.disconnect()
+            val payload = runCatching { JSONObject(text.ifBlank { "{}" }) }.getOrDefault(JSONObject())
+            val errorCode = payload.optString("error")
+            when {
+                code in 200..299 && payload.optBoolean("ok", false) -> {
+                    val signed = payload.optString("signed_url")
+                    if (signed.isBlank()) {
+                        AppResult.Failure(
+                            AppError(
+                                kind = AppErrorKind.SERVER,
+                                userMessage = "No pudimos mostrar la foto.",
+                                technicalMessage = CanonicalMedia.STEP_SIGNED_URL_RESOLUTION,
+                                code = CanonicalMedia.STEP_SIGNED_URL_RESOLUTION
+                            )
+                        )
+                    } else {
+                        val expiresIn = payload.optInt("expires_in", 600).coerceIn(1, 600)
+                        AppResult.Success(MintedMediaUrl(signed, expiresIn))
+                    }
+                }
+                code == 429 || errorCode.equals("RATE_LIMITED", ignoreCase = true) ->
+                    AppResult.Failure(AppErrorMapper.rateLimited(errorCode.ifBlank { "RATE_LIMITED" }))
+                code == 403 || errorCode.equals("forbidden", ignoreCase = true) ->
+                    AppResult.Failure(
+                        AppError(
+                            kind = AppErrorKind.FORBIDDEN,
+                            userMessage = "No tenés permiso para esta acción.",
+                            technicalMessage = errorCode.ifBlank { "FORBIDDEN" },
+                            code = "FORBIDDEN"
+                        )
+                    )
+                code == 401 || errorCode.equals("unauthorized", ignoreCase = true) ->
+                    AppResult.Failure(AppErrorMapper.unauthorized(errorCode.ifBlank { "unauthorized" }))
+                code == 404 ->
+                    AppResult.Failure(AppErrorMapper.notFound(errorCode.ifBlank { "not_found" }))
+                else -> AppResult.Failure(
+                    AppError(
+                        kind = AppErrorKind.SERVER,
+                        userMessage = "No pudimos mostrar la foto.",
+                        technicalMessage = "${CanonicalMedia.STEP_SIGNED_URL_RESOLUTION}: ${errorCode.ifBlank { code.toString() }}",
+                        code = CanonicalMedia.STEP_SIGNED_URL_RESOLUTION
+                    )
                 )
             }
         } catch (error: Exception) {
-            return AppResult.Failure(
-                AppError(
-                    kind = AppErrorKind.SERVER,
-                    userMessage = "No pudimos mostrar la foto.",
-                    technicalMessage = "${CanonicalMedia.STEP_SIGNED_URL_RESOLUTION}: ${error.message}",
-                    code = CanonicalMedia.STEP_SIGNED_URL_RESOLUTION
-                )
-            )
+            AppResult.Failure(AppErrorMapper.fromThrowable(error, "No pudimos mostrar la foto."))
         }
-        return AppResult.Success(
-            FileSignedAccess(
-                assetId = asset.id,
-                temporaryUrl = temporaryUrl,
-                expiresAtEpochMs = nowEpochMs + ttl * 1000L,
-                ttlClass = request.ttlClass
-            )
-        )
     }
 }
 
@@ -517,6 +619,9 @@ private object RegisterFailure {
             pg
         ).joinToString(" ").uppercase()
         val stage = when {
+            "FILE_TOO_LARGE" in signal -> "SIZE"
+            "QUOTA_EXCEEDED" in signal -> "QUOTA"
+            "RATE_LIMITED" in signal || "RATE_LIMIT_EXCEEDED" in signal -> "RATE"
             http == 401 || "PGRST301" in signal || "JWT" in signal ||
                 "NOT_AUTHENTICATED" in signal || "23503" in signal ||
                 "FOREIGN KEY" in signal || "PERSONS" in signal -> "AUTH"

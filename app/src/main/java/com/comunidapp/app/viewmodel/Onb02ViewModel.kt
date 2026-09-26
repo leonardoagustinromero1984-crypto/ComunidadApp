@@ -57,7 +57,8 @@ data class Onb02UiState(
     val stepIndex: Int = 0,
     val reopenId: TutorialId? = null,
     val plan: List<Onb02PlanItem> = emptyList(),
-    val planIndex: Int = 0
+    val planIndex: Int = 0,
+    val errorMessage: String? = null
 ) {
     val currentTutorial: TutorialDefinition?
         get() = when {
@@ -80,7 +81,8 @@ class Onb02ViewModel(
     private val userIdProvider: () -> String = {
         AuthProvider.repository.getCurrentUser()?.id.orEmpty()
     },
-    private val capabilityOverride: PersonCapabilityRepository? = null
+    private val capabilityOverride: PersonCapabilityRepository? = null,
+    private val persistIndependentVeterinaryOverride: (suspend (String) -> Result<Boolean>)? = null
 ) : ViewModel() {
 
     private val _ui = MutableStateFlow(
@@ -219,7 +221,8 @@ class Onb02ViewModel(
 
     fun selectProfessionalSpecialty(specialty: IndependentProfessionalSpecialty) {
         _ui.value = _ui.value.copy(
-            selection = ProfileActorTaxonomy.applyProfessional(specialty, _ui.value.selection)
+            selection = ProfileActorTaxonomy.applyProfessional(specialty, _ui.value.selection),
+            errorMessage = null
         )
     }
 
@@ -430,6 +433,32 @@ class Onb02ViewModel(
 
     fun confirmSelection() {
         val state = _ui.value
+        val selectedExtras = if (state.kind == Onb02FlowKind.ADD_FUNCTION_LATER) {
+            state.selection.extras
+        } else {
+            state.selection.extras
+        }
+        if (state.kind == Onb02FlowKind.ADD_FUNCTION_LATER &&
+            LeoverFunction.VETERINARY_PROFESSIONAL in selectedExtras
+        ) {
+            viewModelScope.launch {
+                val persisted = persistIndependentVeterinary(userId)
+                val active = persisted.getOrDefault(false)
+                if (!active) {
+                    _ui.value = _ui.value.copy(
+                        errorMessage = "No pudimos activar Veterinario independiente. Intentá de nuevo."
+                    )
+                    return@launch
+                }
+                completeConfirmSelection()
+            }
+            return
+        }
+        completeConfirmSelection()
+    }
+
+    private fun completeConfirmSelection() {
+        val state = _ui.value
         val selected = if (state.kind == Onb02FlowKind.ADD_FUNCTION_LATER) {
             newlyAdded = state.selection.extras
             val merged = store.addExtras(userId, state.selection.extras)
@@ -511,7 +540,13 @@ class Onb02ViewModel(
     }
 
     fun setupRouteAfterTutorials(): String? {
-        if (_ui.value.kind == Onb02FlowKind.REOPEN_FROM_HELP) return null
+        if (_ui.value.kind == Onb02FlowKind.REOPEN_FROM_HELP) {
+            return if (_ui.value.currentTutorial?.id == TutorialId.T10B_SHELTER) {
+                com.comunidapp.app.navigation.NavRoutes.leoverVerification("SHELTER")
+            } else {
+                null
+            }
+        }
         if (_ui.value.kind == Onb02FlowKind.EVENT_QUEUE) {
             return eventLandingRoute
                 ?: com.comunidapp.app.domain.onboarding.onb03.PendingTutorialQueue.peek()?.landingRoute
@@ -547,6 +582,44 @@ class Onb02ViewModel(
         return route
     }
 
+    private suspend fun persistIndependentVeterinary(userId: String): Result<Boolean> {
+        persistIndependentVeterinaryOverride?.let { return it(userId) }
+        return persistVeterinaryIndependentDefault(userId)
+    }
+
+    private suspend fun persistVeterinaryIndependentDefault(userId: String): Result<Boolean> {
+        if (userId.isBlank()) {
+            return Result.failure(IllegalStateException("NOT_AUTHENTICATED"))
+        }
+        val upsert = com.comunidapp.app.data.provider.DataProvider.serviceRepository.upsertServiceProfile(
+            com.comunidapp.app.data.model.ServiceProfile(
+                id = "",
+                ownerId = userId,
+                category = com.comunidapp.app.data.model.ServiceCategory.VET,
+                name = com.comunidapp.app.domain.onboarding.onb02.IndependentVeterinaryActivation.DISPLAY_NAME,
+                location = ""
+            )
+        )
+        val providerId = upsert.getOrNull()?.takeIf { it.isNotBlank() }
+            ?: return Result.failure(upsert.exceptionOrNull() ?: IllegalStateException("VET_PERSIST_FAILED"))
+        val created = com.comunidapp.app.domain.context.OperationalContext.Provider(
+            entityId = providerId,
+            displayName = com.comunidapp.app.domain.onboarding.onb02.IndependentVeterinaryActivation.DISPLAY_NAME,
+            category = com.comunidapp.app.domain.onboarding.onb02.IndependentVeterinaryActivation.STORAGE_CATEGORY
+        )
+        repeat(4) { attempt ->
+            runCatching { OperationalContextProvider.refresh(userId) }
+            val fromBackend = com.comunidapp.app.domain.onboarding.onb02.IndependentVeterinaryActivation
+                .isPersistedActive(OperationalContextProvider.available.value)
+            if (fromBackend) {
+                runCatching { OperationalContextProvider.activateNewlyCreated(created) }
+                return Result.success(true)
+            }
+            if (attempt < 3) kotlinx.coroutines.delay(350)
+        }
+        return Result.failure(IllegalStateException("VET_READBACK_EMPTY"))
+    }
+
     private fun persistCapabilities(selection: FunctionSelection) {
         val repo = capabilityOverride
             ?: runCatching { com.comunidapp.app.data.provider.DataProvider.personCapabilityRepository }
@@ -570,6 +643,9 @@ class Onb02ViewModel(
                         )
                     )
                 }
+            }
+            if (LeoverFunction.VETERINARY_PROFESSIONAL in selection.extras) {
+                runCatching { persistIndependentVeterinary(userId) }
             }
             runCatching { OperationalContextProvider.refresh(userId) }
             val target = com.comunidapp.app.domain.context.NewContextActivation.contextForSelection(

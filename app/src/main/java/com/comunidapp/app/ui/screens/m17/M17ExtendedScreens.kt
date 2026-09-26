@@ -11,8 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -37,6 +35,10 @@ import com.comunidapp.app.viewmodel.M17InKindListUiState
 import com.comunidapp.app.viewmodel.M17InKindListViewModel
 import com.comunidapp.app.viewmodel.M17VolunteerListUiState
 import com.comunidapp.app.viewmodel.M17VolunteerListViewModel
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
 fun M17HubScreen(
@@ -79,9 +81,11 @@ fun M17HubScreen(
             when (tab) {
                 0 -> Column(Modifier.padding(16.dp)) {
                     Text("Directorio de campañas solidarias con transparencia mock.")
-                    Button(onClick = onCampaigns, modifier = Modifier.padding(top = 12.dp)) {
-                        Text("Ver campañas")
-                    }
+                    LeoPrimaryButton(
+                        text = "Ver campañas",
+                        onClick = onCampaigns,
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
                 }
                 1 -> M17InKindListContent(onItemClick = onInKindDetail)
                 2 -> M17VolunteerListContent(onItemClick = onVolunteerDetail)
@@ -105,10 +109,12 @@ private fun M17InKindListContent(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(s.items, key = { it.id }) { need ->
-                Card(
-                    Modifier.fillMaxWidth().clickable { onItemClick(need.id) }
+                Column(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { onItemClick(need.id) }
                 ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
                         Text(need.title, fontWeight = FontWeight.Bold)
                         Text(need.organizationDisplayName, style = MaterialTheme.typography.bodySmall)
                         Text("${need.quantityDelivered}/${need.quantityRequested} ${need.quantityUnit}")
@@ -117,6 +123,7 @@ private fun M17InKindListContent(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
+                    LeoHairline()
                 }
             }
         }
@@ -138,16 +145,15 @@ private fun M17VolunteerListContent(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             items(s.items, key = { it.id }) { opp ->
-                Card(
-                    Modifier.fillMaxWidth().clickable { onItemClick(opp.id) }
-                ) {
-                    Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(opp.title, fontWeight = FontWeight.Bold)
-                        Text(opp.organizationDisplayName, style = MaterialTheme.typography.bodySmall)
-                        Text("Cupos: ${opp.slotsFilled}/${opp.slotsNeeded}")
-                        opp.scheduleHint?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-                    }
-                }
+                LeoListRow(
+                    title = opp.title,
+                    subtitle = buildString {
+                        append(opp.organizationDisplayName)
+                        append(" · Cupos: ${opp.slotsFilled}/${opp.slotsNeeded}")
+                        opp.scheduleHint?.let { append(" · $it") }
+                    },
+                    onClick = { onItemClick(opp.id) }
+                )
             }
         }
     }

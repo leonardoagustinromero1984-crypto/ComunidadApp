@@ -362,6 +362,7 @@ class ReceivedAdoptionApplicationsViewModel(
 
     fun markUnderReview(id: String) = runAction { applicationRepository.markUnderReview(id) }
     fun accept(id: String) = runAction { applicationRepository.acceptApplication(id) }
+    fun reactivate(id: String) = runAction { applicationRepository.reactivateApplication(id) }
     fun reject(id: String, reason: String?) =
         runAction { applicationRepository.rejectApplication(id, reason) }
 

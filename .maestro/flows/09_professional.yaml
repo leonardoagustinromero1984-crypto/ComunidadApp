@@ -1,0 +1,36 @@
+appId: ${APP_ID}
+name: "Professional hub QA10 QA11 QA16"
+tags:
+  - community-care
+  - professional
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA10_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Consultorio"
+- takeScreenshot: professional_hub
+- tapOn: "Pacientes"
+- tapOn: "Buscar"
+- inputText: "QA - Mora"
+- tapOn: "QA - Mora"
+- takeScreenshot: professional_mora_centro
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA16_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Pacientes"
+- tapOn: "Buscar"
+- inputText: "QA - Mora"
+- assertNotVisible: "QA privado Centro"
+- takeScreenshot: professional_mora_norte

@@ -60,6 +60,8 @@ data class VitaCoraProposal(
 
 interface VitaCoraRepository {
     suspend fun createMoment(petId: String, kind: String, title: String, body: String): Result<String>
+    /** Idempotent SOCIAL save keyed by pet + source social post id in body. */
+    suspend fun saveSocialMoment(petId: String, title: String, body: String): Result<String>
     suspend fun grantAccess(
         petId: String,
         granteeKind: VitaCoraHolderKind,

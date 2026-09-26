@@ -1,0 +1,48 @@
+appId: ${APP_ID}
+name: "Verification states QA07 QA08 QA09"
+tags:
+  - community-care
+  - verification
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA07_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Perfil"
+- assertVisible: "Verificado por LeoVer"
+- takeScreenshot: verification_qa07
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA08_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Perfil"
+- assertVisible: "Verificación pendiente"
+- assertNotVisible: "Solicitar verificación"
+- takeScreenshot: verification_qa08
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA09_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Perfil"
+- assertVisible: "Solicitar verificación"
+- tapOn: "Solicitar verificación"
+- assertVisible: "Solicitar verificación"
+- takeScreenshot: verification_qa09
+# Does not submit. Preserves seed NOT_REQUESTED.

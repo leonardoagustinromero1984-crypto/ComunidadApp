@@ -8,7 +8,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.ErrorOutline
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -26,6 +31,7 @@ import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.ui.theme.LeoBody
 import com.comunidapp.app.ui.theme.LeoCardTitle
 import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.MutedText
 
 @Composable
 fun LoadingState(
@@ -38,7 +44,11 @@ fun LoadingState(
             .semantics { this.contentDescription = contentDescription },
         contentAlignment = Alignment.Center
     ) {
-        CircularProgressIndicator(color = BrandOrange)
+        CircularProgressIndicator(
+            color = BrandOrange,
+            modifier = Modifier.size(28.dp),
+            strokeWidth = 2.dp
+        )
     }
 }
 
@@ -96,6 +106,13 @@ fun ErrorState(
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Icon(
+            imageVector = Icons.Outlined.ErrorOutline,
+            contentDescription = null,
+            tint = MutedText,
+            modifier = Modifier.size(28.dp)
+        )
+        Spacer(Modifier.height(LeoDimens.SpaceS))
         Text(
             text = title,
             style = LeoCardTitle,

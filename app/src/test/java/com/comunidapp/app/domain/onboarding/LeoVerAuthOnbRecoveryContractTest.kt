@@ -161,40 +161,80 @@ class LeoVerAuthOnbRecoveryContractTest {
         try {
             assertEquals(Onb02Completion.NOT_STARTED, store.completion("uid-1"))
             assertEquals(
+                Onb02FlowKind.FULL_ONBOARDING,
+                Onb02StoreProvider.decideEntry(
+                    userId = "uid-1",
+                    justCompletedProfileSetup = false,
+                    personOnboardingComplete = true,
+                    remoteTutorialFlowCompleted = false
+                )
+            )
+            assertEquals(Onb02Completion.FULL_PENDING, store.completion("uid-1"))
+            store.markCompleted("uid-1")
+            assertEquals(
                 null,
                 Onb02StoreProvider.decideEntry(
                     userId = "uid-1",
                     justCompletedProfileSetup = false,
-                    personOnboardingComplete = true
+                    personOnboardingComplete = true,
+                    remoteTutorialFlowCompleted = true
                 )
             )
-            assertEquals(Onb02Completion.COMPLETED, store.completion("uid-1"))
-            assertTrue(store.selectionConfirmed("uid-1"))
             assertEquals(
                 Onb02FlowKind.FULL_ONBOARDING,
                 Onb02StoreProvider.decideEntry(
                     userId = "new-google",
                     justCompletedProfileSetup = true,
-                    personOnboardingComplete = true
+                    personOnboardingComplete = true,
+                    remoteTutorialFlowCompleted = false
                 )
             )
         } finally {
             Onb02StoreProvider.override = null
         }
+        assertFalse(
+            Onb02EntryPolicy.skipSelectorForExistingComplete(
+                completion = Onb02Completion.NOT_STARTED,
+                remoteTutorialFlowCompleted = false,
+                justCompletedProfileSetup = false
+            )
+        )
         assertTrue(
             Onb02EntryPolicy.skipSelectorForExistingComplete(
                 completion = Onb02Completion.NOT_STARTED,
-                personOnboardingComplete = true,
+                remoteTutorialFlowCompleted = true,
                 justCompletedProfileSetup = false
             )
         )
         assertFalse(
             Onb02EntryPolicy.skipSelectorForExistingComplete(
                 completion = Onb02Completion.NOT_STARTED,
-                personOnboardingComplete = true,
+                remoteTutorialFlowCompleted = true,
                 justCompletedProfileSetup = true
             )
         )
+    }
+
+    @Test
+    fun NEW_GOOGLE_COMPLETE_PERSON_WITHOUT_REMOTE_FLOW_STARTS_TUTORIAL() {
+        val store = InMemoryOnb02Store()
+        Onb02StoreProvider.override = store
+        try {
+            assertEquals(
+                Onb02FlowKind.FULL_ONBOARDING,
+                Onb02StoreProvider.decideEntry(
+                    userId = "new-google-complete",
+                    justCompletedProfileSetup = false,
+                    personOnboardingComplete = true,
+                    remoteTutorialFlowCompleted = false
+                )
+            )
+            assertEquals(Onb02Completion.FULL_PENDING, store.completion("new-google-complete"))
+        } finally {
+            Onb02StoreProvider.override = null
+        }
+        val session = source("app/src/main/java/com/comunidapp/app/viewmodel/SessionViewModel.kt")
+        assertFalse(session.contains("store.markCompleted(user.id)"))
     }
 
     @Test

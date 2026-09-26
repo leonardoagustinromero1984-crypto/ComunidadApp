@@ -1,0 +1,45 @@
+appId: ${APP_ID}
+---
+- launchApp:
+    appId: ${APP_ID}
+    clearState: false
+- runFlow:
+    when:
+      visible: "Permitir"
+    commands:
+      - tapOn: "Permitir"
+- runFlow:
+    when:
+      visible: "Allow"
+    commands:
+      - tapOn: "Allow"
+- runFlow:
+    when:
+      visible: "Saltar"
+    commands:
+      - tapOn: "Saltar"
+- extendedWaitUntil:
+    visible: "Correo o usuario"
+    timeout: 90000
+- takeScreenshot: login_form
+- tapOn: "Correo o usuario"
+- eraseText
+- inputText: ${USERNAME}
+- hideKeyboard
+- tapOn: "Contraseña"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- tapOn: "Iniciar sesión"
+- runFlow:
+    when:
+      visible: "Saltar"
+    commands:
+      - tapOn: "Saltar"
+- runFlow:
+    when:
+      visible: "Ahora no"
+    commands:
+      - tapOn: "Ahora no"
+- extendedWaitUntil:
+    visible: "Inicio"
+    timeout: 60000

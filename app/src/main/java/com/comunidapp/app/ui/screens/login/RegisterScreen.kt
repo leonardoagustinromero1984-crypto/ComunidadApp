@@ -14,8 +14,6 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -40,9 +38,16 @@ import com.comunidapp.app.ui.components.PasswordTextField
 import com.comunidapp.app.ui.components.leo.AuthMethodDivider
 import com.comunidapp.app.ui.components.leo.ContinueWithGoogleButton
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.v2.v2KeepVisibleOnFocus
+import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoBody
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.ui.theme.VisualDirectionPilot
 import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.viewmodel.RegisterViewModel
@@ -88,12 +93,12 @@ fun RegisterScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .padding(horizontal = 32.dp, vertical = 24.dp)
+                .padding(horizontal = LeoDimens.SpaceXl, vertical = LeoDimens.SpaceXl)
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             BrandLogo(widthFraction = 0.65f, height = 100.dp)
-            Spacer(modifier = Modifier.height(20.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.Space20))
             ContinueWithGoogleButton(
                 onClick = {
                     val activity = context.findActivity()
@@ -101,30 +106,30 @@ fun RegisterScreen(
                 },
                 enabled = !uiState.isLoading && !uiState.googleAuthenticated
             )
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceMd))
             AuthMethodDivider()
-            Spacer(modifier = Modifier.height(16.dp))
-            OutlinedTextField(
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceMd))
+            LeoTextField(
                 value = uiState.firstName,
                 onValueChange = viewModel::onFirstNameChange,
-                label = { Text("Nombre") },
+                label = "Nombre",
+                required = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .v2KeepVisibleOnFocus(),
-                singleLine = true,
                 enabled = !uiState.isLoading,
                 isError = uiState.fieldErrors.containsKey("name"),
-                supportingText = { uiState.fieldErrors["name"]?.let { Text(it) } }
+                supportingText = uiState.fieldErrors["name"]
             )
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceCompact))
+            LeoTextField(
                 value = uiState.lastName,
                 onValueChange = viewModel::onLastNameChange,
-                label = { Text("Apellido") },
+                label = "Apellido",
+                required = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .v2KeepVisibleOnFocus(),
-                singleLine = true,
                 enabled = !uiState.isLoading,
                 isError = uiState.fieldErrors.containsKey("name")
             )
@@ -135,32 +140,30 @@ fun RegisterScreen(
             ) {
                 Text(
                     text = "@",
-                    style = MaterialTheme.typography.titleMedium,
+                    style = LeoCardTitle,
+                    color = BrandText,
                     modifier = Modifier.padding(end = 4.dp)
                 )
-                OutlinedTextField(
+                LeoTextField(
                     value = uiState.username.removePrefix("@"),
                     onValueChange = { viewModel.onUsernameChange(it.removePrefix("@")) },
-                    label = { Text("Nombre de usuario") },
-                    supportingText = {
-                        val hint = when (uiState.usernameAvailability) {
-                            UsernameAvailabilityUi.IDLE ->
-                                "Será tu identificador público en LeoVer. Ej: veroobregon"
-                            UsernameAvailabilityUi.CHECKING -> "Comprobando disponibilidad…"
-                            UsernameAvailabilityUi.AVAILABLE -> "Nombre disponible."
-                            UsernameAvailabilityUi.TAKEN -> "Este nombre ya está en uso."
-                            UsernameAvailabilityUi.RESERVED -> "Este nombre está reservado."
-                            UsernameAvailabilityUi.INVALID ->
-                                uiState.fieldErrors["username"] ?: "Nombre inválido."
-                            UsernameAvailabilityUi.ERROR ->
-                                "No pudimos comprobar la disponibilidad. Intentá nuevamente."
-                        }
-                        Text(uiState.fieldErrors["username"] ?: hint)
+                    label = "Nombre de usuario",
+                    required = true,
+                    supportingText = uiState.fieldErrors["username"] ?: when (uiState.usernameAvailability) {
+                        UsernameAvailabilityUi.IDLE ->
+                            "Será tu identificador público en LeoVer. Ej: veroobregon"
+                        UsernameAvailabilityUi.CHECKING -> "Comprobando disponibilidad…"
+                        UsernameAvailabilityUi.AVAILABLE -> "Nombre disponible."
+                        UsernameAvailabilityUi.TAKEN -> "Este nombre ya está en uso."
+                        UsernameAvailabilityUi.RESERVED -> "Este nombre está reservado."
+                        UsernameAvailabilityUi.INVALID ->
+                            uiState.fieldErrors["username"] ?: "Nombre inválido."
+                        UsernameAvailabilityUi.ERROR ->
+                            "No pudimos comprobar la disponibilidad. Intentá nuevamente."
                     },
                     modifier = Modifier
                         .weight(1f)
                         .v2KeepVisibleOnFocus(),
-                    singleLine = true,
                     enabled = !uiState.isLoading,
                     isError = uiState.fieldErrors.containsKey("username") ||
                         uiState.usernameAvailability == UsernameAvailabilityUi.TAKEN ||
@@ -171,45 +174,48 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(12.dp))
             com.comunidapp.app.ui.components.DatePickerField(
                 label = "Fecha de nacimiento",
+                required = true,
                 isoDate = uiState.birthDate,
                 onDateSelected = viewModel::onBirthDateChange,
                 enabled = !uiState.isLoading,
                 historicalOnly = true
             )
             uiState.fieldErrors["birthDate"]?.let {
-                Text(text = it, color = MaterialTheme.colorScheme.error)
+                Text(text = it, color = UrgentRed, style = LeoCaption)
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            OutlinedTextField(
+            Spacer(modifier = Modifier.height(LeoDimens.SpaceCompact))
+            LeoTextField(
                 value = uiState.email,
                 onValueChange = viewModel::onEmailChange,
-                label = { Text("Correo") },
+                label = "Correo",
+                required = true,
                 modifier = Modifier
                     .fillMaxWidth()
                     .v2KeepVisibleOnFocus(),
-                singleLine = true,
                 enabled = !uiState.isLoading,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
                 isError = uiState.fieldErrors.containsKey("email"),
-                supportingText = { uiState.fieldErrors["email"]?.let { Text(it) } }
+                supportingText = uiState.fieldErrors["email"]
             )
             Spacer(modifier = Modifier.height(12.dp))
             PasswordTextField(
                 value = uiState.password,
                 onValueChange = viewModel::onPasswordChange,
-                label = "Contraseña"
+                label = "Contraseña",
+                required = true
             )
             Spacer(modifier = Modifier.height(12.dp))
             PasswordTextField(
                 value = uiState.confirmPassword,
                 onValueChange = viewModel::onConfirmPasswordChange,
-                label = "Confirmar contraseña"
+                label = "Confirmar contraseña",
+                required = true
             )
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
                 text = "Mínimo ${com.comunidapp.app.domain.auth.validation.AuthValidators.MIN_PASSWORD_LENGTH} caracteres.",
-                style = MaterialTheme.typography.bodySmall,
+                style = LeoCaption,
                 color = BrandTextSecondary,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -225,10 +231,10 @@ fun RegisterScreen(
                     enabled = !uiState.isLoading,
                     modifier = Modifier.semantics { contentDescription = "Aceptar términos" }
                 )
-                Text(text = "Acepto los ", style = MaterialTheme.typography.bodyMedium)
+                Text(text = "Acepto los ", style = LeoBody, color = BrandText)
                 Text(
                     text = "Términos${LegalDocumentConfig.terms.draftLabel?.let { " ($it)" } ?: ""}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = LeoBody,
                     color = leoVisual().primary,
                     modifier = Modifier.clickable(onClick = onNavigateToTerms)
                 )
@@ -243,10 +249,10 @@ fun RegisterScreen(
                     enabled = !uiState.isLoading,
                     modifier = Modifier.semantics { contentDescription = "Aceptar privacidad" }
                 )
-                Text(text = "Acepto la ", style = MaterialTheme.typography.bodyMedium)
+                Text(text = "Acepto la ", style = LeoBody, color = BrandText)
                 Text(
                     text = "Privacidad${LegalDocumentConfig.privacy.draftLabel?.let { " ($it)" } ?: ""}",
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = LeoBody,
                     color = leoVisual().primary,
                     modifier = Modifier.clickable(onClick = onNavigateToPrivacy)
                 )
@@ -257,12 +263,12 @@ fun RegisterScreen(
                 uiState.errorTitle?.let { title ->
                     Text(
                         text = title,
-                        style = MaterialTheme.typography.titleSmall,
-                        color = MaterialTheme.colorScheme.error
+                        style = LeoCardTitle,
+                        color = UrgentRed
                     )
                     Spacer(modifier = Modifier.height(4.dp))
                 }
-                Text(text = error, color = MaterialTheme.colorScheme.error)
+                Text(text = error, color = UrgentRed, style = LeoCaption)
             }
             if (uiState.offerResendConfirmation) {
                 TextButton(onClick = viewModel::resendConfirmation, enabled = !uiState.isLoading) {

@@ -36,4 +36,13 @@ class ChatMessageMergeTest {
         val merged = ChatMessageMerge.appendConfirmed(listOf(local), msg("m1"))
         assertEquals(listOf("m1"), merged.map { it.id })
     }
+
+    @Test
+    fun union_by_id_does_not_duplicate_pages() {
+        val older = msg("m0").copy(createdAt = 1L)
+        val recent = msg("m1").copy(createdAt = 2L)
+        val overlap = msg("m1").copy(createdAt = 2L)
+        val merged = ChatMessageMerge.unionById(listOf(older, recent), listOf(overlap, older))
+        assertEquals(listOf("m0", "m1"), merged.map { it.id })
+    }
 }

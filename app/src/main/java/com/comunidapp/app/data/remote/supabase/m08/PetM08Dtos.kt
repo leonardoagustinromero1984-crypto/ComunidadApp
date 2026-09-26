@@ -17,6 +17,8 @@ data class PetM08Row(
     val name: String,
     @SerialName("photo_url") val photoUrl: String? = null,
     val species: String,
+    val speciesName: String? = null,
+    val secondaryLabelSingular: String? = null,
     val sex: String,
     @SerialName("age_years") val ageYears: Int = 0,
     @SerialName("age_months") val ageMonths: Int = 0,
@@ -34,6 +36,7 @@ data class PetM08Row(
     @SerialName("weight_kg") val weightKg: Float? = null,
     val color: String? = null,
     val breed: String? = null,
+    @SerialName("breed_id") val breedId: String? = null,
     val personality: String? = null,
     @SerialName("location_text") val locationText: String? = null,
     val reminders: List<PetReminderDto>? = emptyList(),
@@ -48,7 +51,12 @@ data class PetM08Row(
     val medications: List<String> = emptyList(),
     val conditions: List<String> = emptyList(),
     @SerialName("public_code") val publicCode: String? = null,
-    @SerialName("public_vitacora_number") val publicVitacoraNumber: Long? = null
+    @SerialName("public_vitacora_number") val publicVitacoraNumber: Long? = null,
+    @SerialName("created_by_user_id") val createdByUserId: String? = null,
+    @SerialName("management_context_kind") val managementContextKind: String? = null,
+    @SerialName("management_context_id") val managementContextId: String? = null,
+    @SerialName("origin_kind") val originKind: String = "STANDARD",
+    @kotlinx.serialization.Transient val healthReadFailed: Boolean = false
 )
 
 @Serializable
@@ -75,6 +83,7 @@ data class AccessiblePetM08Row(
     @SerialName("weight_kg") val weightKg: Float? = null,
     val color: String? = null,
     val breed: String? = null,
+    @SerialName("breed_id") val breedId: String? = null,
     val personality: String? = null,
     @SerialName("location_text") val locationText: String? = null,
     val reminders: List<PetReminderDto>? = emptyList(),
@@ -95,7 +104,27 @@ data class AccessiblePetM08Row(
     @SerialName("can_archive") val canArchive: Boolean = false,
     @SerialName("can_mark_deceased") val canMarkDeceased: Boolean = false,
     @SerialName("public_code") val publicCode: String? = null,
-    @SerialName("public_vitacora_number") val publicVitacoraNumber: Long? = null
+    @SerialName("public_vitacora_number") val publicVitacoraNumber: Long? = null,
+    @SerialName("created_by_user_id") val createdByUserId: String? = null,
+    @SerialName("management_context_kind") val managementContextKind: String? = null,
+    @SerialName("management_context_id") val managementContextId: String? = null,
+    @SerialName("origin_kind") val originKind: String = "STANDARD"
+)
+
+@Serializable
+data class ProfilePetRow(
+    val id: String,
+    val name: String,
+    @SerialName("species_code") val speciesCode: String = "",
+    val sex: String? = null,
+    @SerialName("avatar_asset_id") val avatarAssetId: String? = null,
+    @SerialName("public_code") val publicCode: String? = null,
+    @SerialName("birth_precision") val birthPrecision: String = "UNKNOWN",
+    @SerialName("birth_date") val birthDate: String? = null,
+    @SerialName("birth_year") val birthYear: Int? = null,
+    @SerialName("birth_month") val birthMonth: Int? = null,
+    @SerialName("estimated_age_months") val estimatedAgeMonths: Int? = null,
+    @SerialName("estimated_as_of") val estimatedAsOf: String? = null
 )
 
 @Serializable
@@ -104,6 +133,7 @@ data class PetAccessContextRow(
     @SerialName("relation_code") val relationCode: String = "NONE",
     @SerialName("principal_person_id") val principalPersonId: String? = null,
     @SerialName("principal_organization_id") val principalOrganizationId: String? = null,
+    @SerialName("principal_display_name") val principalDisplayName: String? = null,
     val capabilities: List<String> = emptyList(),
     @SerialName("can_read") val canRead: Boolean = false,
     @SerialName("can_update") val canUpdate: Boolean = false,
@@ -134,7 +164,9 @@ data class CreatePetWithPrincipalParams(
     @SerialName("p_birth_year") val birthYear: Int? = null,
     @SerialName("p_birth_month") val birthMonth: Int? = null,
     @SerialName("p_estimated_age_months") val estimatedAgeMonths: Int? = null,
-    @SerialName("p_estimated_as_of") val estimatedAsOf: String? = null
+    @SerialName("p_estimated_as_of") val estimatedAsOf: String? = null,
+    @SerialName("p_management_context_kind") val managementContextKind: String? = null,
+    @SerialName("p_management_context_id") val managementContextId: String? = null
 )
 
 @Serializable
@@ -143,6 +175,7 @@ data class UpdatePetProfileParams(
     @SerialName("p_name") val name: String,
     @SerialName("p_species") val species: String,
     @SerialName("p_breed") val breed: String? = null,
+    val breedId: String? = null,
     @SerialName("p_sex") val sex: String,
     @SerialName("p_size") val size: String,
     @SerialName("p_description") val description: String,
@@ -273,7 +306,8 @@ data class PetResponsibilityM08Row(
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("accepted_at") val acceptedAt: String? = null,
     val reason: String? = null,
-    @SerialName("display_name") val displayName: String? = null
+    @SerialName("display_name") val displayName: String? = null,
+    @SerialName("care_role") val careRole: String? = null
 )
 
 @Serializable

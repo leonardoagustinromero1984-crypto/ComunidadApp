@@ -2,6 +2,7 @@ package com.comunidapp.app.ui.screens.profile
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,40 +24,63 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Chat
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Bookmark
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pets
+import androidx.compose.material.icons.filled.PhotoLibrary
 import androidx.compose.material.icons.filled.PostAdd
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SwapHoriz
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.User
+import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.domain.pets.PetCareTransferCopy
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.leo.LeoEmptyState
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.v2.V2NavRow
 import com.comunidapp.app.ui.components.v2.V2PetsStrip
 import com.comunidapp.app.ui.components.v2.V2SectionHeader
+import com.comunidapp.app.ui.components.v2.V2SurfaceCard
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.ui.theme.LeoCaption
@@ -67,8 +91,11 @@ import com.comunidapp.app.ui.theme.MutedText
 import com.comunidapp.app.ui.theme.VisualDirectionPilot
 import com.comunidapp.app.ui.theme.leoVisual
 import com.comunidapp.app.domain.context.OperationalContextProvider
+import com.comunidapp.app.domain.pets.PetManagementContext
 import com.comunidapp.app.domain.onboarding.onb02.Onb02Copy
+import com.comunidapp.app.viewmodel.CareNetworkPersonViewModel
 import com.comunidapp.app.viewmodel.ProfileViewModel
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -82,6 +109,7 @@ fun ProfileScreen(
     onNavigateToChat: () -> Unit = {},
     onNavigateToFriendRequests: () -> Unit = {},
     onNavigateToNotifications: () -> Unit = {},
+    onNavigateToAdministration: () -> Unit = {},
     onNavigateToModeration: () -> Unit = {},
     onNavigateToPlatformAdmin: () -> Unit = {},
     onNavigateToCases: () -> Unit = {},
@@ -94,6 +122,9 @@ fun ProfileScreen(
     onNavigateToObservability: () -> Unit = {},
     onNavigateToSearchFriends: () -> Unit = {},
     onNavigateToMyFriends: () -> Unit = {},
+    onNavigateToMiManada: () -> Unit = onNavigateToMyFriends,
+    onNavigateToSavedPosts: () -> Unit = {},
+    onNavigateToMyMemories: () -> Unit = {},
     onNavigateToAccountSecurity: () -> Unit = {},
     onNavigateToPrivacy: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
@@ -106,6 +137,7 @@ fun ProfileScreen(
     onNavigateToMyPublications: () -> Unit = {},
     onFriendClick: (String) -> Unit = {},
     onPetClick: (String) -> Unit = {},
+    onOpenIncomingTransfer: (String) -> Unit = {},
     viewModel: ProfileViewModel = viewModel()
 ) {
     @Suppress("UNUSED_PARAMETER", "UNUSED_VARIABLE")
@@ -121,6 +153,26 @@ fun ProfileScreen(
     }
 
     val uiState by viewModel.uiState.collectAsState()
+    val incomingInbox = DataProvider.incomingCareTransferInbox
+    val incomingTransfers by incomingInbox.items.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val inboxScope = rememberCoroutineScope()
+    DisposableEffect(lifecycleOwner, incomingInbox) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                inboxScope.launch {
+                    val probe = com.comunidapp.app.domain.perf.ScreenPerfProbe.begin("profile")
+                    if (uiState.user != null || incomingTransfers.isNotEmpty()) {
+                        probe.markFirstContent()
+                    }
+                    probe.network { incomingInbox.refresh("profile_resume") }
+                    probe.finish("inbox=${incomingInbox.items.value.size}")
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val snackbarHostState = remember { SnackbarHostState() }
     val listState = rememberLazyListState()
     val showPets = uiState.user != null
@@ -132,8 +184,9 @@ fun ProfileScreen(
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         when {
-            uiState.isLoading -> LoadingState(Modifier.padding(padding))
-            uiState.user == null -> {
+            uiState.isLoading && uiState.user == null && incomingTransfers.isEmpty() ->
+                LoadingState(Modifier.padding(padding))
+            uiState.user == null && incomingTransfers.isEmpty() -> {
                 Box(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center
@@ -146,7 +199,29 @@ fun ProfileScreen(
                 }
             }
             else -> {
-                val user = uiState.user!!
+                val user = uiState.user
+                if (user == null) {
+                            IncomingCareTransfersSection(
+                                transfers = incomingTransfers,
+                                enabled = true,
+                                onAccept = { transfer ->
+                                    inboxScope.launch {
+                                        incomingInbox.accept(transfer)
+                                        onNavigateToMyPets()
+                                    }
+                                },
+                                onReject = { transfer ->
+                                    inboxScope.launch { incomingInbox.reject(transfer) }
+                                },
+                                modifier = Modifier.padding(padding)
+                            )
+                    return@Scaffold
+                }
+                val operationalContext by OperationalContextProvider.active.collectAsState()
+                val showCareNetwork = PetManagementContext.keyOf(
+                    operationalContext,
+                    user.id
+                ).kind == PetManagementContext.PERSON
 
                 LazyColumn(
                     state = listState,
@@ -172,12 +247,31 @@ fun ProfileScreen(
                         CompactUseLeoverAsRow(onClick = onNavigateToUseLeoverAs)
                     }
 
+                    if (incomingTransfers.isNotEmpty()) {
+                        item(key = "incoming_care_transfers") {
+                            IncomingCareTransfersSection(
+                                transfers = incomingTransfers,
+                                enabled = true,
+                                onAccept = { transfer ->
+                                    inboxScope.launch {
+                                        incomingInbox.accept(transfer)
+                                        onNavigateToMyPets()
+                                    }
+                                },
+                                onReject = { transfer ->
+                                    inboxScope.launch { incomingInbox.reject(transfer) }
+                                }
+                            )
+                        }
+                    }
+
                     if (showPets) {
                         item(key = "pets_header") {
                             V2SectionHeader(
                                 title = "Mis mascotas",
                                 actionLabel = "Ver todas",
-                                onAction = onNavigateToMyPets
+                                onAction = onNavigateToMyPets,
+                                modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)
                             )
                         }
                         item(key = "pets_row") {
@@ -186,6 +280,12 @@ fun ProfileScreen(
                                 onPetClick = onPetClick,
                                 onAddPet = onNavigateToAddPet
                             )
+                        }
+                    }
+
+                    if (showCareNetwork) {
+                        item(key = "pet_responsible_invites") {
+                            PetResponsibleInvitesSection()
                         }
                     }
 
@@ -201,26 +301,34 @@ fun ProfileScreen(
                                 onClick = onNavigateToMyPublications
                             )
                             V2NavRow(
-                                title = "Mis amigos",
-                                description = "Personas con las que te conectaste",
-                                icon = Icons.Default.People,
-                                onClick = onNavigateToMyFriends
-                            )
-                            V2NavRow(
-                                title = "Solicitudes de amistad",
-                                description = if (uiState.pendingFriendRequests > 0) {
-                                    "${uiState.pendingFriendRequests} pendiente(s)"
+                                title = if (uiState.pendingFriendRequests > 0) {
+                                    "Mi manada · ${uiState.pendingFriendRequests}"
                                 } else {
-                                    "Revisá quién quiere conectar contigo"
+                                    "Mi manada"
+                                },
+                                description = if (uiState.pendingFriendRequests > 0) {
+                                    if (uiState.pendingFriendRequests == 1) {
+                                        "1 solicitud pendiente"
+                                    } else {
+                                        "${uiState.pendingFriendRequests} solicitudes pendientes"
+                                    }
+                                } else {
+                                    "Conexiones, solicitudes y personas"
                                 },
                                 icon = Icons.Default.People,
-                                onClick = onNavigateToFriendRequests
+                                onClick = onNavigateToMiManada
                             )
                             V2NavRow(
-                                title = "Buscar amigos",
-                                description = "Encontrá personas por nombre o usuario",
-                                icon = Icons.Default.People,
-                                onClick = onNavigateToSearchFriends
+                                title = "Guardados",
+                                description = "Publicaciones y clips que guardaste",
+                                icon = Icons.Default.Bookmark,
+                                onClick = onNavigateToSavedPosts
+                            )
+                            V2NavRow(
+                                title = PetCareTransferCopy.MEMORIES_TITLE,
+                                description = PetCareTransferCopy.MEMORIES_SUBTITLE,
+                                icon = Icons.Default.PhotoLibrary,
+                                onClick = onNavigateToMyMemories
                             )
                             V2NavRow(
                                 title = "Mensajes",
@@ -234,6 +342,14 @@ fun ProfileScreen(
                                 icon = Icons.Default.Favorite,
                                 onClick = onNavigateToDonations
                             )
+                            if (uiState.canEnterAdministration) {
+                                V2NavRow(
+                                    title = "Administración",
+                                    description = "Gestión de la plataforma LeoVer",
+                                    icon = Icons.Default.Shield,
+                                    onClick = onNavigateToAdministration
+                                )
+                            }
                             V2NavRow(
                                 title = "Configuración",
                                 description = "Cuenta, privacidad y seguridad",
@@ -259,6 +375,17 @@ private fun PersonaProfileHeader(
     onEditProfile: () -> Unit = {}
 ) {
     val visual = leoVisual()
+    val resolvedAvatarUrl = avatarUrl ?: user.profileImageUrl
+    var showAvatarViewer by remember(resolvedAvatarUrl) { mutableStateOf(false) }
+
+    if (showAvatarViewer) {
+        ProfileAvatarViewer(
+            imageUrl = resolvedAvatarUrl,
+            displayName = user.resolvedDisplayName,
+            onDismiss = { showAvatarViewer = false }
+        )
+    }
+
     Column(modifier = Modifier.fillMaxWidth()) {
         Box {
             Column(
@@ -267,7 +394,7 @@ private fun PersonaProfileHeader(
                     .background(visual.background)
                     .windowInsetsPadding(WindowInsets.statusBars)
                     .padding(horizontal = LeoDimens.SpaceMd)
-                    .padding(bottom = 36.dp)
+                    .padding(bottom = LeoDimens.SpaceMd)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -286,14 +413,14 @@ private fun PersonaProfileHeader(
                         modifier = Modifier
                             .size(84.dp)
                             .clip(CircleShape)
-                            .border(2.dp, visual.primary, CircleShape)
                             .background(visual.surface)
+                            .clickable { showAvatarViewer = true }
                     ) {
                         PetImage(
-                            imageUrl = avatarUrl ?: user.profileImageUrl,
+                            imageUrl = resolvedAvatarUrl,
                             modifier = Modifier.fillMaxSize(),
                             cornerRadius = 42.dp,
-                            contentDescription = user.name
+                            contentDescription = "Abrir foto de perfil de ${user.resolvedDisplayName}"
                         )
                     }
                     Column(
@@ -353,29 +480,70 @@ private fun PersonaProfileHeader(
                     )
                 }
             }
-            Card(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = LeoDimens.SpaceMd)
-                    .offset(y = 18.dp),
-                shape = RoundedCornerShape(LeoDimens.RadiusCard),
-                colors = CardDefaults.cardColors(containerColor = visual.surface),
-                elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(vertical = LeoDimens.SpaceCompact),
-                    horizontalArrangement = Arrangement.SpaceEvenly
-                ) {
-                    ProfileStat(postsCount.toString(), "Publicaciones")
-                    if (friendsCount > 0) {
-                        ProfileStat(friendsCount.toString(), "Amigos")
-                    }
-                }
+        }
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceS),
+            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceXl)
+        ) {
+            ProfileStat(postsCount.toString(), "Publicaciones")
+            if (friendsCount > 0) {
+                ProfileStat(friendsCount.toString(), "Amigos")
             }
         }
-        Spacer(modifier = Modifier.height(28.dp))
+    }
+}
+
+@Composable
+private fun ProfileAvatarViewer(
+    imageUrl: String?,
+    displayName: String,
+    onDismiss: () -> Unit
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(Color.Black),
+            contentAlignment = Alignment.Center
+        ) {
+            PetImage(
+                imageUrl = imageUrl,
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceLg),
+                cornerRadius = 0.dp,
+                contentDescription = "Foto de perfil de $displayName",
+                contentScale = ContentScale.Fit
+            )
+            IconButton(
+                onClick = onDismiss,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .windowInsetsPadding(WindowInsets.statusBars)
+                    .padding(LeoDimens.SpaceSm)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Close,
+                    contentDescription = "Cerrar foto de perfil",
+                    tint = Color.White
+                )
+            }
+            if (imageUrl.isNullOrBlank()) {
+                Text(
+                    text = "Sin foto de perfil",
+                    style = LeoCaption,
+                    color = Color.White,
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(LeoDimens.SpaceLg)
+                )
+            }
+        }
     }
 }
 
@@ -403,21 +571,14 @@ private fun ProfileStat(value: String, label: String) {
 private fun CompactUseLeoverAsRow(onClick: () -> Unit) {
     val visual = leoVisual()
     val active by OperationalContextProvider.active.collectAsState()
-    Card(
+    Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(horizontal = LeoDimens.SpaceMd),
-        shape = RoundedCornerShape(LeoDimens.RadiusCard),
-        colors = CardDefaults.cardColors(containerColor = visual.surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
-        onClick = onClick
+            .padding(horizontal = LeoDimens.SpaceMd)
+            .clickable(onClick = onClick)
+            .padding(horizontal = LeoDimens.SpaceSm, vertical = LeoDimens.SpaceCompact),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
             Icon(
                 imageVector = Icons.Default.SwapHoriz,
                 contentDescription = null,
@@ -447,6 +608,99 @@ private fun CompactUseLeoverAsRow(onClick: () -> Unit) {
                 contentDescription = null,
                 tint = visual.textSecondary
             )
+    }
+}
+
+@Composable
+private fun IncomingCareTransfersSection(
+    transfers: List<com.comunidapp.app.domain.pets.PetTransfer>,
+    enabled: Boolean,
+    onAccept: (com.comunidapp.app.domain.pets.PetTransfer) -> Unit,
+    onReject: (com.comunidapp.app.domain.pets.PetTransfer) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (transfers.isEmpty()) return
+    Column(
+        modifier = modifier.padding(horizontal = LeoDimens.SpaceMd),
+        verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+    ) {
+        transfers.forEach { transfer ->
+            com.comunidapp.app.ui.screens.pets.IncomingCareTransferCard(
+                transfer = transfer,
+                enabled = enabled,
+                onAccept = { onAccept(transfer) },
+                onReject = { onReject(transfer) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun PetResponsibleInvitesSection(
+    viewModel: CareNetworkPersonViewModel = viewModel()
+) {
+    val state by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                viewModel.refresh()
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    if (state.pendingInvites.isEmpty()) {
+        return
+    }
+    Column(
+        modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd),
+        verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+    ) {
+        V2SectionHeader(title = "Invitaciones de mascotas")
+        if (state.isLoading && state.pendingInvites.isEmpty()) {
+            CircularProgressIndicator(modifier = Modifier.size(24.dp))
+        }
+        state.loadErrorMessage?.let { error ->
+            Text(
+                text = error,
+                style = LeoCaption,
+                color = MaterialTheme.colorScheme.error
+            )
+            TextButton(onClick = viewModel::refresh) { Text("Reintentar") }
+        }
+        state.pendingInvites.forEach { invite ->
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = invite.petName.ifBlank { "Mascota" },
+                    style = LeoCardTitle,
+                    fontWeight = FontWeight.SemiBold,
+                    color = BrandText
+                )
+                Text(
+                    text = listOf("Responsable", invite.ownerName.takeIf { it.isNotBlank() })
+                        .filterNotNull()
+                        .joinToString(" · "),
+                    style = LeoCaption,
+                    color = MutedText
+                )
+                Column(
+                    modifier = Modifier.padding(top = LeoDimens.SpaceSm),
+                    verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+                ) {
+                    LeoPrimaryButton(
+                        text = "Aceptar",
+                        onClick = { viewModel.accept(invite.linkId) },
+                        enabled = !state.isSubmitting
+                    )
+                    LeoOutlinedButton(
+                        text = "Rechazar",
+                        onClick = { viewModel.reject(invite.linkId) },
+                        enabled = !state.isSubmitting
+                    )
+                }
+                LeoHairline(modifier = Modifier.padding(top = LeoDimens.SpaceCompact))
+            }
         }
     }
 }

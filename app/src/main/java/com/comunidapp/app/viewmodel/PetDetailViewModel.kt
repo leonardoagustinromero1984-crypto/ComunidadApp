@@ -7,6 +7,10 @@ import com.comunidapp.app.data.model.ClinicalRecordType
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.PetClinicalRecord
 import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.domain.pets.PetId
+import com.comunidapp.app.domain.pets.PetLinkStatus
+import com.comunidapp.app.domain.pets.PetPrincipalHolder
+import com.comunidapp.app.domain.pets.PetResponsibilityRole
 import com.comunidapp.app.data.remote.supabase.m08.M08PetErrorMapper
 import com.comunidapp.app.data.remote.supabase.m08.PetAccessContext
 import com.comunidapp.app.data.repository.AuthProvider
@@ -54,6 +58,12 @@ class PetDetailViewModel(
     private val _isPetLoading = MutableStateFlow(petId.isNotBlank())
     val isPetLoading: StateFlow<Boolean> = _isPetLoading.asStateFlow()
 
+    private val _isHealthLoading = MutableStateFlow(petId.isNotBlank())
+    val isHealthLoading: StateFlow<Boolean> = _isHealthLoading.asStateFlow()
+
+    private val _healthLoadError = MutableStateFlow<String?>(null)
+    val healthLoadError: StateFlow<String?> = _healthLoadError.asStateFlow()
+
     private val _petLoadError = MutableStateFlow<String?>(null)
     val petLoadError: StateFlow<String?> = _petLoadError.asStateFlow()
 
@@ -63,7 +73,7 @@ class PetDetailViewModel(
     private val _principalDisplayName = MutableStateFlow<String?>(null)
     val principalDisplayName: StateFlow<String?> = _principalDisplayName.asStateFlow()
 
-    private val _principalLoading = MutableStateFlow(false)
+    private val _principalLoading = MutableStateFlow(petId.isNotBlank())
     val principalLoading: StateFlow<Boolean> = _principalLoading.asStateFlow()
 
     val clinicalRecords: StateFlow<List<PetClinicalRecord>> =
@@ -127,61 +137,77 @@ class PetDetailViewModel(
             currentUserId.value = authRepository.getCurrentUser()?.id
             if (petId.isBlank()) {
                 _isPetLoading.value = false
+                _isHealthLoading.value = false
                 _petLoadError.value = M08PetErrorMapper.userMessage("PET_NOT_FOUND")
                 return@launch
             }
-            loadPet()
+            val probe = com.comunidapp.app.domain.perf.ScreenPerfProbe.begin("pet_profile")
+            if (_pet.value != null) probe.markFirstContent()
+            probe.network { loadPetInternal() }
+            if (_pet.value != null) probe.markFirstContent()
+            // Custody label hydrates behind core pet content (non-blocking).
             refreshAccess()
             observePetUpdates()
+            probe.finish()
         }
     }
 
     fun loadPet() {
         if (petId.isBlank()) {
             _isPetLoading.value = false
+            _isHealthLoading.value = false
             _petLoadError.value = M08PetErrorMapper.userMessage("PET_NOT_FOUND")
             return
         }
-        viewModelScope.launch {
-            _isPetLoading.value = _pet.value == null
-            _petLoadError.value = null
+        viewModelScope.launch { loadPetInternal() }
+    }
 
-            val cached = runCatching { petRepository.getPetById(petId) }.getOrNull()
-            if (cached != null) {
-                _pet.value = cached
-                resolvePhoto(cached)
-                _isPetLoading.value = false
-            }
+    private suspend fun loadPetInternal() {
+        _isPetLoading.value = _pet.value == null
+        _isHealthLoading.value = true
+        _petLoadError.value = null
 
-            val fetched = runCatching { petRepository.fetchPetById(petId) }
-                .onFailure { error ->
-                    if (_pet.value == null) {
-                        _petLoadError.value =
-                            M08PetErrorMapper.userMessage(M08PetErrorMapper.codeOf(error))
-                    }
-                }
-                .getOrNull()
-
-            when {
-                fetched != null -> {
-                    _pet.value = fetched
-                    resolvePhoto(fetched)
-                    _petLoadError.value = null
-                    _isPetLoading.value = false
-                    refreshStatusReason(fetched.status)
-                }
-                _pet.value != null -> {
-                    _isPetLoading.value = false
-                    refreshStatusReason(_pet.value?.status)
-                }
-                else -> {
-                    _isPetLoading.value = false
-                    if (_petLoadError.value == null) {
-                        _petLoadError.value = M08PetErrorMapper.userMessage("PET_NOT_FOUND")
-                    }
+        val fetched = runCatching { petRepository.fetchPetById(petId) }
+            .onFailure { error ->
+                if (_pet.value == null) {
+                    _petLoadError.value =
+                        M08PetErrorMapper.userMessage(M08PetErrorMapper.codeOf(error))
                 }
             }
+            .getOrNull()
+
+        when {
+            fetched != null -> {
+                val merged = com.comunidapp.app.domain.pets.PetHealthMerge.preferRicherHealth(
+                    _pet.value,
+                    fetched
+                )
+                _pet.value = merged
+                _healthLoadError.value = if (merged.healthReadFailed &&
+                    !com.comunidapp.app.domain.pets.PetHealthPresentation.hasHealthData(merged)
+                ) {
+                    "No pudimos cargar la información de salud."
+                } else {
+                    null
+                }
+                resolvePhoto(merged)
+                _petLoadError.value = null
+                refreshStatusReason(merged.status)
+            }
+            _pet.value == null -> {
+                val cached = runCatching { petRepository.getPetById(petId) }.getOrNull()
+                if (cached != null) {
+                    _pet.value = cached
+                    resolvePhoto(cached)
+                    refreshStatusReason(cached.status)
+                } else if (_petLoadError.value == null) {
+                    _petLoadError.value = M08PetErrorMapper.userMessage("PET_NOT_FOUND")
+                }
+            }
+            else -> refreshStatusReason(_pet.value?.status)
         }
+        _isHealthLoading.value = false
+        _isPetLoading.value = false
     }
 
     private fun observePetUpdates() {
@@ -197,8 +223,22 @@ class PetDetailViewModel(
                 }
                 .collect { latest ->
                     if (latest != null) {
-                        _pet.value = latest
-                        resolvePhoto(latest)
+                        _pet.value = com.comunidapp.app.domain.pets.PetHealthMerge.preferRicherHealth(
+                            _pet.value,
+                            latest
+                        )
+                        val held = _pet.value ?: latest
+                        if (latest.healthReadFailed &&
+                            !com.comunidapp.app.domain.pets.PetHealthPresentation.hasHealthData(held)
+                        ) {
+                            _healthLoadError.value = "No pudimos cargar la información de salud."
+                        } else if (
+                            com.comunidapp.app.domain.pets.PetHealthPresentation.hasHealthData(held) ||
+                            !latest.healthReadFailed
+                        ) {
+                            _healthLoadError.value = null
+                        }
+                        resolvePhoto(_pet.value)
                         _isPetLoading.value = false
                         _petLoadError.value = null
                         refreshStatusReason(latest.status)
@@ -210,12 +250,53 @@ class PetDetailViewModel(
     fun refreshAccess() {
         if (petId.isBlank()) return
         viewModelScope.launch {
+            if (_principalDisplayName.value.isNullOrBlank()) {
+                _principalLoading.value = true
+            }
             petRepository.getPetAccessContext(petId)
                 .onSuccess { ctx ->
                     accessContext.value = ctx
                     resolvePrincipalName(ctx)
                 }
-                .onFailure { /* keep gates false */ }
+                .onFailure {
+                    // Keep last-good custody label; only fall back when empty.
+                    if (_principalDisplayName.value.isNullOrBlank()) {
+                        loadPrincipalFromHolders()
+                    } else {
+                        _principalLoading.value = false
+                    }
+                }
+        }
+    }
+
+    private fun loadPrincipalFromHolders() {
+        if (petId.isBlank()) return
+        viewModelScope.launch {
+            _principalLoading.value = true
+            val previous = _principalDisplayName.value
+            val repo = DataProvider.petResponsibilityRepository
+            if (repo != null) {
+                val links = runCatching { repo.listForPet(PetId(petId)) }.getOrNull().orEmpty()
+                val principal = links.firstOrNull {
+                    it.status == PetLinkStatus.ACTIVE &&
+                        it.role == PetResponsibilityRole.PRINCIPAL
+                }
+                principal?.holderDisplayName?.trim()?.takeIf { it.isNotEmpty() }?.let { name ->
+                    _principalDisplayName.value = name
+                    _principalLoading.value = false
+                    return@launch
+                }
+            }
+            val remote = com.comunidapp.app.data.remote.supabase.m08.SupabasePetM08RemoteDataSource()
+            val holders = runCatching { remote.listResponsibilities(petId) }.getOrNull().orEmpty()
+            val owner = holders.firstOrNull {
+                it.status.equals("ACTIVE", ignoreCase = true) &&
+                    (it.roleCode == "PRINCIPAL" || it.roleCode == "OWNER")
+            }
+            val resolved = owner?.displayName?.trim()?.takeIf { it.isNotEmpty() }
+            // Never overwrite a known custodian label with null from holders.
+            _principalDisplayName.value = resolved ?: previous
+            _principalLoading.value = false
         }
     }
 
@@ -226,20 +307,66 @@ class PetDetailViewModel(
     }
 
     private fun resolvePrincipalName(ctx: PetAccessContext) {
-        val personId = ctx.principalPersonId?.takeIf { it.isNotBlank() }
-        if (personId == null) {
-            _principalDisplayName.value = null
-            _principalLoading.value = false
-            return
-        }
         viewModelScope.launch {
-            _principalLoading.value = true
-            val name = runCatching { userRepository.getUser(personId)?.name?.trim() }
+            if (_principalDisplayName.value.isNullOrBlank()) {
+                _principalLoading.value = true
+            }
+            val previous = _principalDisplayName.value
+            val name = resolvePrincipalDisplayName(ctx)
+            _principalDisplayName.value = name?.takeIf { it.isNotBlank() } ?: previous
+            _principalLoading.value = false
+        }
+    }
+
+    private suspend fun resolvePrincipalDisplayName(ctx: PetAccessContext): String? {
+        ctx.principalDisplayName?.takeIf { it.isNotBlank() }?.let { return it }
+        val personId = ctx.principalPersonId?.takeIf { it.isNotBlank() }
+        if (personId != null) {
+            val fromUser = runCatching {
+                userRepository.getUser(personId)?.resolvedDisplayName?.trim()
+            }
                 .getOrNull()
                 ?.takeIf { it.isNotBlank() }
-            _principalDisplayName.value = name
-            _principalLoading.value = false
+            if (fromUser != null) return fromUser
+            val viewerId = currentUserId.value ?: authRepository.getCurrentUser()?.id
+            if (viewerId != null) {
+                val publicName = runCatching {
+                    userRepository.getPublicProfile(viewerId, personId)
+                        .getOrNull()
+                        ?.displayName
+                        ?.trim()
+                }.getOrNull()?.takeIf { it.isNotBlank() }
+                if (publicName != null) return publicName
+            }
         }
+        val orgId = ctx.principalOrganizationId?.takeIf { it.isNotBlank() }
+        if (orgId != null && personId == null) {
+            return "Organización"
+        }
+        val repo = DataProvider.petResponsibilityRepository ?: return null
+        val links = runCatching { repo.listForPet(PetId(petId)) }.getOrNull().orEmpty()
+        val principal = links.firstOrNull {
+            it.role == PetResponsibilityRole.PRINCIPAL && it.status == PetLinkStatus.ACTIVE
+        }
+        if (principal != null) {
+            principal.holderDisplayName?.takeIf { it.isNotBlank() }?.let { return it }
+            when (val holder = principal.holder) {
+                is PetPrincipalHolder.Person -> {
+                    runCatching { userRepository.getUser(holder.userId)?.name?.trim() }
+                        .getOrNull()
+                        ?.takeIf { it.isNotBlank() }
+                        ?.let { return it }
+                }
+                is PetPrincipalHolder.Organization -> return "Organización"
+            }
+        }
+        val ownerId = _pet.value?.ownerId?.takeIf { it.isNotBlank() }
+        if (ownerId != null) {
+            return runCatching { userRepository.getUser(ownerId)?.name?.trim() }
+                .getOrNull()
+                ?.takeIf { it.isNotBlank() }
+        }
+        return null
     }
 
     private fun refreshStatusReason(status: String?) {

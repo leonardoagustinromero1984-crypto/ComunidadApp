@@ -15,10 +15,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -44,10 +41,13 @@ import com.comunidapp.app.data.model.LostFoundStatus
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
-import com.comunidapp.app.ui.components.v2.V2SurfaceCard
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandGreen
@@ -66,6 +66,9 @@ fun LostFoundScreen(
     onNavigateToM13Sightings: () -> Unit = {},
     onNavigateToCaseMatches: (String) -> Unit = {},
     onNavigateToM13NewSighting: (String?) -> Unit = {},
+    onCreateLost: () -> Unit = {},
+    onCreateFound: () -> Unit = {},
+    onResponderBase: () -> Unit = {},
     viewModel: LostFoundViewModel = viewModel()
 ) {
     val message by viewModel.message.collectAsState()
@@ -97,6 +100,9 @@ fun LostFoundScreen(
             onNavigateToM13Sightings = onNavigateToM13Sightings,
             onNavigateToCaseMatches = onNavigateToCaseMatches,
             onNavigateToM13NewSighting = onNavigateToM13NewSighting,
+            onCreateLost = onCreateLost,
+            onCreateFound = onCreateFound,
+            onResponderBase = onResponderBase,
             viewModel = viewModel
         )
     }
@@ -110,6 +116,9 @@ fun LostFoundContent(
     onNavigateToM13Sightings: () -> Unit = {},
     onNavigateToCaseMatches: (String) -> Unit = {},
     onNavigateToM13NewSighting: (String?) -> Unit = {},
+    onCreateLost: () -> Unit = {},
+    onCreateFound: () -> Unit = {},
+    onResponderBase: () -> Unit = {},
     lockedType: LostFoundType? = null,
     viewModel: LostFoundViewModel = viewModel()
 ) {
@@ -179,6 +188,17 @@ fun LostFoundContent(
             .padding(top = topPadding)
     ) {
         Column(modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .horizontalScroll(rememberScrollState())
+                    .padding(bottom = LeoDimens.SpaceSm),
+                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+            ) {
+                LeoOutlinedButton(text = "Perdí a mi mascota", onClick = onCreateLost)
+                LeoOutlinedButton(text = "Encontré un animal", onClick = onCreateFound)
+                LeoOutlinedButton(text = "Ubicación base", onClick = onResponderBase)
+            }
             V2LocationStringPicker(
                 value = filters.location,
                 onValueChange = viewModel::onLocationChange
@@ -191,53 +211,51 @@ fun LostFoundContent(
                 horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
             ) {
                 if (lockedType == null) {
-                    FilterChip(
+                    LeoFilterChip(
+                        label = "Perdidos",
                         selected = filters.type == LostFoundType.LOST,
                         onClick = {
                             viewModel.onTypeFilterChange(
                                 if (filters.type == LostFoundType.LOST) null else LostFoundType.LOST
                             )
-                        },
-                        label = { Text("Perdidos") }
+                        }
                     )
-                    FilterChip(
+                    LeoFilterChip(
+                        label = "Encontrados",
                         selected = filters.type == LostFoundType.FOUND,
                         onClick = {
                             viewModel.onTypeFilterChange(
                                 if (filters.type == LostFoundType.FOUND) null else LostFoundType.FOUND
                             )
-                        },
-                        label = { Text("Encontrados") }
+                        }
                     )
                 }
-                FilterChip(
+                LeoFilterChip(
+                    label = "Activas",
                     selected = filters.status == LostFoundStatus.ACTIVE || filters.status == null,
-                    onClick = { viewModel.onStatusFilterChange(LostFoundStatus.ACTIVE) },
-                    label = { Text("Activas") }
+                    onClick = { viewModel.onStatusFilterChange(LostFoundStatus.ACTIVE) }
                 )
-                FilterChip(
+                LeoFilterChip(
+                    label = "Resueltas",
                     selected = filters.status == LostFoundStatus.RESOLVED,
-                    onClick = { viewModel.onStatusFilterChange(LostFoundStatus.RESOLVED) },
-                    label = { Text("Resueltas") }
+                    onClick = { viewModel.onStatusFilterChange(LostFoundStatus.RESOLVED) }
                 )
                 PetSpecies.entries.take(4).forEach { species ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = species.toDisplayName(),
                         selected = filters.species == species,
                         onClick = {
                             viewModel.onSpeciesFilterChange(
                                 if (filters.species == species) null else species
                             )
-                        },
-                        label = { Text(species.toDisplayName()) }
+                        }
                     )
                 }
             }
-            OutlinedButton(
-                onClick = onNavigateToMap,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Ver mapa de alertas")
-            }
+            LeoOutlinedButton(
+                text = "Ver mapa de alertas",
+                onClick = onNavigateToMap
+            )
         }
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
@@ -300,7 +318,7 @@ fun LostFoundCard(
     val badgeText = if (post.type == LostFoundType.LOST) "PERDIDO" else "ENCONTRADO"
     val badgeColor = if (post.type == LostFoundType.LOST) UrgentRed else BrandGreen
 
-    V2SurfaceCard {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Text(
             text = badgeText,
             style = LeoCaption,
@@ -357,24 +375,24 @@ fun LostFoundCard(
             modifier = Modifier.padding(top = LeoDimens.SpaceMicro)
         )
         if (post.status == LostFoundStatus.ACTIVE) {
-            Row(
+            Column(
                 modifier = Modifier.padding(top = LeoDimens.SpaceSm),
-                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
             ) {
                 onOpenMap?.let { open ->
-                    OutlinedButton(onClick = open) { Text("Abrir en mapa") }
+                    LeoOutlinedButton(text = "Abrir en mapa", onClick = open)
                 }
                 onReportSighting?.let { report ->
-                    OutlinedButton(onClick = report) { Text("Avistamiento rápido") }
+                    LeoOutlinedButton(text = "Avistamiento rápido", onClick = report)
                 }
                 onOpenM13StructuredSighting?.let { open ->
-                    OutlinedButton(onClick = open) { Text("Registrar avistamiento") }
+                    LeoOutlinedButton(text = "Registrar avistamiento", onClick = open)
                 }
                 onOpenM13Matches?.let { open ->
-                    OutlinedButton(onClick = open) { Text("Coincidencias") }
+                    LeoOutlinedButton(text = "Coincidencias", onClick = open)
                 }
                 onMarkResolved?.let { resolve ->
-                    Button(onClick = resolve) { Text("Marcar resuelta") }
+                    LeoPrimaryButton(text = "Marcar resuelta", onClick = resolve)
                 }
             }
         }
@@ -396,6 +414,7 @@ fun LostFoundCard(
                 )
             }
         }
+        LeoHairline(modifier = Modifier.padding(top = LeoDimens.SpaceCompact))
     }
 }
 

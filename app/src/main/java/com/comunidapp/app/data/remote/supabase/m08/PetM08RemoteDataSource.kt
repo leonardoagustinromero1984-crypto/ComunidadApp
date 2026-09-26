@@ -32,4 +32,5 @@ interface PetM08RemoteDataSource {
     suspend fun listTransfers(petId: String): List<PetTransferM08Row>
 
     suspend fun listStatusHistory(petId: String): List<PetStatusHistoryM08Row>
+    suspend fun listPetsForPersonProfile(personUserId: String): List<ProfilePetRow>
 }

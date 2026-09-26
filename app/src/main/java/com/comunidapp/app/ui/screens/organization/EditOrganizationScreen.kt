@@ -42,12 +42,14 @@ import com.comunidapp.app.ui.files.PdfOrImageMimeTypes
 import com.comunidapp.app.ui.files.rememberPdfOrImageDocumentPicker
 import com.comunidapp.app.ui.media.LeoVerAvatarCropKind
 import com.comunidapp.app.ui.media.rememberLeoVerAvatarCropLauncher
+import com.comunidapp.app.ui.media.rememberLeoVerPhotoSourcePicker
 import kotlinx.coroutines.launch
 
 @Composable
 fun EditOrganizationScreen(
     onNavigateBack: () -> Unit,
     onSaveSuccess: () -> Unit,
+    onRequestVerification: (String) -> Unit = {},
     viewModel: EditOrganizationViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -60,9 +62,10 @@ fun EditOrganizationScreen(
         onCancel = {},
         onError = viewModel::onPhotoCropFailed
     )
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> uri?.let(cropLogo) }
+    val pickLogo = rememberLeoVerPhotoSourcePicker(
+        sheetTitle = "Cambiar logo",
+        onSourceSelected = { uri -> cropLogo(uri) }
+    )
     val documentPicker = rememberPdfOrImageDocumentPicker { uri ->
         uri?.let { viewModel.attachDocument(it) }
     }
@@ -113,7 +116,9 @@ fun EditOrganizationScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "Verificación: ${uiState.verificationStatus.name}",
+                    text = com.comunidapp.app.domain.verification.VerificationDisplayPolicy.statusLabel(
+                        uiState.verificationStatus.name
+                    ),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -124,11 +129,7 @@ fun EditOrganizationScreen(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedButton(
-                    onClick = {
-                        pickImageLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
+                    onClick = pickLogo,
                     enabled = !uiState.isSaving,
                     shape = RoundedCornerShape(14.dp)
                 ) {
@@ -220,22 +221,20 @@ fun EditOrganizationScreen(
                         Text("Guardar")
                     }
                 }
-                if (uiState.canRequestVerification) {
-                    Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
-                        onClick = viewModel::requestVerification,
-                        enabled = !uiState.isRequestingVerification && !uiState.isSaving,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(14.dp)
-                    ) {
-                        Text(
-                            if (uiState.isRequestingVerification) {
-                                "Solicitando…"
-                            } else {
-                                "Solicitar verificación"
-                            }
-                        )
-                    }
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedButton(
+                    onClick = { onRequestVerification(uiState.functionCode) },
+                    enabled = !uiState.isSaving,
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(14.dp)
+                ) {
+                    Text(
+                        if (uiState.verificationStatus == com.comunidapp.app.domain.organization.OrganizationVerificationStatus.NOT_REQUESTED) {
+                            "Solicitar verificación"
+                        } else {
+                            "Ver verificación"
+                        }
+                    )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }

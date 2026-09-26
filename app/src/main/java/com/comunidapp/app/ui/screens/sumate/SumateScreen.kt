@@ -100,8 +100,12 @@ fun SumateScreen(
             verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
         ) {
             V2NavRow(
-                title = "Adopciones",
-                description = com.comunidapp.app.domain.qa.PhysicalQaFix01Contracts.PERSON_ADOPTIONS_COPY,
+                title = "Adopción",
+                description = if (context.isPersonal) {
+                    "Explorá mascotas, quiero adoptar, mi perfil y postulaciones"
+                } else {
+                    "Publicar en adopción, postulaciones recibidas y seguimiento"
+                },
                 icon = Icons.Default.Pets,
                 onClick = onOpenAdoptions,
                 iconTint = BrandOrange,

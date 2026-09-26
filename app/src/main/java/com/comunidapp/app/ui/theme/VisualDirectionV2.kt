@@ -6,11 +6,10 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 
 /**
- * Experimental visual direction palettes.
+ * Active visual palette — LeoVer Design System 2.0.
  *
- * V3: approved near-white background + original LeoVer green accent.
- * Sage/teal V2 primaries are retired from active UI.
- * Not permanent brand law. Logo colors stay unchanged.
+ * Orange is the CTA / selection accent. Green is success / positive.
+ * Surfaces stay white / off-white. Sage/teal V2 primaries stay retired.
  */
 data class LeoVerVisualPalette(
     val background: Color,
@@ -48,23 +47,23 @@ data class LeoVerVisualPalette(
             profileAccent = ProfileGreen
         )
 
-        /** UX-05 Color Direction V3 — experimental. Background approved. Accent under QA. */
+        /** Design System 2.0 — orange CTA, green success, warm neutrals. */
         val v3Experimental = LeoVerVisualPalette(
-            background = Color(0xFFFAFBF8),
-            surface = Color(0xFFFFFFFF),
-            textPrimary = Color(0xFF263238),
-            textSecondary = Color(0xFF667085),
-            borderSoft = Color(0xFFE5EAE4),
-            primary = BrandGreen, // 0xFF49B749
-            primaryDark = BrandGreenDark,
-            primarySoft = Color(0xFFEEF8EE),
-            onPrimary = Color(0xFFFFFFFF),
-            secondary = BrandGreen,
-            secondarySoft = Color(0xFFEEF8EE),
-            accent = Color(0xFFEFA066),
-            accentSoft = Color(0xFFFAEBDD),
-            error = Color(0xFFD96B68),
-            profileAccent = BrandGreen
+            background = BrandBackground, // 0xFFFAFBF8
+            surface = BrandWhite,
+            textPrimary = BrandText,
+            textSecondary = BrandTextSecondary,
+            borderSoft = NeutralBorder,
+            primary = BrandOrange,
+            primaryDark = BrandOrangeDeep,
+            primarySoft = BrandOrangeContainer,
+            onPrimary = BrandWhite,
+            secondary = BrandGreen, // 0xFF49B749
+            secondarySoft = BrandGreenContainer,
+            accent = BrandOrange,
+            accentSoft = BrandOrangeContainer,
+            error = UrgentRed,
+            profileAccent = ProfileGreen
         )
     }
 }

@@ -34,6 +34,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -95,7 +96,7 @@ fun LeoTopAppBar(
             title = {
                 Text(
                     text = title,
-                    style = LeoPageTitle,
+                    style = LeoSectionTitle,
                     color = BrandText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -204,18 +205,15 @@ fun LeoSecondaryButton(
     modifier: Modifier = Modifier,
     enabled: Boolean = true
 ) {
-    Button(
+    OutlinedButton(
         onClick = onClick,
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = LeoDimens.ButtonSecondaryHeight),
         shape = RoundedCornerShape(LeoDimens.RadiusCard),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = leoVisual().secondarySoft,
-            contentColor = leoVisual().primaryDark
-        ),
-        elevation = ButtonDefaults.buttonElevation(defaultElevation = 0.dp)
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = leoVisual().textPrimary),
+        border = androidx.compose.foundation.BorderStroke(1.dp, leoVisual().borderSoft)
     ) {
         Text(text, style = LeoButton)
     }
@@ -253,7 +251,7 @@ fun ContinueWithGoogleButton(
         enabled = enabled,
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = LeoDimens.ButtonSecondaryHeight),
+            .heightIn(min = LeoDimens.ButtonPrimaryHeight),
         shape = RoundedCornerShape(LeoDimens.RadiusCard),
         colors = ButtonDefaults.outlinedButtonColors(
             containerColor = visual.surface,
@@ -315,8 +313,7 @@ fun LeoCard(
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier),
         shape = shape,
         colors = CardDefaults.cardColors(containerColor = leoVisual().surface),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = androidx.compose.foundation.BorderStroke(1.dp, leoVisual().borderSoft)
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
         Column(modifier = Modifier.padding(LeoDimens.SpaceMd), content = content)
     }
@@ -340,23 +337,14 @@ fun LeoFeatureCard(
             .semantics { contentDescription = title },
         shape = RoundedCornerShape(LeoDimens.RadiusCardFeature),
         color = BrandWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, NeutralBorder),
         tonalElevation = 0.dp,
-        shadowElevation = 1.dp
+        shadowElevation = 0.dp
     ) {
         Row(
             modifier = Modifier.padding(LeoDimens.SpaceMd),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(containerColor),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(26.dp))
-            }
+            Icon(icon, contentDescription = null, tint = iconTint, modifier = Modifier.size(24.dp))
             Spacer(modifier = Modifier.width(LeoDimens.SpaceCompact))
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = title, style = LeoCardTitle, color = BrandText)
@@ -449,8 +437,8 @@ fun LeoFilterChip(
         modifier = modifier.heightIn(min = LeoDimens.ChipHeight),
         shape = RoundedCornerShape(LeoDimens.RadiusChip),
         colors = FilterChipDefaults.filterChipColors(
-            selectedContainerColor = leoVisual().primary,
-            selectedLabelColor = leoVisual().onPrimary,
+            selectedContainerColor = leoVisual().primarySoft,
+            selectedLabelColor = leoVisual().primaryDark,
             containerColor = leoVisual().surface,
             labelColor = leoVisual().textSecondary
         )
@@ -543,15 +531,12 @@ fun LeoEmptyState(
         verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
     ) {
         if (icon != null) {
-            Box(
-                modifier = Modifier
-                    .size(72.dp)
-                    .clip(CircleShape)
-                    .background(BrandOrangeContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, contentDescription = null, tint = BrandOrangeSoft, modifier = Modifier.size(36.dp))
-            }
+            Icon(
+                icon,
+                contentDescription = null,
+                tint = MutedText,
+                modifier = Modifier.size(28.dp)
+            )
             Spacer(modifier = Modifier.height(LeoDimens.SpaceSm))
         }
         Text(text = title, style = LeoSectionTitle, color = BrandText, textAlign = TextAlign.Center)
@@ -676,8 +661,7 @@ fun LeoPetCard(
             .semantics { contentDescription = name },
         shape = RoundedCornerShape(LeoDimens.RadiusCard),
         color = BrandWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, NeutralBorder),
-        shadowElevation = 1.dp
+        shadowElevation = 0.dp
     ) {
         Column {
             Box(
@@ -713,8 +697,7 @@ fun LeoPersonCard(
             .width(120.dp)
             .semantics { contentDescription = name },
         shape = RoundedCornerShape(LeoDimens.RadiusCard),
-        color = BrandWhite,
-        border = androidx.compose.foundation.BorderStroke(1.dp, NeutralBorder)
+        color = BrandWhite
     ) {
         Column(
             modifier = Modifier.padding(LeoDimens.SpaceCompact),
@@ -726,6 +709,66 @@ fun LeoPersonCard(
             if (!subtitle.isNullOrBlank()) {
                 Text(text = subtitle, style = LeoCaption, color = MutedText, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
+        }
+    }
+}
+
+@Composable
+fun LeoHairline(
+    modifier: Modifier = Modifier,
+    color: Color = leoVisual().borderSoft,
+    thickness: androidx.compose.ui.unit.Dp = 0.5.dp
+) {
+    HorizontalDivider(
+        modifier = modifier.fillMaxWidth(),
+        thickness = thickness,
+        color = color
+    )
+}
+
+@Composable
+fun LeoListRow(
+    title: String,
+    modifier: Modifier = Modifier,
+    subtitle: String? = null,
+    leading: (@Composable () -> Unit)? = null,
+    trailing: (@Composable () -> Unit)? = null,
+    onClick: (() -> Unit)? = null,
+    showDivider: Boolean = true
+) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = LeoDimens.TouchMin)
+                .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
+                .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
+        ) {
+            leading?.invoke()
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = title,
+                    style = LeoCardTitle,
+                    color = BrandText,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        text = subtitle,
+                        style = LeoCaption,
+                        color = MutedText,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+            trailing?.invoke()
+        }
+        if (showDivider) {
+            LeoHairline(modifier = Modifier.padding(start = LeoDimens.SpaceMd))
         }
     }
 }

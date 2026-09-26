@@ -27,7 +27,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
@@ -58,6 +57,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.ui.PlayerView
 import coil.compose.AsyncImage
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
 import com.comunidapp.app.domain.social.AudioMixPlanner
 import com.comunidapp.app.domain.social.AudioSelection
 import com.comunidapp.app.domain.social.AudioTrack
@@ -202,12 +202,16 @@ fun MusicPickerSheet(
                 label = { Text("Buscar música") }
             )
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = category == null && query.isBlank(), onClick = { category = null; query = "" }, label = { Text("Para vos") })
+                LeoFilterChip(
+                    label = "Para vos",
+                    selected = category == null && query.isBlank(),
+                    onClick = { category = null; query = "" }
+                )
                 LeoVerOwnedMusicCatalog.CATEGORIES.forEach { cat ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = LeoVerOwnedMusicCatalog.CATEGORY_LABELS[cat] ?: cat,
                         selected = category == cat,
-                        onClick = { category = cat; query = "" },
-                        label = { Text(LeoVerOwnedMusicCatalog.CATEGORY_LABELS[cat] ?: cat) }
+                        onClick = { category = cat; query = "" }
                     )
                 }
             }
@@ -327,17 +331,17 @@ fun StickerPickerSheet(
         Column(Modifier.padding(LeoDimens.SpaceMd)) {
             Text("😀 Stickers")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = tab == "leover", onClick = { tab = "leover" }, label = { Text("LeoVer") })
-                FilterChip(selected = tab == "emoji", onClick = { tab = "emoji" }, label = { Text("Emojis") })
+                LeoFilterChip(label = "LeoVer", selected = tab == "leover", onClick = { tab = "leover" })
+                LeoFilterChip(label = "Emojis", selected = tab == "emoji", onClick = { tab = "emoji" })
                 if (showExternal && com.comunidapp.app.domain.social.SocialEditorUxFlags.GIF_UI_VISIBLE) {
-                    FilterChip(selected = tab == "gif", onClick = { tab = "gif" }, label = { Text("GIFs") })
+                    LeoFilterChip(label = "GIFs", selected = tab == "gif", onClick = { tab = "gif" })
                 }
             }
             when (tab) {
                 "leover" -> {
                     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         LeoVerStickerCategory.entries.forEach { cat ->
-                            FilterChip(selected = category == cat, onClick = { category = cat }, label = { Text(cat.name) })
+                            LeoFilterChip(label = cat.name, selected = category == cat, onClick = { category = cat })
                         }
                     }
                     LazyVerticalGrid(columns = GridCells.Fixed(3), modifier = Modifier.height(320.dp)) {
