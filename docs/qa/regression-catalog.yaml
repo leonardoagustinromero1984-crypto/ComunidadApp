@@ -273,7 +273,7 @@ rules:
   # ----- ADOPTION -----
   - id: REG-ADOPT-001
     module: ADOPTION
-    rule: Multi-applicant, selección, PAUSED de otros, follow-up separado de transfer.
+    rule: Multi-applicant, selección, PAUSED de otros, follow-up separado de transfer. La finalización directa responde ADOPTION_USE_CANONICAL_TRANSFER y no cambia el dueño.
     tests:
       - { file: app/src/test/java/com/comunidapp/app/viewmodel/M09AdoptionCompletionTest.kt, layer: viewmodel }
       - { file: app/src/test/java/com/comunidapp/app/viewmodel/AdoptionFormOpenSmokeTest.kt, layer: viewmodel }

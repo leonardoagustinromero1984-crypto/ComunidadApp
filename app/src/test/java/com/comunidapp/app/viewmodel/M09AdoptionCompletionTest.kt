@@ -6,6 +6,9 @@ import com.comunidapp.app.data.mock.MockData
 import com.comunidapp.app.data.model.AdoptionApplication
 import com.comunidapp.app.data.model.AdoptionApplicationStatus
 import com.comunidapp.app.data.model.AdoptionDocumentType
+import com.comunidapp.app.data.model.AdoptionFollowUpCheck
+import com.comunidapp.app.data.model.AdoptionFollowUpPlan
+import com.comunidapp.app.data.model.AdoptionFollowUpPlanStatus
 import com.comunidapp.app.data.model.AdoptionFollowUpStatus
 import com.comunidapp.app.data.model.AdoptionInterviewType
 import com.comunidapp.app.data.model.AdoptionPost
@@ -164,14 +167,37 @@ class M09AdoptionCompletionTest {
         store = store
     )
 
-    private fun publisherCompletion(failTransfer: Boolean = false) =
+    private fun publisherCompletion() =
         MockAdoptionCompletionRepository(
             actorUserId = { publisherId },
             applications = apps(),
             isManager = ::isManager,
-            store = store,
-            failTransfer = failTransfer
+            store = store
         )
+
+    private fun seedFollowUpChecks() {
+        val now = System.currentTimeMillis()
+        val day = 24L * 60 * 60 * 1000
+        val plan = AdoptionFollowUpPlan(
+            id = "plan-seed",
+            adoptionId = "adopt-1",
+            adopterUserId = applicantId,
+            status = AdoptionFollowUpPlanStatus.ACTIVE,
+            createdAt = now
+        )
+        store.plans.value = listOf(plan)
+        store.checks.value = listOf(7, 30, 90).mapIndexed { index, days ->
+            AdoptionFollowUpCheck(
+                id = "chk-seed-$index",
+                planId = plan.id,
+                adoptionId = "adopt-1",
+                dueAt = now + days * day,
+                status = AdoptionFollowUpStatus.PENDING,
+                createdAt = now,
+                updatedAt = now
+            )
+        }
+    }
 
     private fun followUp(actor: String) = MockAdoptionFollowUpRepository(
         actorUserId = { actor },
@@ -398,50 +424,54 @@ class M09AdoptionCompletionTest {
     }
 
     @Test
-    fun finalizeAdoption_successPath() = runTest {
+    fun finalizeAdoption_readyProcess_refusesCanonicalTransfer() = runTest {
         prepareReadyToFinalize()
         val result = publisherCompletion().finalizeAdoption("adopt-1")
-        assertTrue(result.isSuccess)
-        assertEquals(AdoptionStatus.ADOPTED, InMemoryDataStore.getAdoptionPostById("adopt-1")!!.status)
+        val error = result.exceptionOrNull() as M09AdoptionException
+        assertEquals("ADOPTION_USE_CANONICAL_TRANSFER", error.code)
+        assertEquals(
+            "Para cambiar la responsabilidad de la mascota usá la transferencia canónica.",
+            error.message
+        )
+        assertFalse(error.message.orEmpty().contains("PostgREST", ignoreCase = true))
+        assertFalse(result.isSuccess)
+
         val pet = InMemoryDataStore.getPetById("pet-m09-fin")!!
         assertEquals("ACTIVE", pet.status)
         assertEquals(publisherId, pet.ownerId)
-        assertTrue(store.petHistory.any { it.reason == "ADOPTION_EVALUATION_DONE" && it.newStatus == "ACTIVE" })
+        assertEquals(AdoptionStatus.PAUSED, InMemoryDataStore.getAdoptionPostById("adopt-1")!!.status)
+        assertFalse(store.petHistory.any { it.reason == "ADOPTION_EVALUATION_DONE" })
+        assertTrue(store.finalized.value.none { it.adoptionId == "adopt-1" })
+        assertTrue(store.checks.value.none { it.adoptionId == "adopt-1" })
+        assertTrue(store.plans.value.none { it.adoptionId == "adopt-1" })
         assertTrue(store.transfers.none { it.third == applicantId })
-        val checks = store.checks.value.filter { it.adoptionId == "adopt-1" }
-        assertEquals(3, checks.size)
-        val dues = checks.map { it.dueAt }.sorted()
-        val gaps = listOf(dues[1] - dues[0], dues[2] - dues[1])
-        val day = 24L * 60 * 60 * 1000
-        assertEquals(23L * day, gaps[0]) // 30-7
-        assertEquals(60L * day, gaps[1]) // 90-30
     }
 
     @Test
-    fun finalizeIdempotent_andTransferFailureRollbackLogical() = runTest {
+    fun finalizeAdoption_repeatCall_stillRefusesWithoutMutation() = runTest {
         prepareReadyToFinalize()
-        val first = publisherCompletion().finalizeAdoption("adopt-1").getOrThrow()
-        val second = publisherCompletion().finalizeAdoption("adopt-1").getOrThrow()
-        assertEquals(first.id, second.id)
-
-        store.clear()
-        appStore.value = emptyList()
-        prepareReadyToFinalize()
-        val failing = publisherCompletion(failTransfer = true)
+        val first = publisherCompletion().finalizeAdoption("adopt-1")
+        val second = publisherCompletion().finalizeAdoption("adopt-1")
         assertEquals(
-            "ADOPTION_TRANSFER_FAILED",
-            (failing.finalizeAdoption("adopt-1").exceptionOrNull() as M09AdoptionException).code
+            "ADOPTION_USE_CANONICAL_TRANSFER",
+            (first.exceptionOrNull() as M09AdoptionException).code
+        )
+        assertEquals(
+            "ADOPTION_USE_CANONICAL_TRANSFER",
+            (second.exceptionOrNull() as M09AdoptionException).code
         )
         assertEquals(AdoptionStatus.PAUSED, InMemoryDataStore.getAdoptionPostById("adopt-1")!!.status)
+        assertEquals("ACTIVE", InMemoryDataStore.getPetById("pet-m09-fin")!!.status)
+        assertEquals(publisherId, InMemoryDataStore.getPetById("pet-m09-fin")!!.ownerId)
         assertTrue(store.finalized.value.isEmpty())
+        assertFalse(store.petHistory.any { it.reason == "ADOPTION_EVALUATION_DONE" })
     }
 
     // --- Follow-up ---
 
     @Test
     fun followUpListCompleteOverdueCriticalPermission() = runTest {
-        prepareReadyToFinalize()
-        publisherCompletion().finalizeAdoption("adopt-1").getOrThrow()
+        seedFollowUpChecks()
         val checks = followUp(applicantId).observeChecks("adopt-1").first()
         assertEquals(3, checks.size)
         val first = checks.minByOrNull { it.dueAt }!!

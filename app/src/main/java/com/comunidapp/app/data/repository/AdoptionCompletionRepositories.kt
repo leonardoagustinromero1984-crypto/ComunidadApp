@@ -486,8 +486,7 @@ class MockAdoptionCompletionRepository(
     private val actorUserId: () -> String? = { null },
     private val applications: () -> List<AdoptionApplication> = { emptyList() },
     private val isManager: (adoptionId: String, userId: String) -> Boolean = { _, _ -> false },
-    private val store: M09CompletionMemoryStore = M09CompletionMemoryStore(),
-    var failTransfer: Boolean = false
+    private val store: M09CompletionMemoryStore = M09CompletionMemoryStore()
 ) : AdoptionCompletionRepository {
 
     fun store(): M09CompletionMemoryStore = store
@@ -561,76 +560,12 @@ class MockAdoptionCompletionRepository(
         if (adoptionId.isBlank()) return fail("ADOPTION_NOT_FOUND")
         if (!isManager(adoptionId, actor)) return fail("FORBIDDEN")
 
-        store.finalized.value.find { it.adoptionId == adoptionId }?.let {
-            return Result.success(it)
-        }
-
         val snapshot = getProcessSnapshot(adoptionId).getOrElse { return Result.failure(it) }
         if (!snapshot.canFinalize) return fail("ADOPTION_NOT_READY_TO_FINALIZE")
-        val app = snapshot.acceptedApplication ?: return fail("ADOPTION_NOT_READY_TO_FINALIZE")
-        val adoption = InMemoryDataStore.getAdoptionPostById(adoptionId)
-            ?: return fail("ADOPTION_NOT_FOUND")
-        if (adoption.status != AdoptionStatus.PAUSED) return fail("ADOPTION_NOT_READY_TO_FINALIZE")
 
-        if (failTransfer) return fail("ADOPTION_TRANSFER_FAILED")
-
-        val now = System.currentTimeMillis()
-        val petId = adoption.petId
-        if (!petId.isNullOrBlank()) {
-            val pet = InMemoryDataStore.getPetById(petId)
-            if (pet != null) {
-                store.petHistory += M09CompletionMemoryStore.Quad(
-                    petId, pet.status, pet.status, "ADOPTION_EVALUATION_DONE"
-                )
-            }
-        }
-
-        InMemoryDataStore.updateAdoptionPost(
-            adoption.copy(status = AdoptionStatus.ADOPTED, updatedAt = now)
-        )
-
-        val planId = "plan_$now"
-        val plan = AdoptionFollowUpPlan(
-            id = planId,
-            adoptionId = adoptionId,
-            adopterUserId = app.applicantUserId,
-            status = AdoptionFollowUpPlanStatus.ACTIVE,
-            createdAt = now
-        )
-        store.plans.value = listOf(plan) + store.plans.value
-        val dayMs = 24L * 60L * 60L * 1000L
-        val checkRows = listOf(7, 30, 90).mapIndexed { index, days ->
-            AdoptionFollowUpCheck(
-                id = "chk_${now}_$index",
-                planId = planId,
-                adoptionId = adoptionId,
-                dueAt = now + days * dayMs,
-                status = AdoptionFollowUpStatus.PENDING,
-                createdAt = now,
-                updatedAt = now
-            )
-        }
-        store.checks.value = checkRows + store.checks.value
-
-        val finalizedRow = FinalizedAdoption(
-            id = "fin_$now",
-            adoptionId = adoptionId,
-            applicationId = app.id,
-            petId = petId,
-            adopterUserId = app.applicantUserId,
-            finalizedAt = now,
-            finalizedBy = actor,
-            followUpPlanId = planId
-        )
-        store.finalized.value = listOf(finalizedRow) + store.finalized.value
-        if (!petId.isNullOrBlank()) {
-            runCatching {
-                // Best-effort M11 hook; mock store shares via DataProvider when wired
-                com.comunidapp.app.data.provider.DataProvider.shelterPetRepository
-                    .onAdoptionFinalized(petId)
-            }
-        }
-        return Result.success(finalizedRow)
+        // m09_finalize_adoption raises ADOPTION_USE_CANONICAL_TRANSFER and does not
+        // change owner, pet status, publication status, history, or follow-up.
+        return fail("ADOPTION_USE_CANONICAL_TRANSFER")
     }
 
     private fun <T> fail(code: String): Result<T> =

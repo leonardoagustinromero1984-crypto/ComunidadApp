@@ -25,7 +25,7 @@ Local default is Fast (no emulator). Maestro is on-demand.
 | LOST_FOUND | REG-LF-005 claim + exclusions | — | — | — | 04 / 04b | — | PARTIAL |
 | VERIFICATION | REG-VER-001 states + PENDING refresh | Rules unit | — | — | 05 | — | PARTIAL |
 | TRANSIT | REG-TRANSIT-001 request/select | ViewModel | — | — | 08 | — | PARTIAL |
-| ADOPTION | REG-ADOPT-001 multi-applicant | ViewModel | — | — | 07 | — | PARTIAL |
+| ADOPTION | REG-ADOPT-001 multi-applicant; direct finalize refused | ViewModel | — | — | 07 | — | PARTIAL |
 | COMMUNITY | REG-COM-001 nearby/filters | Filter unit | — | — | 06 | Exact GPS | PARTIAL |
 | COMMUNITY | REG-BUG-010 form+map state | — | — | — | — | — | MISSING |
 | PROFESSIONAL | REG-PRO-001 hub/ACL | Vet ViewModel | — | — | 09 | — | PARTIAL |
