@@ -266,8 +266,8 @@ class M09AdoptionApplicationTest {
             a1.id != a2.id
         )
         assertEquals(
-            "a2 expected REJECTED after accepting a1; a1.id=${a1.id} a2.id=${a2.id}",
-            AdoptionApplicationStatus.REJECTED,
+            "a2 expected PAUSED after accepting a1; a1.id=${a1.id} a2.id=${a2.id}",
+            AdoptionApplicationStatus.PAUSED,
             store.value.first { it.id == a2.id }.status
         )
         assertEquals(

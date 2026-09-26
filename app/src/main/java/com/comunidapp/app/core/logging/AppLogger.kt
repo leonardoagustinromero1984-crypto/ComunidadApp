@@ -67,12 +67,12 @@ object AndroidAppLogger : AppLogger {
 
     override fun debug(tag: String, message: String, correlationId: CorrelationId?) {
         if (!shouldLog(LogLevel.DEBUG)) return
-        Log.d(sanitizeTag(tag), formatMessage(message, correlationId))
+        androidLog { Log.d(sanitizeTag(tag), formatMessage(message, correlationId)) }
     }
 
     override fun info(tag: String, message: String, correlationId: CorrelationId?) {
         if (!shouldLog(LogLevel.INFO)) return
-        Log.i(sanitizeTag(tag), formatMessage(message, correlationId))
+        androidLog { Log.i(sanitizeTag(tag), formatMessage(message, correlationId)) }
     }
 
     override fun warning(
@@ -83,7 +83,7 @@ object AndroidAppLogger : AppLogger {
     ) {
         if (!shouldLog(LogLevel.WARNING)) return
         val msg = formatMessage(message, correlationId, throwable)
-        Log.w(sanitizeTag(tag), msg)
+        androidLog { Log.w(sanitizeTag(tag), msg) }
         // Consent gate unavailable is logged from AuthRepository without modifying it:
         // observe the safe message pattern and report allowlisted remote error.
         if (message.contains("skipping gate until migration", ignoreCase = true)) {
@@ -99,7 +99,7 @@ object AndroidAppLogger : AppLogger {
     ) {
         if (!shouldLog(LogLevel.ERROR)) return
         val msg = formatMessage(message, correlationId, throwable)
-        Log.e(sanitizeTag(tag), msg)
+        androidLog { Log.e(sanitizeTag(tag), msg) }
         // DEBUG never remotes; ERROR only for allowlisted codes embedded as OBS_* / M0x_*
         val code = extractAllowlistedCode(message) ?: return
         maybeReportRemote(code, "M07", msg, correlationId)
@@ -158,6 +158,18 @@ object AndroidAppLogger : AppLogger {
 
     private fun sanitizeTag(tag: String): String =
         tag.take(23).ifBlank { "Leover" }
+
+    /**
+     * android.jar unit stubs throw RuntimeException("Stub!").
+     * Device Log calls are unchanged. Any other failure still propagates.
+     */
+    private inline fun androidLog(block: () -> Unit) {
+        try {
+            block()
+        } catch (error: RuntimeException) {
+            if (!com.comunidapp.app.domain.time.isUnitFrameworkStub(error)) throw error
+        }
+    }
 }
 
 /** Acceso de conveniencia para código nuevo. */

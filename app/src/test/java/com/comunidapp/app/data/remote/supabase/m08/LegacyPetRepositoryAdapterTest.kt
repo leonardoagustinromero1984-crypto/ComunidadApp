@@ -192,8 +192,9 @@ class LegacyPetRepositoryAdapterTest {
         val result = adapter.createPet(samplePet())
         assertTrue(result.isSuccess)
         assertEquals(1, fake.createCalls)
-        // createPetWithPrincipal is atomic: profile/health are not follow-up RPCs.
-        assertEquals(0, fake.profileCalls)
+        // Current adapter follows createPetWithPrincipal with updatePetProfile.
+        // Empty health skips updatePetHealth.
+        assertEquals(1, fake.profileCalls)
         assertEquals(0, fake.healthCalls)
     }
 
@@ -204,7 +205,7 @@ class LegacyPetRepositoryAdapterTest {
         assertTrue(result.isSuccess)
         val petId = result.getOrThrow()
         assertTrue(fake.pets.containsKey(petId))
-        assertEquals(0, fake.profileCalls)
+        assertEquals(1, fake.profileCalls)
     }
 
     @Test
@@ -253,6 +254,17 @@ class LegacyPetRepositoryAdapterTest {
         fake.profileCalls = 0
         fake.healthCalls = 0
         val result = adapter.updatePet(samplePet(id = id))
+        assertTrue(result.isSuccess)
+        assertEquals(1, fake.profileCalls)
+        assertEquals(0, fake.healthCalls)
+    }
+
+    @Test
+    fun s13_updatePet_withHealth_callsHealth() = runTest {
+        val id = adapter.createPet(samplePet()).getOrThrow()
+        fake.profileCalls = 0
+        fake.healthCalls = 0
+        val result = adapter.updatePet(samplePet(id = id).copy(lastVetVisit = "2026-01-02"))
         assertTrue(result.isSuccess)
         assertEquals(1, fake.profileCalls)
         assertEquals(1, fake.healthCalls)
@@ -447,10 +459,12 @@ class LegacyPetRepositoryAdapterTest {
 
     @Test
     fun s25_fetchPetById() = runTest {
+        fake.nextCreateId = "11111111-1111-4111-8111-111111111111"
         val id = adapter.createPet(samplePet()).getOrThrow()
         val pet = adapter.fetchPetById(id)
         assertNotNull(pet)
         assertEquals("Luna", pet!!.name)
+        assertNull(adapter.fetchPetById("pet-1"))
     }
 
     @Test

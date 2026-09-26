@@ -21,6 +21,7 @@ class FakePetM08RemoteDataSource : PetM08RemoteDataSource {
     val duplicates = mutableListOf<PetDuplicateCandidateRow>()
 
     var createCalls = 0
+    var nextCreateId: String? = null
     var profileCalls = 0
     var healthCalls = 0
     var archiveCalls = 0
@@ -81,7 +82,7 @@ class FakePetM08RemoteDataSource : PetM08RemoteDataSource {
         forceCreateFailCode?.let { throw Exception(it) }
         if (params.name.isBlank()) throw Exception("PET_NAME_REQUIRED")
         createCalls++
-        val id = "pet-${createCalls}"
+        val id = nextCreateId?.also { nextCreateId = null } ?: "pet-${createCalls}"
         val ownerId = if (params.organizationId.isNullOrBlank()) "user-1" else null
         val row = PetM08Row(
             id = id,

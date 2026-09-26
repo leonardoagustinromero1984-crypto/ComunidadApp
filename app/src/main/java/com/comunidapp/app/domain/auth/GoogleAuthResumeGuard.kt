@@ -1,6 +1,6 @@
 package com.comunidapp.app.domain.auth
 
-import android.os.SystemClock
+import com.comunidapp.app.domain.time.ElapsedRealtime
 
 /**
  * First-tap Custom Tabs / chooser overlay can bounce ON_RESUME before Google
@@ -13,7 +13,7 @@ object GoogleAuthResumeGuard {
     fun shouldIgnoreResume(
         launchAtElapsedMs: Long,
         hostPausedSinceLaunch: Boolean,
-        nowElapsedMs: Long = SystemClock.elapsedRealtime()
+        nowElapsedMs: Long = ElapsedRealtime.nowMs()
     ): Boolean {
         if (launchAtElapsedMs <= 0L) return true
         if (!hostPausedSinceLaunch) return true

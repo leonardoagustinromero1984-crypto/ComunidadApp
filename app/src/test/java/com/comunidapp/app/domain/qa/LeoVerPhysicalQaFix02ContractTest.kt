@@ -42,7 +42,7 @@ class LeoVerPhysicalQaFix02ContractTest {
         vm.skipCurrentTutorial()
         assertEquals(Onb02Phase.SELECT, vm.ui.value.phase)
         assertEquals(ProfileActorKind.PERSON, vm.ui.value.selection.actorKind)
-        assertEquals(5, ProfileActorTaxonomy.FIRST_LEVEL_ACTOR_COUNT)
+        assertEquals(6, ProfileActorTaxonomy.FIRST_LEVEL_ACTOR_COUNT)
         assertTrue(PhysicalQaFix02Contracts.DEFAULT_START_ACTOR_PERSON)
     }
 
@@ -63,7 +63,7 @@ class LeoVerPhysicalQaFix02ContractTest {
         assertTrue(available.any { it.id == "FOSTER" })
         assertFalse(PhysicalQaFix02Contracts.PERSON_IN_ADD_FUNCTION)
         assertTrue(PhysicalQaFix02Contracts.FOSTER_IN_ADD_FUNCTION)
-        assertFalse(PhysicalQaFix02Contracts.FOSTER_IS_FIRST_LEVEL_ACTOR)
+        assertTrue(PhysicalQaFix02Contracts.FOSTER_IS_FIRST_LEVEL_ACTOR)
     }
 
     @Test
@@ -119,7 +119,7 @@ class LeoVerPhysicalQaFix02ContractTest {
 
     @Test
     fun ACTIVE_CONTEXT_HOME_LABEL_IS_HUMAN() {
-        assertEquals("LeoVer · Persona", ContextHumanLabels.homeBrandLine(OperationalContext.Personal))
+        assertEquals("LeoVer · Personal", ContextHumanLabels.homeBrandLine(OperationalContext.Personal))
         assertEquals(
             "LeoVer · Veterinaria",
             ContextHumanLabels.homeBrandLine(OperationalContext.Veterinary("1", "Clínica"))

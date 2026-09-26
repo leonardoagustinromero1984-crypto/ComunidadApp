@@ -34,7 +34,7 @@ class PetCareTransferScreenGuardsTest {
         assertTrue(screen.contains("Quitar"))
         assertTrue(screen.contains("title = \"No pudimos cargar las transferencias\""))
         assertTrue(provider.contains("useSupabase -> CanonicalCareTransferRepository()"))
-        assertTrue(responsibilities.contains("maxLines = 2"))
+        assertTrue(responsibilities.contains("maxLines = 1"))
         assertTrue(responsibilities.contains("modifier = Modifier.wrapContentWidth()"))
         assertFalse(screen.contains("text = \"Historial\""))
         assertFalse(screen.contains("state.history.forEach"))

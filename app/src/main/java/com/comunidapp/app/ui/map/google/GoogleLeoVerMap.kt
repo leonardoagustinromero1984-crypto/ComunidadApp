@@ -131,7 +131,9 @@ fun GoogleLeoVerMap(
         }
         if (pinMode && markers.isEmpty()) {
             Marker(
-                state = MarkerState(position = safeCamera.center.toLatLng()),
+                state = remember(safeCamera.center) {
+                    MarkerState(position = safeCamera.center.toLatLng())
+                },
                 title = "Ubicación"
             )
         }

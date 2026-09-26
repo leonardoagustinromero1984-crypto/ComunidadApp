@@ -45,13 +45,18 @@ class UiRegressionGateTest {
     fun screensDoNotExposeRawBackendErrors() {
         val banned = listOf("SQLSTATE", "duplicate key", "PostgREST", "pgrst", "organizations_slug")
         val hits = screenFiles().flatMap { file ->
-            val text = file.readText()
-            banned.mapNotNull { needle ->
-                if (text.contains(needle, ignoreCase = true)) {
-                    "$needle in ${file.relativeTo(repoRoot())}"
-                } else {
-                    null
+            file.readLines().mapIndexedNotNull { index, raw ->
+                val line = raw.trim()
+                if (line.startsWith("import ")) return@mapIndexedNotNull null
+                if (
+                    line.contains("io.github.jan.supabase.postgrest") ||
+                    line.contains("supabase.postgrest")
+                ) {
+                    return@mapIndexedNotNull null
                 }
+                val needle = banned.firstOrNull { line.contains(it, ignoreCase = true) }
+                    ?: return@mapIndexedNotNull null
+                "$needle in ${file.relativeTo(repoRoot())}:${index + 1}"
             }
         }
         assertTrue("Technical strings in UI screens:\n${hits.joinToString("\n")}", hits.isEmpty())

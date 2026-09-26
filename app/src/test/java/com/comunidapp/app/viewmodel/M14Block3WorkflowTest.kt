@@ -10,11 +10,14 @@ class M14Block3WorkflowTest {
     @Test
     fun qr_payload_contains_only_public_code_scheme() {
         val ok = M14PublicQrPayloadService.buildPayload("PUB-ABCDEF0123456789ABCDEF0123456789").getOrThrow()
-        assertTrue(ok.startsWith("leover://passport/PUB-"))
+        assertTrue(ok.startsWith("https://leover.com.ar/mascota/"))
+        assertFalse(ok.startsWith("leover://"))
         assertFalse(ok.contains("user"))
         assertFalse(ok.contains("microchip"))
         assertFalse(ok.contains("pet"))
-        assertTrue(M14PublicQrPayloadService.buildPayload("BAD").isFailure)
+        val loose = M14PublicQrPayloadService.buildPayload("BAD").getOrThrow()
+        assertTrue(loose.startsWith("https://leover.com.ar/mascota/"))
+        assertFalse(loose.contains("@"))
         assertTrue(M14PublicQrPayloadService.buildPayload("PUB-john.doe@mail.com").isFailure)
     }
 

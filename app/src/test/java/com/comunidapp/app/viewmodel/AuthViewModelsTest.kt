@@ -154,8 +154,10 @@ class AuthViewModelsTest {
         vm.register()
         advanceUntilIdle()
         assertNull(vm.uiState.value.registeredEmail)
-        assertTrue(vm.uiState.value.offerResendConfirmation)
-        assertTrue(vm.uiState.value.errorMessage.orEmpty().contains("iniciá sesión"))
+        assertFalse(vm.uiState.value.offerResendConfirmation)
+        assertTrue(vm.uiState.value.emailAlreadyRegistered)
+        assertEquals("Este correo ya está registrado", vm.uiState.value.errorTitle)
+        assertTrue(vm.uiState.value.errorMessage.orEmpty().contains("Ya existe una cuenta"))
     }
 
     @Test

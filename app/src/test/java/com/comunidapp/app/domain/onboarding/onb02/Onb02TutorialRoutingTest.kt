@@ -41,7 +41,7 @@ class Onb02TutorialRoutingTest {
     fun FOSTER_TUTORIAL_DOES_NOT_CREATE_ORG() {
         val result = runOnboarding(setOf(LeoverFunction.FOSTER))
         assertEquals(Onb02Phase.DONE, result.vm.ui.value.phase)
-        assertEquals(NavRoutes.HOME, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.FOSTER_PLACEMENTS, result.vm.setupRouteAfterTutorials())
         assertFalse(result.sawOrgSetup)
         assertFalse(result.tutorials.contains(TutorialId.T10_ORGANIZATION))
     }
@@ -114,7 +114,7 @@ class Onb02TutorialRoutingTest {
         assertTrue(result.sawOrgSetup)
         assertEquals(NavRoutes.HOME, result.vm.setupRouteAfterTutorials())
         assertEquals(
-            listOf(NavRoutes.HOME, NavRoutes.createOrganization()),
+            listOf(NavRoutes.HOME, NavRoutes.FOSTER_PLACEMENTS, NavRoutes.createOrganization()),
             FunctionSetupMapping.setupRoutesInOrder(extras, OrganizationSetupAction.CREATE)
         )
         val orgIndex = result.phases.indexOf(Onb02Phase.ORG_SETUP)
@@ -179,7 +179,7 @@ class Onb02TutorialRoutingTest {
     fun FOSTER_TUTORIAL_DOES_NOT_OPEN_ORGANIZATION() {
         val result = runOnboarding(setOf(LeoverFunction.FOSTER))
         assertEquals(Onb02Phase.DONE, result.vm.ui.value.phase)
-        assertEquals(NavRoutes.HOME, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.FOSTER_PLACEMENTS, result.vm.setupRouteAfterTutorials())
         assertFalse(result.sawOrgSetup)
         assertTrue(result.tutorials.contains(TutorialId.T03_FOSTER))
         assertFalse(result.tutorials.contains(TutorialId.T10_ORGANIZATION))

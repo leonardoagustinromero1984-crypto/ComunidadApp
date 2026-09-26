@@ -1,7 +1,7 @@
 package com.comunidapp.app.domain.perf
 
 import com.comunidapp.app.core.logging.AppLog
-import android.os.SystemClock
+import com.comunidapp.app.domain.time.ElapsedRealtime
 
 /**
  * Lightweight screen timing probe for PERF-02 QA.
@@ -10,7 +10,7 @@ import android.os.SystemClock
 object ScreenPerfProbe {
     private const val TAG = "PERF02"
 
-    fun begin(screen: String): Session = Session(screen, SystemClock.elapsedRealtime())
+    fun begin(screen: String): Session = Session(screen, ElapsedRealtime.nowMs())
 
     object Ledger {
         @Volatile private var requestCount: Int = 0
@@ -55,7 +55,7 @@ object ScreenPerfProbe {
 
         fun markFirstContent() {
             if (firstContentMs == null) {
-                firstContentMs = SystemClock.elapsedRealtime() - t0
+                firstContentMs = ElapsedRealtime.nowMs() - t0
                 AppLog.info(
                     TAG,
                     "screen=$screen time_to_first_content_ms=$firstContentMs"
@@ -64,34 +64,34 @@ object ScreenPerfProbe {
         }
 
         suspend fun <T> network(block: suspend () -> T): T {
-            val start = SystemClock.elapsedRealtime()
+            val start = ElapsedRealtime.nowMs()
             return try {
                 block()
             } finally {
-                networkMs += SystemClock.elapsedRealtime() - start
+                networkMs += ElapsedRealtime.nowMs() - start
             }
         }
 
         fun <T> mapping(block: () -> T): T {
-            val start = SystemClock.elapsedRealtime()
+            val start = ElapsedRealtime.nowMs()
             return try {
                 block()
             } finally {
-                mappingMs += SystemClock.elapsedRealtime() - start
+                mappingMs += ElapsedRealtime.nowMs() - start
             }
         }
 
         suspend fun <T> secondary(block: suspend () -> T): T {
-            val start = SystemClock.elapsedRealtime()
+            val start = ElapsedRealtime.nowMs()
             return try {
                 block()
             } finally {
-                secondaryMs += SystemClock.elapsedRealtime() - start
+                secondaryMs += ElapsedRealtime.nowMs() - start
             }
         }
 
         fun finish(extra: String = "") {
-            val total = SystemClock.elapsedRealtime() - t0
+            val total = ElapsedRealtime.nowMs() - t0
             AppLog.info(
                 TAG,
                 "screen=$screen total_ms=$total first_content_ms=${firstContentMs ?: -1} " +

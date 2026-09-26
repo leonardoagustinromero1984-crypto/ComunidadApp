@@ -39,7 +39,7 @@ class VitaCoraHistoryPresentationTest {
             mediaMime = "video/mp4",
             sourceContentKind = "REEL"
         )
-        assertEquals("Se guardó un Reel", VitaCoraHistoryPresentation.titleFor(item))
+        assertEquals("Se guardó un Clip", VitaCoraHistoryPresentation.titleFor(item))
         assertNull(VitaCoraHistoryPresentation.detailFor(item))
         assertTrue(VitaCoraHistoryPresentation.isPlayableVideo(item))
     }

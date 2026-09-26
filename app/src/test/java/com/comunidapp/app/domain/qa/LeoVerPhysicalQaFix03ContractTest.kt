@@ -49,7 +49,7 @@ class LeoVerPhysicalQaFix03ContractTest {
         val selector = source("app/src/main/java/com/comunidapp/app/ui/screens/onboarding/onb02/Onb02Screens.kt")
         assertTrue(selector.contains("locked = personLocked"))
         assertTrue(selector.contains("Siempre activo"))
-        assertTrue(Onb02Copy.SELECTOR_SUBTITLE.contains("perfil Persona es la base"))
+        assertTrue(Onb02Copy.SELECTOR_SUBTITLE.contains("perfil Personal es la base"))
     }
 
     @Test
@@ -141,9 +141,9 @@ class LeoVerPhysicalQaFix03ContractTest {
 
     @Test
     fun CREATE_FOSTER_NO_RAW_ADMIN_LANDING() {
-        assertEquals(NavRoutes.HOME, FunctionSetupMapping.routeFor(LeoverFunction.FOSTER).route)
+        assertEquals(NavRoutes.FOSTER_PLACEMENTS, FunctionSetupMapping.routeFor(LeoverFunction.FOSTER).route)
         assertEquals(
-            NavRoutes.HOME,
+            NavRoutes.FOSTER_PLACEMENTS,
             NewContextActivation.landingRoute(OperationalContext.Foster("u1", "Hogar de tránsito"))
         )
         assertFalse(PhysicalQaFix03Contracts.FOSTER_CREATE_LANDING_ADMIN)
@@ -191,8 +191,8 @@ class LeoVerPhysicalQaFix03ContractTest {
         assertTrue(PhysicalQaFix03Contracts.NAV_ROUTE_RESTORED)
         assertTrue(PhysicalQaFix03Contracts.ACTIVE_CONTEXT_RESTORED)
         val nav = source("app/src/main/java/com/comunidapp/app/navigation/ComunidappNavGraph.kt")
-        assertTrue(nav.contains("AppNavRestoreStore"))
-        assertTrue(nav.contains("lastReadySession"))
+        assertTrue(nav.contains("AppNavRestoreStore.write"))
+        assertTrue(nav.contains("AppNavRestoreStore.read"))
         AppNavRestoreStore.clear()
     }
 
@@ -218,7 +218,7 @@ class LeoVerPhysicalQaFix03ContractTest {
         val auth = source("app/src/main/java/com/comunidapp/app/data/repository/SupabaseAuthRepository.kt")
         assertTrue(auth.contains("AuthSessionAccess.requireUser"))
         val access = source("app/src/main/java/com/comunidapp/app/domain/auth/AuthSessionAccess.kt")
-        assertTrue(access.contains("currentSessionOrNull"))
+        assertTrue(access.contains("currentUserOrNull"))
     }
 
     private fun source(path: String): String = UiRegressionGateTest.sourceFile(path).readText()

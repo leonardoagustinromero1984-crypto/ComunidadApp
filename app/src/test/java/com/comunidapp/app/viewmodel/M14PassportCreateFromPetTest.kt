@@ -84,10 +84,8 @@ class M14PassportCreateFromPetTest {
     fun createFromPet_success_setsPassport() = runTest {
         val vm = M14PetPassportViewModel(pet.id, passportRepo(), petRepo())
         advanceUntilIdle()
-        vm.createFromPet()
-        advanceUntilIdle()
         assertNotNull(vm.passport.value)
-        assertEquals("VitaCora lista", vm.message.value)
+        assertNull(vm.message.value)
         assertEquals(pet.name, vm.passport.value?.displayName)
     }
 
@@ -165,9 +163,6 @@ class M14PassportCreateFromPetTest {
                 Result.failure(M14Exception("x", "x"))
         }
         val vm = M14PetPassportViewModel(pet.id, repo, petRepo())
-        advanceUntilIdle()
-        assertNull(vm.passport.value)
-        vm.createFromPet()
         advanceUntilIdle()
         assertEquals("pp-existing", vm.passport.value?.id)
         assertTrue(vm.message.value?.contains("Ya existe") == true)

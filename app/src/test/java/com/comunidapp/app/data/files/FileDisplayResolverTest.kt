@@ -12,6 +12,8 @@ import com.comunidapp.app.domain.files.FileResourceRef
 import com.comunidapp.app.domain.files.FileResourceType
 import com.comunidapp.app.domain.files.FileUploadRequest
 import com.comunidapp.app.domain.files.authorization.FileAuthContext
+import com.comunidapp.app.domain.media.ImageIngest
+import com.comunidapp.app.domain.media.ImageIngestResult
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -155,7 +157,16 @@ class FileDisplayResolverTest {
                 override suspend fun readBytes(uriString: String) =
                     AppResult.Success(byteArrayOf(1))
             },
-            { 1_000L }
+            { 1_000L },
+            imageIngest = ImageIngest { uri, _ ->
+                val image = mime.startsWith("image/")
+                ImageIngestResult(
+                    uriString = uri,
+                    mimeType = mime,
+                    sizeBytes = if (image) 100L else 0L,
+                    normalized = image
+                )
+            }
         )
 
         suspend fun upload(request: FileUploadRequest, actor: String) =

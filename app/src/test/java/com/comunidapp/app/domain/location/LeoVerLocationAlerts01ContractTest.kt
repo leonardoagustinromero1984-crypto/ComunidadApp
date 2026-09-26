@@ -156,7 +156,7 @@ class LeoVerLocationAlerts01ContractTest {
         assertEquals(LostFoundStatus.ACTIVE, LostFoundStatus.fromString("OPEN"))
         val detail = source("app/src/main/java/com/comunidapp/app/ui/screens/lostfound/AlertMapScreen.kt")
         assertTrue(detail.contains("Tomar caso"))
-        assertTrue(detail.contains("Este caso ya fue tomado por otro colaborador."))
+        assertTrue(detail.contains("El caso fue asignado a un colaborador más cercano."))
         assertTrue(detail.contains("Completar datos del animal"))
     }
 

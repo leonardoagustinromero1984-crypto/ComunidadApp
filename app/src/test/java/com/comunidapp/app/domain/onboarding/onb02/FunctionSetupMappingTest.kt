@@ -24,10 +24,10 @@ class FunctionSetupMappingTest {
         assertFalse(FunctionSetupMapping.FOSTER_CREATES_ORGANIZATION)
         assertTrue(FunctionSetupMapping.neverUsesOrganizationForm(LeoverFunction.FOSTER))
         assertTrue(FunctionSetupMapping.neverUsesOrganizationForm(LeoverFunction.RESCUER))
-        assertEquals(NavRoutes.HOME, FunctionSetupMapping.routeFor(LeoverFunction.FOSTER).route)
+        assertEquals(NavRoutes.FOSTER_PLACEMENTS, FunctionSetupMapping.routeFor(LeoverFunction.FOSTER).route)
         assertEquals(FunctionSetupKind.PERSONAL_FOSTER, FunctionSetupMapping.routeFor(LeoverFunction.FOSTER).kind)
         assertEquals(
-            NavRoutes.HOME,
+            NavRoutes.FOSTER_PLACEMENTS,
             FunctionSetupMapping.setupRouteAfterSelection(setOf(LeoverFunction.FOSTER), null)
         )
         assertEquals(
@@ -89,11 +89,11 @@ class FunctionSetupMappingTest {
             organizationAction = OrganizationSetupAction.CREATE
         )
         assertEquals(
-            listOf(NavRoutes.HOME, NavRoutes.createOrganization()),
+            listOf(NavRoutes.HOME, NavRoutes.FOSTER_PLACEMENTS, NavRoutes.createOrganization()),
             routes
         )
         assertEquals(
-            NavRoutes.HOME,
+            NavRoutes.FOSTER_PLACEMENTS,
             FunctionSetupMapping.setupRouteAfterSelection(
                 setOf(LeoverFunction.FOSTER, LeoverFunction.ORGANIZATION),
                 OrganizationSetupAction.CREATE

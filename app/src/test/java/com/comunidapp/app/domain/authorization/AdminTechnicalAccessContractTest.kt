@@ -62,7 +62,8 @@ class AdminTechnicalAccessContractTest {
         val reset = source("scripts/qa/reset-staging.sql")
         assertTrue(reset.contains("platform_admin_identities"))
         assertTrue(reset.contains("_qa_platform_admin_identities"))
-        assertTrue(reset.contains("insert into public.platform_admin_identities"))
+        assertTrue(reset.contains("qa_restore_insertable('public', 'platform_admin_identities'"))
+        assertFalse(reset.contains("insert into public.platform_admin_identities"))
     }
 
     @Test

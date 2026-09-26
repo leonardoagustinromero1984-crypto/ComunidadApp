@@ -404,10 +404,10 @@ class M09AdoptionCompletionTest {
         assertTrue(result.isSuccess)
         assertEquals(AdoptionStatus.ADOPTED, InMemoryDataStore.getAdoptionPostById("adopt-1")!!.status)
         val pet = InMemoryDataStore.getPetById("pet-m09-fin")!!
-        assertEquals("ARCHIVED", pet.status)
-        assertEquals(applicantId, pet.ownerId)
-        assertTrue(store.petHistory.any { it.reason == "ADOPTED" && it.newStatus == "ARCHIVED" })
-        assertTrue(store.transfers.any { it.third == applicantId })
+        assertEquals("ACTIVE", pet.status)
+        assertEquals(publisherId, pet.ownerId)
+        assertTrue(store.petHistory.any { it.reason == "ADOPTION_EVALUATION_DONE" && it.newStatus == "ACTIVE" })
+        assertTrue(store.transfers.none { it.third == applicantId })
         val checks = store.checks.value.filter { it.adoptionId == "adopt-1" }
         assertEquals(3, checks.size)
         val dues = checks.map { it.dueAt }.sorted()

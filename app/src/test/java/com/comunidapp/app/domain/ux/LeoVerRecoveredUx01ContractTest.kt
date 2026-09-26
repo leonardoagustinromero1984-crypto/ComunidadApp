@@ -27,7 +27,7 @@ class LeoVerRecoveredUx01ContractTest {
 
     @Test
     fun PROFILE_TAXONOMY_AND_TUTORIAL_UNTOUCHED() {
-        assertEquals(5, ProfileActorTaxonomy.FIRST_LEVEL_ACTOR_COUNT)
+        assertEquals(6, ProfileActorTaxonomy.FIRST_LEVEL_ACTOR_COUNT)
         assertFalse(ProfileActorTaxonomy.SERVICE_CATEGORIES_IN_FIRST_LEVEL)
         assertTrue(ProfileActorTaxonomy.REFUGE_GENERAL_SELECTOR)
         assertFalse(ProfileActorTaxonomy.REFUGE_COMMERCIAL_SELECTOR)

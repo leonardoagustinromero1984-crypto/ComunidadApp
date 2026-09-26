@@ -4,14 +4,24 @@ Snapshot branch for Cloud work. This is not a release and not a production deplo
 
 Local PCs keep LeoVer-QA **paused**. Cloud must not start an Android emulator unless a later block explicitly asks.
 
+## Cursor Environment Install Script
+
+```bash
+bash scripts/cloud/bootstrap-cloud.sh
+```
+
+The script is idempotent. It checks JDK 21, sets `ANDROID_HOME`, installs command-line SDK packages only when they are missing (`platforms;android-36`, `platforms;android-36.1`, `build-tools;36.1.0`, `platform-tools`), and marks `gradlew` executable. It does not install an emulator, system images, Docker, or production secrets.
+
 ## What Cloud should run
 
 Fast / Affected only:
 
-1. Coverage gate: `scripts/qa/check-regression-coverage.ps1` (PowerShell) or the same git-diff logic on bash later.
-2. JVM unit + contract + ViewModel: `./gradlew :app:testDebugUnitTest`
-3. Shared tests if the module resolves: `./gradlew :shared:allTests` or the JVM target that exists on Linux.
+1. Linux runner: `bash scripts/qa/run-regression.sh` (default `--fast`) or `bash scripts/qa/run-regression.sh --affected`.
+2. JVM unit + contract + ViewModel: `./gradlew :app:testLocalDebugUnitTest --no-configuration-cache --no-daemon`
+3. Shared JVM host tests: `./gradlew :shared:testAndroidHostTest --no-configuration-cache --no-daemon`
 4. Static SQL/RPC/RLS **contract** tests that live under `app/src/test` (they read migration files; they do not apply them).
+
+PowerShell is not required for this Cloud regression. `scripts/qa/run-regression.ps1` remains the Windows runner.
 
 Do **not** by default:
 
@@ -32,20 +42,13 @@ Do **not** by default:
 | PowerShell (optional) | The QA runners are `.ps1`. On Ubuntu use `pwsh` if present, or invoke Gradle directly. |
 | Supabase CLI | Only if running live STAGING SQL probes. Not required for Fast JVM. |
 
-Suggested first Cloud command:
+Suggested first Cloud command after the install script:
 
 ```bash
-export JAVA_HOME=/usr/lib/jvm/temurin-21-jdk-amd64
-export ANDROID_HOME="$HOME/Android/Sdk"
-./gradlew :app:testDebugUnitTest --no-daemon
+bash scripts/qa/run-regression.sh
 ```
 
-Affected filter (same idea as the Windows runner):
-
-```bash
-./gradlew :app:testDebugUnitTest --no-daemon \
-  --tests 'com.comunidapp.app.domain.auth.*'
-```
+That runs `:app:testLocalDebugUnitTest` and `:shared:testAndroidHostTest` with `--no-configuration-cache --no-daemon`. Flavor is `localDebug`. Configuration cache stays enabled in `gradle.properties` for the product.
 
 Use `docs/qa/change-impact-map.yaml` to pick `--tests` from `git diff --name-only`.
 

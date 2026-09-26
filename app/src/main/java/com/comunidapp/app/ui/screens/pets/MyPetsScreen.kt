@@ -65,12 +65,12 @@ fun MyPetsScreen(
         snackbarHostState.showSnackbar(message)
         viewModel.consumeAcceptNotice()
     }
+    val activeContext by com.comunidapp.app.domain.context.OperationalContextProvider.active.collectAsState()
     val showImportTools = onImportRescuer != null && (
         com.comunidapp.app.data.provider.DataProvider.personCapabilityRepository.hasActive(
             com.comunidapp.app.domain.capability.PersonCapabilityCode.RESCUER
         ) ||
-            com.comunidapp.app.domain.context.OperationalContextProvider.active.value
-                is com.comunidapp.app.domain.context.OperationalContext.Rescuer
+            activeContext is com.comunidapp.app.domain.context.OperationalContext.Rescuer
         )
     var needsPhotoOnly by remember { mutableStateOf(false) }
     val visible = if (showImportTools && needsPhotoOnly) {

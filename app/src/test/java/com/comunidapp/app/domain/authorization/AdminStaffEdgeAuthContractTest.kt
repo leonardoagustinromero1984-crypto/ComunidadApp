@@ -100,7 +100,7 @@ class AdminStaffEdgeAuthContractTest {
         assertTrue(ds.contains("RPC_GET_BREED"))
         assertTrue(ds.contains("coalesce") || ds.contains("params.breedId"))
         val form = source("app/src/main/java/com/comunidapp/app/viewmodel/PetFormViewModel.kt")
-        assertTrue(form.contains("repo.getBreed"))
+        assertTrue(form.contains("repo.getSecondaryItem"))
         assertTrue(form.contains("catalogForResolve"))
     }
 

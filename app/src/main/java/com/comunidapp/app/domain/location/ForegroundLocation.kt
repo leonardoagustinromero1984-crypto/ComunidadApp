@@ -15,6 +15,17 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.coroutines.resume
 
+/**
+ * API 28+ uses [android.location.LocationManager.isLocationEnabled].
+ * API 26–27 read Settings.Secure.LOCATION_MODE. OFF is 0.
+ */
+object DeviceLocationCompat {
+    const val LOCATION_MODE_OFF = 0
+
+    fun enabled(sdkInt: Int, api28Enabled: Boolean, legacyMode: Int): Boolean =
+        if (sdkInt >= 28) api28Enabled else legacyMode != LOCATION_MODE_OFF
+}
+
 object ForegroundLocation {
     val permissions = arrayOf(
         Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -33,7 +44,25 @@ object ForegroundLocation {
 
     fun isDeviceLocationEnabled(context: Context): Boolean {
         val manager = context.getSystemService(Context.LOCATION_SERVICE) as? LocationManager
-        return manager?.isLocationEnabled == true
+            ?: return false
+        return if (android.os.Build.VERSION.SDK_INT >= 28) {
+            DeviceLocationCompat.enabled(
+                sdkInt = android.os.Build.VERSION.SDK_INT,
+                api28Enabled = manager.isLocationEnabled,
+                legacyMode = DeviceLocationCompat.LOCATION_MODE_OFF
+            )
+        } else {
+            val mode = android.provider.Settings.Secure.getInt(
+                context.contentResolver,
+                android.provider.Settings.Secure.LOCATION_MODE,
+                DeviceLocationCompat.LOCATION_MODE_OFF
+            )
+            DeviceLocationCompat.enabled(
+                sdkInt = android.os.Build.VERSION.SDK_INT,
+                api28Enabled = false,
+                legacyMode = mode
+            )
+        }
     }
 
     @SuppressLint("MissingPermission")

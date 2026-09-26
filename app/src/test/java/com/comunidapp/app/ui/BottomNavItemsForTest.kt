@@ -52,7 +52,7 @@ class BottomNavItemsForTest {
         )
         assertTrue(vet.single { it.prominent }.route == NavRoutes.PUBLISH)
         assertEquals(NavRoutes.MY_VETERINARY_APPOINTMENTS, vet[1].route)
-        assertEquals(NavRoutes.MY_BUSINESS, vet[3].route)
+        assertEquals(NavRoutes.PROFESSIONAL_HUB, vet[3].route)
 
         listOf(AccountType.SHOP, AccountType.TRAINER, AccountType.WALKER).forEach { type ->
             val items = bottomNavItemsFor(type)

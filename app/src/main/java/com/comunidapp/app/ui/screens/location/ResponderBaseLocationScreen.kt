@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,7 +34,7 @@ fun ResponderBaseLocationScreen(
     var address by remember { mutableStateOf<String?>(null) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
-    val active = com.comunidapp.app.domain.context.OperationalContextProvider.active.value
+    val active by com.comunidapp.app.domain.context.OperationalContextProvider.active.collectAsState()
     val organizationId = when (active) {
         is com.comunidapp.app.domain.context.OperationalContext.Organization,
         is com.comunidapp.app.domain.context.OperationalContext.Veterinary,

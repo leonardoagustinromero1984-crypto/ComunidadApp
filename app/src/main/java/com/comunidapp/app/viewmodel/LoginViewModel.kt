@@ -20,7 +20,7 @@ import com.comunidapp.app.domain.auth.validation.EmailOtpValidators
 import com.comunidapp.app.domain.user.UsernameErrorCode
 import com.comunidapp.app.domain.user.UsernameValidationException
 import com.comunidapp.app.domain.user.UsernameValidators
-import android.os.SystemClock
+import com.comunidapp.app.domain.time.ElapsedRealtime
 import com.comunidapp.app.domain.auth.GoogleAuthLifecycle
 import com.comunidapp.app.domain.auth.GoogleAuthResumeGuard
 import com.comunidapp.app.domain.auth.GoogleAuthTrace
@@ -149,7 +149,7 @@ class LoginViewModel(
         if (_uiState.value.isBusy) return
         AuthAnalytics.track("google_login_started")
         googleWaitJob?.cancel()
-        googleLaunchAtElapsedMs = SystemClock.elapsedRealtime()
+        googleLaunchAtElapsedMs = ElapsedRealtime.nowMs()
         googleHostPausedSinceLaunch = false
         googleLaunchAuthUserId = authRepository.getCurrentUser()?.id
         GoogleAuthTrace.event("GOOGLE-TAP")
@@ -673,7 +673,7 @@ class RegisterViewModel(
         if (state.isLoading || state.googleAuthenticated) return
         AuthAnalytics.track("google_signup_started")
         googleWaitJob?.cancel()
-        googleLaunchAtElapsedMs = SystemClock.elapsedRealtime()
+        googleLaunchAtElapsedMs = ElapsedRealtime.nowMs()
         googleHostPausedSinceLaunch = false
         googleLaunchAuthUserId = authRepository.getCurrentUser()?.id
         GoogleAuthTrace.event("GOOGLE-TAP")

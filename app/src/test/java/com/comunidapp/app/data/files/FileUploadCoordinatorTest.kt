@@ -14,6 +14,8 @@ import com.comunidapp.app.domain.files.FileResourceRef
 import com.comunidapp.app.domain.files.FileResourceType
 import com.comunidapp.app.domain.files.FileUploadPhase
 import com.comunidapp.app.domain.files.FileUploadRequest
+import com.comunidapp.app.domain.media.ImageIngest
+import com.comunidapp.app.domain.media.ImageIngestResult
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.runCurrent
@@ -194,7 +196,10 @@ class FileUploadCoordinatorTest {
         objectUploader = uploader,
         metadataReader = metadata,
         bytesReader = bytes,
-        clock = { 1_000L }
+        clock = { 1_000L },
+        imageIngest = ImageIngest { uri, _ ->
+            ImageIngestResult(uri, "image/jpeg", 100L, normalized = true)
+        }
     )
 
     private fun request() = FileUploadRequest(

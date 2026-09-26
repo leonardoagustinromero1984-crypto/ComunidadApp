@@ -3434,9 +3434,8 @@ private fun NavGraphBuilder.mainAppRoutes(
         route = NavRoutes.ORG_INVITATION,
         arguments = listOf(navArgument(NavRoutes.ARG_INVITATION_ID) { type = NavType.StringType })
     ) { entry ->
-        val invitationId = java.net.URLDecoder.decode(
-            entry.arguments?.getString(NavRoutes.ARG_INVITATION_ID).orEmpty(),
-            Charsets.UTF_8
+        val invitationId = RouteArgDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_INVITATION_ID)
         )
         com.comunidapp.app.ui.screens.organization.OrgInvitationAcceptScreen(
             invitationId = invitationId,
@@ -3463,9 +3462,8 @@ private fun NavGraphBuilder.mainAppRoutes(
         route = NavRoutes.STORY_VIEWER,
         arguments = listOf(navArgument(NavRoutes.ARG_STORY_AUTHOR_ID) { type = NavType.StringType })
     ) { entry ->
-        val authorId = java.net.URLDecoder.decode(
-            entry.arguments?.getString(NavRoutes.ARG_STORY_AUTHOR_ID).orEmpty(),
-            Charsets.UTF_8
+        val authorId = RouteArgDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_STORY_AUTHOR_ID)
         )
         val stories by DataProvider.feedRepository.observeActiveStories().collectAsState()
         val ordered = com.comunidapp.app.domain.social.StoryTrayGrouping.segmentsOldestFirst(
