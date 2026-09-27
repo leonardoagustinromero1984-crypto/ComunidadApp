@@ -190,13 +190,27 @@ class LeoVerCommunityCareTransitContract14aTest {
         assertFalse(select.contains("pet_responsibility_events"))
         assertTrue(select.contains("v_req.pet_id"))
         val current = migration1102()
+        listOf(
+            "canon_request_foster_for_pet",
+            "canon_apply_to_foster_request",
+            "canon_list_open_foster_requests",
+            "canon_list_my_foster_requests",
+            "canon_list_my_foster_applications",
+            "canon_get_active_foster_transit"
+        ).forEach { name ->
+            val body = functionBody(current, name)
+            assertFalse(name, body.contains("current_custodian"))
+            assertFalse(name, body.contains("vitacora_moments"))
+            assertFalse(name, body.contains("insert into public.pets"))
+            assertFalse(name, body.contains("insert into public.pet_responsibility_links"))
+        }
         assertFalse(current.contains("insert into public.pet_responsibility_links"))
         assertFalse(current.contains("update public.pet_responsibility_links"))
         assertFalse(current.contains("update public.pets"))
         assertFalse(current.contains("insert into public.pets"))
         assertFalse(current.contains("insert into public.vitacora_moments"))
-        assertFalse(current.contains("current_custodian_"))
-        assertFalse(current.contains("care_transfer"))
+        assertFalse(current.contains("canon_initiate_care_transfer"))
+        assertFalse(current.contains("canon_accept_care_transfer"))
         assertTrue(current.contains("TRANSIT_START_VITACORA_EVENT: MISSING"))
         assertTrue(current.contains("END TRANSIT"))
         assertTrue(current.contains("The foster never becomes OWNER"))
