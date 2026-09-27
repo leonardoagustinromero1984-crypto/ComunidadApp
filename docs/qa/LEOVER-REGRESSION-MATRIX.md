@@ -77,7 +77,7 @@ JVM and contract coverage on this branch. **COVERED** here is not a Maestro pass
 | 1096 MATCHING SEARCH_PATH | `CloudBaselineRepair02ContractTest` | COVERED |
 | COMMUNITY DIRTY STATE | `CommunityFormDirtyStateTest` | COVERED |
 | QR DIRECT ROUTE | `CloudBaselineRepair02ContractTest` opens `m14/pets/{petId}/share` | COVERED |
-| REUNIFICATION VITACORA | `ReunificationVitaCoraInvariantTest` plus the resolved Mora read in `probe-community-care-live-lost-found.py` | COVERED |
+| REUNIFICATION VITACORA | `ReunificationVitaCoraInvariantTest` and `VitaCoraReunificationRetirement1104Test`. Migration 1104 retires the provisional VitaCora. The Mora read is the post-apply check and was not run in this block. | COVERED |
 
 Final consolidation JVM, recorded from `:app:testLocalDebugUnitTest` and `:shared:testAndroidHostTest` on this revision: app **3120/3120**, shared **390/390**, 0 FAIL. The two tests above the previous app baseline of 3118 are `ReunificationVitaCoraInvariantTest`.
 
@@ -108,4 +108,4 @@ No open P0 correctness or security defect was found in the final Community Care 
 - Support tickets
 - Agenda edge cases beyond 09d
 - Rate-limit live tests
-- Archived provisional FOUND pet keeps its `vitacora_profiles` row. `canon_list_vitacora_moments` still synthesizes `CARE_CREATED` from that archived pet. It is not a second active identity.
+- Migration 1104 retires a reunited provisional VitaCora and stops synthetic `CARE_CREATED`. It is not applied. STAGING still shows that residue until 1104 is applied.

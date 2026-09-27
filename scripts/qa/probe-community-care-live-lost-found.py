@@ -587,6 +587,8 @@ def read_confirmed_pair(key: str, sessions: dict[str, tuple[str, str]], rows: li
         row.get("kind") == "PHOTO" and row.get("title") == "Foto del hallazgo"
         for row in mora_moments
     )
+    # 1104: a retired provisional VitaCora has no independent CARE_CREATED line.
+    # Until 1104 is applied, STAGING still synthesizes that line and this check fails.
     history_on_provisional = any(row.get("kind") == "CARE_CREATED" for row in provisional_moments)
     photo_left_behind = any(
         row.get("kind") == "PHOTO" and row.get("title") == "Foto del hallazgo"
@@ -610,7 +612,7 @@ def read_confirmed_pair(key: str, sessions: dict[str, tuple[str, str]], rows: li
             and mora.get("current_custodian_person_id") == qa01_id
         ),
         "photo_moved": photo_on_mora and not photo_left_behind,
-        "provisional_history": history_on_provisional,
+        "no_provisional_care_created": not history_on_provisional,
         "finder_not_owner": MORA_PET_ID not in qa02_pets and PINNED_PROVISIONAL_PET_ID not in qa01_pets,
         "mora_on_owner_profile": MORA_PET_ID in qa01_pets,
         "qa03_eligible": qa03_eligible is True,
