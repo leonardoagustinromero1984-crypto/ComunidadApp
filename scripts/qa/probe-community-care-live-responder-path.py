@@ -37,8 +37,10 @@ LEGACY_PROD_REF = "wystsapjfpdtoprlmizz"
 BASE = f"https://{STAGING_REF}.supabase.co"
 
 QA02_ASSET_ID = "c84dc7c2-9810-4d99-8c11-6a2caad89e95"
-# Filled after the first live create. Empty keeps note identity.
-PINNED_FOUND_ID = ""
+# Case created for this responder path. Later runs reuse it and do not
+# publish another FOUND when it is missing from the active list.
+PINNED_FOUND_ID = "3e238403-174b-4ce8-82fd-58daa4faa636"
+PINNED_PET_ID = "ff55e88f-c97a-4d63-b9c6-93b2bea264ff"
 RESOLVED_LOST_ID = "232c473b-cbf3-485f-8f89-cb27132c8f89"
 RESOLVED_FOUND_ID = "2e0cf009-325d-4db0-be03-4ca48c1b2f67"
 NOTE_MARK = "QA LIVE 12 RESPONDER PATH"
@@ -493,6 +495,10 @@ def main() -> int:
         print("REFUSING DUPLICATE FOUND")
         return 1
     created = False
+    if PINNED_FOUND_ID and not matches:
+        print("PINNED FIXTURE ABSENT")
+        print("REFUSING DUPLICATE FOUND")
+        return 1
     if not matches:
         if force_read:
             print("READ ONLY REFUSED fixture absent")
