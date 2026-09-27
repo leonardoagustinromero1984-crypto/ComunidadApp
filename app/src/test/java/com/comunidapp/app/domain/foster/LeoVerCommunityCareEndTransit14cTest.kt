@@ -6,7 +6,6 @@ import com.comunidapp.app.data.repository.CanonicalFosterTransitDecoding
 import com.comunidapp.app.data.repository.CanonicalFosterTransitRecovery
 import com.comunidapp.app.data.repository.CanonicalFosterTransitRequest
 import com.comunidapp.app.domain.canonical.CanonicalBackend
-import com.comunidapp.app.ui.UiRegressionGateTest
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -406,5 +405,14 @@ class LeoVerCommunityCareEndTransit14cTest {
 
     private fun source(relativePath: String): String = sourceFile(relativePath).readText()
 
-    private fun sourceFile(relativePath: String): File = UiRegressionGateTest.sourceFile(relativePath)
+    private fun sourceFile(relativePath: String): File {
+        val candidates = listOf(
+            File(relativePath),
+            File("../$relativePath"),
+            File("../../$relativePath"),
+            File(System.getProperty("user.dir"), relativePath),
+            File(System.getProperty("user.dir"), "../$relativePath")
+        )
+        return candidates.firstOrNull { it.exists() } ?: error("SOURCE_NOT_FOUND:$relativePath")
+    }
 }
