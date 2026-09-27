@@ -174,7 +174,16 @@ fun OpenFosterRequestsScreen(onNavigateBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
         ) {
             item { message?.let { Text(it, style = LeoCaption) } }
-            if (rows.isEmpty()) {
+            val openIds = rows.map { it.id }.toSet()
+            val recovered = applications.filter { it.requestId !in openIds }
+            if (recovered.isNotEmpty()) {
+                item { Text("Tus postulaciones", style = LeoCaption) }
+                items(recovered, key = { "app-${it.id}" }) { mine ->
+                    Text("${mine.petName.orEmpty()} · ${mine.status}")
+                    Text("Estado recuperado del servidor.", style = LeoCaption)
+                }
+            }
+            if (rows.isEmpty() && recovered.isEmpty()) {
                 item { Text("No hay solicitudes abiertas.", style = LeoCaption) }
             }
             items(rows, key = { it.id }) { row ->

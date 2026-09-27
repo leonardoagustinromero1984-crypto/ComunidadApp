@@ -308,19 +308,25 @@ class UnavailableCanonicalFosterTransitRepository : CanonicalFosterTransitReposi
     private fun <T> fail(): Result<T> =
         Result.failure(IllegalStateException("CANONICAL_TRANSIT_UNAVAILABLE"))
 
-    override suspend fun listMyFosterRequests() = fail()
+    override suspend fun listMyFosterRequests(): Result<List<CanonicalFosterTransitRequest>> = fail()
 
-    override suspend fun listMyFosterApplications() = fail()
+    override suspend fun listMyFosterApplications(): Result<List<CanonicalFosterTransitApplication>> = fail()
 
-    override suspend fun getActiveFosterTransit(petId: String) = fail()
+    override suspend fun getActiveFosterTransit(petId: String): Result<CanonicalActiveFosterTransit> = fail()
 
-    override suspend fun listOpenFosterRequests() = fail()
+    override suspend fun listOpenFosterRequests(): Result<List<CanonicalOpenFosterRequest>> = fail()
 
-    override suspend fun listFosterRequestApplications(requestId: String) = fail()
+    override suspend fun listFosterRequestApplications(
+        requestId: String
+    ): Result<List<CanonicalFosterApplicantRow>> = fail()
 
-    override suspend fun requestFosterForPet(petId: String, needs: String?, notes: String?) = fail()
+    override suspend fun requestFosterForPet(
+        petId: String,
+        needs: String?,
+        notes: String?
+    ): Result<String> = fail()
 
-    override suspend fun applyToFosterRequest(requestId: String) = fail()
+    override suspend fun applyToFosterRequest(requestId: String): Result<String> = fail()
 
-    override suspend fun selectFosterApplicant(applicationId: String) = fail()
+    override suspend fun selectFosterApplicant(applicationId: String): Result<String> = fail()
 }
