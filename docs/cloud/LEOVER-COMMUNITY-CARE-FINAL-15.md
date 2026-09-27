@@ -1,6 +1,6 @@
 # LeoVer Community Care final consolidation 15
 
-Audit and documentation only. No new product feature, no new migration, no STAGING mutation, no PROD, no `main`, no merge, no emulator, no Maestro.
+Community Care status through migration 1104. The 15 consolidation audited 1099–1103. The 15C live apply then retired the already-confirmed Mora provisional VitaCora on STAGING. No PROD, no `main`, no merge, no emulator, no Maestro.
 
 Source branch: `cursor/community-care-end-transit-14c` at `3dd0c06c88e2633c3e5cdca3a10d22820f52bfb3`.
 
@@ -64,7 +64,7 @@ Canonical directory: `infra/supabase-canonical/supabase/migrations`.
 | 1102 | `20260927210000_1102_foster_transit_read_contract.sql` | Applied |
 | 1103 | `20260927220000_1103_foster_transit_completion.sql` | Applied |
 
-Remote history was read with `select version from supabase_migrations.schema_migrations`. No migration was applied from this block. PROD was not contacted.
+Remote history for the 15 audit stopped at 1103. The 15C apply used `supabase db push` and moved STAGING to `20260927230000` / 1104 `vitacora_reunification_retirement`. Remote count is 105. There is no 1105. Migrations 1000–1103 were not edited. PROD was not contacted.
 
 ## 3. Core module matrix
 
@@ -95,24 +95,39 @@ Remote history was read with `select version from supabase_migrations.schema_mig
 
 ## 4. VitaCora reunification invariant
 
-COVERED.
+COVERED. REG-LF-006 is FULL for the live Mora pair plus the 1104 contract.
 
-`canon_confirm_found_owner_match` in migration 1087 is still the only definition of confirm. Migrations 1099–1103 do not replace it.
+REG-LF-006 means one active canonical Pet and one functional canonical VitaCora. A retired `vitacora_profiles` row is historical identity only. It is not a second VitaCora.
+
+`canon_confirm_found_owner_match` in migration 1104 is the canonical confirm. Migrations 1099–1103 do not replace it. Migration 1087 remains the earlier definition and does not retire the provisional profile.
 
 On confirm, the current behavior is:
 
-- The LOST pet stays the survivor (`pet_id` in the result).
-- Hallazgo `vitacora_moments` are updated to that pet. They are not deleted.
-- The FOUND alert is relinked to the LOST pet and both alerts become `RESOLVED`.
-- The provisional FOUND pet is set to `ARCHIVED`.
-- Confirm does not insert another pet or another `vitacora_profiles` row.
-- Only the provisional pet's current custodian can confirm.
+- Move hallazgo moments onto the LOST pet. They are not deleted.
+- Resolve both alerts.
+- Archive the provisional FOUND pet.
+- Retire the provisional VitaCora onto the survivor (`retired_at` and `successor_pet_id` together). The old public number is kept and redirects. Writes do not redirect.
+- End the provisional PERSON / AUTHORIZED FOUND care link.
+- Revoke the temporary FOUND care grants.
+- Preserve the survivor pet, its ownership, and its VitaCora.
 
-`ReunificationVitaCoraInvariantTest` locks that SQL. `REG-LF-006` records it in the regression catalog and matrix.
+`ReunificationVitaCoraInvariantTest` and `VitaCoraReunificationRetirement1104Test` lock that SQL.
 
-Live read of the Mora pair in this block: provisional pet `5f487c6f-f7b5-4b68-9419-d018b89195f8` is `ARCHIVED` / `FOUND_CASE`. Mora `f58305a1-0b83-40ed-bbc3-fdcdc0120fb5` is `ACTIVE`. QA01 sees one pet named `QA - Mora`, and that row is the original pet. The hallazgo photo is on Mora and is not left on the provisional moment list. Read checks passed with no failure.
+Live Mora pair after `20260927230000` was applied on STAGING `tobqbddfcyitwgbkthhy`:
 
-Residue, not a second active identity: confirm does not delete the archived pet's `vitacora_profiles` row. `canon_list_vitacora_moments` still synthesizes a `CARE_CREATED` line from any pet row, including that archived pet. The live probe expects that synthetic line. It is recorded as P2. It is not a second active pet and not a reason for a new migration.
+| Item | Result |
+| --- | --- |
+| Mora `f58305a1-0b83-40ed-bbc3-fdcdc0120fb5` | `ACTIVE` / `STANDARD`. QA01 sees one pet named `QA - Mora`, and that row is the original pet. Custodian unchanged. |
+| Mora VitaCora | Functional. `CARE_CREATED` remains. One hallazgo `PHOTO` remains. No duplicate hallazgo moment. |
+| Provisional pet `5f487c6f-f7b5-4b68-9419-d018b89195f8` | `ARCHIVED` / `FOUND_CASE` before apply. After apply the former custodian no longer has holder SELECT, so the row is not an active profile pet. |
+| Provisional functional VitaCora | Retired. QA02 `canon_list_vitacora_moments`, grants, and proposals return `FORBIDDEN`. No independent `CARE_CREATED`. |
+| QA02 care | `canon_get_pet_care_context` and `canon_list_pet_holders` return `FORBIDDEN`. The former AUTHORIZED relationship is functionally ended. |
+| Survivor grants | QA01 still lists the two Mora grants, both unrevoked. |
+| Writes against the provisional pet | `FORBIDDEN` for QA02, QA01, and QA14. Mora moment ids did not change. |
+| Direct `vitacora_profiles` SELECT | Denied. |
+| Public provisional pet | `canon_public_pet` is empty. Mora's public pet still resolves. The resolved FOUND is absent from the active list. |
+
+The old public provisional number is not observable through a QA session because table SELECT stays denied and no existing authorized RPC returns it. Redirect behavior stays on the 1104 contract: `canon_search_vitacora_number` returns the successor only to a holder or staff caller.
 
 ## 5. Live fixtures
 
@@ -175,7 +190,7 @@ Each probe used QA user sessions on `tobqbddfcyitwgbkthhy`. None used `service_r
 | Probe | Mode | Result |
 | --- | --- | --- |
 | `probe-professional-private-history.py` | Read | PASS. QA11 private history yes. QA16 denied. Owner leak no. Direct select 403. |
-| `probe-community-care-live-lost-found.py` | Confirmed-pair read only. `main()` was not entered, so the create path did not run. | PASS. `READ CHECKS: PASS`. |
+| `probe-community-care-live-lost-found.py` | Confirmed-pair read only. `main()` was not entered, so the create path did not run. | PASS after 1104. Provisional `CARE_CREATED` is gone. Hallazgo photo stays on Mora. |
 | `probe-community-care-live-responder-path.py --read-only` | `READ` because the pin is already `IN_CARE` | PASS. |
 | `probe-community-care-live-adoption.py --read-only` | `MODE READ`. Direct finalize not called. | PASS. |
 | `probe-community-care-care-transfer-security.py` | Terminal idempotent accept. Unauthorized calls denied. Snapshot unchanged. | PASS. |
@@ -228,7 +243,8 @@ Not P1 anymore: responder PostGIS fanout, adoption application contract, care-tr
 - Support tickets.
 - Agenda edge cases beyond Maestro 09d.
 - Rate-limit live tests.
-- Archived provisional FOUND pet keeps a `vitacora_profiles` row and a synthetic `CARE_CREATED` line.
+
+Migration 1104 closed the old P2 item. A reunited provisional VitaCora is retired historical identity. It is not a second functional VitaCora and it does not keep an independent `CARE_CREATED` timeline.
 
 ### Product bugs
 
@@ -298,6 +314,15 @@ This run, on the working tree that adds `ReunificationVitaCoraInvariantTest` (2 
 
 The previous baseline was app 3118 and shared 390. The two new tests are the reunification invariant. `ReunificationVitaCoraInvariantTest` completed 2 tests, 0 failures. Report: `artifacts/qa/regression/20260927-211451/report.md`.
 
+The 15C rerun, after migration 1104 was applied and the lost/found probe stopped expecting provisional `CARE_CREATED`, used the same command:
+
+| Suite | PASS | FAIL | TOTAL |
+| --- | --- | --- | --- |
+| APP `:app:testLocalDebugUnitTest` | 3138 | 0 | 3138 |
+| SHARED `:shared:testAndroidHostTest` | 390 | 0 | 390 |
+
+Report: `artifacts/qa/regression/20260927-231524/report.md`.
+
 Emulator: not run. Maestro: not run.
 
 ## 12. Canonical staging mocks
@@ -329,11 +354,11 @@ Emulator: not run. Maestro: not run.
 
 | Boundary | State |
 | --- | --- |
-| STAGING | READ ONLY |
+| STAGING | 1104 applied with `supabase db push`. Backfill only. No new LOST, FOUND, match, or reunification. |
 | PROD | NO |
 | service_role | NO |
 | main | NOT MODIFIED |
 | merge | NO |
-| New migration | NO |
+| New migration | 1104 only. No 1105. |
 | Emulator | NO |
 | Maestro | NO |

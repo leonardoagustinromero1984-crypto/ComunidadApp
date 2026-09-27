@@ -25,7 +25,7 @@ Local default is Fast (no emulator). Maestro is on-demand.
 | LOST_FOUND | REG-LF-004 ST_MakePoint search_path | Contract | Migration static | — | — | — | COVERED |
 | LOST_FOUND | REG-BUG-003 matching 1096 search_path | Contract | Migration static | — | — | — | COVERED |
 | LOST_FOUND | REG-LF-005 claim + exclusions | — | — | — | 04 / 04b | — | PARTIAL |
-| LOST_FOUND | REG-LF-006 reunification VitaCora invariant | Contract | Live read of resolved Mora pair | — | not executed | — | COVERED |
+| LOST_FOUND | REG-LF-006 one active canonical Pet and one functional canonical VitaCora | Contract | Live Mora pair after migration 1104 | — | not executed | — | COVERED |
 | VERIFICATION | REG-VER-001 states | Rules unit | — | — | not executed | — | PARTIAL |
 | VERIFICATION | REG-BUG-005 immediate PENDING refresh | ViewModel | — | — | not executed | — | COVERED |
 | TRANSIT | REG-TRANSIT-001 request/select | ViewModel | — | — | 08 | — | PARTIAL |
@@ -77,11 +77,11 @@ JVM and contract coverage on this branch. **COVERED** here is not a Maestro pass
 | 1096 MATCHING SEARCH_PATH | `CloudBaselineRepair02ContractTest` | COVERED |
 | COMMUNITY DIRTY STATE | `CommunityFormDirtyStateTest` | COVERED |
 | QR DIRECT ROUTE | `CloudBaselineRepair02ContractTest` opens `m14/pets/{petId}/share` | COVERED |
-| REUNIFICATION VITACORA | `ReunificationVitaCoraInvariantTest` and `VitaCoraReunificationRetirement1104Test`. Migration 1104 retires the provisional VitaCora. The Mora read is the post-apply check and was not run in this block. | COVERED |
+| REUNIFICATION VITACORA | `ReunificationVitaCoraInvariantTest` and `VitaCoraReunificationRetirement1104Test`. Migration 1104 is applied on STAGING. Mora stays the one active canonical Pet and the one functional canonical VitaCora. The retired provisional row is historical identity, not a second VitaCora. | COVERED |
 
-JVM on this revision, from `:app:testLocalDebugUnitTest` and `:shared:testAndroidHostTest`: app **3138/3138**, shared **390/390**, 0 FAIL. The previous app baseline was 3120. The added tests are `VitaCoraReunificationRetirement1104Test` (18) on top of `ReunificationVitaCoraInvariantTest`.
+JVM on this revision, from `:app:testLocalDebugUnitTest` and `:shared:testAndroidHostTest`: app **3138/3138**, shared **390/390**, 0 FAIL. The previous app baseline was 3120. The added tests are `VitaCoraReunificationRetirement1104Test` (18) on top of `ReunificationVitaCoraInvariantTest`. The 15C rerun after the live 1104 apply confirmed the same totals, 0 FAIL. Report: `artifacts/qa/regression/20260927-231524/report.md`.
 
-Maestro flows and the emulator were not executed in the final Community Care consolidation. Physical QR scan, real GPS, camera capture, and the OS push shade stay manual. REG-LF-006 COVERED is the contract plus the read-only STAGING fixture. It is not a device pass.
+Maestro flows and the emulator were not executed. Physical QR scan, real GPS, camera capture, and the OS push shade stay manual. REG-LF-006 COVERED is the 1104 contract plus the live Mora read after apply. It is not a device pass. The retained retired profile is not a second VitaCora.
 
 ## QA09 fixture state
 
@@ -108,4 +108,5 @@ No open P0 correctness or security defect was found in the final Community Care 
 - Support tickets
 - Agenda edge cases beyond 09d
 - Rate-limit live tests
-- Migration 1104 retires a reunited provisional VitaCora and stops synthetic `CARE_CREATED`. It is not applied. STAGING still shows that residue until 1104 is applied.
+
+The archived provisional VitaCora is no longer an open residue. Migration 1104 retires it. The row may remain as historical identity, preserved old number, and successor redirect metadata. It is not independently readable, writable, grantable, or proposal-enabled, and it is not rendered with `CARE_CREATED`.

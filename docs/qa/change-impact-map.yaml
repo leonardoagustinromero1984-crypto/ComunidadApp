@@ -87,6 +87,7 @@ mappings:
       - app/src/main/java/com/comunidapp/app/ui/screens/publish/
       - shared/src/commonMain/kotlin/com/comunidapp/shared/lostfound/
       - scripts/qa/probe-community-care-live-lost-found.py
+      - infra/supabase-canonical/supabase/migrations/20260927230000_1104_vitacora_reunification_retirement.sql
     modules: [LOST_FOUND, VITACORA, SECURITY]
     suites: [FAST]
     gradle_tests:

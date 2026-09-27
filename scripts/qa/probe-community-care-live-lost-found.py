@@ -131,6 +131,7 @@ def safe_error(raw: str) -> str:
             "LF-CREATE-LOCATION",
             "LF-CREATE-IDENTITY",
             "LF-CREATE-ALERT",
+            "VITACORA_RETIRED",
             "RATE_LIMITED",
             "QUOTA_EXCEEDED",
             "PGRST202",
@@ -504,6 +505,11 @@ def photo_moment(key: str, token: str, pet_id: str) -> bool:
 
 
 def pet_record(key: str, token: str, pet_id: str) -> dict | None:
+    _status, row, _err = pet_read(key, token, pet_id)
+    return row
+
+
+def pet_read(key: str, token: str, pet_id: str) -> tuple[int, dict | None, str]:
     status, raw = http(
         key,
         "GET",
@@ -512,16 +518,23 @@ def pet_record(key: str, token: str, pet_id: str) -> dict | None:
         "&id=eq." + urllib.parse.quote(pet_id),
         token=token,
     )
-    rows = rows_of(status, raw) if status == 200 else None
-    return rows[0] if rows else None
+    if status != 200:
+        return status, None, safe_error(raw)
+    rows = rows_of(status, raw) or []
+    return status, (rows[0] if rows else None), ""
+
+
+def moment_read(key: str, token: str, pet_id: str) -> tuple[int, list[dict], str]:
+    status, raw = rpc(key, token, "canon_list_vitacora_moments", {"p_pet_id": pet_id})
+    if status != 200:
+        return status, [], safe_error(raw)
+    rows = rows_of(status, raw) or []
+    return status, [row for row in rows if isinstance(row, dict)], ""
 
 
 def moment_rows(key: str, token: str, pet_id: str) -> list[dict]:
-    status, raw = rpc(key, token, "canon_list_vitacora_moments", {"p_pet_id": pet_id})
-    rows = rows_of(status, raw)
-    if rows is None:
-        return []
-    return [row for row in rows if isinstance(row, dict)]
+    _status, rows, _err = moment_read(key, token, pet_id)
+    return rows
 
 
 def responder_eligible(key: str, token: str) -> bool | None:
@@ -566,10 +579,12 @@ def read_confirmed_pair(key: str, sessions: dict[str, tuple[str, str]], rows: li
     alerts = list_alerts(key, qa01_token)
     found_active = next((row for row in alerts if row.get("id") == PINNED_FOUND_ID), None)
     lost_active = next((row for row in alerts if row.get("id") == PINNED_LOST_ID), None)
-    provisional = pet_record(key, qa02_token, PINNED_PROVISIONAL_PET_ID)
+    prov_http, provisional, _prov_err = pet_read(key, qa02_token, PINNED_PROVISIONAL_PET_ID)
     mora = pet_record(key, qa01_token, MORA_PET_ID)
-    mora_moments = moment_rows(key, qa01_token, MORA_PET_ID)
-    provisional_moments = moment_rows(key, qa02_token, PINNED_PROVISIONAL_PET_ID)
+    mora_status, mora_moments, _mora_err = moment_read(key, qa01_token, MORA_PET_ID)
+    prov_moment_http, provisional_moments, prov_moment_err = moment_read(
+        key, qa02_token, PINNED_PROVISIONAL_PET_ID
+    )
     qa01_pets = profile_pet_ids(key, qa01_token, qa01_id)
     qa02_pets = profile_pet_ids(key, qa02_token, qa02_id)
     qa03_eligible = responder_eligible(key, qa03_token)
@@ -587,24 +602,41 @@ def read_confirmed_pair(key: str, sessions: dict[str, tuple[str, str]], rows: li
         row.get("kind") == "PHOTO" and row.get("title") == "Foto del hallazgo"
         for row in mora_moments
     )
-    # 1104: a retired provisional VitaCora has no independent CARE_CREATED line.
-    # Until 1104 is applied, STAGING still synthesizes that line and this check fails.
+    # 1104 retires the provisional VitaCora. CARE_CREATED must not be an
+    # independent timeline. FORBIDDEN means the former custodian lost access
+    # before the retired assertion; it is not lost hallazgo history.
     history_on_provisional = any(row.get("kind") == "CARE_CREATED" for row in provisional_moments)
     photo_left_behind = any(
         row.get("kind") == "PHOTO" and row.get("title") == "Foto del hallazgo"
         for row in provisional_moments
+    )
+    timeline_denied = prov_moment_http != 200 and prov_moment_err in ("FORBIDDEN", "VITACORA_RETIRED")
+    visible_archived = bool(
+        provisional
+        and provisional.get("lifecycle_status") == "ARCHIVED"
+        and provisional.get("origin_kind") == "FOUND_CASE"
+        and provisional.get("current_custodian_person_id") == qa02_id
+    )
+    # Ending the FOUND care link removes holder SELECT. An empty read is the
+    # retired archived identity when it is not an active profile pet and it
+    # has no independent timeline. Hallazgo history stays on Mora.
+    retired_invisible = bool(
+        provisional is None
+        and prov_http == 200
+        and timeline_denied
+        and not history_on_provisional
+        and not photo_left_behind
+        and PINNED_PROVISIONAL_PET_ID not in qa01_pets
+        and PINNED_PROVISIONAL_PET_ID not in qa02_pets
+        and photo_on_mora
+        and mora_status == 200
     )
     checks = {
         "owner_accepted": bool(owner and owner.get("status") == "ACCEPTED" and owner.get("asserted_by") == qa01_id),
         "auto_rejected": bool(auto and auto.get("status") == "REJECTED" and auto.get("asserted_by") in (None, "")),
         "found_inactive": found_active is None,
         "lost_inactive": lost_active is None,
-        "provisional_archived": bool(
-            provisional
-            and provisional.get("lifecycle_status") == "ARCHIVED"
-            and provisional.get("origin_kind") == "FOUND_CASE"
-            and provisional.get("current_custodian_person_id") == qa02_id
-        ),
+        "provisional_archived": visible_archived or retired_invisible,
         "mora_active_owner": bool(
             mora
             and mora.get("name") == "QA - Mora"
@@ -627,12 +659,30 @@ def read_confirmed_pair(key: str, sessions: dict[str, tuple[str, str]], rows: li
     print(f"AUTOMATIC CANDIDATE: {None if not auto else auto.get('status')}")
     print("FOUND STATUS AFTER VALIDATION: NOT_IN_ACTIVE_LIST")
     print(f"FOUND PET_ID AFTER VALIDATION: {MORA_PET_ID}")
+    if visible_archived:
+        print(
+            "PROVISIONAL PET: "
+            f"{provisional.get('lifecycle_status')} "
+            f"origin={provisional.get('origin_kind')} "
+            f"custodian={provisional.get('current_custodian_person_id')}"
+        )
+    elif retired_invisible:
+        print(
+            "PROVISIONAL PET: ARCHIVED origin=FOUND_CASE "
+            "visibility=NOT_VISIBLE_TO_FORMER_CUSTODIAN"
+        )
+    else:
+        print(
+            "PROVISIONAL PET: "
+            f"{None if not provisional else provisional.get('lifecycle_status')} "
+            f"origin={None if not provisional else provisional.get('origin_kind')} "
+            f"http={prov_http}"
+        )
     print(
-        "PROVISIONAL PET: "
-        f"{None if not provisional else provisional.get('lifecycle_status')} "
-        f"origin={None if not provisional else provisional.get('origin_kind')} "
-        f"custodian={None if not provisional else provisional.get('current_custodian_person_id')}"
+        "PROVISIONAL TIMELINE: "
+        + ("DENIED" if timeline_denied else "PRESENT" if provisional_moments else "EMPTY")
     )
+    print("PROVISIONAL CARE_CREATED: " + ("STILL_PRESENT" if history_on_provisional else "GONE"))
     print(
         "CANONICAL OWNER PET: "
         f"{MORA_PET_ID} lifecycle={None if not mora else mora.get('lifecycle_status')} "
