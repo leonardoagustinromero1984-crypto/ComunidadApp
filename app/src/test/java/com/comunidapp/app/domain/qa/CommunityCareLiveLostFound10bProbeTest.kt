@@ -9,8 +9,8 @@ import org.junit.Test
 
 /**
  * The live LOST/FOUND probe stays on QA user sessions, one deterministic
- * Mora pair, and the canonical read RPCs. It must not assert, claim, or
- * reach production.
+ * Mora pair, and the canonical read RPCs. It must not claim or reach
+ * production. Owner validation lives in an explicit later phase.
  */
 class CommunityCareLiveLostFound10bProbeTest {
 
@@ -51,8 +51,6 @@ class CommunityCareLiveLostFound10bProbeTest {
         assertFalse(script.contains("SUPABASE_SERVICE_ROLE_KEY"))
         assertFalse(script.contains("postgres://"))
         assertFalse(script.contains("insert into"))
-        assertFalse(script.contains("canon_assert_found_might_be_mine"))
-        assertFalse(script.contains("canon_confirm_found_owner_match"))
         assertFalse(script.contains("canon_reject_found"))
         assertFalse(script.contains("canon_claim_lost_found"))
         assertFalse(script.contains("canon_register_lost_found_claim_attempt"))

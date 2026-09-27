@@ -11,8 +11,15 @@ User sessions only:
 
 Staging project: tobqbddfcyitwgbkthhy.
 Refuses the legacy/prod ref. Does not use service_role, a database
-password, or SQL inserts. Stops before owner assertion, confirmation,
-rejection, responder claim, and resolution.
+password, or SQL inserts.
+
+Owner validation is a separate mutation phase:
+  python3 scripts/qa/probe-community-care-live-lost-found.py --mutate-owner-validation
+
+That phase calls the canonical assert and custodian-confirm RPCs only when
+the pinned pair is still OPEN. Confirmation is one-way: it resolves both
+cases, so a later run only reads. Responder claim and IN_CARE are not part
+of this probe, because claim requires an OPEN case.
 """
 
 from __future__ import annotations
@@ -52,7 +59,15 @@ ACTORS = {
     "QA01": "qa01owner",
     "QA02": "qa02finder",
     "QA03": "qa03rescuer",
+    "QA06": "qa06foster",
+    "QA14": "qa14adopter",
 }
+
+# Pair created by the 10B probe. Later phases must reuse these ids.
+PINNED_LOST_ID = "232c473b-cbf3-485f-8f89-cb27132c8f89"
+PINNED_FOUND_ID = "2e0cf009-325d-4db0-be03-4ca48c1b2f67"
+PINNED_AUTO_CANDIDATE_ID = "d3488929-afd1-489b-bac8-fd8e33e6093f"
+PINNED_PROVISIONAL_PET_ID = "5f487c6f-f7b5-4b68-9419-d018b89195f8"
 
 
 def refuse_non_staging() -> None:
@@ -488,6 +503,330 @@ def photo_moment(key: str, token: str, pet_id: str) -> bool:
     )
 
 
+def pet_record(key: str, token: str, pet_id: str) -> dict | None:
+    status, raw = http(
+        key,
+        "GET",
+        "/rest/v1/pets?select=id,name,origin_kind,lifecycle_status,archived_at,"
+        "avatar_asset_id,current_custodian_person_id,current_custodian_kind"
+        "&id=eq." + urllib.parse.quote(pet_id),
+        token=token,
+    )
+    rows = rows_of(status, raw) if status == 200 else None
+    return rows[0] if rows else None
+
+
+def moment_rows(key: str, token: str, pet_id: str) -> list[dict]:
+    status, raw = rpc(key, token, "canon_list_vitacora_moments", {"p_pet_id": pet_id})
+    rows = rows_of(status, raw)
+    if rows is None:
+        return []
+    return [row for row in rows if isinstance(row, dict)]
+
+
+def responder_eligible(key: str, token: str) -> bool | None:
+    status, raw = rpc(key, token, "canon_get_my_responder_base", {})
+    body = parse_json(raw) if status == 200 else None
+    if not isinstance(body, dict) or "eligible" not in body:
+        return None
+    return bool(body.get("eligible"))
+
+
+def classify_match_rows(rows: list[dict]) -> str:
+    owner = [
+        row for row in rows
+        if row.get("lost_alert_id") == PINNED_LOST_ID and row.get("match_reason") == "OWNER_ASSERT"
+    ]
+    auto = [
+        row for row in rows
+        if row.get("lost_alert_id") == PINNED_LOST_ID and row.get("asserted_by") in (None, "")
+    ]
+    if any(row.get("status") == "ACCEPTED" for row in owner):
+        return "CONFIRMED"
+    if any(row.get("status") == "PENDING" for row in owner):
+        return "ASSERTED_PENDING"
+    if auto and not owner and all(row.get("status") == "PENDING" for row in auto):
+        return "INITIAL"
+    return "OTHER"
+
+
+def read_confirmed_pair(key: str, sessions: dict[str, tuple[str, str]], rows: list[dict]) -> int:
+    qa01_token, qa01_id = sessions["QA01"]
+    qa02_token, qa02_id = sessions["QA02"]
+    qa03_token, _qa03_id = sessions["QA03"]
+    qa06_token, _qa06_id = sessions["QA06"]
+    owner = next(
+        (
+            row for row in rows
+            if row.get("match_reason") == "OWNER_ASSERT" and row.get("lost_alert_id") == PINNED_LOST_ID
+        ),
+        None,
+    )
+    auto = next((row for row in rows if row.get("id") == PINNED_AUTO_CANDIDATE_ID), None)
+    alerts = list_alerts(key, qa01_token)
+    found_active = next((row for row in alerts if row.get("id") == PINNED_FOUND_ID), None)
+    lost_active = next((row for row in alerts if row.get("id") == PINNED_LOST_ID), None)
+    provisional = pet_record(key, qa02_token, PINNED_PROVISIONAL_PET_ID)
+    mora = pet_record(key, qa01_token, MORA_PET_ID)
+    mora_moments = moment_rows(key, qa01_token, MORA_PET_ID)
+    provisional_moments = moment_rows(key, qa02_token, PINNED_PROVISIONAL_PET_ID)
+    qa01_pets = profile_pet_ids(key, qa01_token, qa01_id)
+    qa02_pets = profile_pet_ids(key, qa02_token, qa02_id)
+    qa03_eligible = responder_eligible(key, qa03_token)
+    qa06_eligible = responder_eligible(key, qa06_token)
+    qa02_notes = notifications(key, qa02_token)
+    assert_note = next(
+        (
+            row for row in qa02_notes
+            if str(row.get("deduplication_key") or "").startswith("lost_found_assert:")
+            and PINNED_FOUND_ID in json.dumps(row)
+        ),
+        None,
+    )
+    photo_on_mora = any(
+        row.get("kind") == "PHOTO" and row.get("title") == "Foto del hallazgo"
+        for row in mora_moments
+    )
+    history_on_provisional = any(row.get("kind") == "CARE_CREATED" for row in provisional_moments)
+    photo_left_behind = any(
+        row.get("kind") == "PHOTO" and row.get("title") == "Foto del hallazgo"
+        for row in provisional_moments
+    )
+    checks = {
+        "owner_accepted": bool(owner and owner.get("status") == "ACCEPTED" and owner.get("asserted_by") == qa01_id),
+        "auto_rejected": bool(auto and auto.get("status") == "REJECTED" and auto.get("asserted_by") in (None, "")),
+        "found_inactive": found_active is None,
+        "lost_inactive": lost_active is None,
+        "provisional_archived": bool(
+            provisional
+            and provisional.get("lifecycle_status") == "ARCHIVED"
+            and provisional.get("origin_kind") == "FOUND_CASE"
+            and provisional.get("current_custodian_person_id") == qa02_id
+        ),
+        "mora_active_owner": bool(
+            mora
+            and mora.get("name") == "QA - Mora"
+            and mora.get("lifecycle_status") == "ACTIVE"
+            and mora.get("current_custodian_person_id") == qa01_id
+        ),
+        "photo_moved": photo_on_mora and not photo_left_behind,
+        "provisional_history": history_on_provisional,
+        "finder_not_owner": MORA_PET_ID not in qa02_pets and PINNED_PROVISIONAL_PET_ID not in qa01_pets,
+        "mora_on_owner_profile": MORA_PET_ID in qa01_pets,
+        "qa03_eligible": qa03_eligible is True,
+        "qa06_not_eligible": qa06_eligible is False,
+    }
+    ok = all(checks.values())
+    print("PINNED PAIR PHASE: READ")
+    print(f"PAIR REUSED: YES lost={PINNED_LOST_ID} found={PINNED_FOUND_ID}")
+    print(f"QA01 ASSERTION: ALREADY_DONE candidate={None if not owner else owner.get('id')}")
+    print(f"ASSERTED_BY: {None if not owner else owner.get('asserted_by')}")
+    print(f"CANDIDATE STATUS AFTER VALIDATION: {None if not owner else owner.get('status')}")
+    print(f"AUTOMATIC CANDIDATE: {None if not auto else auto.get('status')}")
+    print("FOUND STATUS AFTER VALIDATION: NOT_IN_ACTIVE_LIST")
+    print(f"FOUND PET_ID AFTER VALIDATION: {MORA_PET_ID}")
+    print(
+        "PROVISIONAL PET: "
+        f"{None if not provisional else provisional.get('lifecycle_status')} "
+        f"origin={None if not provisional else provisional.get('origin_kind')} "
+        f"custodian={None if not provisional else provisional.get('current_custodian_person_id')}"
+    )
+    print(
+        "CANONICAL OWNER PET: "
+        f"{MORA_PET_ID} lifecycle={None if not mora else mora.get('lifecycle_status')} "
+        f"custodian={None if not mora else mora.get('current_custodian_person_id')}"
+    )
+    print("CLAIM_AFTER_OWNER_CONFIRM: NOT_VALID_BY_STATE_MACHINE")
+    print("QA03 CLAIM: NOT_RUN")
+    print("IN_CARE: NOT_RUN")
+    print(f"QA03 ELIGIBILITY: {'PASS' if qa03_eligible is True else 'FAIL'}")
+    print(f"QA06 FOSTER ELIGIBILITY: {'DENIED' if qa06_eligible is False else 'LEAKED'}")
+    print(f"OWNER ASSERT NOTIFICATION: {'PRESENT' if assert_note else 'ABSENT'}")
+    print("CONFIRM NOTIFICATION: NOT_EMITTED")
+    print("CLAIM NOTIFICATION: NOT_RUN")
+    print("IN_CARE NOTIFICATION: NOT_RUN")
+    print("SERVICE ROLE: NO")
+    print("MANUAL SQL: NO")
+    failed = [name for name, passed in checks.items() if not passed]
+    print(f"READ CHECKS: {'PASS' if ok else 'FAIL'} failed={','.join(failed) or 'NONE'}")
+    return 0 if ok else 1
+
+
+def mutate_owner_validation(
+    key: str,
+    sessions: dict[str, tuple[str, str]],
+    rows: list[dict],
+    state: str,
+) -> int:
+    if state == "CONFIRMED":
+        print("QA01 ASSERTION: ALREADY_DONE")
+        print("QA02 CUSTODIAN VALIDATION: ALREADY_DONE")
+        print("CLAIM_AFTER_OWNER_CONFIRM: NOT_VALID_BY_STATE_MACHINE")
+        return read_confirmed_pair(key, sessions, rows)
+    if state not in ("INITIAL", "ASSERTED_PENDING"):
+        print(f"OWNER VALIDATION REFUSED state={state}")
+        print("REFUSING DUPLICATE PAIR")
+        return 1
+
+    qa01_token, qa01_id = sessions["QA01"]
+    qa02_token, qa02_id = sessions["QA02"]
+    qa14_token, _qa14_id = sessions["QA14"]
+    alerts = list_alerts(key, qa02_token)
+    found = next((row for row in alerts if row.get("id") == PINNED_FOUND_ID), None)
+    lost = next((row for row in alerts if row.get("id") == PINNED_LOST_ID), None)
+    if not found or not lost or found.get("status") != "OPEN" or lost.get("status") != "OPEN":
+        print("OWNER VALIDATION REFUSED pair is not OPEN")
+        return 1
+    if lost.get("pet_id") != MORA_PET_ID or lost.get("created_by") != qa01_id:
+        print("OWNER VALIDATION REFUSED LOST is not QA01 Mora")
+        return 1
+    if found.get("created_by") != qa02_id or found.get("pet_id") != PINNED_PROVISIONAL_PET_ID:
+        print("OWNER VALIDATION REFUSED FOUND is not the pinned provisional case")
+        return 1
+
+    owner = next(
+        (
+            row for row in rows
+            if row.get("match_reason") == "OWNER_ASSERT" and row.get("lost_alert_id") == PINNED_LOST_ID
+        ),
+        None,
+    )
+    assert_id = None if owner is None else owner.get("id")
+    if state == "INITIAL":
+        before_ids = sorted(str(row.get("id")) for row in rows)
+        status, raw = rpc(
+            key,
+            qa14_token,
+            "canon_assert_found_might_be_mine",
+            {"p_found_id": PINNED_FOUND_ID, "p_lost_id": PINNED_LOST_ID},
+        )
+        print(f"UNAUTHORIZED ASSERTION: {'DENIED' if status != 200 and safe_error(raw) == 'FORBIDDEN' else 'LEAKED'}")
+        if status == 200 or safe_error(raw) != "FORBIDDEN":
+            return 1
+        status, raw = candidates(key, qa02_token, PINNED_FOUND_ID)
+        current = rows_of(status, raw) if status == 200 else None
+        if current is None:
+            print("CANDIDATE REREAD FAIL after denial")
+            return 1
+        after_ids = sorted(str(row.get("id")) for row in current)
+        if after_ids != before_ids:
+            print("UNAUTHORIZED ASSERTION: LEAKED")
+            return 1
+        status, raw = rpc(
+            key,
+            qa01_token,
+            "canon_assert_found_might_be_mine",
+            {"p_found_id": PINNED_FOUND_ID, "p_lost_id": PINNED_LOST_ID},
+        )
+        if status != 200:
+            print(f"QA01 ASSERTION: FAIL http={status} {safe_error(raw)}")
+            return 1
+        parsed = parse_json(raw)
+        assert_id = parsed if isinstance(parsed, str) else None
+        if not assert_id:
+            print("QA01 ASSERTION: FAIL missing id")
+            return 1
+        print(f"QA01 ASSERTION: PASS candidate={assert_id}")
+        status, raw = candidates(key, qa02_token, PINNED_FOUND_ID)
+        current = rows_of(status, raw) if status == 200 else None
+        owner = next(
+            (row for row in (current or []) if row.get("id") == assert_id),
+            None,
+        )
+        auto = next((row for row in (current or []) if row.get("id") == PINNED_AUTO_CANDIDATE_ID), None)
+        if (
+            owner is None
+            or owner.get("status") != "PENDING"
+            or owner.get("asserted_by") != qa01_id
+            or owner.get("lost_alert_id") != PINNED_LOST_ID
+            or auto is None
+            or auto.get("status") != "PENDING"
+        ):
+            print("QA01 ASSERTION: FAIL candidate shape")
+            return 1
+        rows = current or []
+    else:
+        print(f"QA01 ASSERTION: ALREADY_DONE candidate={assert_id}")
+        if not assert_id or not owner or owner.get("status") != "PENDING" or owner.get("asserted_by") != qa01_id:
+            print("QA01 ASSERTION: FAIL pending owner row missing")
+            return 1
+
+    if not found.get("is_custodian"):
+        print("QA02 CUSTODIAN VALIDATION: NOT_VALID_STATE")
+        return 1
+    for label, token in (("QA14", qa14_token), ("QA01", qa01_token)):
+        status, raw = rpc(
+            key,
+            token,
+            "canon_confirm_found_owner_match",
+            {"p_candidate_id": assert_id},
+        )
+        print(f"UNAUTHORIZED CONFIRM {label}: {'DENIED' if status != 200 and safe_error(raw) == 'FORBIDDEN' else 'LEAKED'}")
+        if status == 200 or safe_error(raw) != "FORBIDDEN":
+            return 1
+    status, raw = rpc(
+        key,
+        qa02_token,
+        "canon_confirm_found_owner_match",
+        {"p_candidate_id": assert_id},
+    )
+    if status != 200:
+        print(f"QA02 CUSTODIAN VALIDATION: FAIL http={status} {safe_error(raw)}")
+        return 1
+    body = parse_json(raw)
+    if not isinstance(body, dict) or body.get("pet_id") != MORA_PET_ID or body.get("archived_pet_id") != PINNED_PROVISIONAL_PET_ID:
+        print("QA02 CUSTODIAN VALIDATION: FAIL reunify payload")
+        return 1
+    print("QA02 CUSTODIAN VALIDATION: PASS")
+    print("CLAIM_AFTER_OWNER_CONFIRM: NOT_VALID_BY_STATE_MACHINE")
+    print("QA03 CLAIM: NOT_RUN")
+    print("IN_CARE: NOT_RUN")
+    status, raw = candidates(key, qa02_token, PINNED_FOUND_ID)
+    current = rows_of(status, raw) if status == 200 else None
+    if current is None:
+        print("CANDIDATE REREAD FAIL after confirm")
+        return 1
+    return read_confirmed_pair(key, sessions, current)
+
+
+def run_pinned_pair_probe(key: str, password: str, mutate: bool) -> int | None:
+    sessions: dict[str, tuple[str, str]] = {}
+    needed = ("QA01", "QA02", "QA03", "QA06") if not mutate else ("QA01", "QA02", "QA03", "QA06", "QA14")
+    try:
+        for label in needed:
+            sessions[label] = login(key, password, ACTORS[label])
+    except SystemExit as exc:
+        print(exc)
+        return 1
+    status, raw = candidates(key, sessions["QA02"][0], PINNED_FOUND_ID)
+    if status != 200:
+        code = safe_error(raw)
+        if mutate or code not in ("NOT_FOUND", "PGRST202"):
+            print(f"PINNED PAIR READ FAIL http={status} {code}")
+            if mutate:
+                print("REFUSING DUPLICATE PAIR")
+            return 1
+        return None
+    rows = rows_of(status, raw) or []
+    if not rows:
+        if mutate:
+            print("PINNED PAIR ABSENT")
+            print("REFUSING DUPLICATE PAIR")
+            return 1
+        return None
+    state = classify_match_rows(rows)
+    print(f"PINNED PAIR STATE: {state}")
+    if not mutate:
+        if state == "INITIAL":
+            return None
+        if state == "CONFIRMED":
+            return read_confirmed_pair(key, sessions, rows)
+        print(f"PINNED PAIR READ ONLY state={state}")
+        print("REFUSING DUPLICATE PAIR")
+        return 0 if state == "ASSERTED_PENDING" else 1
+    return mutate_owner_validation(key, sessions, rows, state)
+
+
 def main() -> int:
     refuse_non_staging()
     key = os.environ.get("SUPABASE_STAGING_PUBLISHABLE_KEY", "").strip()
@@ -496,6 +835,10 @@ def main() -> int:
         print("MISSING_SECRET SUPABASE_STAGING_PUBLISHABLE_KEY or LEOVER_QA_PASSWORD")
         return 2
     assert_publishable_key(key)
+    mutate = "--mutate-owner-validation" in sys.argv
+    gated = run_pinned_pair_probe(key, password, mutate)
+    if gated is not None:
+        return gated
 
     report = {
         "qa01_auth": "FAIL",
@@ -589,6 +932,12 @@ def main() -> int:
         print("EXISTING PAIR REUSED: YES")
     else:
         print("EXISTING PAIR REUSED: NO")
+        hist_status, hist_raw = candidates(key, qa02_token, PINNED_FOUND_ID)
+        hist_rows = rows_of(hist_status, hist_raw) if hist_status == 200 else None
+        if hist_rows:
+            print("REFUSING DUPLICATE PAIR")
+            _emit(report)
+            return 1
         if lost is None:
             lost_id = create_case(
                 key, qa01_token, lost_payload(incident_at, mora["breed_id"], months, locality)
