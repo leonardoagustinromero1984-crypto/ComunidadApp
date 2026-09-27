@@ -20,6 +20,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.canonical.CanonicalBackend
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.v2.V2SurfaceCard
 import com.comunidapp.app.ui.theme.BrandBackground
@@ -42,6 +43,12 @@ data class ProfessionalPatientRow(
     val responsibleName: String?
 )
 
+data class ProfessionalPrivateCareRow(
+    val id: String,
+    val summary: String,
+    val careOn: String?
+)
+
 @Composable
 fun ProfessionalPatientsScreen(
     onOpenPatient: (String) -> Unit,
@@ -50,6 +57,9 @@ fun ProfessionalPatientsScreen(
     var query by remember { mutableStateOf("") }
     var rows by remember { mutableStateOf<List<ProfessionalPatientRow>>(emptyList()) }
     var message by remember { mutableStateOf<String?>(null) }
+    var selectedPetId by remember { mutableStateOf<String?>(null) }
+    var history by remember { mutableStateOf<List<ProfessionalPrivateCareRow>>(emptyList()) }
+    var historyMessage by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
 
     fun search(term: String) {
@@ -79,6 +89,39 @@ fun ProfessionalPatientsScreen(
         }
     }
 
+    fun loadHistory(petId: String) {
+        scope.launch {
+            selectedPetId = petId
+            history = emptyList()
+            historyMessage = null
+            runCatching {
+                val element = supabase.postgrest.rpc(
+                    CanonicalBackend.RPC_LIST_PROFESSIONAL_PET_CARES,
+                    buildJsonObject { put("p_pet_id", petId) }
+                ).decodeAs<kotlinx.serialization.json.JsonElement>()
+                val array = element as? JsonArray ?: JsonArray(emptyList())
+                array.mapNotNull { item ->
+                    val obj = item as? JsonObject ?: return@mapNotNull null
+                    ProfessionalPrivateCareRow(
+                        id = (obj["id"] as? JsonPrimitive)?.contentOrNull ?: return@mapNotNull null,
+                        summary = (obj["summary"] as? JsonPrimitive)?.contentOrNull.orEmpty(),
+                        careOn = (obj["care_on"] as? JsonPrimitive)?.contentOrNull
+                    )
+                }
+            }.onSuccess {
+                history = it
+                historyMessage = if (it.isEmpty()) {
+                    "Esta clínica no tiene historial privado para este paciente."
+                } else {
+                    null
+                }
+            }.onFailure {
+                history = emptyList()
+                historyMessage = "No se pudo ver el historial privado."
+            }
+        }
+    }
+
     LaunchedEffect(Unit) { search("") }
 
     Scaffold(
@@ -100,9 +143,24 @@ fun ProfessionalPatientsScreen(
                 singleLine = true
             )
             message?.let { Text(it, style = LeoCaption) }
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)) {
+            if (selectedPetId != null) {
+                Text("Historial privado de la clínica", style = LeoCaption)
+                historyMessage?.let { Text(it, style = LeoCaption) }
+                history.forEach { care ->
+                    V2SurfaceCard {
+                        Column(Modifier.padding(LeoDimens.SpaceSm)) {
+                            Text(care.summary.ifBlank { "Atención registrada" })
+                            care.careOn?.let { Text(it, style = LeoCaption) }
+                        }
+                    }
+                }
+            }
+            LazyColumn(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+            ) {
                 items(rows, key = { it.id }) { row ->
-                    V2SurfaceCard(onClick = { onOpenPatient(row.id) }) {
+                    V2SurfaceCard(onClick = { loadHistory(row.id) }) {
                         Column(Modifier.padding(LeoDimens.SpaceSm)) {
                             Text(row.name.ifBlank { "Paciente" })
                             Text(
@@ -112,6 +170,10 @@ fun ProfessionalPatientsScreen(
                                     row.publicCode
                                 ).joinToString(" · "),
                                 style = LeoCaption
+                            )
+                            LeoOutlinedButton(
+                                text = "Ver ficha",
+                                onClick = { onOpenPatient(row.id) }
                             )
                         }
                     }

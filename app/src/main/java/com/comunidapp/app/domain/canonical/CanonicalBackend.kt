@@ -122,6 +122,7 @@ object CanonicalBackend {
     const val RPC_INVITE_PENDING_PET_OWNER = "canon_invite_pending_pet_owner"
     const val RPC_CREATE_VET_PATIENT = "canon_create_vet_patient"
     const val RPC_SEARCH_PROFESSIONAL_PATIENTS = "canon_search_professional_patients"
+    const val RPC_LIST_PROFESSIONAL_PET_CARES = "canon_list_professional_pet_cares"
     const val RPC_LIST_MY_NOTIFICATIONS = "canon_list_my_notifications"
     const val RPC_CLAIM_PENDING_PET_INVITES = "canon_claim_pending_pet_invites"
     const val RPC_UPDATE_FOSTER_PREFERENCES = "canon_update_foster_preferences"
