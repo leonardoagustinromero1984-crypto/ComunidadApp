@@ -25,6 +25,7 @@ Local default is Fast (no emulator). Maestro is on-demand.
 | LOST_FOUND | REG-LF-004 ST_MakePoint search_path | Contract | Migration static | — | — | — | COVERED |
 | LOST_FOUND | REG-BUG-003 matching 1096 search_path | Contract | Migration static | — | — | — | COVERED |
 | LOST_FOUND | REG-LF-005 claim + exclusions | — | — | — | 04 / 04b | — | PARTIAL |
+| LOST_FOUND | REG-LF-006 reunification VitaCora invariant | Contract | Live read of resolved Mora pair | — | not executed | — | COVERED |
 | VERIFICATION | REG-VER-001 states | Rules unit | — | — | not executed | — | PARTIAL |
 | VERIFICATION | REG-BUG-005 immediate PENDING refresh | ViewModel | — | — | not executed | — | COVERED |
 | TRANSIT | REG-TRANSIT-001 request/select | ViewModel | — | — | 08 | — | PARTIAL |
@@ -76,8 +77,11 @@ JVM and contract coverage on this branch. **COVERED** here is not a Maestro pass
 | 1096 MATCHING SEARCH_PATH | `CloudBaselineRepair02ContractTest` | COVERED |
 | COMMUNITY DIRTY STATE | `CommunityFormDirtyStateTest` | COVERED |
 | QR DIRECT ROUTE | `CloudBaselineRepair02ContractTest` opens `m14/pets/{petId}/share` | COVERED |
+| REUNIFICATION VITACORA | `ReunificationVitaCoraInvariantTest` plus the resolved Mora read in `probe-community-care-live-lost-found.py` | COVERED |
 
-Maestro flows and the emulator were not executed. Physical QR scan, real GPS, and OS push stay manual.
+Final consolidation JVM, recorded from `:app:testLocalDebugUnitTest` and `:shared:testAndroidHostTest` on this revision: app **3120/3120**, shared **390/390**, 0 FAIL. The two tests above the previous app baseline of 3118 are `ReunificationVitaCoraInvariantTest`.
+
+Maestro flows and the emulator were not executed in the final Community Care consolidation. Physical QR scan, real GPS, camera capture, and the OS push shade stay manual. REG-LF-006 COVERED is the contract plus the read-only STAGING fixture. It is not a device pass.
 
 ## QA09 fixture state
 
@@ -85,19 +89,23 @@ During P0 validation, STAGING organization `qa-cc-shelter-noreq` (QA09) moved fr
 
 ## P0 gaps
 
-- REG-LF-003 / REG-PET-001 cheap JVM coverage is still incomplete where the happy path is Maestro-only
-- Live RLS suite is probes, not a gated `SECURITY_REGRESSION` Gradle task
-- Maestro Community Care flows were not executed on this consolidation
+No open P0 correctness or security defect was found in the final Community Care consolidation through migration 1103. Maestro flows 01–08 were not executed. That is physical or flow-update work, not an unfixed backend P0.
 
 ## P1 gaps
 
-- Google login E2E
-- QR scan, real GPS, OS push shade
-- Stories/reels/comments Maestro
-- Signed URL access-control live tests
+- Notification mark-read and a canonical unread-count RPC. The visible list reads `canon_list_my_notifications`. Mark-read fails closed.
+- Community nearby `hours_json` is still null on every row.
+- M13 "Coincidencias" still opens the in-memory match repository from the lost/found list.
+- Foster-initiated early termination is explicitly later than migration 1103.
+- Transit start and end do not write VitaCora moments.
+- Adoption interviews, documents, and agreements stay in memory on canonical staging.
+- Verification admin review still is not `canon_review_leover_verification`.
+- Google Sign-In remains a separate hardware flow.
+- Stories and reels remain a separate historical QA track.
 
 ## P2 gaps
 
 - Support tickets
 - Agenda edge cases beyond 09d
 - Rate-limit live tests
+- Archived provisional FOUND pet keeps its `vitacora_profiles` row. `canon_list_vitacora_moments` still synthesizes `CARE_CREATED` from that archived pet. It is not a second active identity.
