@@ -24,8 +24,8 @@ A module is **PARTIAL** when some layer exists and another required layer is unp
 | Automated | Shared `LostFoundPublishVerticalTest` plus selector contracts. Maestro `01_lost_owner.yaml` is not an executed result. |
 | Live STAGING | `canon_list_lost_found` for QA01 returned **0** rows in `OPEN` / `CLAIMED` / `IN_CARE`. Publish was not called. |
 | Maestro / physical | Flow 01 still required. Camera and GPS pin are physical. |
-| Known bug | None proven on an empty alert set. |
-| Missing contract | No test asserts the staging client sends `canon_create_lost_found` with a real pet id and a required photo. |
+| Known bug | `AlertMapViewModel` and `LostFoundViewModel` only read `observeLostFoundPosts()`. `CanonicalLostFoundRepository.refresh()` runs after a create or claim, so opening the map does not call `canon_list_lost_found`. |
+| Missing contract | No test asserts the staging client sends `canon_create_lost_found` with a real pet id and a required photo, or that the map loads the list on entry. |
 
 ## FOUND
 
@@ -48,7 +48,7 @@ A module is **PARTIAL** when some layer exists and another required layer is unp
 | Layer | State |
 | --- | --- |
 | Backend | `_canon_match_found_to_lost` (1096) sets `search_path = public, extensions`, calls `extensions.ST_Distance`, keeps score `>= 0.55`, cap 15, and emits `lost_found.match.candidate`. |
-| Android | The detail screen loads candidates only for the custodian, then shows confirm/reject only when `assertedBy != null`. Automatic rows (`asserted_by` null, reason `BASIC_GEO_TIME`) stay hidden. |
+| Android | The detail screen loads candidates only for the custodian, then shows confirm/reject only when `assertedBy != null`. Automatic rows (`asserted_by` null, reason `BASIC_GEO_TIME`) stay hidden. The list entry "Coincidencias" uses `MockM13MatchRepository` on the canonical URL, seeded from `InMemoryDataStore`, not `lost_found_match_candidates`. |
 | Automated | `CloudBaselineRepair02ContractTest.migration1096_matchFunctionSetsExtensionsSearchPath` scans the SQL file. It does not execute PostGIS. |
 | Live STAGING | Zero active alerts and zero QA01 notifications. `_r3_after_1096.sql` was not run. |
 | Maestro / physical | Flow 03 still required. OS push shade is physical. |
@@ -109,8 +109,8 @@ A module is **PARTIAL** when some layer exists and another required layer is unp
 | Automated | That ViewModel test is the refresh contract. `OrganizationVerificationRulesTest` covers state labels. Maestro `05_verification.yaml` was not executed. |
 | Live STAGING | Read-only list: QA08 `SHELTER:PENDING` (1 row). QA09 `SHELTER:PENDING` (1 row). This matches the consolidation note. No new request was sent, so the refresh round trip was not re-proven live. |
 | Maestro / physical | Flow 05. Admin review (`OrganizationVerificationQueueScreen`) is not a Community user entry. |
-| Known bug | None in the ViewModel fake. |
-| Missing contract | No live test that a `NOT_REQUESTED` org becomes `PENDING` and stays `PENDING` after the screen is reopened. |
+| Known bug | "Volver a enviar" on `REQUIRES_CORRECTION` calls `submit()` again. `canon_resubmit_leover_verification` has no screen call. Staff review in the app uses the organization-verification queue, not `canon_review_leover_verification`. |
+| Missing contract | No live test that a `NOT_REQUESTED` org becomes `PENDING` and stays `PENDING` after the screen is reopened. No test that correction resubmit calls the resubmit RPC. |
 
 ## COMMUNITY
 
@@ -133,12 +133,12 @@ A module is **PARTIAL** when some layer exists and another required layer is unp
 | Layer | State |
 | --- | --- |
 | Backend | `canon_request_foster_for_pet`, `canon_apply_to_foster_request`, `canon_select_foster_applicant`, `canon_list_open_foster_requests` (1093). |
-| Android | `FosterCareRequestScreens` call those RPCs directly and are registered on `FOSTER_CARE_REQUEST`. `FosterRequestRepository` on canonical staging is still `MockFosterRequestRepository`. Home profile and placements use the canonical repositories. |
+| Android | `FosterCareRequestScreens` call those RPCs, and the routes are registered. Nothing in the app calls `navigate` to `fosterCareRequest`, `FOSTER_OPEN_REQUESTS`, or `FOSTER_CHOOSE_APPLICANT`. The foster tab still opens the older M10 placements flow. `FosterRequestRepository` on canonical staging is `MockFosterRequestRepository`. Home profile and placements use the canonical repositories. |
 | Automated | `M10FosterCareManagementTest` exercises the in-memory repository. Maestro `08_transit.yaml` was not executed. |
 | Live STAGING | `canon_list_open_foster_requests` for QA06 returned **0**. |
 | Maestro / physical | Flow 08. |
-| Known bug | The repository seam and the screen seam disagree. The screen is the live path. |
-| Missing contract | No test that select-applicant calls `canon_select_foster_applicant` and keeps the same pet id. |
+| Known bug | The 1093 screens are unreachable. A user in the foster context never hits `canon_request_foster_for_pet`. |
+| Missing contract | No test that a pet action navigates to `fosterCareRequest` and that select-applicant calls `canon_select_foster_applicant`. |
 
 ## ADOPTION
 
@@ -177,7 +177,7 @@ Direct-finalize **COVERED** means the in-memory mock refuses. It does not mean s
 | Layer | State |
 | --- | --- |
 | Backend | `canon_list_professional_pet_cares` (1098) reads `veterinary_care_records` only with an active `HEALTH` grant for that clinic or that professional. Pet holders are not granted here. Table select stays revoked. |
-| Android | `ProfessionalPatientsScreen` calls `RPC_LIST_PROFESSIONAL_PET_CARES` and `RPC_SEARCH_PROFESSIONAL_PATIENTS`. Hub route is `professional_hub`. `RPC_CREATE_VET_PATIENT` is called from the hub. |
+| Android | `ProfessionalPatientsScreen` calls `RPC_LIST_PROFESSIONAL_PET_CARES` and `RPC_SEARCH_PROFESSIONAL_PATIENTS` directly. Hub route is `professional_hub`. `RPC_CREATE_VET_PATIENT` is called from the hub. On the canonical URL, `veterinaryAppointmentRepository` is `MockVeterinaryAppointmentRepository`. `CanonicalM28Repository` keeps grants and proposal decide on VitaCora RPCs and delegates clinic-care drafts to `MockM28Repository`. |
 | Automated | `ProfessionalPrivateHistoryContractTest` scans 1098 and the screen. It does not open a session. |
 | Live STAGING | `scripts/qa/probe-professional-private-history.py` in this audit: QA11 read PASS (private marker present), QA16 denied (`P0001`, no leak), QA01 professional RPC denied, owner VitaCora moments/proposals no leak, direct `veterinary_care_records` select HTTP 403, patient search no leak. Probe result **PASS**. |
 | Maestro / physical | Flows 09, 09c, 09d were not executed. Vet email invite remains an external inbox. |
@@ -205,11 +205,11 @@ Direct-finalize **COVERED** means the in-memory mock refuses. It does not mean s
 | Layer | State |
 | --- | --- |
 | Backend | `_canon_emit_lf_event` writes `public.notifications` and `notification_outbox` (`PUSH` / `PENDING`). It also tries `m06_emit_domain_notification` and swallows failure. `canon_list_my_notifications` lists the canonical rows. |
-| Android | `SupabaseNotificationInboxRepository` falls back to `canon_list_my_notifications` when `m06_get_inbox` is empty or fails. `DataProvider.notificationInboxRepository` uses that class only for the legacy project. Canonical staging uses `m06Stage2ContractMocks.inbox`. Unread count and mark-read stay on `m06_*` even in the legacy class. |
+| Android | `NotificationsViewModel` renders `platformRepository.observeNotifications`. On the canonical URL that object is `CanonicalPlatformRepository`, which delegates every method except social saves to `MockPlatformRepository`. `SupabaseNotificationInboxRepository` can fall back to `canon_list_my_notifications`, and `DataProvider.notificationInboxRepository` uses that class only for the legacy project. Canonical staging binds the inbox repository to `m06Stage2ContractMocks.inbox` as well. The screen the user opens does not call either RPC. |
 | Automated | No test mentions `canon_list_my_notifications` or the staging inbox binding. |
 | Live STAGING | QA01 list returned HTTP 200 and **0** rows. The RPC works. The staging app does not call it. |
 | Maestro / physical | In-app list could be automated after the binding is fixed. The OS shade stays physical. |
-| Known bug | Match notifications persisted by 1096 are invisible in the canonical staging app. |
+| Known bug | Match notifications persisted by 1096 are invisible in the canonical staging app. The visible list is the platform mock. |
 | Missing contract | A test that the canonical staging URL selects a repository whose list method calls `canon_list_my_notifications`. |
 
 ## AUTOMATED COVERAGE
@@ -249,15 +249,18 @@ Do not mark these PASS:
 
 ## P0 GAPS
 
-1. Canonical staging inbox is the M06 mock, so 1096 match notifications cannot appear in the app.
-2. Adoption applications, interviews, documents, agreements, and completion are in-memory on canonical staging. `canon_apply_adoption` and `canon_accept_adoption_application` are not called.
-3. Finalize refuses in the mock and the server function is absent. The screen does not start canonical care transfer.
-4. Automatic match candidates are hidden (`assertedBy != null`), and the owner notification path is the mock inbox.
-5. Live LOST/FOUND set is empty, so match, claim, finder validation, and `IN_CARE` have no staging row. Maestro was not run.
+1. The notifications screen reads `CanonicalPlatformRepository`, which delegates the list to `MockPlatformRepository`. The M06 inbox mock is a second unused seam. 1096 match rows cannot appear.
+2. Opening the lost/found map does not call `canon_list_lost_found`. `refresh()` runs only after a local create or claim.
+3. Adoption applications, interviews, documents, agreements, and completion are in-memory on canonical staging. `canon_apply_adoption` and `canon_accept_adoption_application` are not called.
+4. Finalize refuses in the mock and the server function is absent. The screen does not start canonical care transfer.
+5. Automatic match candidates are hidden (`assertedBy != null`). "Coincidencias" is `MockM13MatchRepository`. The owner notification path is the platform mock.
+6. The 1093 foster request, apply, and choose screens have no `navigate` caller. Live LOST/FOUND set is empty. Maestro was not run.
 
 ## P1 GAPS
 
 - Nearby `hours_json` is always null while weekly hours exist on the provider profile.
+- Verification "Volver a enviar" calls `submit()` instead of `canon_resubmit_leover_verification`.
+- Veterinary agenda and M28 clinic-care drafts are in-memory on the canonical URL. Private-history read on the patients screen is separate and was live-proven.
 - Verification review is an admin screen, not a Community user path.
 - `FosterRequestRepository` remains a mock beside screens that call the RPCs directly.
 - Mark-read and unread count have no canonical fallback.
@@ -273,22 +276,28 @@ Do not mark these PASS:
 
 ## PRODUCT BUGS
 
-1. `DataProvider.notificationInboxRepository` selects the in-memory inbox whenever the URL is canonical staging.
+1. `NotificationsViewModel` lists `platformRepository.observeNotifications`. `CanonicalPlatformRepository` delegates that to `MockPlatformRepository`. `notificationInboxRepository` is a second in-memory inbox on the same URL.
 2. Adoption publication reads and writes are canonical, and adoption applications on that same URL are a memory store.
 3. `LostFoundDetailScreen` drops match candidates whose `assertedBy` is null, which is every automatic match.
 4. `canon_list_community_nearby` returns `hours_json` null for every kind.
 5. Staging has no `m09_finalize_adoption`. The client mock and the server contract are not the same object.
+6. The lost/found map never calls `canon_list_lost_found` on open.
+7. "Volver a enviar" does not call `canon_resubmit_leover_verification`.
+8. Foster request, open-request, and choose-applicant routes have no navigation caller.
+9. Agenda appointments and clinic-care drafts stay in memory on canonical staging. The patients history RPC does not.
 
 ## NEXT DEVELOPMENT BLOCK
 
 Wire the canonical staging client to the RPCs that already exist:
 
-1. Inbox list (and then read state) through `canon_list_my_notifications`.
-2. Adoption apply and accept through `canon_apply_adoption` and `canon_accept_adoption_application`, including the pause of the other applicants.
-3. Replace the local finalize refusal with navigation into `canon_initiate_care_transfer` for the accepted applicant.
-4. Show the owner the automatic match candidate, and show the custodian that same row.
+1. Inbox list (and then read state) through `canon_list_my_notifications` on `CanonicalPlatformRepository`, which is what `NotificationsViewModel` actually reads.
+2. Call `canon_list_lost_found` when the lost/found map opens.
+3. Adoption apply and accept through `canon_apply_adoption` and `canon_accept_adoption_application`, including the pause of the other applicants.
+4. Replace the local finalize refusal with navigation into `canon_initiate_care_transfer` for the accepted applicant.
+5. Show the owner the automatic match candidate, and show the custodian that same row. Point "Coincidencias" at that list.
+6. Navigate the foster tab to the 1093 request, apply, and choose screens.
 
-No new migration is required for those four bindings. Nearby hours can be a later change. After the bindings, seed one LOST and one FOUND on STAGING and run Maestro flows 01–04 before any UI Foundation work.
+No new migration is required for those bindings. Nearby hours, verification resubmit, and agenda/clinic-care mocks can follow. After the bindings, seed one LOST and one FOUND on STAGING and run Maestro flows 01–04 before any UI Foundation work.
 
 ## APP TESTS
 
