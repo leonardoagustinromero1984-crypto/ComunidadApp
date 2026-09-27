@@ -22,12 +22,25 @@ data class LeoverVerificationRow(
     val organizationId: String? = null
 )
 
-class CanonicalVerificationRepository {
+interface LeoverVerificationRequests {
     suspend fun request(
         functionCode: String,
         termsAccepted: Boolean,
         evidenceNote: String?,
         organizationId: String? = null
+    ): Result<String>
+
+    suspend fun listMine(): Result<List<LeoverVerificationRow>>
+
+    suspend fun resubmit(id: String, evidenceNote: String?): Result<Unit>
+}
+
+class CanonicalVerificationRepository : LeoverVerificationRequests {
+    override suspend fun request(
+        functionCode: String,
+        termsAccepted: Boolean,
+        evidenceNote: String?,
+        organizationId: String?
     ): Result<String> =
         runCatching {
             val evidence = buildJsonObject {
@@ -46,7 +59,7 @@ class CanonicalVerificationRepository {
             (element as? JsonPrimitive)?.contentOrNull ?: element.toString().trim('"')
         }
 
-    suspend fun listMine(): Result<List<LeoverVerificationRow>> = runCatching {
+    override suspend fun listMine(): Result<List<LeoverVerificationRow>> = runCatching {
         val element: JsonElement = supabase.postgrest.rpc(
             CanonicalBackend.RPC_LIST_MY_LEOVER_VERIFICATIONS
         ).decodeAs()
@@ -64,7 +77,7 @@ class CanonicalVerificationRepository {
         }
     }
 
-    suspend fun resubmit(id: String, evidenceNote: String?): Result<Unit> = runCatching {
+    override suspend fun resubmit(id: String, evidenceNote: String?): Result<Unit> = runCatching {
         supabase.postgrest.rpc(
             function = CanonicalBackend.RPC_RESUBMIT_LEOVER_VERIFICATION,
             parameters = buildJsonObject {

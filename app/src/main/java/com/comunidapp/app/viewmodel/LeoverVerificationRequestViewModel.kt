@@ -5,6 +5,8 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.repository.CanonicalLostFoundRepository
 import com.comunidapp.app.data.repository.CanonicalVerificationRepository
+import com.comunidapp.app.data.repository.LeoverVerificationRequests
+import com.comunidapp.app.data.repository.ResponderBaseSnapshot
 import com.comunidapp.app.domain.map.LeoVerGeoPoint
 import com.comunidapp.app.domain.verification.VerificationDisplayPolicy
 import com.comunidapp.app.ui.components.leo.LeoRequiredField
@@ -31,9 +33,37 @@ data class LeoverVerificationUiState(
         get() = status?.uppercase() in setOf("PENDING", "VERIFIED", "SUSPENDED")
 }
 
+interface ResponderBaseGateway {
+    suspend fun get(organizationId: String?): Result<ResponderBaseSnapshot>
+    suspend fun upsert(
+        latitude: Double,
+        longitude: Double,
+        organizationId: String?,
+        address: String?
+    ): Result<Unit>
+}
+
+object CanonicalResponderBaseGateway : ResponderBaseGateway {
+    override suspend fun get(organizationId: String?): Result<ResponderBaseSnapshot> =
+        CanonicalLostFoundRepository.getMyResponderBase(organizationId)
+
+    override suspend fun upsert(
+        latitude: Double,
+        longitude: Double,
+        organizationId: String?,
+        address: String?
+    ): Result<Unit> = CanonicalLostFoundRepository.upsertResponderBase(
+        latitude,
+        longitude,
+        organizationId,
+        address
+    )
+}
+
 class LeoverVerificationRequestViewModel(
     savedStateHandle: SavedStateHandle,
-    private val repo: CanonicalVerificationRepository = CanonicalVerificationRepository()
+    private val repo: LeoverVerificationRequests = CanonicalVerificationRepository(),
+    private val responderBase: ResponderBaseGateway = CanonicalResponderBaseGateway
 ) : ViewModel() {
     private val functionCode: String = savedStateHandle.get<String>("functionCode").orEmpty()
     private val organizationId: String? = savedStateHandle.get<String>("organizationId")
@@ -65,7 +95,7 @@ class LeoverVerificationRequestViewModel(
                     )
                 }
             }
-            CanonicalLostFoundRepository.getMyResponderBase(organizationId).onSuccess { snap ->
+            responderBase.get(organizationId).onSuccess { snap ->
                 _ui.update {
                     it.copy(
                         storedLocation = snap.hasBaseLocation,
@@ -101,7 +131,7 @@ class LeoverVerificationRequestViewModel(
             _ui.update { it.copy(submitting = true, fieldErrors = emptyList(), message = null) }
             val pin = _ui.value.pin
             if (pin != null) {
-                CanonicalLostFoundRepository.upsertResponderBase(
+                responderBase.upsert(
                     pin.latitude,
                     pin.longitude,
                     organizationId,
