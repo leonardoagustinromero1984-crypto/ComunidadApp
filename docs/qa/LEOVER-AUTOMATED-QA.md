@@ -189,6 +189,8 @@ Usernames (login is username + password):
 | QA07 | qa07shelter |
 | QA08 | qa08pending |
 | QA09 | qa09noreq |
+
+QA09 (`qa-cc-shelter-noreq`) was intentionally moved in STAGING during P0 validation from `NOT_REQUESTED` to `PENDING`. That live row is the current canonical QA fixture state. Do not restore `NOT_REQUESTED` by hand and do not create another verification request. This note does not re-seed STAGING.
 | QA10 | qa10vet |
 | QA11 | qa11proa |
 | QA12 | qa12proind |

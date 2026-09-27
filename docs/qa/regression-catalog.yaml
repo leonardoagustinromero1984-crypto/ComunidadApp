@@ -2,7 +2,7 @@
 # suite: SMOKE | CORE | FULL | MANUAL | FAST
 # layer: unit | contract | viewmodel | repository | sql | rls | compose | maestro | manual
 version: 1
-updated: 2026-09-25
+updated: 2026-09-27
 actors: [QA01, QA02, QA03, QA04, QA05, QA06, QA07, QA08, QA09, QA10, QA11, QA12, QA13, QA14, QA15, QA16]
 seed: scripts/qa/seed-community-care-actors.ps1
 default_local_suite: FAST
@@ -14,13 +14,13 @@ rules:
     rule: PERSON inicia sesión por username + password; no cae a staff/admin primero.
     tests:
       - { file: app/src/test/java/com/comunidapp/app/domain/auth/PersonUsernameLoginContractTest.kt, layer: contract }
-      - { file: .maestro/flows/00_smoke_login.yaml, layer: maestro }
     suite: CORE
     actors: [QA01]
-    status: PARTIAL
+    status: COVERED
     priority: P0
     manual_required: false
     maestro_required: false
+    reason: Contract on migration 1097. Maestro smoke was not executed.
 
   - id: REG-AUTH-002
     module: AUTH
@@ -381,10 +381,12 @@ rules:
     module: LOST_FOUND
     rule: Matching notify RPC search_path (migración 1096).
     tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/qa/CloudBaselineRepair02ContractTest.kt, layer: contract }
       - { file: infra/supabase-canonical/qa/_r3_after_1096.sql, layer: sql }
-    suite: CORE
+    suite: FAST
     actors: []
-    status: PARTIAL
+    status: COVERED
+    reason: JVM contract asserts search_path and extensions.ST_Distance. The SQL probe was not run live.
     priority: P0
     manual_required: false
     maestro_required: false
@@ -405,13 +407,15 @@ rules:
     module: VERIFICATION
     rule: UI refresca estado PENDING tras enviar verificación.
     tests:
-      - { file: .maestro/flows/05_verification.yaml, layer: maestro }
-    suite: CORE
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/LeoverVerificationRequestViewModelTest.kt, layer: viewmodel }
+      - { file: app/src/test/java/com/comunidapp/app/domain/qa/CloudBaselineRepair02ContractTest.kt, layer: contract }
+    suite: FAST
     actors: [QA08]
-    status: PARTIAL
+    status: COVERED
     priority: P0
     manual_required: false
-    maestro_required: true
+    maestro_required: false
+    reason: ViewModel keeps backend PENDING after refresh. Maestro 05 does not submit and was not executed.
 
   - id: REG-BUG-006
     module: PERSON
@@ -429,13 +433,14 @@ rules:
     module: PET
     rule: QR no navega por VitaCora.
     tests:
-      - { file: .maestro/flows/05c_qr_mora.yaml, layer: maestro }
-    suite: CORE
+      - { file: app/src/test/java/com/comunidapp/app/domain/qa/CloudBaselineRepair02ContractTest.kt, layer: contract }
+    suite: FAST
     actors: [QA01]
-    status: PARTIAL
+    status: COVERED
     priority: P1
     manual_required: false
-    maestro_required: true
+    maestro_required: false
+    reason: Direct route is m14/pets/{petId}/share. Maestro 05c and physical scan were not executed.
 
   - id: REG-BUG-008
     module: UI
@@ -465,13 +470,42 @@ rules:
   - id: REG-BUG-010
     module: COMMUNITY
     rule: Formulario Community no pierde datos al abrir mapa.
-    tests: []
-    suite: CORE
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/CommunityFormDirtyStateTest.kt, layer: viewmodel }
+    suite: FAST
     actors: [QA01]
-    status: MISSING
+    status: COVERED
     priority: P0
     manual_required: false
     maestro_required: false
+
+  - id: REG-BUG-011
+    module: ADOPTION
+    rule: Finalización directa responde ADOPTION_USE_CANONICAL_TRANSFER y no transfiere el dueño.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/M09AdoptionCompletionTest.kt, layer: viewmodel }
+      - { file: app/src/test/java/com/comunidapp/app/domain/qa/CloudBaselineRepair02ContractTest.kt, layer: contract }
+    suite: FAST
+    actors: []
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+    reason: Maestro 07 was not executed. This row is the direct-finalize refusal only.
+
+  - id: REG-BUG-012
+    module: PROFESSIONAL
+    rule: Historia clínica privada se lee solo por canon_list_professional_pet_cares (migración 1098).
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/qa/ProfessionalPrivateHistoryContractTest.kt, layer: contract }
+      - { file: scripts/qa/probe-professional-private-history.py, layer: rls }
+    suite: FAST
+    actors: [QA11, QA16, QA01]
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+    reason: Contract covers the read path. The live probe is read-only STAGING validation, not Maestro. Maestro 09 was not executed.
 
   # ----- MANUAL HARDWARE -----
   - id: REG-HW-001

@@ -112,7 +112,7 @@ mappings:
     suites: [FAST]
     gradle_tests:
       - com.comunidapp.app.domain.verification.*
-      - com.comunidapp.app.viewmodel.verification.*
+      - com.comunidapp.app.viewmodel.LeoverVerificationRequestViewModelTest
     maestro_required: false
 
   - id: TRANSIT
@@ -148,6 +148,7 @@ mappings:
     suites: [FAST]
     gradle_tests:
       - com.comunidapp.app.domain.location.ServiceLocationFilterTest
+      - com.comunidapp.app.viewmodel.CommunityFormDirtyStateTest
     maestro_required: false
 
   - id: PROFESSIONAL
@@ -159,6 +160,7 @@ mappings:
     suites: [FAST]
     gradle_tests:
       - com.comunidapp.app.viewmodel.M12Veterinary*
+      - com.comunidapp.app.domain.qa.ProfessionalPrivateHistoryContractTest
     maestro_required: false
 
   - id: MEDIA
@@ -183,6 +185,9 @@ mappings:
     gradle_tests:
       - com.comunidapp.app.domain.authorization.*
       - com.comunidapp.app.core.config.SupabaseUrlPolicyTest
+      - com.comunidapp.app.domain.auth.PersonUsernameLoginContractTest
+      - com.comunidapp.app.domain.qa.CloudBaselineRepair02ContractTest
+      - com.comunidapp.app.domain.qa.ProfessionalPrivateHistoryContractTest
     maestro_required: false
 
   - id: UI_CONTRACT
@@ -194,6 +199,7 @@ mappings:
     gradle_tests:
       - com.comunidapp.app.ui.UiRegressionGateTest
       - com.comunidapp.app.ui.AndroidPolish06ContractTest
+      - com.comunidapp.app.domain.qa.CloudBaselineRepair02ContractTest
     maestro_required: false
 
   - id: MAESTRO_INFRA

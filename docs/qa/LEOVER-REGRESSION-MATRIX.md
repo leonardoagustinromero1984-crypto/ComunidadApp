@@ -5,7 +5,7 @@ Local default is Fast (no emulator). Maestro is on-demand.
 
 | Module | Rule | Unit/contract | Backend/SQL | Compose/device-free | Maestro | Manual | Status |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| AUTH | REG-AUTH-001 username PERSON first | Yes | Contract on 1097 | — | Smoke QA01 | — | PARTIAL |
+| AUTH | REG-AUTH-001 username PERSON first | Yes | Contract on 1097 | — | not executed | — | COVERED |
 | AUTH | REG-AUTH-002 email login | Yes | — | — | — | — | PARTIAL |
 | AUTH | REG-AUTH-003 logout | — | — | — | Subflow | — | PARTIAL |
 | AUTH | REG-AUTH-004 Google chooser | — | — | — | — | Yes | MANUAL_ONLY |
@@ -14,7 +14,8 @@ Local default is Fast (no emulator). Maestro is on-demand.
 | PERSON | REG-PERSON-002 profile switch | — | — | — | 05b | — | PARTIAL |
 | PET | REG-PET-001 create + photo | Yes (shared) | — | — | — | Photo HW | PARTIAL |
 | PET | REG-PET-002 update/shared | Yes | — | — | — | — | PARTIAL |
-| PET | REG-PET-003 QR display | — | — | — | 05c | Scan HW | PARTIAL |
+| PET | REG-PET-003 QR display | — | — | — | not executed | Scan HW | PARTIAL |
+| PET | QR direct route | Contract | — | — | not executed | — | COVERED |
 | VITACORA | REG-VITA-001 history filter | Yes | — | — | — | — | PARTIAL |
 | VITACORA | REG-VITA-002 proposals/ACL | Guard | — | — | 09b | — | PARTIAL |
 | SOCIAL | REG-SOC-001 feed/privacy | Yes | — | — | — | Feed HW | PARTIAL |
@@ -22,13 +23,17 @@ Local default is Fast (no emulator). Maestro is on-demand.
 | LOST_FOUND | REG-LF-002 FOUND + provisional | Contract | — | — | 02 | — | PARTIAL |
 | LOST_FOUND | REG-LF-003 match notify | — | 1096 SQL probe | — | 03 | Push shade | PARTIAL |
 | LOST_FOUND | REG-LF-004 ST_MakePoint search_path | Contract | Migration static | — | — | — | COVERED |
+| LOST_FOUND | REG-BUG-003 matching 1096 search_path | Contract | Migration static | — | — | — | COVERED |
 | LOST_FOUND | REG-LF-005 claim + exclusions | — | — | — | 04 / 04b | — | PARTIAL |
-| VERIFICATION | REG-VER-001 states + PENDING refresh | Rules unit | — | — | 05 | — | PARTIAL |
+| VERIFICATION | REG-VER-001 states | Rules unit | — | — | not executed | — | PARTIAL |
+| VERIFICATION | REG-BUG-005 immediate PENDING refresh | ViewModel | — | — | not executed | — | COVERED |
 | TRANSIT | REG-TRANSIT-001 request/select | ViewModel | — | — | 08 | — | PARTIAL |
-| ADOPTION | REG-ADOPT-001 multi-applicant; direct finalize refused | ViewModel | — | — | 07 | — | PARTIAL |
+| ADOPTION | REG-ADOPT-001 multi-applicant | ViewModel | — | — | not executed | — | PARTIAL |
+| ADOPTION | REG-BUG-011 direct finalize refused | ViewModel | Migration 1093 | — | not executed | — | COVERED |
 | COMMUNITY | REG-COM-001 nearby/filters | Filter unit | — | — | 06 | Exact GPS | PARTIAL |
-| COMMUNITY | REG-BUG-010 form+map state | — | — | — | — | — | MISSING |
-| PROFESSIONAL | REG-PRO-001 hub/ACL | Vet ViewModel | — | — | 09 | — | PARTIAL |
+| COMMUNITY | REG-BUG-010 form+map state | ViewModel | — | — | — | — | COVERED |
+| PROFESSIONAL | REG-PRO-001 hub/ACL | Vet ViewModel | — | — | not executed | — | PARTIAL |
+| PROFESSIONAL | REG-BUG-012 private history 1098 | Contract | RPC 1098 | — | not executed | — | COVERED |
 | PROFESSIONAL | REG-PRO-002 email invite | — | — | — | 09c tagged manual | Inbox | MANUAL_ONLY |
 | MEDIA | REG-MEDIA-001 upload/visibility | Yes | — | — | — | Camera | PARTIAL |
 | SECURITY | REG-SEC-001 RLS/admin isolation | Authz unit | SQL probes | — | — | — | PARTIAL |
@@ -58,11 +63,31 @@ Local default is Fast (no emulator). Maestro is on-demand.
 
 Compose UI tests that need a device are **not** the daily path. `UiRegressionGateTest` is static and device-free.
 
+## Cloud chain coverage (2026-09-27)
+
+JVM and contract coverage on this branch. **COVERED** here is not a Maestro pass and not a physical QA pass.
+
+| Item | Evidence | Status |
+| --- | --- | --- |
+| VERIFICATION REFRESH | `LeoverVerificationRequestViewModelTest` | COVERED |
+| PROFESSIONAL PRIVATE HISTORY | `ProfessionalPrivateHistoryContractTest`, migration 1098 | COVERED |
+| ADOPTION DIRECT FINALIZE | `M09AdoptionCompletionTest` refuses `ADOPTION_USE_CANONICAL_TRANSFER` | COVERED |
+| PERSON USERNAME LOGIN | `PersonUsernameLoginContractTest`, migration 1097 | COVERED |
+| 1096 MATCHING SEARCH_PATH | `CloudBaselineRepair02ContractTest` | COVERED |
+| COMMUNITY DIRTY STATE | `CommunityFormDirtyStateTest` | COVERED |
+| QR DIRECT ROUTE | `CloudBaselineRepair02ContractTest` opens `m14/pets/{petId}/share` | COVERED |
+
+Maestro flows and the emulator were not executed. Physical QR scan, real GPS, and OS push stay manual.
+
+## QA09 fixture state
+
+During P0 validation, STAGING organization `qa-cc-shelter-noreq` (QA09) moved from `NOT_REQUESTED` to `PENDING`. That is the current canonical QA fixture state. Do not restore `NOT_REQUESTED` by hand and do not open another verification request. The committed seed still describes the original insert; this consolidation does not re-seed STAGING.
+
 ## P0 gaps
 
-- REG-BUG-010 Community form loses data when opening map — no test
-- REG-LF-003 / REG-VER-001 / REG-PET-001 cheap JVM coverage still incomplete (happy-path often Maestro-only)
+- REG-LF-003 / REG-PET-001 cheap JVM coverage is still incomplete where the happy path is Maestro-only
 - Live RLS suite is probes, not a gated `SECURITY_REGRESSION` Gradle task
+- Maestro Community Care flows were not executed on this consolidation
 
 ## P1 gaps
 
