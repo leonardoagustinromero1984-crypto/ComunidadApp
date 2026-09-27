@@ -7,9 +7,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,21 +47,23 @@ fun RequestFosterForPetScreen(
     var request by remember { mutableStateOf<CanonicalFosterTransitRequest?>(null) }
     var transit by remember { mutableStateOf<CanonicalActiveFosterTransit?>(null) }
     var busy by remember { mutableStateOf(false) }
+    var confirmEnd by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val repository = DataProvider.canonicalFosterTransitRepository
 
     suspend fun reload() {
         val listed = repository.listMyFosterRequests().getOrThrow()
-        val current = CanonicalFosterTransitRecovery.requestForPet(listed, petId)
-        request = current
-        transit = if (current != null && current.status in setOf("MATCHED", "ACTIVE")) {
+        val open = CanonicalFosterTransitRecovery.requestForPet(listed, petId)
+        val shown = open ?: CanonicalFosterTransitRecovery.completedRequestForPet(listed, petId)
+        request = shown
+        transit = if (open != null && open.status in setOf("MATCHED", "ACTIVE")) {
             repository.getActiveFosterTransit(petId).getOrNull()
         } else {
             null
         }
-        if (current != null) {
-            if (needs.isBlank()) needs = current.needs.orEmpty()
-            if (notes.isBlank()) notes = current.notes.orEmpty()
+        if (shown != null) {
+            if (needs.isBlank()) needs = shown.needs.orEmpty()
+            if (notes.isBlank()) notes = shown.notes.orEmpty()
         }
     }
 
@@ -107,35 +111,95 @@ fun RequestFosterForPetScreen(
             )
             message?.let { Text(it, style = LeoCaption) }
             val current = request
-            if (current != null) {
+            val finished = current?.status == "COMPLETED"
+            if (current != null && !finished) {
                 LeoOutlinedButton(
                     text = "Ver postulantes",
                     onClick = { onChooseApplicant(current.id) }
                 )
             }
-            LeoPrimaryButton(
-                text = if (current == null) "Publicar solicitud" else "Reintentar solicitud",
-                enabled = !busy,
-                onClick = {
-                    scope.launch {
-                        busy = true
-                        runCatching {
-                            val id = repository.requestFosterForPet(petId, needs, notes).getOrThrow()
-                            reload()
-                            val recovered = request
-                            if (recovered == null || recovered.id != id) {
-                                error("La solicitud no volvió del servidor.")
+            if (current?.status == "ACTIVE" && transit?.placementStatus == "OPEN") {
+                LeoPrimaryButton(
+                    text = "Finalizar tránsito",
+                    enabled = !busy,
+                    onClick = { confirmEnd = true }
+                )
+            }
+            if (finished) {
+                Text("Tránsito finalizado.", style = LeoCaption)
+                Text(
+                    "El hogar temporal ya no figura como cuidador activo.",
+                    style = LeoCaption
+                )
+            }
+            if (!finished) {
+                LeoPrimaryButton(
+                    text = if (current == null) "Publicar solicitud" else "Reintentar solicitud",
+                    enabled = !busy,
+                    onClick = {
+                        scope.launch {
+                            busy = true
+                            runCatching {
+                                val id = repository.requestFosterForPet(petId, needs, notes).getOrThrow()
+                                reload()
+                                val recovered = request
+                                if (recovered == null || recovered.id != id) {
+                                    error("La solicitud no volvió del servidor.")
+                                }
+                                recovered.status
+                            }.onSuccess { status ->
+                                message = "Solicitud $status. Mismo identificador del servidor."
+                            }.onFailure {
+                                message = it.message ?: "No se pudo crear la solicitud."
                             }
-                            recovered.status
-                        }.onSuccess { status ->
-                            message = "Solicitud $status. Mismo identificador del servidor."
-                        }.onFailure {
-                            message = it.message ?: "No se pudo crear la solicitud."
+                            busy = false
                         }
-                        busy = false
                     }
-                }
-            )
+                )
+            }
+            if (confirmEnd && current != null) {
+                val requestId = current.id
+                AlertDialog(
+                    onDismissRequest = { confirmEnd = false },
+                    title = { Text("¿Finalizar tránsito?") },
+                    text = {
+                        Text("El cuidado temporal termina. La organización responsable sigue a cargo.")
+                    },
+                    confirmButton = {
+                        TextButton(
+                            enabled = !busy,
+                            onClick = {
+                                confirmEnd = false
+                                scope.launch {
+                                    busy = true
+                                    runCatching {
+                                        repository.completeFosterTransit(requestId).getOrThrow()
+                                        reload()
+                                        val finishedRequest = request
+                                        if (
+                                            finishedRequest == null ||
+                                            finishedRequest.id != requestId ||
+                                            finishedRequest.status != "COMPLETED" ||
+                                            finishedRequest.placementStatus != "CLOSED" ||
+                                            transit != null
+                                        ) {
+                                            error("El servidor no confirmó el cierre.")
+                                        }
+                                    }.onSuccess {
+                                        message = "Tránsito finalizado."
+                                    }.onFailure {
+                                        message = it.message ?: "No se pudo finalizar el tránsito."
+                                    }
+                                    busy = false
+                                }
+                            }
+                        ) { Text("Finalizar") }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { confirmEnd = false }) { Text("Cancelar") }
+                    }
+                )
+            }
         }
     }
 }
@@ -179,8 +243,8 @@ fun OpenFosterRequestsScreen(onNavigateBack: () -> Unit) {
             if (recovered.isNotEmpty()) {
                 item { Text("Tus postulaciones", style = LeoCaption) }
                 items(recovered, key = { "app-${it.id}" }) { mine ->
-                    Text("${mine.petName.orEmpty()} · ${mine.status}")
-                    Text("Estado recuperado del servidor.", style = LeoCaption)
+                    Text(applicationLine(mine))
+                    Text(applicationCaption(mine), style = LeoCaption)
                 }
             }
             if (rows.isEmpty() && recovered.isEmpty()) {
@@ -279,6 +343,25 @@ fun ChooseFosterApplicantScreen(requestId: String, onNavigateBack: () -> Unit) {
                 }
             }
         }
+    }
+}
+
+private fun applicationLine(application: CanonicalFosterTransitApplication): String {
+    val name = application.petName.orEmpty()
+    return if (CanonicalFosterTransitRecovery.isHistoricalSelection(application)) {
+        "$name · tránsito finalizado"
+    } else {
+        "$name · ${application.status}"
+    }
+}
+
+private fun applicationCaption(application: CanonicalFosterTransitApplication): String {
+    return when {
+        CanonicalFosterTransitRecovery.isHistoricalSelection(application) ->
+            "Antecedente SELECTED. Solicitud ${application.requestStatus}. Alojamiento ${application.placementStatus}."
+        CanonicalFosterTransitRecovery.showsActiveTemporaryCare(application) ->
+            "Tránsito activo. Solicitud ${application.requestStatus}."
+        else -> "Estado recuperado del servidor."
     }
 }
 

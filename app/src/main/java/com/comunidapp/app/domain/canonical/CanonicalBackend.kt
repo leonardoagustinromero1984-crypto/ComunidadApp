@@ -134,6 +134,7 @@ object CanonicalBackend {
     const val RPC_LIST_MY_FOSTER_REQUESTS = "canon_list_my_foster_requests"
     const val RPC_LIST_MY_FOSTER_APPLICATIONS = "canon_list_my_foster_applications"
     const val RPC_GET_ACTIVE_FOSTER_TRANSIT = "canon_get_active_foster_transit"
+    const val RPC_COMPLETE_FOSTER_TRANSIT = "canon_complete_foster_transit"
     const val RPC_ACCEPT_ADOPTION_APPLICATION = "canon_accept_adoption_application"
     const val RPC_REACTIVATE_ADOPTION_APPLICATION = "canon_reactivate_adoption_application"
     const val RPC_OPEN_ADOPTION_CHANNEL = "canon_open_adoption_application_channel"
