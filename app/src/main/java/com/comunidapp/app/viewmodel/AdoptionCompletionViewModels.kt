@@ -330,7 +330,14 @@ class AdoptionFinalizeViewModel(
         viewModelScope.launch {
             completionRepository.finalizeAdoption(adoptionId)
                 .onSuccess {
-                    _events.tryEmit("Adopción finalizada")
+                    val canonicalStaging = DataProvider.useSupabase && !DataProvider.useLegacyRemoteModules
+                    _events.tryEmit(
+                        if (canonicalStaging) {
+                            "Transferencia de cuidado iniciada"
+                        } else {
+                            "Adopción finalizada"
+                        }
+                    )
                     load()
                 }
                 .onFailure { e ->

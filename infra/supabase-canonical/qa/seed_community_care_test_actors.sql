@@ -406,6 +406,20 @@ begin -- QA_ACTORS_INJECT_GUC
   select id into r13 from public.organization_roles where organization_id = o13 and code = 'ADMIN';
   select id into r16 from public.organization_roles where organization_id = o16 and code = 'ADMIN';
 
+  -- Product OWNER/ADMIN roles receive every ORG permission, including
+  -- org.pets.transfer (1071 backfill from org.pets.manage, and
+  -- canon_create_organization / _canon_ensure_org_role). These QA ADMIN
+  -- roles are inserted directly, so they never received that set.
+  -- QA07 (qa07shelter / QA - Refugio Verificado / qa-cc-shelter-verified)
+  -- must be able to initiate the canonical care transfer as shelter admin.
+  -- This is the normal role-permission mechanism, not a production exception.
+  insert into public.organization_role_permissions (role_id, permission_code)
+  select r.id, c.code
+    from public.organization_roles r
+    join public.permission_codes c on c.scope = 'ORG'
+   where r.id in (r07, r08, r09, r10, r13, r16)
+  on conflict do nothing;
+
   insert into public.organization_memberships (organization_id, person_id, role_id, status)
   select v.oid, v.pid, v.rid, 'ACTIVE'
     from (values

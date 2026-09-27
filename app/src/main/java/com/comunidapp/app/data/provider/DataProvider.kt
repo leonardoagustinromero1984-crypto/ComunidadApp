@@ -212,6 +212,8 @@ import com.comunidapp.app.data.repository.LostFoundRepository
 import com.comunidapp.app.data.repository.MockAdoptionRepository
 import com.comunidapp.app.data.repository.MockFeedRepository
 import com.comunidapp.app.data.repository.MockLostFoundRepository
+import com.comunidapp.app.data.repository.CanonicalAdoptionApplicationRepository
+import com.comunidapp.app.data.repository.CanonicalAdoptionCompletionRepository
 import com.comunidapp.app.data.repository.CanonicalAdoptionRepository
 import com.comunidapp.app.data.repository.CanonicalChatRepository
 import com.comunidapp.app.data.repository.CanonicalFriendRepository
@@ -520,10 +522,10 @@ object DataProvider {
     private val m09CompletionStore by lazy { M09CompletionMemoryStore() }
 
     val adoptionApplicationRepository: AdoptionApplicationRepository by lazy {
-        if (useLegacyRemoteModules) {
-            SupabaseAdoptionApplicationRepository()
-        } else {
-            MockAdoptionApplicationRepository(
+        when {
+            useLegacyRemoteModules -> SupabaseAdoptionApplicationRepository()
+            useSupabase -> CanonicalAdoptionApplicationRepository()
+            else -> MockAdoptionApplicationRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 actorName = { AuthProvider.repository.getCurrentUser()?.name ?: "Usuario" },
                 store = m09ApplicationStore
@@ -541,6 +543,8 @@ object DataProvider {
         (adoptionApplicationRepository as? MockAdoptionApplicationRepository)?.snapshot()
             ?: m09ApplicationStore.value
 
+    // Interviews, documents, and agreements are not canonical completion gates.
+    // They stay in memory on canonical STAGING until a later contract.
     val adoptionInterviewRepository: AdoptionInterviewRepository by lazy {
         if (useLegacyRemoteModules) {
             SupabaseAdoptionInterviewRepository()
@@ -581,10 +585,14 @@ object DataProvider {
     }
 
     val adoptionCompletionRepository: AdoptionCompletionRepository by lazy {
-        if (useLegacyRemoteModules) {
-            SupabaseAdoptionCompletionRepository()
-        } else {
-            MockAdoptionCompletionRepository(
+        when {
+            useLegacyRemoteModules -> SupabaseAdoptionCompletionRepository()
+            useSupabase -> CanonicalAdoptionCompletionRepository(
+                applications = { adoptionApplicationRepository },
+                adoptions = { adoptionRepository },
+                transfers = { petTransferRepository }
+            )
+            else -> MockAdoptionCompletionRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 applications = { m09ApplicationsSnapshot() },
                 isManager = ::m09IsManager,

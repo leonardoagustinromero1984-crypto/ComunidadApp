@@ -211,7 +211,7 @@ private data class CanonicalLocationNodeRow(
     val active: Boolean = true
 )
 
-private suspend inline fun <reified T : Any> rpcRows(function: String, params: kotlinx.serialization.json.JsonObject? = null): List<T> {
+internal suspend inline fun <reified T : Any> rpcRows(function: String, params: kotlinx.serialization.json.JsonObject? = null): List<T> {
     val element: JsonElement = if (params == null) {
         supabase.postgrest.rpc(function).decodeAs()
     } else {
@@ -220,7 +220,7 @@ private suspend inline fun <reified T : Any> rpcRows(function: String, params: k
     return M08RpcDecoding.decodeRows(element)
 }
 
-private fun parseEpoch(value: String?): Long? =
+internal fun parseEpoch(value: String?): Long? =
     value?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
 
 class CanonicalLostFoundRepository : LostFoundRepository {
