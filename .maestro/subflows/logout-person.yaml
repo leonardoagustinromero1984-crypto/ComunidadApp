@@ -1,14 +1,16 @@
 appId: ${APP_ID}
 ---
+# Profile no longer shows Cerrar sesión. Settings does, and it logs out directly.
 - tapOn: "Perfil"
+- scrollUntilVisible:
+    element: "Configuración"
+    direction: DOWN
+    timeout: 8000
+- tapOn: "Configuración"
+- extendedWaitUntil:
+    visible: "Cerrar sesión"
+    timeout: 10000
 - tapOn: "Cerrar sesión"
-- runFlow:
-    when:
-      visible: "Cerrar sesión"
-    commands:
-      - tapOn:
-          text: "Cerrar sesión"
-          index: 1
 - extendedWaitUntil:
     visible: "Correo o usuario"
     timeout: 20000

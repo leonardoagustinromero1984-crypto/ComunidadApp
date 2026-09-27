@@ -1,12 +1,12 @@
 appId: ${APP_ID}
-name: "QR display Mora survivor QA01"
+name: "Mora survivor VitaCora after reunification"
 tags:
   - community-care
-  - qr
+  - vitacora
   - updated-ready
 ---
-# UPDATED_READY for the on-screen QR of the survivor VitaCora.
-# A camera scan that opens leover://passport/ is physical QA, not this flow.
+# UPDATED_READY. Reads the survivor only. Does not open a provisional profile
+# and does not assert a retired VitaCora timeline.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -27,13 +27,12 @@ tags:
 - extendedWaitUntil:
     visible: "VitaCora de QA - Mora"
     timeout: 20000
+- assertNotVisible: "Se archivó la VitaCora"
+- assertNotVisible: "successor_pet_id"
+- assertNotVisible: "retired_at"
 - scrollUntilVisible:
-    element: "Compartir QR"
+    element: "Momentos"
     direction: DOWN
     timeout: 12000
-- tapOn: "Compartir QR"
-- extendedWaitUntil:
-    visible: "Compartir VitaCora"
-    timeout: 15000
-- assertVisible: "Código QR VitaCora"
-- takeScreenshot: qr_mora_survivor
+- assertVisible: "Se guardó un recuerdo"
+- takeScreenshot: mora_survivor_vitacora

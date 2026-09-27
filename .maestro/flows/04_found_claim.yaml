@@ -1,9 +1,12 @@
 appId: ${APP_ID}
-name: "FOUND claim QA03 then finder loses special action"
+name: "FOUND IN_CARE read QA03"
 tags:
   - community-care
   - claim
+  - updated-ready
 ---
+# UPDATED_READY. The pinned FOUND is already IN_CARE. QA03 is custodian, not OWNER.
+# This flow does not tap "Tomar caso" or "Animal recibido / En cuidado".
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -16,24 +19,21 @@ tags:
     env:
       APP_ID: ${APP_ID}
 - tapOn: "Encontrados"
-- takeScreenshot: claim_open_list
-- tapOn: ".*QA.*"
-- tapOn: "Tomar caso"
-- takeScreenshot: claim_success
-- assertVisible: "Animal recibido / En cuidado"
-- tapOn: "Animal recibido / En cuidado"
+- assertNotVisible: "Tomar caso"
+- scrollUntilVisible:
+    element: "QA - Responder Path 12, CABA"
+    direction: DOWN
+    timeout: 20000
+- assertNotVisible: "Animal recibido / En cuidado"
+- takeScreenshot: responder_in_care_list
+- tapOn: "Ver mapa de alertas"
 - runFlow:
-    file: ../subflows/logout-person.yaml
+    file: ../subflows/close-dialogs.yaml
     env:
       APP_ID: ${APP_ID}
-- runFlow:
-    file: ../subflows/login-person-keep.yaml
-    env:
-      USERNAME: ${QA02_USERNAME}
-      PASSWORD: ${QA_PASSWORD}
-      APP_ID: ${APP_ID}
-- runFlow:
-    file: ../subflows/open-notifications.yaml
-    env:
-      APP_ID: ${APP_ID}
-- assertNotVisible: "Sí, corresponde"
+- extendedWaitUntil:
+    visible: "Mapa de alertas"
+    timeout: 15000
+- tapOn: "Lista"
+- assertNotVisible: "Tomar caso"
+- takeScreenshot: responder_alert_map_list

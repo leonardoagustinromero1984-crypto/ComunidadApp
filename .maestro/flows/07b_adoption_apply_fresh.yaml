@@ -1,0 +1,22 @@
+appId: ${APP_ID}
+name: "Adoption apply NEEDS_FRESH_FIXTURE"
+tags:
+  - community-care
+  - adoption
+  - needs-fresh-fixture
+  - reset-required
+---
+# NEEDS_FRESH_FIXTURE. Do not reopen Luna 73e9997e-27fa-4265-946f-36001f27f815.
+- assertVisible: "FRESH_FIXTURE_REQUIRED"
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA14_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Sumate"
+- tapOn: "Adopción"
+- tapOn: "Quiero adoptar"
+- tapOn: "Enviar postulación"
+- takeScreenshot: adoption_apply_fresh

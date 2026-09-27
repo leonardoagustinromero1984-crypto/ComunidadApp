@@ -1,9 +1,12 @@
 appId: ${APP_ID}
-name: "FOUND finder QA02"
+name: "FOUND navigation smoke QA02"
 tags:
   - community-care
   - found
+  - updated-ready
 ---
+# UPDATED_READY. Does not publish a FOUND. The responder fixture is already
+# IN_CARE and Mora's provisional FOUND is archived.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -17,18 +20,17 @@ tags:
       APP_ID: ${APP_ID}
 - tapOn: "Encontré un animal"
 - extendedWaitUntil:
-    visible: "Encontré un animal"
+    visible: "Foto *"
     timeout: 10000
-- assertVisible: "Foto *"
-- assertNotVisible: "LF-CREATE"
-- addMedia:
-    - "../fixtures/qa-pet.jpg"
-- tapOn: "Agregar foto"
-- takeScreenshot: found_form
+- assertVisible: "Al publicar se crea una ficha provisional y una VitaCora. No te convierte en dueño: sos quien tiene al animal ahora."
 - scrollUntilVisible:
     element: "Publicar"
     direction: DOWN
     timeout: 8000
-- tapOn: "Publicar"
-- assertNotVisible: "LF-CREATE"
-- takeScreenshot: found_published
+- assertVisible: "Publicar"
+- assertNotVisible: "Tomar caso"
+- takeScreenshot: found_form_not_published
+- tapOn: "Volver"
+- extendedWaitUntil:
+    visible: "Perdidos / Encontrados"
+    timeout: 10000
