@@ -30,7 +30,8 @@ enum class M17ContributionStatus {
     CONFIRMED,
     FAILED,
     CANCELLED,
-    REFUNDED
+    REFUNDED,
+    REJECTED
 }
 
 enum class M17DonorVisibility {
@@ -87,7 +88,8 @@ data class M17DonationCampaign(
     val endsAt: Long? = null,
     val createdBy: String,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val paymentAlias: String? = null
 ) {
     fun toPublicCampaign(summary: M17CampaignFinancialSummary): M17PublicCampaign =
         M17PrivacySanitizer.toPublicCampaign(this, summary)
@@ -110,7 +112,9 @@ data class M17PublicCampaign(
     val publicUpdates: List<M17CampaignUpdate> = emptyList(),
     val startsAt: Long,
     val endsAt: Long? = null,
-    val confirmedContributionCount: Int = 0
+    val confirmedContributionCount: Int = 0,
+    val paymentAlias: String? = null,
+    val createdBy: String? = null
 )
 
 data class M17CampaignSummary(
@@ -278,7 +282,9 @@ object M17PrivacySanitizer {
         },
         startsAt = campaign.startsAt,
         endsAt = campaign.endsAt,
-        confirmedContributionCount = summary.confirmedContributionCount
+        confirmedContributionCount = summary.confirmedContributionCount,
+        paymentAlias = campaign.paymentAlias,
+        createdBy = campaign.createdBy
     )
 
     fun toPublicContribution(contribution: M17Contribution): M17PublicContribution? {

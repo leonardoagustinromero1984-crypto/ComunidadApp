@@ -329,8 +329,8 @@ fun AdoptionFinalizeScreen(
             title = { Text("Finalizar adopción") },
             text = {
                 Text(
-                    "Se marcará la publicación como adoptada, se transferirá la responsabilidad " +
-                        "y se creará el seguimiento. Esta acción no se puede deshacer fácilmente."
+                    "Se cierra la evaluación de adopción. La responsabilidad solo cambia " +
+                        "con el módulo de transferencias de LeoVer."
                 )
             },
             confirmButton = {

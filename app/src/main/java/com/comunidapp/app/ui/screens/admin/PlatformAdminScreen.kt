@@ -27,21 +27,18 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.domain.authorization.AdminAccessPolicy
 import com.comunidapp.app.domain.authorization.PlatformRoleCode
 import com.comunidapp.app.domain.user.AccountStatus
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandOrange
 import com.comunidapp.app.viewmodel.PlatformAdminViewModel
 
 @Composable
 fun PlatformAdminScreen(
     onNavigateBack: () -> Unit,
-    onNavigateToLocationCatalog: () -> Unit = {},
-    onNavigateToMasterCatalog: () -> Unit = {},
-    onNavigateToImports: () -> Unit = {},
     viewModel: PlatformAdminViewModel = viewModel(factory = PlatformAdminViewModel.factory())
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -50,7 +47,7 @@ fun PlatformAdminScreen(
         containerColor = BrandBackground,
         topBar = {
             LeoTopAppBar(
-                title = "Administración",
+                title = "Usuarios",
                 showBackButton = true,
                 onBackClick = {
                     if (uiState.selectedUserId != null) viewModel.clearSelection()
@@ -80,10 +77,7 @@ fun PlatformAdminScreen(
                 AdminUserSearch(
                     modifier = Modifier.padding(padding),
                     uiState = uiState,
-                    viewModel = viewModel,
-                    onNavigateToLocationCatalog = onNavigateToLocationCatalog,
-                    onNavigateToMasterCatalog = onNavigateToMasterCatalog,
-                    onNavigateToImports = onNavigateToImports
+                    viewModel = viewModel
                 )
             }
         }
@@ -96,9 +90,12 @@ fun PlatformAdminScreen(
             text = {
                 Text(
                     when (uiState.confirmAction) {
-                        "status" -> "¿Cambiar estado a ${uiState.pendingStatus}?"
-                        "assign" -> "¿Asignar rol ${uiState.pendingRole}?"
-                        "revoke" -> "¿Revocar rol ${uiState.pendingRole}?"
+                        "status" ->
+                            "¿Cambiar estado a ${uiState.pendingStatus?.let { AdminAccessPolicy.accountStatusLabel(it) }}?"
+                        "assign" ->
+                            "¿Asignar rol ${uiState.pendingRole?.let { AdminAccessPolicy.platformRoleLabel(it) }}?"
+                        "revoke" ->
+                            "¿Revocar rol ${uiState.pendingRole?.let { AdminAccessPolicy.platformRoleLabel(it) }}?"
                         else -> "¿Continuar?"
                     }
                 )
@@ -121,10 +118,7 @@ fun PlatformAdminScreen(
 private fun AdminUserSearch(
     modifier: Modifier,
     uiState: com.comunidapp.app.viewmodel.PlatformAdminUiState,
-    viewModel: PlatformAdminViewModel,
-    onNavigateToLocationCatalog: () -> Unit,
-    onNavigateToMasterCatalog: () -> Unit,
-    onNavigateToImports: () -> Unit
+    viewModel: PlatformAdminViewModel
 ) {
     Column(
         modifier = modifier
@@ -133,33 +127,11 @@ private fun AdminUserSearch(
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
-        OutlinedButton(
-            onClick = onNavigateToMasterCatalog,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Catálogos / datos maestros")
-        }
-        OutlinedButton(
-            onClick = onNavigateToLocationCatalog,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Ubicaciones (parametría)")
-        }
-        OutlinedButton(
-            onClick = onNavigateToImports,
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Importaciones")
-        }
-        Text(
-            "Desde Importaciones podés verificar organizaciones y rescatistas independientes.",
-            style = MaterialTheme.typography.bodySmall
-        )
         OutlinedTextField(
             value = uiState.query,
             onValueChange = viewModel::onQueryChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Buscar usuarios") },
+            label = { Text("Buscar por nombre o usuario") },
             singleLine = true
         )
         if (uiState.isSearching) {
@@ -177,8 +149,8 @@ private fun AdminUserSearch(
                 Text(
                     listOfNotNull(
                         user.username?.let { "@$it" },
-                        user.accountStatus.name,
-                        user.email
+                        AdminAccessPolicy.accountStatusLabel(user.accountStatus),
+                        user.email.takeIf { uiState.canViewPrivate }
                     ).joinToString(" · "),
                     style = MaterialTheme.typography.bodySmall
                 )
@@ -202,28 +174,30 @@ private fun AdminUserDetail(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         Text(user?.displayName ?: "Usuario", style = MaterialTheme.typography.headlineSmall)
-        Text("Estado: ${user?.accountStatus ?: "-"}")
-        if (uiState.canViewPrivate && !user?.email.isNullOrBlank()) {
-            Text("Email: ${user?.email}")
-        } else {
-            Text("Email: (oculto sin permiso)")
+        user?.username?.let { Text("@$it") }
+        Text("Estado: ${user?.accountStatus?.let { AdminAccessPolicy.accountStatusLabel(it) } ?: "-"}")
+        if (uiState.canViewPrivate) {
+            user?.email?.takeIf { it.isNotBlank() }?.let { email ->
+                Text("Email: $email")
+            }
         }
+        user?.createdAtIso?.let { Text("Alta: $it") }
 
         OutlinedTextField(
             value = uiState.reasonCode,
             onValueChange = viewModel::onReasonCodeChange,
             modifier = Modifier.fillMaxWidth(),
-            label = { Text("Código de motivo") },
+            label = { Text("Motivo") },
             singleLine = true
         )
 
-        Text("Roles vigentes", style = MaterialTheme.typography.titleMedium)
+        Text("Roles de plataforma", style = MaterialTheme.typography.titleMedium)
         uiState.roles.forEach { role ->
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Text(role.roleCode.name)
+                Text(AdminAccessPolicy.platformRoleLabel(role.roleCode))
                 if (uiState.canRevokeRoles) {
                     TextButton(onClick = { viewModel.requestRevokeRole(role.roleCode) }) {
                         Text("Revocar")
@@ -234,17 +208,22 @@ private fun AdminUserDetail(
 
         if (uiState.canAssignRoles) {
             Text("Asignar rol", style = MaterialTheme.typography.titleMedium)
-            listOf(
-                PlatformRoleCode.USER,
-                PlatformRoleCode.MODERATOR,
-                PlatformRoleCode.ADMIN,
-                PlatformRoleCode.SUPERADMIN
-            ).forEach { role ->
+            val assignable = if (uiState.actorIsSuperadmin) {
+                listOf(
+                    PlatformRoleCode.USER,
+                    PlatformRoleCode.MODERATOR,
+                    PlatformRoleCode.ADMIN,
+                    PlatformRoleCode.SUPERADMIN
+                )
+            } else {
+                listOf(PlatformRoleCode.USER, PlatformRoleCode.MODERATOR)
+            }
+            assignable.forEach { role ->
                 OutlinedButton(
                     onClick = { viewModel.requestAssignRole(role) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(role.name)
+                    Text(AdminAccessPolicy.platformRoleLabel(role))
                 }
             }
         }
@@ -256,7 +235,7 @@ private fun AdminUserDetail(
                     onClick = { viewModel.requestStatusChange(status) },
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(status.name)
+                    Text(AdminAccessPolicy.accountStatusLabel(status))
                 }
             }
         }

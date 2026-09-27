@@ -4,9 +4,19 @@
 -- project ref is exactly tobqbddfcyitwgbkthhy.
 --
 -- Preserves schema, RPCs, triggers, RLS, catalogs, geography, legal templates,
--- platform role catalog, country markets, storage buckets, and
--- public.vitacora_public_number_seq (no RESTART / setval / DROP).
+-- platform role catalog, country markets, storage buckets,
+-- technical Superadmin identity (platform_admin_identities + auth user + SUPERADMIN),
+-- and all other technical admin identities (ADMIN / MODERATOR / SUPPORT) with their roles.
+-- PERSON QA accounts are not preserved. Manual internal staff is preserved
+-- (users, identities, mfa_factors, mfa_recovery_*, webauthn).
+-- Auth SSO/SCIM config is preserved: sso_*, saml_providers, oauth_clients,
+-- scim_tokens, scim_users (staff/unlinked mappings restored after CASCADE).
+-- Unknown future auth tables still abort (fail-closed).
+-- and public.vitacora_public_number_seq (no RESTART / setval / DROP).
 -- TRUNCATE uses CONTINUE IDENTITY (never RESTART IDENTITY).
+-- Auth restore never uses INSERT SELECT *. Generated/identity-always
+-- columns (auth.users.confirmed_at, auth.identities.email) are excluded
+-- via pg_catalog and recomputed by PostgreSQL.
 
 do $reset$
 declare
@@ -27,6 +37,9 @@ declare
     'platform_permissions',
     'platform_role_permissions',
     'platform_roles',
+    'security_feature_flags',
+    'security_rate_limit_policies',
+    'security_rate_limit_rpc_bindings',
     'service_categories',
     'species'
   ];
@@ -36,6 +49,8 @@ declare
     'oauth_clients',
     'saml_providers',
     'schema_migrations',
+    'scim_tokens',
+    'scim_users',
     'sso_domains',
     'sso_providers'
   ];
@@ -126,6 +141,8 @@ begin -- STAGING_RESET_INJECT_GUC
       'mfa_amr_claims',
       'mfa_challenges',
       'mfa_factors',
+      'mfa_recovery_code_sets',
+      'mfa_recovery_codes',
       'oauth_authorizations',
       'oauth_client_states',
       'oauth_consents',
@@ -149,8 +166,14 @@ begin -- STAGING_RESET_INJECT_GUC
 
   drop table if exists pg_temp._qa_admin_users;
   drop table if exists pg_temp._qa_admin_identities;
+  drop table if exists pg_temp._qa_admin_mfa_factors;
+  drop table if exists pg_temp._qa_admin_mfa_recovery_sets;
+  drop table if exists pg_temp._qa_admin_mfa_recovery_codes;
+  drop table if exists pg_temp._qa_admin_webauthn;
+  drop table if exists pg_temp._qa_scim_users;
   drop table if exists pg_temp._qa_admin_persons;
   drop table if exists pg_temp._qa_admin_roles;
+  drop table if exists pg_temp._qa_platform_admin_identities;
 
   create temp table _qa_admin_users as
   select u.*
@@ -159,14 +182,48 @@ begin -- STAGING_RESET_INJECT_GUC
     select 1
     from public.user_platform_role_assignments a
     where a.user_id = u.id
-      and a.role_code in ('ADMIN', 'SUPERADMIN')
+      and a.role_code in ('ADMIN', 'SUPERADMIN', 'MODERATOR', 'SUPPORT')
       and a.revoked_at is null
+  )
+  or exists (
+    select 1
+    from public.platform_admin_identities i
+    where i.user_id = u.id
   );
 
   create temp table _qa_admin_identities as
   select i.*
   from auth.identities i
   where i.user_id in (select id from _qa_admin_users);
+
+  create temp table _qa_admin_mfa_factors as
+  select f.*
+  from auth.mfa_factors f
+  where f.user_id in (select id from _qa_admin_users);
+
+  create temp table _qa_admin_mfa_recovery_sets as
+  select s.*
+  from auth.mfa_recovery_code_sets s
+  where s.user_id in (select id from _qa_admin_users);
+
+  create temp table _qa_admin_mfa_recovery_codes as
+  select c.*
+  from auth.mfa_recovery_codes c
+  where c.mfa_recovery_code_set_id in (select id from _qa_admin_mfa_recovery_sets);
+
+  create temp table _qa_admin_webauthn as
+  select w.*
+  from auth.webauthn_credentials w
+  where w.user_id in (select id from _qa_admin_users);
+
+  -- SCIM tokens have no FK to users; preserve_auth keeps the table out of
+  -- TRUNCATE. scim_users references auth.users, so CASCADE would wipe it:
+  -- snapshot unlinked + staff mappings and restore after users.
+  create temp table _qa_scim_users as
+  select su.*
+  from auth.scim_users su
+  where su.user_id is null
+     or su.user_id in (select id from _qa_admin_users);
 
   create temp table _qa_admin_persons as
   select p.*
@@ -177,8 +234,13 @@ begin -- STAGING_RESET_INJECT_GUC
   select a.*
   from public.user_platform_role_assignments a
   where a.user_id in (select id from _qa_admin_users)
-    and a.role_code in ('ADMIN', 'SUPERADMIN')
+    and a.role_code in ('ADMIN', 'SUPERADMIN', 'MODERATOR', 'SUPPORT')
     and a.revoked_at is null;
+
+  create temp table _qa_platform_admin_identities as
+  select i.*
+  from public.platform_admin_identities i
+  where i.user_id in (select id from _qa_admin_users);
 
   execute 'truncate ' || public_sql || ' continue identity cascade';
 
@@ -194,13 +256,60 @@ begin -- STAGING_RESET_INJECT_GUC
     execute 'truncate ' || auth_sql || ' continue identity cascade';
   end if;
 
+  create or replace function pg_temp.qa_insertable_cols(p_ns text, p_rel text)
+  returns text
+  language sql
+  stable
+  as $f$
+    select string_agg(quote_ident(a.attname), ', ' order by a.attnum)
+    from pg_attribute a
+    join pg_class c on c.oid = a.attrelid
+    join pg_namespace n on n.oid = c.relnamespace
+    where n.nspname = p_ns
+      and c.relname = p_rel
+      and a.attnum > 0
+      and not a.attisdropped
+      and a.attgenerated = ''
+      and coalesce(a.attidentity, '') <> 'a';
+  $f$;
+
+  create or replace function pg_temp.qa_restore_insertable(p_ns text, p_rel text, p_src text)
+  returns void
+  language plpgsql
+  as $f$
+  declare
+    cols text;
+  begin
+    cols := pg_temp.qa_insertable_cols(p_ns, p_rel);
+    if cols is null or btrim(cols) = '' then
+      raise exception using
+        message = 'STAGING_RESET_ABORT_NO_INSERTABLE_COLS',
+        detail = p_ns || '.' || p_rel;
+    end if;
+    execute format(
+      'insert into %I.%I (%s) select %s from %I',
+      p_ns, p_rel, cols, cols, p_src
+    );
+  end;
+  $f$;
+
   select count(*) into admin_n from _qa_admin_users;
-  if admin_n > 0 then
-    insert into auth.users select * from _qa_admin_users;
-    insert into auth.identities select * from _qa_admin_identities;
-    insert into public.persons select * from _qa_admin_persons;
-    insert into public.user_platform_role_assignments select * from _qa_admin_roles;
+  if admin_n < 1 then
+    raise exception using
+      message = 'STAGING_RESET_ABORT_NO_ADMIN_SNAPSHOT',
+      detail = 'Reset refuses to wipe auth.users without a preserved technical/admin snapshot.';
   end if;
+
+  perform pg_temp.qa_restore_insertable('auth', 'users', '_qa_admin_users');
+  perform pg_temp.qa_restore_insertable('auth', 'identities', '_qa_admin_identities');
+  perform pg_temp.qa_restore_insertable('auth', 'mfa_factors', '_qa_admin_mfa_factors');
+  perform pg_temp.qa_restore_insertable('auth', 'mfa_recovery_code_sets', '_qa_admin_mfa_recovery_sets');
+  perform pg_temp.qa_restore_insertable('auth', 'mfa_recovery_codes', '_qa_admin_mfa_recovery_codes');
+  perform pg_temp.qa_restore_insertable('auth', 'webauthn_credentials', '_qa_admin_webauthn');
+  perform pg_temp.qa_restore_insertable('auth', 'scim_users', '_qa_scim_users');
+  perform pg_temp.qa_restore_insertable('public', 'persons', '_qa_admin_persons');
+  perform pg_temp.qa_restore_insertable('public', 'user_platform_role_assignments', '_qa_admin_roles');
+  perform pg_temp.qa_restore_insertable('public', 'platform_admin_identities', '_qa_platform_admin_identities');
 
   select last_value, is_called
     into seq_after, seq_called_after
@@ -230,5 +339,6 @@ begin -- STAGING_RESET_INJECT_GUC
   end if;
 
   raise notice 'STAGING_RESET_OK seq=%s public_truncated=%s', seq_after, public_sql;
+  raise notice 'STAGING_RESET_AUTH_RESTORED=%s', admin_n;
 end;
 $reset$;

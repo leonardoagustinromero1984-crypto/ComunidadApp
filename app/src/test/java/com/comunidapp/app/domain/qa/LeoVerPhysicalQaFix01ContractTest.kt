@@ -59,7 +59,8 @@ class LeoVerPhysicalQaFix01ContractTest {
         val editor = source("app/src/main/java/com/comunidapp/app/ui/screens/profile/AvatarPhotoEditorScreen.kt")
         assertTrue(editor.contains("LeoVerMediaCropper"))
         val onboarding = source("app/src/main/java/com/comunidapp/app/ui/screens/onboarding/ProfileOnboardingScreen.kt")
-        assertTrue(onboarding.contains("AvatarPhotoEditorScreen"))
+        assertTrue(onboarding.contains("rememberLeoVerAvatarCropLauncher"))
+        assertTrue(onboarding.contains("onCropped = viewModel::onCroppedPhoto"))
     }
 
     @Test
@@ -81,7 +82,7 @@ class LeoVerPhysicalQaFix01ContractTest {
         assertFalse(PhysicalQaFix01Contracts.CONTACT_INSTAGRAM_VISIBLE)
         assertFalse(PhysicalQaFix01Contracts.CONTACT_EMAIL_VISIBLE)
         val negocio = source("app/src/main/java/com/comunidapp/app/ui/screens/business/MiNegocioScreen.kt")
-        assertTrue(negocio.contains("Teléfono de contacto"))
+        assertTrue(negocio.contains("LeoRequiredField.label(\"Teléfono\")"))
         assertFalse(negocio.contains("tel / email / IG"))
     }
 
@@ -128,9 +129,9 @@ class LeoVerPhysicalQaFix01ContractTest {
 
     @Test
     fun VERIFICATION_NOT_SELF_DECLARED() {
-        assertEquals("actor_verifications", VerificationDisplayPolicy.SOURCE_OF_TRUTH)
+        assertEquals("leover_verification_requests", VerificationDisplayPolicy.SOURCE_OF_TRUTH)
         assertFalse(VerificationDisplayPolicy.SELF_DECLARED_ALLOWED)
-        assertFalse(VerificationDisplayPolicy.FILTERS_VISIBLE)
+        assertTrue(VerificationDisplayPolicy.FILTERS_VISIBLE)
     }
 
     @Test
@@ -171,7 +172,7 @@ class LeoVerPhysicalQaFix01ContractTest {
 
     @Test
     fun PET_FRIENDLY_IS_SECOND_LEVEL() {
-        assertEquals(5, ProfileActorTaxonomy.FIRST_LEVEL_ACTOR_COUNT)
+        assertEquals(6, ProfileActorTaxonomy.FIRST_LEVEL_ACTOR_COUNT)
         assertFalse(PetFriendlyVenuePolicy.FIRST_LEVEL_ACTOR)
         assertTrue(PetFriendlyVenuePolicy.SUBTYPE_REQUIRED)
         assertTrue(OrganizationKindOption.commercial.contains(OrganizationKindOption.PET_FRIENDLY_VENUE))

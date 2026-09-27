@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.ui.zIndex
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -16,18 +15,25 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.nestedscroll.NestedScrollConnection
+import androidx.compose.ui.input.nestedscroll.NestedScrollSource
+import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.Velocity
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import coil.request.ImageRequest
 import com.comunidapp.app.domain.media.PhotoCanvasFitMode
@@ -47,27 +53,71 @@ fun StoryPhotoCanvas(
 ) {
     var canvas by remember { mutableStateOf(IntSize.Zero) }
     val context = LocalContext.current
+    val currentTransform by rememberUpdatedState(transform)
+    val currentOnChange by rememberUpdatedState(onTransformChange)
+    val currentOnReset by rememberUpdatedState(onReset)
     val request = remember(imageModel) {
         ImageRequest.Builder(context)
             .data(imageModel)
             .crossfade(true)
             .build()
     }
-    val scale = if (transform.mode == PhotoCanvasFitMode.FILL) {
+    val contentScale = if (transform.mode == PhotoCanvasFitMode.FILL) {
         ContentScale.Crop
     } else {
         ContentScale.Fit
+    }
+    // Consume parent verticalScroll while editing so pinch/pan stay on the canvas.
+    val blockParentScroll = remember {
+        object : NestedScrollConnection {
+            override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset =
+                if (editable) available else Offset.Zero
+
+            override suspend fun onPreFling(available: Velocity): Velocity =
+                if (editable) available else Velocity.Zero
+        }
     }
     Box(
         modifier = modifier
             .clipToBounds()
             .background(Color.Black)
             .onSizeChanged { canvas = it }
+            .then(if (editable) Modifier.nestedScroll(blockParentScroll) else Modifier)
+            .then(
+                if (editable) {
+                    Modifier.pointerInput(Unit) {
+                        detectTransformGestures { _, pan, zoom, _ ->
+                            val w = canvas.width.toFloat().coerceAtLeast(1f)
+                            val h = canvas.height.toFloat().coerceAtLeast(1f)
+                            currentOnChange(
+                                currentTransform.pan(pan.x, pan.y, w, h).zoom(zoom)
+                            )
+                        }
+                    }
+                } else {
+                    Modifier
+                }
+            )
+            .then(
+                if (editable) {
+                    Modifier.pointerInput(Unit) {
+                        detectTapGestures(
+                            onDoubleTap = {
+                                (currentOnReset ?: {
+                                    currentOnChange(currentTransform.reset())
+                                }).invoke()
+                            }
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            )
     ) {
         AsyncImage(
             model = request,
             contentDescription = contentDescription,
-            contentScale = scale,
+            contentScale = contentScale,
             modifier = Modifier
                 .fillMaxSize()
                 .graphicsLayer {
@@ -76,25 +126,6 @@ fun StoryPhotoCanvas(
                     scaleX = transform.scale
                     scaleY = transform.scale
                 }
-                .then(
-                    if (editable) {
-                        Modifier
-                            .pointerInput(canvas) {
-                                detectTransformGestures { _, pan, zoom, _ ->
-                                    val w = canvas.width.toFloat().coerceAtLeast(1f)
-                                    val h = canvas.height.toFloat().coerceAtLeast(1f)
-                                    onTransformChange(transform.pan(pan.x, pan.y, w, h).zoom(zoom))
-                                }
-                            }
-                            .pointerInput(transform.fitMode) {
-                                detectTapGestures(
-                                    onDoubleTap = { (onReset ?: { onTransformChange(transform.reset()) }).invoke() }
-                                )
-                            }
-                    } else {
-                        Modifier
-                    }
-                )
         )
         if (editable) {
             Row(
@@ -102,7 +133,8 @@ fun StoryPhotoCanvas(
                     .align(Alignment.BottomCenter)
                     .zIndex(2f)
                     .padding(8.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 CanvasModeChip(
                     label = "Rellenar",
@@ -114,11 +146,24 @@ fun StoryPhotoCanvas(
                     selected = transform.mode == PhotoCanvasFitMode.FIT,
                     onClick = { onTransformChange(transform.withMode(PhotoCanvasFitMode.FIT)) }
                 )
-                CanvasModeChip(
-                    label = "Restablecer",
-                    selected = false,
-                    onClick = { (onReset ?: { onTransformChange(transform.reset()) }).invoke() }
-                )
+                val hasTransform =
+                    transform.offsetX != 0f || transform.offsetY != 0f || transform.scale != 1f
+                if (hasTransform) {
+                    Surface(
+                        onClick = {
+                            (onReset ?: { onTransformChange(transform.reset()) }).invoke()
+                        },
+                        shape = RoundedCornerShape(16.dp),
+                        color = Color.Black.copy(alpha = 0.35f)
+                    ) {
+                        Text(
+                            text = "↺ Restablecer",
+                            style = LeoCaption,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+                        )
+                    }
+                }
             }
         }
         @Suppress("UNUSED_VARIABLE")

@@ -1,10 +1,12 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.core.result.AppResult
 import com.comunidapp.app.data.model.AdoptionPost
 import com.comunidapp.app.data.model.AdoptionStatus
 import com.comunidapp.app.data.model.ChatContextType
 import com.comunidapp.app.data.model.ChatMessage
 import com.comunidapp.app.data.model.Conversation
+import com.comunidapp.app.data.model.FeedMediaAvailability
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.LocationLevel
 import com.comunidapp.app.data.model.LocationNode
@@ -18,6 +20,7 @@ import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.PostComment
 import com.comunidapp.app.data.model.PostType
 import com.comunidapp.app.data.model.User
+import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m08.M08RpcDecoding
 import com.comunidapp.app.data.remote.supabase.m09.CreateAdoptionParams
 import com.comunidapp.app.data.remote.supabase.m09.M09AdoptionErrorMapper
@@ -27,20 +30,31 @@ import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.canonical.CanonicalBackend
 import com.comunidapp.app.domain.canonical.CanonicalMedia
 import com.comunidapp.app.domain.chat.ChatMessageMerge
+import com.comunidapp.app.domain.files.authorization.FileAuthContext
+import com.comunidapp.app.domain.user.ProfileAvatarResolver
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.put
@@ -56,9 +70,26 @@ private data class CanonicalLostFoundRow(
     @SerialName("pet_name") val petName: String? = null,
     val species: String? = null,
     @SerialName("locality_id") val localityId: String? = null,
+    @SerialName("location_label") val locationLabel: String? = null,
     val note: String? = null,
     @SerialName("created_by") val createdBy: String? = null,
-    @SerialName("created_at") val createdAt: String? = null
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("can_claim") val canClaim: Boolean? = null,
+    @SerialName("claimed_by") val claimedBy: String? = null,
+    @SerialName("incident_at") val incidentAt: String? = null,
+    val sex: String? = null,
+    val size: String? = null,
+    @SerialName("is_custodian") val isCustodian: Boolean? = null
+)
+
+@Serializable
+private data class CanonicalFoundMatchRow(
+    val id: String,
+    @SerialName("lost_alert_id") val lostAlertId: String? = null,
+    @SerialName("asserted_by") val assertedBy: String? = null,
+    val status: String,
+    val score: Double? = null,
+    @SerialName("match_reason") val matchReason: String? = null
 )
 
 @Serializable
@@ -79,21 +110,37 @@ private data class CanonicalAdoptionRow(
 )
 
 @Serializable
+private data class OwnReelIdRow(
+    val id: String
+)
+
+@Serializable
 private data class CanonicalSocialPostRow(
     val id: String,
     @SerialName("author_user_id") val authorUserId: String? = null,
     @SerialName("author_name") val authorName: String? = null,
     val body: String? = null,
+    val visibility: String? = null,
     @SerialName("content_kind") val contentKind: String? = null,
     @SerialName("media_asset_id") val mediaAssetId: String? = null,
     @SerialName("media_bucket") val mediaBucket: String? = null,
     @SerialName("media_path") val mediaPath: String? = null,
     @SerialName("media_mime") val mediaMime: String? = null,
     @SerialName("pet_id") val petId: String? = null,
+    @SerialName("pet_ids") val petIds: JsonElement? = null,
+    @SerialName("pet_names") val petNames: JsonElement? = null,
     @SerialName("locality_id") val localityId: String? = null,
+    val composition: JsonElement? = null,
+    @SerialName("extra_media") val extraMedia: JsonElement? = null,
     @SerialName("like_count") val likeCount: Int = 0,
     @SerialName("comment_count") val commentCount: Int = 0,
     @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+private data class CanonicalFeedExtraMediaRow(
+    val bucket: String? = null,
+    val path: String? = null
 )
 
 @Serializable
@@ -194,26 +241,132 @@ class CanonicalLostFoundRepository : LostFoundRepository {
     }
 
     override suspend fun addLostFoundPost(post: LostFoundPost): Result<String> = runCatching {
-        val id: String = supabase.postgrest.rpc(
+        val kind = post.type.name
+        val petId = if (kind == "FOUND") null else post.petId?.takeIf { it.isNotBlank() }
+        val result = supabase.postgrest.rpc(
             function = CanonicalBackend.RPC_CREATE_LOST_FOUND,
             parameters = buildJsonObject {
-                put("p_kind", post.type.name)
-                if (!post.petId.isNullOrBlank()) put("p_pet_id", post.petId) else put("p_pet_id", JsonNull)
-                put("p_locality_id", JsonNull)
+                put("p_kind", kind)
+                if (!petId.isNullOrBlank()) put("p_pet_id", petId) else put("p_pet_id", JsonNull)
+                val humanLocation = com.comunidapp.app.domain.lostfound.LostFoundLocationDisplay.humanLabel(
+                    locationLabel = post.location
+                )
+                if (humanLocation.isNotBlank()) {
+                    put("p_locality_id", humanLocation)
+                    put("p_location_label", humanLocation)
+                } else {
+                    put("p_locality_id", JsonNull)
+                }
                 put("p_species", post.species.name)
                 put(
                     "p_note",
-                    listOf(post.location, post.description).filter { it.isNotBlank() }.joinToString(" · ")
+                    com.comunidapp.app.domain.lostfound.LostFoundLocationDisplay.noteWithoutPlaceholder(
+                        listOf(humanLocation, post.description).filter { it.isNotBlank() }.joinToString(" · ")
+                    )
                 )
+                if (post.latitude != null) put("p_lat", post.latitude) else put("p_lat", JsonNull)
+                if (post.longitude != null) put("p_lng", post.longitude) else put("p_lng", JsonNull)
+                if (kind == "FOUND") {
+                    put("p_name", post.petName?.trim().orEmpty())
+                    put("p_sex", post.sex?.name ?: "UNKNOWN")
+                    put("p_size", post.size?.name ?: "UNKNOWN")
+                    if (post.estimatedAgeMonths != null) {
+                        put("p_estimated_age_months", post.estimatedAgeMonths)
+                    } else {
+                        put("p_estimated_age_months", JsonNull)
+                    }
+                    val photo = post.photoUrl?.trim().orEmpty()
+                    if (photo.isNotBlank()) put("p_photo_asset_id", photo) else put("p_photo_asset_id", JsonNull)
+                }
             }
-        ).decodeAs()
-        refresh()
+        )
+        val id = com.comunidapp.app.data.remote.supabase.m08.CanonCreatePetUuid
+            .decode(result.data, CanonicalBackend.RPC_CREATE_LOST_FOUND)
+            .id
+            ?: throw IllegalStateException("LF-CREATE-ALERT")
+        runCatching { refresh() }
         id
     }
 
-    override suspend fun updateLostFoundPost(post: LostFoundPost): Result<Unit> =
-        if (post.status == LostFoundStatus.RESOLVED) updateStatus(post.id, LostFoundStatus.RESOLVED)
+    override suspend fun updateLostFoundPost(post: LostFoundPost): Result<Unit> {
+        val photo = post.photoUrl?.trim().orEmpty()
+        if (photo.isNotBlank()) {
+            attachLostFoundPhoto(post.id, photo).getOrThrow()
+        }
+        return if (post.status == LostFoundStatus.RESOLVED) updateStatus(post.id, LostFoundStatus.RESOLVED)
         else Result.success(Unit)
+    }
+
+    override suspend fun attachLostFoundPhoto(alertId: String, assetId: String): Result<Unit> = runCatching {
+        supabase.postgrest.rpc(
+            function = CanonicalBackend.RPC_ATTACH_LOST_FOUND_PHOTO,
+            parameters = buildJsonObject {
+                put("p_id", alertId)
+                put("p_photo_asset_id", assetId)
+            }
+        )
+    }
+
+    override suspend fun assertFoundMightBeMine(foundId: String, lostId: String): Result<String> = runCatching {
+        val id: String = supabase.postgrest.rpc(
+            function = CanonicalBackend.RPC_ASSERT_FOUND_MIGHT_BE_MINE,
+            parameters = buildJsonObject {
+                put("p_found_id", foundId)
+                put("p_lost_id", lostId)
+            }
+        ).decodeAs()
+        id
+    }
+
+    override suspend fun listFoundMatchCandidates(foundId: String): Result<List<LostFoundMatchCandidate>> = runCatching {
+        rpcRows<CanonicalFoundMatchRow>(
+            CanonicalBackend.RPC_LIST_FOUND_MATCH_CANDIDATES,
+            buildJsonObject { put("p_found_id", foundId) }
+        ).map { row ->
+            LostFoundMatchCandidate(
+                id = row.id,
+                lostAlertId = row.lostAlertId,
+                assertedBy = row.assertedBy,
+                status = row.status,
+                score = row.score,
+                matchReason = row.matchReason
+            )
+        }
+    }
+
+    override suspend fun confirmFoundOwnerMatch(candidateId: String): Result<Unit> = runCatching {
+        supabase.postgrest.rpc(
+            function = CanonicalBackend.RPC_CONFIRM_FOUND_OWNER_MATCH,
+            parameters = buildJsonObject { put("p_candidate_id", candidateId) }
+        )
+        refresh()
+    }
+
+    override suspend fun rejectFoundMightBeMine(foundId: String, lostId: String): Result<Unit> = runCatching {
+        supabase.postgrest.rpc(
+            function = CanonicalBackend.RPC_REJECT_FOUND_MIGHT_BE_MINE,
+            parameters = buildJsonObject {
+                put("p_found_id", foundId)
+                put("p_lost_id", lostId)
+            }
+        )
+    }
+
+    override suspend fun rejectFoundOwnerMatch(candidateId: String): Result<Unit> = runCatching {
+        supabase.postgrest.rpc(
+            function = CanonicalBackend.RPC_REJECT_FOUND_OWNER_MATCH,
+            parameters = buildJsonObject { put("p_candidate_id", candidateId) }
+        )
+        refresh()
+    }
+
+    override suspend fun markLostFoundInCare(alertId: String): Result<Unit> = runCatching {
+        supabase.postgrest.rpc(
+            function = CanonicalBackend.RPC_MARK_LOST_FOUND_IN_CARE,
+            parameters = buildJsonObject { put("p_id", alertId) }
+        )
+        refresh()
+    }
 
     override suspend fun updateStatus(id: String, status: LostFoundStatus): Result<Unit> = runCatching {
         if (status == LostFoundStatus.RESOLVED) {
@@ -223,6 +376,12 @@ class CanonicalLostFoundRepository : LostFoundRepository {
             )
         }
         refresh()
+    }
+
+    override suspend fun claimLostFound(alertId: String): Result<LostFoundClaimResult> = runCatching {
+        val claimed = claimAlert(alertId).getOrThrow()
+        refresh()
+        claimed
     }
 
     suspend fun refresh() {
@@ -235,14 +394,109 @@ class CanonicalLostFoundRepository : LostFoundRepository {
                 type = if (row.kind.equals("FOUND", true)) LostFoundType.FOUND else LostFoundType.LOST,
                 petName = row.petName,
                 species = PetSpecies.fromString(row.species),
-                location = row.localityId.orEmpty(),
-                description = row.note.orEmpty(),
+                location = com.comunidapp.app.domain.lostfound.LostFoundLocationDisplay.visibleOrNearby(
+                    locationLabel = row.locationLabel,
+                    localityId = row.localityId,
+                    note = row.note
+                ),
+                description = com.comunidapp.app.domain.lostfound.LostFoundLocationDisplay.noteWithoutPlaceholder(row.note),
                 contactInfo = "",
-                status = if (row.status.equals("RESOLVED", true)) LostFoundStatus.RESOLVED else LostFoundStatus.ACTIVE,
+                status = LostFoundStatus.fromString(row.status),
                 publicCode = row.publicCode,
                 date = row.createdAt.orEmpty(),
-                createdAt = parseEpoch(row.createdAt)
+                createdAt = parseEpoch(row.createdAt),
+                petId = row.petId,
+                canClaim = row.canClaim == true,
+                claimedBy = row.claimedBy,
+                sex = row.sex?.let { runCatching { PetSex.valueOf(it) }.getOrNull() },
+                size = row.size?.let { runCatching { PetSize.valueOf(it) }.getOrNull() },
+                isCustodian = row.isCustodian == true
             )
+        }
+    }
+
+    companion object {
+        suspend fun recordLocationConsent(): Result<Unit> = runCatching {
+            supabase.postgrest.rpc(function = CanonicalBackend.RPC_RECORD_LOCATION_CONSENT)
+        }
+
+        suspend fun setReceiveNearbyCases(receive: Boolean): Result<Unit> = runCatching {
+            supabase.postgrest.rpc(
+                function = CanonicalBackend.RPC_SET_RECEIVE_NEARBY_CASES,
+                parameters = buildJsonObject { put("p_receive", receive) }
+            )
+        }
+
+        suspend fun upsertResponderBase(
+            lat: Double,
+            lng: Double,
+            organizationId: String? = null,
+            address: String? = null
+        ): Result<Unit> = runCatching {
+            supabase.postgrest.rpc(
+                function = CanonicalBackend.RPC_UPSERT_RESPONDER_BASE,
+                parameters = buildJsonObject {
+                    put("p_lat", lat)
+                    put("p_lng", lng)
+                    if (!organizationId.isNullOrBlank()) put("p_organization_id", organizationId)
+                    else put("p_organization_id", JsonNull)
+                    put("p_receive", true)
+                    if (!address.isNullOrBlank()) put("p_address", address) else put("p_address", JsonNull)
+                }
+            )
+        }
+
+        suspend fun getMyResponderBase(organizationId: String? = null): Result<ResponderBaseSnapshot> = runCatching {
+            val element: JsonElement = supabase.postgrest.rpc(
+                function = CanonicalBackend.RPC_GET_MY_RESPONDER_BASE,
+                parameters = buildJsonObject {
+                    if (!organizationId.isNullOrBlank()) put("p_organization_id", organizationId)
+                    else put("p_organization_id", JsonNull)
+                }
+            ).decodeAs()
+            val obj = (element as? JsonObject)?.let { root ->
+                root["canon_get_my_responder_base"] as? JsonObject ?: root
+            }
+            fun flag(key: String): Boolean {
+                val raw = obj?.get(key) as? JsonPrimitive ?: return false
+                return raw.content.equals("true", ignoreCase = true)
+            }
+            fun num(key: String): Double? =
+                obj?.get(key)?.let { (it as? JsonPrimitive)?.contentOrNull }?.toDoubleOrNull()
+            ResponderBaseSnapshot(
+                hasBaseLocation = flag("has_base_location") || (num("lat") != null && num("lng") != null),
+                latitude = num("lat"),
+                longitude = num("lng"),
+                address = obj?.get("address")?.let { (it as? JsonPrimitive)?.contentOrNull }
+            )
+        }
+
+        suspend fun claimAlert(alertId: String): Result<LostFoundClaimResult> = runCatching {
+            runCatching {
+                supabase.postgrest.rpc(
+                    function = CanonicalBackend.RPC_REGISTER_LOST_FOUND_CLAIM_ATTEMPT,
+                    parameters = buildJsonObject { put("p_id", alertId) }
+                )
+            }
+            val element: JsonElement = supabase.postgrest.rpc(
+                function = CanonicalBackend.RPC_CLAIM_LOST_FOUND,
+                parameters = buildJsonObject { put("p_id", alertId) }
+            ).decodeAs()
+            val obj = element as? kotlinx.serialization.json.JsonObject
+            LostFoundClaimResult(
+                alertId = obj?.get("id")?.let { (it as? JsonPrimitive)?.contentOrNull } ?: alertId,
+                petId = obj?.get("pet_id")?.let { (it as? JsonPrimitive)?.contentOrNull },
+                status = obj?.get("status")?.let { (it as? JsonPrimitive)?.contentOrNull } ?: "CLAIMED"
+            )
+        }.recoverCatching { error ->
+            val message = error.message.orEmpty()
+            if (message.contains("ALERT_ALREADY_CLAIMED", ignoreCase = true) ||
+                message.contains("ALERT_CLAIM_NOT_NEAREST", ignoreCase = true)
+            ) {
+                LostFoundClaimResult(alertId, null, "CLAIMED", alreadyTaken = true)
+            } else {
+                throw error
+            }
         }
     }
 }
@@ -392,15 +646,61 @@ class CanonicalFeedRepository : FeedRepository {
     private val stories = MutableStateFlow<List<FeedPost>>(emptyList())
     private val liked = MutableStateFlow<Set<String>>(emptySet())
     private val comments = MutableStateFlow<Map<String, List<PostComment>>>(emptyMap())
+    @Volatile private var feedHasMore = false
 
     override fun observeFeedPosts(): StateFlow<List<FeedPost>> = posts.asStateFlow()
     override fun observeActiveStories(): StateFlow<List<FeedPost>> = stories.asStateFlow()
+    override fun hasMorePosts(): Boolean = feedHasMore
 
-    override suspend fun refreshPosts(): Result<Unit> = runCatching { refresh() }
+    override fun clearAccountCache() {
+        posts.value = emptyList()
+        stories.value = emptyList()
+        liked.value = emptySet()
+        comments.value = emptyMap()
+        feedHasMore = false
+    }
+
+    override suspend fun refreshPosts(): Result<Unit> = runCatching { refresh(reset = true) }
+    override suspend fun loadMorePosts(): Result<Unit> = runCatching {
+        if (!feedHasMore) return@runCatching
+        refresh(reset = false)
+    }
     override suspend fun refreshStories(): Result<Unit> = runCatching { refreshStoriesInternal() }
 
+    override suspend fun loadSavedPosts(): Result<List<FeedPost>> = runCatching {
+        rpcRows<CanonicalSocialPostRow>(
+            CanonicalBackend.RPC_LIST_SAVED_SOCIAL_POSTS,
+            buildJsonObject {
+                put("p_limit", CanonicalBackend.FEED_PAGE_LIMIT)
+                put("p_cursor_created_at", JsonNull)
+                put("p_cursor_id", JsonNull)
+            }
+        ).let { mapSocialPosts(it) }
+    }
+
+    override suspend fun ensureVisiblePost(postId: String): Result<FeedPost?> = runCatching {
+        // Never trust cache for access control: revoked visibility must drop last-good.
+        val row = try {
+            rpcRows<CanonicalSocialPostRow>(
+                CanonicalBackend.RPC_GET_VISIBLE_SOCIAL_POST,
+                buildJsonObject { put("p_post_id", postId) }
+            ).firstOrNull()
+        } catch (error: Throwable) {
+            posts.value = posts.value.filterNot { it.id == postId }
+            throw error
+        }
+        if (row == null) {
+            posts.value = posts.value.filterNot { it.id == postId }
+            return@runCatching null
+        }
+        val mapped = mapSocialPost(row)
+        posts.value = listOf(mapped) + posts.value.filterNot { it.id == mapped.id }
+        mapped
+    }
+
     override suspend fun addFeedPost(post: FeedPost): Result<String> = runCatching {
-        val mediaId = post.imageUrl?.takeIf { !it.startsWith("http", ignoreCase = true) }
+        val mediaId = post.mediaAssetId
+            ?: post.imageUrl?.takeIf { !it.startsWith("http", ignoreCase = true) }
         createSocialPost(post, mediaAssetId = mediaId, kind = "POST")
     }
 
@@ -423,6 +723,23 @@ class CanonicalFeedRepository : FeedRepository {
         createSocialPost(post, mediaAssetId = mediaAssetId, kind = "REEL")
     }
 
+    override suspend fun findOwnReelIdByMediaAsset(assetId: String): Result<String?> = runCatching {
+        if (assetId.isBlank()) return@runCatching null
+        val result = supabase.from("social_posts")
+            .select {
+                filter {
+                    eq("media_asset_id", assetId)
+                    eq("content_kind", "REEL")
+                }
+            }
+        val element = Json.parseToJsonElement(result.data)
+        M08RpcDecoding.decodeRows<OwnReelIdRow>(element)
+            .firstOrNull()
+            ?.id
+            ?.trim()
+            ?.takeIf { it.isNotEmpty() }
+    }
+
     override suspend fun updateFeedPost(post: FeedPost): Result<Unit> = Result.success(Unit)
 
     override suspend fun toggleLike(postId: String, userId: String): Result<Boolean> = runCatching {
@@ -431,7 +748,7 @@ class CanonicalFeedRepository : FeedRepository {
             parameters = buildJsonObject { put("p_post_id", postId) }
         ).decodeAs()
         liked.update { current -> if (likedNow) current + postId else current - postId }
-        refresh()
+        refresh(reset = true)
         likedNow
     }
 
@@ -474,7 +791,7 @@ class CanonicalFeedRepository : FeedRepository {
             }
         )
         refreshComments(postId)
-        refresh()
+        refresh(reset = true)
     }
 
     override suspend fun deleteOwnComment(commentId: String): Result<Unit> = runCatching {
@@ -485,7 +802,7 @@ class CanonicalFeedRepository : FeedRepository {
         comments.update { current ->
             current.mapValues { (_, list) -> list.filterNot { it.id == commentId } }
         }
-        refresh()
+        refresh(reset = true)
     }
 
     override suspend fun searchPosts(query: String): List<FeedPost> {
@@ -499,8 +816,8 @@ class CanonicalFeedRepository : FeedRepository {
         val id: String = supabase.postgrest.rpc(
             function = CanonicalBackend.RPC_CREATE_SOCIAL_POST,
             parameters = buildJsonObject {
-                put("p_body", post.content.ifBlank { post.title })
-                put("p_visibility", "PUBLIC")
+                put("p_body", com.comunidapp.app.domain.social.FeedBodyFormat.encode(post.title, post.content))
+                put("p_visibility", post.visibility.toRpcValue())
                 put("p_content_kind", kind)
                 if (!mediaAssetId.isNullOrBlank()) put("p_media_asset_id", mediaAssetId) else put("p_media_asset_id", JsonNull)
                 if (!post.petId.isNullOrBlank()) put("p_pet_id", post.petId) else put("p_pet_id", JsonNull)
@@ -508,30 +825,137 @@ class CanonicalFeedRepository : FeedRepository {
                 put("p_composition", Json.parseToJsonElement(post.compositionJson ?: "{}"))
             }
         ).decodeAs()
-        refresh()
         return id
     }
 
-    private suspend fun refresh() {
-        val rows = rpcRows<CanonicalSocialPostRow>(CanonicalBackend.RPC_LIST_SOCIAL_FEED)
-        posts.value = rows.map { row ->
-            val kind = row.contentKind.orEmpty().uppercase()
-            FeedPost(
-                id = row.id,
-                authorId = row.authorUserId.orEmpty(),
-                authorName = row.authorName.orEmpty(),
-                type = if (kind == "REEL") PostType.REEL else PostType.GENERAL,
-                title = "",
-                content = row.body.orEmpty(),
-                imageUrl = resolveMediaUrl(row.mediaBucket, row.mediaPath),
-                likeCount = row.likeCount,
-                commentCount = row.commentCount,
-                createdAt = parseEpoch(row.createdAt),
-                petId = row.petId,
-                localityId = row.localityId,
-                mediaMime = row.mediaMime
-            )
+    private suspend fun refresh(reset: Boolean) {
+        val cursor = if (reset) null else feedCursor()
+        val rows = rpcRows<CanonicalSocialPostRow>(
+            CanonicalBackend.RPC_LIST_SOCIAL_FEED,
+            buildJsonObject {
+                put("p_limit", CanonicalBackend.FEED_PAGE_LIMIT)
+                if (cursor == null) {
+                    put("p_cursor_created_at", JsonNull)
+                    put("p_cursor_id", JsonNull)
+                } else {
+                    put("p_cursor_created_at", cursor.first)
+                    put("p_cursor_id", cursor.second)
+                }
+            }
+        )
+        val mapped = mapSocialPosts(rows)
+        feedHasMore = rows.size >= CanonicalBackend.FEED_PAGE_LIMIT
+        posts.value = if (reset) {
+            mapped
+        } else {
+            val seen = posts.value.map { it.id }.toHashSet()
+            posts.value + mapped.filter { it.id !in seen }
         }
+    }
+
+    private fun feedCursor(): Pair<String, String>? {
+        val last = posts.value.lastOrNull() ?: return null
+        val createdAt = last.createdAt?.let { Instant.ofEpochMilli(it).toString() } ?: return null
+        if (last.id.isBlank()) return null
+        return createdAt to last.id
+    }
+
+    private suspend fun mapSocialPosts(rows: List<CanonicalSocialPostRow>): List<FeedPost> {
+        if (rows.isEmpty()) return emptyList()
+        return coroutineScope {
+            val gate = Semaphore(6)
+            rows.map { row ->
+                async { gate.withPermit { mapSocialPost(row) } }
+            }.awaitAll()
+        }
+    }
+
+    private suspend fun mapSocialPost(row: CanonicalSocialPostRow): FeedPost {
+        val kind = row.contentKind.orEmpty().uppercase()
+        val (title, content) = com.comunidapp.app.domain.social.FeedBodyFormat.decode(row.body.orEmpty())
+        val compositionJson = row.composition?.toString()
+        val actorUserId = AuthProvider.repository.getCurrentUser()?.id
+        val primaryAssetId = row.mediaAssetId?.trim()?.takeIf { it.isNotEmpty() }
+        val primaryUrl = if (primaryAssetId != null) {
+            resolveAssetDisplayUrl(primaryAssetId, actorUserId)
+        } else {
+            resolveMediaUrl(row.mediaBucket, row.mediaPath)
+        }
+        val extraAssetIds =
+            com.comunidapp.app.domain.social.SocialPostMedia.extraMediaAssetIds(compositionJson)
+        val extraUrls = if (extraAssetIds.isNotEmpty()) {
+            coroutineScope {
+                extraAssetIds.map { assetId ->
+                    async { resolveAssetDisplayUrl(assetId, actorUserId) }
+                }.awaitAll().filterNotNull()
+            }
+        } else {
+            extraMediaUrls(row.extraMedia).ifEmpty {
+                com.comunidapp.app.domain.social.SocialPostMedia.extraMediaUrls(compositionJson)
+            }
+        }
+        val displayUrls = com.comunidapp.app.domain.social.SocialPostMedia.displayUrls(primaryUrl, extraUrls)
+        val mediaDeclared = kind == "REEL" ||
+            primaryAssetId != null ||
+            (!row.mediaBucket.isNullOrBlank() && !row.mediaPath.isNullOrBlank()) ||
+            extraAssetIds.isNotEmpty() ||
+            extraMediaUrls(row.extraMedia).isNotEmpty()
+        val typeHint = com.comunidapp.app.domain.social.SocialPostMedia.postType(compositionJson)
+        val author = row.authorUserId?.let { userId ->
+            runCatching { DataProvider.userRepository.getUser(userId) }.getOrNull()
+        }
+        val authorAvatar = resolveAuthorAvatar(author, actorUserId)
+        return FeedPost(
+            id = row.id,
+            authorId = row.authorUserId.orEmpty(),
+            authorName = row.authorName.orEmpty().ifBlank { author?.name.orEmpty() },
+            authorImageUrl = authorAvatar,
+            type = when {
+                kind == "REEL" -> PostType.REEL
+                typeHint.equals("LOST_FOUND", ignoreCase = true) -> PostType.LOST_FOUND
+                typeHint.equals("URGENT", ignoreCase = true) -> PostType.URGENT
+                else -> PostType.GENERAL
+            },
+            title = title,
+            content = content,
+            mediaAssetId = primaryAssetId,
+            imageUrl = primaryUrl,
+            imageUrls = displayUrls,
+            mediaAvailability = when {
+                displayUrls.isNotEmpty() -> FeedMediaAvailability.AVAILABLE
+                mediaDeclared -> FeedMediaAvailability.UNAVAILABLE
+                else -> FeedMediaAvailability.NONE
+            },
+            locationText = com.comunidapp.app.domain.social.SocialPostMedia.locationLabel(compositionJson),
+            likeCount = row.likeCount,
+            commentCount = row.commentCount,
+            createdAt = parseEpoch(row.createdAt),
+            petId = row.petId ?: jsonTextList(row.petIds).firstOrNull(),
+            petIds = jsonTextList(row.petIds).ifEmpty { listOfNotNull(row.petId) },
+            petNames = jsonTextList(row.petNames),
+            localityId = row.localityId,
+            compositionJson = compositionJson,
+            mediaMime = row.mediaMime,
+            visibility = com.comunidapp.app.domain.social.CanonicalSocialPostVisibility.fromRaw(row.visibility)
+        )
+    }
+
+    private suspend fun resolveAssetDisplayUrl(assetId: String, actorUserId: String?): String? =
+        when (
+            val resolved = DataProvider.fileDisplayResolver.resolve(
+                assetId = assetId,
+                legacyReference = null,
+                context = FileAuthContext(actorUserId = actorUserId)
+            )
+        ) {
+            is AppResult.Success -> resolved.data.displayValue.trim().takeIf { it.isNotEmpty() }
+            is AppResult.Failure -> null
+        }
+
+    private suspend fun resolveAuthorAvatar(user: User?, actorUserId: String?): String? {
+        ProfileAvatarResolver.httpOrLocalUrl(user)?.let { return it }
+        val assetId = user?.avatarPath?.takeIf(ProfileAvatarResolver::isUuid) ?: return null
+        return resolveAssetDisplayUrl(assetId, actorUserId)
     }
 
     private suspend fun refreshStoriesInternal() {
@@ -553,6 +977,23 @@ class CanonicalFeedRepository : FeedRepository {
                 mediaMime = row.mediaMime
             )
         }
+    }
+
+    private fun jsonTextList(element: JsonElement?): List<String> {
+        if (element == null || element is JsonNull) return emptyList()
+        val array = element as? JsonArray ?: return emptyList()
+        return array.mapNotNull {
+            (it as? JsonPrimitive)?.contentOrNull?.trim()?.takeIf { text -> text.isNotEmpty() }
+        }
+    }
+
+    private fun extraMediaUrls(element: JsonElement?): List<String> {
+        if (element == null || element is JsonNull) return emptyList()
+        return runCatching {
+            M08RpcDecoding.decodeRows<CanonicalFeedExtraMediaRow>(element).mapNotNull { row ->
+                resolveMediaUrl(row.bucket, row.path)
+            }
+        }.getOrDefault(emptyList())
     }
 
     private fun resolveMediaUrl(bucket: String?, path: String?): String? {
@@ -585,7 +1026,10 @@ class CanonicalChatRepository : ChatRepository {
             }
         )
 
+    private val olderExhausted = java.util.concurrent.ConcurrentHashMap<String, Boolean>()
+
     private suspend fun refreshMessages(conversationId: String): List<ChatMessage> {
+        olderExhausted[conversationId] = false
         val rows = runCatching {
             rpcRows<CanonicalMessageRow>(
                 CanonicalBackend.RPC_LIST_MESSAGES,
@@ -593,8 +1037,44 @@ class CanonicalChatRepository : ChatRepository {
             )
         }.getOrDefault(emptyList())
         val mapped = mapRows(conversationId, rows)
-        messagesFlow(conversationId).value = mapped
-        return mapped
+        val current = messagesFlow(conversationId).value
+        val merged = if (current.isEmpty()) {
+            mapped
+        } else {
+            ChatMessageMerge.unionById(current, mapped)
+        }
+        messagesFlow(conversationId).value = merged
+        if (rows.size < CanonicalBackend.MESSAGE_PAGE_LIMIT) {
+            olderExhausted[conversationId] = true
+        }
+        return merged
+    }
+
+    override suspend fun loadOlderMessages(conversationId: String): Result<Boolean> = runCatching {
+        if (conversationId.isBlank() || olderExhausted[conversationId] == true) return@runCatching false
+        val current = messagesFlow(conversationId).value
+        val oldest = current.minWithOrNull(
+            compareBy<ChatMessage> { it.createdAt ?: Long.MAX_VALUE }.thenBy { it.id }
+        ) ?: return@runCatching false
+        val createdAt = oldest.createdAt?.let { Instant.ofEpochMilli(it).toString() }
+            ?: return@runCatching false
+        val rows = rpcRows<CanonicalMessageRow>(
+            CanonicalBackend.RPC_LIST_MESSAGES,
+            buildJsonObject {
+                put("p_conversation_id", conversationId)
+                put("p_limit", CanonicalBackend.MESSAGE_PAGE_LIMIT)
+                put("p_cursor_created_at", createdAt)
+                put("p_cursor_id", oldest.id)
+            }
+        )
+        if (rows.size < CanonicalBackend.MESSAGE_PAGE_LIMIT) {
+            olderExhausted[conversationId] = true
+        }
+        messagesFlow(conversationId).value = ChatMessageMerge.unionById(
+            current,
+            mapRows(conversationId, rows)
+        )
+        rows.isNotEmpty()
     }
 
     override fun observeConversations(userId: String): Flow<List<Conversation>> = flow {
@@ -605,6 +1085,7 @@ class CanonicalChatRepository : ChatRepository {
                 id = row.id,
                 peerUserId = row.peerUserId.orEmpty(),
                 peerName = row.peerName.orEmpty().ifBlank { row.peerUsername.orEmpty().ifBlank { row.subjectKind ?: "Conversación" } },
+                peerUsername = row.peerUsername?.takeIf { it.isNotBlank() },
                 lastMessageText = row.lastMessageText,
                 lastMessageAt = parseEpoch(row.lastMessageAt ?: row.createdAt)
             )
@@ -629,7 +1110,7 @@ class CanonicalChatRepository : ChatRepository {
                 put("p_kind", "PERSON")
                 put("p_other_person", peerUserId)
                 put("p_org", JsonNull)
-                put("p_body", "Hola")
+                put("p_body", "")
             }
         ).decodeAs()
     }

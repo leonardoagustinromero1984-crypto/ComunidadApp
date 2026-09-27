@@ -50,6 +50,7 @@ data class ProfileUiState(
     val canViewSupportStaff: Boolean = false,
     val canViewAudit: Boolean = false,
     val canViewObservability: Boolean = false,
+    val canEnterAdministration: Boolean = false,
     val avatarDisplayUrl: String? = null,
     val errorMessage: String? = null
 )
@@ -92,8 +93,9 @@ class ProfileViewModel(
                         permissionRepository.observeAuthorizationContext(authUser.id).collect {
                             emit(it)
                         }
-                    }
-                ) { core, users, notifications, authz ->
+                    },
+                    com.comunidapp.app.domain.context.OperationalContextProvider.active
+                ) { core, users, notifications, authz, context ->
                     val user = core.profile ?: authUser
                     val friendIds = ProfilePrivacy.friendIdsFor(authUser.id, core.connections)
                     val friends = users.filter { it.id in friendIds }
@@ -105,7 +107,11 @@ class ProfileViewModel(
                         isLoading = false,
                         user = user,
                         avatarDisplayUrl = ProfileAvatarResolver.httpOrLocalUrl(user),
-                        pets = core.pets,
+                        pets = com.comunidapp.app.domain.pets.PetManagementContext.filter(
+                            core.pets,
+                            context,
+                            authUser.id
+                        ),
                         posts = core.posts.filter { it.authorId == authUser.id },
                         friends = friends,
                         badges = core.badges.ifEmpty { user.badges },
@@ -139,7 +145,9 @@ class ProfileViewModel(
                         canViewObservability = AuthorizationService.hasPermission(
                             authz,
                             com.comunidapp.app.domain.authorization.PermissionCode.OBSERVABILITY_VIEW
-                        )
+                        ),
+                        canEnterAdministration = com.comunidapp.app.domain.authorization.AdminAccessPolicy
+                            .canEnterAdministration(authz)
                     )
                 }
             }
@@ -155,7 +163,7 @@ class ProfileViewModel(
         }
         .stateIn(
             scope = viewModelScope,
-            started = SharingStarted.WhileSubscribed(5000),
+            started = SharingStarted.WhileSubscribed(60_000),
             initialValue = ProfileUiState()
         )
 

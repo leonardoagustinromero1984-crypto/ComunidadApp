@@ -12,15 +12,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -45,6 +40,9 @@ import com.comunidapp.app.ui.components.v2.V2FormErrorBanner
 import com.comunidapp.app.R
 import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.HealthOptionDropdown
@@ -54,7 +52,11 @@ import com.comunidapp.app.ui.components.v2.V2FormImagePreview
 import com.comunidapp.app.ui.components.v2.v2KeepVisibleOnFocus
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.ui.media.LeoVerAvatarCropKind
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.runtime.rememberCoroutineScope
 import com.comunidapp.app.ui.media.rememberLeoVerAvatarCropLauncher
+import com.comunidapp.app.ui.media.rememberLeoVerPhotoSourcePicker
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.PetFormViewModel
@@ -79,13 +81,16 @@ fun EditPetScreen(
     onNavigateBack: () -> Unit,
     onSaveSuccess: () -> Unit,
     onDeleteSuccess: () -> Unit,
+    focusSection: String = "profile",
     viewModel: PetFormViewModel
 ) {
+    val title = if (focusSection.equals("health", ignoreCase = true)) "Editar salud" else "Editar mascota"
     PetFormScreen(
-        title = "Editar mascota",
+        title = title,
         onNavigateBack = onNavigateBack,
         onSaveSuccess = onSaveSuccess,
         onDeleteSuccess = onDeleteSuccess,
+        focusSection = focusSection,
         viewModel = viewModel
     )
 }
@@ -96,6 +101,7 @@ private fun PetFormScreen(
     onNavigateBack: () -> Unit,
     onSaveSuccess: () -> Unit,
     onDeleteSuccess: () -> Unit,
+    focusSection: String = "profile",
     viewModel: PetFormViewModel
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -107,9 +113,15 @@ private fun PetFormScreen(
         onCancel = {},
         onError = viewModel::onPhotoCropFailed
     )
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> uri?.let(cropPhoto) }
+    val pickPhoto = rememberLeoVerPhotoSourcePicker(onSourceSelected = cropPhoto)
+    val healthBringIntoView = remember { BringIntoViewRequester() }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(focusSection, uiState.isLoading) {
+        if (!uiState.isLoading && focusSection.equals("health", ignoreCase = true)) {
+            healthBringIntoView.bringIntoView()
+        }
+    }
 
     LaunchedEffect(uiState.saveSuccess) {
         if (uiState.saveSuccess) {
@@ -127,14 +139,14 @@ private fun PetFormScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("Eliminar mascota") },
-            text = { Text("¿Estás seguro? Esta acción no se puede deshacer.") },
+            title = { Text(com.comunidapp.app.domain.pets.PetCareTransferCopy.ARCHIVE_TITLE) },
+            text = { Text(com.comunidapp.app.domain.pets.PetCareTransferCopy.ARCHIVE_BODY) },
             confirmButton = {
                 TextButton(onClick = {
                     showDeleteDialog = false
                     viewModel.deletePet()
                 }) {
-                    Text("Eliminar", color = MaterialTheme.colorScheme.error)
+                    Text(com.comunidapp.app.domain.pets.PetCareTransferCopy.ARCHIVE_TITLE)
                 }
             },
             dismissButton = {
@@ -153,6 +165,22 @@ private fun PetFormScreen(
     ) { padding ->
         when {
             uiState.isLoading -> LoadingState(Modifier.padding(padding))
+            uiState.editDecision ==
+                com.comunidapp.app.domain.pets.PetEditAuthorization.Decision.NO_PERMISSION ||
+                uiState.editDecision ==
+                com.comunidapp.app.domain.pets.PetEditAuthorization.Decision.PET_NOT_FOUND -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(padding)
+                        .padding(16.dp)
+                ) {
+                    Text(
+                        text = uiState.errorMessage ?: "No tenés permiso para editar esta mascota",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            }
             else -> Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -167,17 +195,12 @@ private fun PetFormScreen(
                     contentDescription = uiState.name
                 )
                 Spacer(modifier = Modifier.height(12.dp))
-                OutlinedButton(
-                    onClick = {
-                        pickImageLauncher.launch(
-                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                        )
-                    },
+                LeoOutlinedButton(
+                    text = stringResource(R.string.change_photo),
+                    onClick = pickPhoto,
                     enabled = !uiState.isSaving && !uiState.isDeleting &&
                         uiState.canManageMedia && !uiState.mutationsLocked
-                ) {
-                    Text(stringResource(R.string.change_photo))
-                }
+                )
                 if (!uiState.canManageMedia) {
                     Text(
                         text = "No tenés permiso para cambiar la foto.",
@@ -191,7 +214,7 @@ private fun PetFormScreen(
                 OutlinedTextField(
                     value = uiState.name,
                     onValueChange = viewModel::onNameChange,
-                    label = { Text("Nombre") },
+                    label = { Text(com.comunidapp.app.ui.components.leo.LeoRequiredField.label("Nombre")) },
                     modifier = Modifier
                         .fillMaxWidth()
                         .v2KeepVisibleOnFocus(),
@@ -199,16 +222,15 @@ private fun PetFormScreen(
                 )
                 Spacer(modifier = Modifier.height(12.dp))
                 SpeciesDropdown(
-                    selected = uiState.species,
+                    selectedCode = uiState.speciesCode,
                     onSelected = viewModel::onSpeciesChange,
                     enabled = !uiState.isSaving && !uiState.isDeleting,
-                    options = uiState.speciesOptions,
-                    labels = uiState.speciesLabels
+                    options = uiState.speciesOptions
                 )
-                if (uiState.breedOptions.isNotEmpty()) {
+                if (uiState.secondaryClassificationEnabled && uiState.breedOptions.isNotEmpty()) {
                     Spacer(modifier = Modifier.height(8.dp))
                     HealthOptionDropdown(
-                        label = "Raza",
+                        label = uiState.secondaryLabelSingular.ifBlank { "Clasificación" },
                         options = uiState.breedOptions,
                         selected = uiState.breed,
                         onSelected = viewModel::onBreedChange,
@@ -254,6 +276,9 @@ private fun PetFormScreen(
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
+                androidx.compose.foundation.layout.Box(
+                    Modifier.bringIntoViewRequester(healthBringIntoView)
+                ) {
                 PetHealthFormSection(
                     species = uiState.species,
                     sterilized = uiState.sterilized,
@@ -296,6 +321,7 @@ private fun PetFormScreen(
                     dewormerOptions = uiState.dewormerOptions,
                     fleaOptions = uiState.fleaOptions
                 )
+                }
 
                 uiState.duplicateWarning?.let { warning ->
                     Spacer(modifier = Modifier.height(12.dp))
@@ -323,38 +349,28 @@ private fun PetFormScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(
+                LeoPrimaryButton(
+                    text = if (uiState.isSaving) "Guardando…" else stringResource(R.string.save_profile),
                     onClick = viewModel::savePet,
-                    modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.isSaving && !uiState.isDeleting && !uiState.mutationsLocked
-                ) {
-                    if (uiState.isSaving) {
-                        CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
-                    } else {
-                        Text(stringResource(R.string.save_profile))
-                    }
-                }
+                )
                 Spacer(modifier = Modifier.height(8.dp))
-                OutlinedButton(
+                LeoOutlinedButton(
+                    text = "Descartar",
                     onClick = {
                         viewModel.discardDraft()
                         onNavigateBack()
                     },
-                    modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.isSaving && !uiState.isDeleting
-                ) {
-                    Text("Descartar")
-                }
+                )
 
                 if (uiState.isEditMode) {
                     Spacer(modifier = Modifier.height(12.dp))
-                    OutlinedButton(
+                    LeoOutlinedButton(
+                        text = com.comunidapp.app.domain.pets.PetCareTransferCopy.ARCHIVE_TITLE,
                         onClick = { showDeleteDialog = true },
-                        modifier = Modifier.fillMaxWidth(),
                         enabled = !uiState.isSaving && !uiState.isDeleting
-                    ) {
-                        Text("Eliminar mascota", color = MaterialTheme.colorScheme.error)
-                    }
+                    )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -364,34 +380,24 @@ private fun PetFormScreen(
 
 @Composable
 private fun EnumChipRowSex(selected: PetSex, onSelect: (PetSex) -> Unit) {
-    Text(text = "Sexo", style = MaterialTheme.typography.labelLarge, modifier = Modifier.fillMaxWidth())
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        PetSex.entries.forEach { entry ->
-            FilterChip(
-                selected = selected == entry,
-                onClick = { onSelect(entry) },
-                label = { Text(entry.toDisplayName()) }
-            )
-        }
-    }
+    com.comunidapp.app.ui.components.leo.LeoEnumChipRow(
+        items = PetSex.entries,
+        selected = selected,
+        onSelect = onSelect,
+        labelOf = { it.toDisplayName() },
+        label = "Sexo",
+        required = false
+    )
 }
 
 @Composable
 private fun EnumChipRowSize(selected: PetSize, onSelect: (PetSize) -> Unit) {
-    Text(text = "Tamaño", style = MaterialTheme.typography.labelLarge, modifier = Modifier.fillMaxWidth())
-    Row(
-        modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        PetSize.entries.forEach { entry ->
-            FilterChip(
-                selected = selected == entry,
-                onClick = { onSelect(entry) },
-                label = { Text(entry.toDisplayName()) }
-            )
-        }
-    }
+    com.comunidapp.app.ui.components.leo.LeoEnumChipRow(
+        items = PetSize.entries,
+        selected = selected,
+        onSelect = onSelect,
+        labelOf = { it.toDisplayName() },
+        label = "Tamaño",
+        required = false
+    )
 }

@@ -1,5 +1,6 @@
 package com.comunidapp.app.ui
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -44,13 +45,18 @@ class UiRegressionGateTest {
     fun screensDoNotExposeRawBackendErrors() {
         val banned = listOf("SQLSTATE", "duplicate key", "PostgREST", "pgrst", "organizations_slug")
         val hits = screenFiles().flatMap { file ->
-            val text = file.readText()
-            banned.mapNotNull { needle ->
-                if (text.contains(needle, ignoreCase = true)) {
-                    "$needle in ${file.relativeTo(repoRoot())}"
-                } else {
-                    null
+            file.readLines().mapIndexedNotNull { index, raw ->
+                val line = raw.trim()
+                if (line.startsWith("import ")) return@mapIndexedNotNull null
+                if (
+                    line.contains("io.github.jan.supabase.postgrest") ||
+                    line.contains("supabase.postgrest")
+                ) {
+                    return@mapIndexedNotNull null
                 }
+                val needle = banned.firstOrNull { line.contains(it, ignoreCase = true) }
+                    ?: return@mapIndexedNotNull null
+                "$needle in ${file.relativeTo(repoRoot())}:${index + 1}"
             }
         }
         assertTrue("Technical strings in UI screens:\n${hits.joinToString("\n")}", hits.isEmpty())
@@ -142,6 +148,20 @@ class UiRegressionGateTest {
         val profile = source("app/src/main/java/com/comunidapp/app/ui/screens/profile/ProfileScreen.kt")
         assertTrue(profile.contains("Usar LeoVer como"))
         assertFalse(profile.contains("+ Agregar función o perfil"))
+    }
+
+    @Test
+    fun loginBrandTaglineIsPetLoversAndInstitutionalSloganIsPreserved() {
+        val strings = source("app/src/main/res/values/strings.xml")
+        val login = source("app/src/main/java/com/comunidapp/app/ui/screens/login/LoginScreen.kt")
+        val onboarding = source("app/src/main/java/com/comunidapp/app/ui/screens/onboarding/FirstRunOnboardingScreen.kt")
+        assertTrue(strings.contains("name=\"brand_tagline\">La comunidad de los Pet Lovers<"))
+        assertTrue(strings.contains("name=\"brand_slogan\">Conectamos mascotas, personas y comunidad.<"))
+        assertTrue(login.contains("R.string.brand_tagline"))
+        assertEquals(1, Regex("R\\.string\\.brand_tagline").findAll(login).count())
+        assertFalse(login.contains("R.string.brand_slogan"))
+        assertTrue(onboarding.contains("R.string.brand_slogan"))
+        assertFalse(onboarding.contains("R.string.brand_tagline"))
     }
 
     @Test

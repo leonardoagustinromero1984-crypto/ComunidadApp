@@ -1,0 +1,21 @@
+appId: ${APP_ID}
+name: "Vet new patient email field"
+tags:
+  - community-care
+  - professional
+  - manual
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA10_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Consultorio"
+- tapOn: "Nuevo paciente"
+- assertVisible: "Email *"
+- tapOn: "Crear"
+- assertVisible: "Email"
+- takeScreenshot: vet_patient_email_required
+# MANUAL/E2E EMAIL REQUIRED: do not send a fake mailbox.

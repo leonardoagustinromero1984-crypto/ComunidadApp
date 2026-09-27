@@ -22,7 +22,10 @@ object M19SocialErrorMapper {
         "M19_COMMENT_NOT_FOUND",
         "M19_REACTION_NOT_FOUND",
         "M19_DUPLICATE_REACTION",
-        "NOT_AUTHENTICATED"
+        "NOT_AUTHENTICATED",
+        "RATE_LIMITED",
+        "QUOTA_EXCEEDED",
+        "FEATURE_TEMPORARILY_DISABLED"
     )
 
     fun userMessage(code: String): String = when (code) {
@@ -40,6 +43,9 @@ object M19SocialErrorMapper {
         "M19_REACTION_NOT_FOUND" -> "No encontramos esa reacción."
         "M19_DUPLICATE_REACTION" -> "Ya reaccionaste a esta publicación."
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión."
+        "RATE_LIMITED" -> "Estás publicando demasiado rápido. Intentá nuevamente más tarde."
+        "QUOTA_EXCEEDED" -> "Alcanzaste el límite de uso. Intentá más tarde."
+        "FEATURE_TEMPORARILY_DISABLED" -> "Esta función no está disponible por ahora."
         else -> "No se pudo completar la operación."
     }
 

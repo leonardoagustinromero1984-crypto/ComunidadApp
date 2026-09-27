@@ -103,12 +103,24 @@ object TutorialCatalog {
                 title = "VitaCora",
                 body = "Su vida. Su historia. Sus cuidados.\n\n" +
                     "Cada mascota deja huellas en nuestra vida y tiene una historia única.\n\n" +
-                    "VitaCora nace de vita —vida— y cora —corazón— para " +
+                    "VitaCora nace de vita (vida) y cora (corazón) para " +
                     "acompañar sus cuidados y su salud, y atesorar los momentos " +
                     "que forman parte de su camino.",
                 highlight = "Una historia que crece junto a ella.",
                 visual = TutorialVisual.VITACORA,
                 titleIsVitacoraWordmark = true,
+                primaryCta = "Siguiente"
+            ),
+            TutorialStep(
+                title = "Tu privacidad en LeoVer",
+                body = "En LeoVer vos decidís qué compartir. Tu perfil tiene una privacidad general " +
+                    "y algunas funciones permiten elegir quién puede ver cada contenido.\n\n" +
+                    "Perfil: podés ser público o más reservado.\n" +
+                    "Publicaciones y Reels: visibles según tu configuración al publicar.\n" +
+                    "Stories: visibles por 24 horas para quienes autorices.\n" +
+                    "VitaCora: vos controlás quién puede ver o colaborar.",
+                highlight = "La privacidad es tuya en cada parte de LeoVer.",
+                visual = TutorialVisual.VITACORA,
                 primaryCta = "Siguiente"
             ),
             TutorialStep(
@@ -440,7 +452,21 @@ object TutorialCatalog {
                     "ayuda, siempre respetando los accesos que correspondan.",
                 highlight = "El objetivo no es solo ayudar hoy, sino acompañarla hasta que empiece una nueva etapa de su vida.",
                 visual = TutorialVisual.VITACORA,
-                primaryCta = "Listo"
+                primaryCta = "Siguiente"
+            ),
+            TutorialStep(
+                title = "Verificá tu refugio",
+                body = "Para recibir casos cercanos, tu refugio debe estar " +
+                    "verificado por LeoVer. Completá los datos del perfil, tu " +
+                    "ubicación base y enviá la solicitud. Nuestro equipo la revisará.\n\n" +
+                    "LeoVer revisa el perfil de forma manual. La verificación " +
+                    "habilita funciones sensibles, como recibir casos cercanos. " +
+                    "Si tenés documentación o evidencia, podés adjuntarla.\n\n" +
+                    "Enviar la solicitud no implica aprobación automática: " +
+                    "el equipo puede aprobar, pedir una corrección o rechazar.",
+                highlight = "Solicitud, revisión humana de LeoVer, y después sí una respuesta.",
+                visual = TutorialVisual.ORGANIZATION,
+                primaryCta = "Completar perfil y solicitar verificación"
             )
         )
     )

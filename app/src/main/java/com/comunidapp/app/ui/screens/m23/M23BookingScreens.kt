@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -20,9 +18,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M23BookingStatus
 import com.comunidapp.app.data.model.M23BookingStatusFilter
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -43,8 +44,8 @@ fun M23HomeScreen(
             is M23HomeUiState.Error -> ErrorState(s.message)
             is M23HomeUiState.Content -> {
                 Text("${s.bookingCount} reservas próximas")
-                Button(onClick = onMyBookings, modifier = Modifier.fillMaxWidth()) { Text("Mis reservas") }
-                Button(onClick = onManage, modifier = Modifier.fillMaxWidth()) { Text("Gestionar agenda") }
+                LeoPrimaryButton(text = "Mis reservas", onClick = onMyBookings)
+                LeoPrimaryButton(text = "Gestionar agenda", onClick = onManage)
             }
         }
     }
@@ -76,10 +77,10 @@ fun M23MyBookingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     M23Scaffold("Mis reservas", onBack) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            FilterChip(selected = false, onClick = { viewModel.showUpcoming() }, label = { Text("Próximas") })
-            FilterChip(selected = false, onClick = { viewModel.showHistory() }, label = { Text("Historial") })
-            FilterChip(selected = false, onClick = { viewModel.filterStatus(M23BookingStatusFilter.CONFIRMED) }, label = { Text("Confirmadas") })
+        Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS), modifier = Modifier.fillMaxWidth()) {
+            LeoFilterChip(label = "Próximas", selected = false, onClick = { viewModel.showUpcoming() })
+            LeoFilterChip(label = "Historial", selected = false, onClick = { viewModel.showHistory() })
+            LeoFilterChip(label = "Confirmadas", selected = false, onClick = { viewModel.filterStatus(M23BookingStatusFilter.CONFIRMED) })
         }
         when (val s = state) {
             M23MyBookingsUiState.Loading -> LoadingState()
@@ -87,9 +88,11 @@ fun M23MyBookingsScreen(
             is M23MyBookingsUiState.Error -> ErrorState(s.message)
             is M23MyBookingsUiState.Content -> LazyColumn {
                 items(s.bookings) { booking ->
-                    Button(onClick = { onDetail(booking.booking.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("${booking.offeringName} · ${booking.booking.status}")
-                    }
+                    LeoListRow(
+                        title = booking.offeringName,
+                        subtitle = booking.booking.status.toString(),
+                        onClick = { onDetail(booking.booking.id) }
+                    )
                 }
             }
         }
@@ -119,18 +122,18 @@ fun M23BookingDetailScreen(
                 if (s.reviewEligible) Text("Podés dejar una reseña cuando las reseñas estén disponibles.")
                 when (s.booking.status) {
                     M23BookingStatus.REQUESTED -> {
-                        Button(onClick = { viewModel.confirm() }) { Text("Confirmar (prestador)") }
-                        Button(onClick = { viewModel.reject(publicReason = "Horario no disponible") }) { Text("Rechazar") }
+                        LeoPrimaryButton(text = "Confirmar (prestador)", onClick = { viewModel.confirm() })
+                        LeoPrimaryButton(text = "Rechazar", onClick = { viewModel.reject(publicReason = "Horario no disponible") })
                     }
                     M23BookingStatus.CONFIRMED -> {
-                        Button(onClick = { viewModel.cancel() }) { Text("Cancelar") }
-                        Button(onClick = { viewModel.complete() }) { Text("Completar") }
-                        Button(onClick = { viewModel.noShow() }) { Text("Marcar no-show") }
+                        LeoPrimaryButton(text = "Cancelar", onClick = { viewModel.cancel() })
+                        LeoPrimaryButton(text = "Completar", onClick = { viewModel.complete() })
+                        LeoPrimaryButton(text = "Marcar no-show", onClick = { viewModel.noShow() })
                     }
                     else -> Unit
                 }
                 if (s.canOpenConversation) {
-                    Button(onClick = { viewModel.openConversation() }) { Text("Abrir conversación") }
+                    LeoPrimaryButton(text = "Abrir conversación", onClick = { viewModel.openConversation() })
                 }
             }
         }
@@ -140,8 +143,8 @@ fun M23BookingDetailScreen(
 @Composable
 fun M23ManageScreen(onBack: () -> Unit, onCalendar: () -> Unit, onBookings: () -> Unit) =
     M23Scaffold("Gestionar agenda", onBack) {
-        Button(onClick = onCalendar, modifier = Modifier.fillMaxWidth()) { Text("Disponibilidad") }
-        Button(onClick = onBookings, modifier = Modifier.fillMaxWidth()) { Text("Reservas recibidas") }
+        LeoPrimaryButton(text = "Disponibilidad", onClick = onCalendar)
+        LeoPrimaryButton(text = "Reservas recibidas", onClick = onBookings)
     }
 
 @Composable
@@ -167,10 +170,10 @@ fun M23ManageBookingsScreen(
 ) {
     val state by viewModel.uiState.collectAsState()
     M23Scaffold("Reservas recibidas", onBack) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-            FilterChip(selected = false, onClick = { viewModel.filterDay(LocalDate.of(2030, 1, 7)) }, label = { Text("Hoy demo") })
-            FilterChip(selected = false, onClick = { viewModel.filterStatus(M23BookingStatusFilter.REQUESTED) }, label = { Text("Pendientes") })
-            FilterChip(selected = false, onClick = { viewModel.filterStatus(M23BookingStatusFilter.CONFIRMED) }, label = { Text("Confirmadas") })
+        Row(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS), modifier = Modifier.fillMaxWidth()) {
+            LeoFilterChip(label = "Hoy demo", selected = false, onClick = { viewModel.filterDay(LocalDate.of(2030, 1, 7)) })
+            LeoFilterChip(label = "Pendientes", selected = false, onClick = { viewModel.filterStatus(M23BookingStatusFilter.REQUESTED) })
+            LeoFilterChip(label = "Confirmadas", selected = false, onClick = { viewModel.filterStatus(M23BookingStatusFilter.CONFIRMED) })
         }
         when (val s = state) {
             M23ManageBookingsUiState.Loading -> LoadingState()
@@ -180,9 +183,11 @@ fun M23ManageBookingsScreen(
                 Text("Métricas: ${s.metrics.requested} pend. · ${s.metrics.confirmed} conf.")
                 LazyColumn {
                     items(s.bookings) { booking ->
-                        Button(onClick = { onDetail(booking.id) }, modifier = Modifier.fillMaxWidth()) {
-                            Text("${booking.startsAt} · ${booking.status}")
-                        }
+                        LeoListRow(
+                            title = booking.startsAt.toString(),
+                            subtitle = booking.status.toString(),
+                            onClick = { onDetail(booking.id) }
+                        )
                     }
                 }
             }

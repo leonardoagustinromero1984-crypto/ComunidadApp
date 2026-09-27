@@ -1,10 +1,9 @@
 package com.comunidapp.app.ui.components
 
-import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.shape.CircleShape
@@ -37,7 +36,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
@@ -95,7 +93,7 @@ fun ComunidappBottomBar(
 
     NavigationBar(
         containerColor = BrandWhite,
-        tonalElevation = 1.dp,
+        tonalElevation = 0.dp,
         windowInsets = WindowInsets(0, 0, 0, 0),
         modifier = Modifier.windowInsetsPadding(WindowInsets.navigationBars)
     ) {
@@ -124,17 +122,19 @@ fun ComunidappBottomBar(
                     if (item.prominent) {
                         Box(
                             modifier = Modifier
-                                .offset(y = (-10).dp)
-                                .size(56.dp)
-                                .clip(CircleShape)
-                                .background(if (selected) BrandOrange else BrandOrangeSoft),
+                                .size(40.dp)
+                                .border(
+                                    width = 1.5.dp,
+                                    color = if (selected) BrandOrange else BrandGrayMedium,
+                                    shape = CircleShape
+                                ),
                             contentAlignment = Alignment.Center
                         ) {
                             Icon(
                                 imageVector = Icons.Filled.Add,
                                 contentDescription = item.label,
-                                tint = BrandWhite,
-                                modifier = Modifier.size(30.dp)
+                                tint = if (selected) BrandOrange else BrandGrayMedium,
+                                modifier = Modifier.size(22.dp)
                             )
                         }
                     } else {
@@ -146,9 +146,9 @@ fun ComunidappBottomBar(
                 },
                 label = { Text(item.label, style = LeoNavLabel) },
                 colors = NavigationBarItemDefaults.colors(
-                    selectedIconColor = if (item.prominent) BrandOrange else BrandGreen,
-                    selectedTextColor = if (item.prominent) BrandOrange else BrandGreen,
-                    indicatorColor = if (item.prominent) Color.Transparent else BrandGreenContainer,
+                    selectedIconColor = BrandOrange,
+                    selectedTextColor = BrandOrange,
+                    indicatorColor = Color.Transparent,
                     unselectedIconColor = BrandGrayMedium,
                     unselectedTextColor = BrandGrayMedium
                 )
@@ -162,7 +162,7 @@ fun ComunidappBottomBar(
 private fun BottomBarPreview() {
     ComunidappTheme {
         val items = bottomNavItemsFor(OperationalContext.Personal)
-        NavigationBar(containerColor = BrandWhite, tonalElevation = 1.dp) {
+        NavigationBar(containerColor = BrandWhite, tonalElevation = 0.dp) {
             items.forEachIndexed { index, item ->
                 val selected = index == 0
                 NavigationBarItem(
@@ -172,13 +172,11 @@ private fun BottomBarPreview() {
                         if (item.prominent) {
                             Box(
                                 modifier = Modifier
-                                    .offset(y = (-10).dp)
-                                    .size(56.dp)
-                                    .clip(CircleShape)
-                                    .background(BrandOrange),
+                                    .size(40.dp)
+                                    .border(1.5.dp, BrandOrange, CircleShape),
                                 contentAlignment = Alignment.Center
                             ) {
-                                Icon(Icons.Filled.Add, contentDescription = item.label, tint = BrandWhite, modifier = Modifier.size(30.dp))
+                                Icon(Icons.Filled.Add, contentDescription = item.label, tint = BrandOrange, modifier = Modifier.size(22.dp))
                             }
                         } else {
                             Icon(
@@ -189,9 +187,9 @@ private fun BottomBarPreview() {
                     },
                     label = { Text(item.label, style = LeoNavLabel) },
                     colors = NavigationBarItemDefaults.colors(
-                        selectedIconColor = BrandGreen,
-                        selectedTextColor = BrandGreen,
-                        indicatorColor = BrandGreenContainer,
+                        selectedIconColor = BrandOrange,
+                        selectedTextColor = BrandOrange,
+                        indicatorColor = Color.Transparent,
                         unselectedIconColor = BrandGrayMedium,
                         unselectedTextColor = BrandGrayMedium
                     )

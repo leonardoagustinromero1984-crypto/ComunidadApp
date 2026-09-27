@@ -1,0 +1,66 @@
+appId: ${APP_ID}
+name: "Responder exclusions QA05 QA06 QA04 QA07"
+tags:
+  - community-care
+  - exclusions
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA05_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- takeScreenshot: qa05_lost_found
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA06_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- takeScreenshot: qa06_lost_found
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA04_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- takeScreenshot: qa04_eligible
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA07_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- takeScreenshot: qa07_shelter_eligible

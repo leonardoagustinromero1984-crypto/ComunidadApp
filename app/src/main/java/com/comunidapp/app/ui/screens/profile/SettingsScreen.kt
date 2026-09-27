@@ -52,6 +52,7 @@ fun SettingsScreen(
     onSupport: () -> Unit,
     onTerms: () -> Unit,
     onLogout: () -> Unit,
+    onAdministration: (() -> Unit)? = null,
     onModeration: (() -> Unit)? = null,
     onCases: (() -> Unit)? = null,
     onAppealsStaff: (() -> Unit)? = null,
@@ -170,23 +171,13 @@ fun SettingsScreen(
                         onClick = onLegalPrivacy
                     )
                 }
-                val staff = listOfNotNull(
-                    onModeration?.takeIf { uiState.canViewModeration }?.let { "Moderación" to it },
-                    onCases?.takeIf { uiState.canViewModeration }?.let { "Casos" to it },
-                    onAppealsStaff?.takeIf { uiState.canReviewAppeals }?.let { "Apelaciones (staff)" to it },
-                    onVerification?.takeIf { uiState.canReviewVerification }?.let { "Verificación" to it },
-                    onSupportStaff?.takeIf { uiState.canViewSupportStaff }?.let { "Soporte (staff)" to it },
-                    onAudit?.takeIf { uiState.canViewAudit }?.let { "Auditoría" to it },
-                    onObservability?.takeIf { uiState.canViewObservability }?.let { "Observabilidad" to it },
-                    onPlatformAdmin?.takeIf { uiState.canViewPlatformAdmin }?.let { "Admin plataforma" to it }
-                )
-                if (staff.isNotEmpty()) {
-                    LeoVerSettingsSection(title = "Staff") {
-                        staff.forEach { (label, action) ->
+                if (uiState.canEnterAdministration) {
+                    onAdministration?.let { openAdmin ->
+                        LeoVerSettingsSection(title = "Plataforma") {
                             LeoVerSettingsRow(
-                                title = label,
+                                title = "Administración",
                                 icon = Icons.Default.Shield,
-                                onClick = action
+                                onClick = openAdmin
                             )
                         }
                     }

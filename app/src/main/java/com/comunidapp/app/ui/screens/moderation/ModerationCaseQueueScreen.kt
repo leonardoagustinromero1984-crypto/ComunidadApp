@@ -1,25 +1,15 @@
 package com.comunidapp.app.ui.screens.moderation
 
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.components.leo.LeoListRow
 import com.comunidapp.app.viewmodel.moderation.AdministrativeScreenPhase
 import com.comunidapp.app.viewmodel.moderation.ModerationCaseQueueViewModel
 
@@ -42,31 +32,13 @@ fun ModerationCaseQueueScreen(
         errorMessage = uiState.errorMessage ?: "No pudimos cargar los casos.",
         onRetry = { viewModel.refresh() }
     ) { contentModifier ->
-        LazyColumn(
-            modifier = contentModifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        LazyColumn(modifier = contentModifier.fillMaxSize()) {
             items(uiState.cases, key = { it.id }) { c ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { onCaseClick(c.id) }
-                ) {
-                    Text(
-                        text = c.title,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp)
-                    )
-                    Text(
-                        text = "${c.status} · ${c.assignedToUserId ?: "sin asignar"}",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(horizontal = 16.dp)
-                    )
-                    Spacer(modifier = Modifier.padding(bottom = 16.dp))
-                }
+                LeoListRow(
+                    title = c.title,
+                    subtitle = "${c.status} · ${c.assignedToUserId ?: "sin asignar"}",
+                    onClick = { onCaseClick(c.id) }
+                )
             }
         }
     }

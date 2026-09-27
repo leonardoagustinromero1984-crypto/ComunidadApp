@@ -111,7 +111,8 @@ class PetTransfersViewModelTest {
             authRepository = authRepo
         )
         advanceUntilIdle()
-        assertNotNull(vm.uiState.value.loadErrorMessage)
+        assertNull(vm.uiState.value.loadErrorMessage)
+        assertFalse(vm.uiState.value.canInitiate)
     }
 
     @Test
@@ -125,6 +126,17 @@ class PetTransfersViewModelTest {
         val created = transferRepo.lastCreated
         assertTrue(created?.toPrincipal is PetPrincipalHolder.Person)
         assertEquals("xfer-1", vm.uiState.value.pendingTransfer?.id?.value)
+    }
+
+    @Test
+    fun initiate_includes_personal_media_choice() = runTest(dispatcher) {
+        login()
+        val vm = viewModel()
+        advanceUntilIdle()
+        vm.setSharePersonalMedia(true)
+        vm.initiate(toPersonId = "user_2", toOrganizationId = null)
+        advanceUntilIdle()
+        assertEquals(true, transferRepo.lastCreated?.sharePersonalMedia)
     }
 
     @Test
@@ -197,21 +209,16 @@ class PetTransfersViewModelTest {
     }
 
     @Test
-    fun accept_success_refreshes_access_context() = runTest(dispatcher) {
+    fun accept_success_navigates_to_my_pets() = runTest(dispatcher) {
         login()
         transferRepo.items += stage5Transfer(id = "x-1")
         val vm = viewModel()
         advanceUntilIdle()
-        val callsAfterLoad = petRepo.accessCalls
         vm.accept("x-1")
         advanceUntilIdle()
         assertEquals(1, transferRepo.acceptCalls)
-        assertTrue(petRepo.accessCalls > callsAfterLoad)
         assertNull(vm.uiState.value.pendingTransfer)
-        assertEquals(
-            PetTransferStatus.ACCEPTED,
-            vm.uiState.value.history.first { it.id.value == "x-1" }.status
-        )
+        assertTrue(vm.uiState.value.acceptedNavigateToMyPets)
     }
 
     @Test
@@ -223,10 +230,8 @@ class PetTransfersViewModelTest {
         vm.reject("x-1")
         advanceUntilIdle()
         assertEquals(1, transferRepo.rejectCalls)
-        assertEquals(
-            PetTransferStatus.REJECTED,
-            vm.uiState.value.history.first { it.id.value == "x-1" }.status
-        )
+        assertNull(vm.uiState.value.pendingTransfer)
+        assertEquals(listOf("x-1"), vm.uiState.value.history.map { it.id.value })
     }
 
     @Test
@@ -309,6 +314,19 @@ class PetTransfersViewModelTest {
     }
 
     @Test
+    fun unknown_load_failure_uses_transfer_specific_recovery_copy() = runTest(dispatcher) {
+        login()
+        transferRepo.listFailure = IllegalStateException("unexpected backend failure")
+        val vm = viewModel()
+        advanceUntilIdle()
+
+        assertEquals(
+            "No pudimos cargar las transferencias. Intentá de nuevo.",
+            vm.uiState.value.loadErrorMessage
+        )
+    }
+
+    @Test
     fun double_submit_only_one_repository_call() = runTest(dispatcher) {
         login()
         val vm = viewModel()
@@ -329,11 +347,44 @@ class PetTransfersViewModelTest {
         val vm = viewModel()
         advanceUntilIdle()
         assertEquals("x-1", vm.uiState.value.transferById("x-1")?.id?.value)
-        assertEquals(
-            PetTransferStatus.CANCELLED,
-            vm.uiState.value.transferById("x-2")?.status
-        )
+        assertEquals("x-2", vm.uiState.value.transferById("x-2")?.id?.value)
         assertNull(vm.uiState.value.transferById("missing"))
+    }
+
+    @Test
+    fun incoming_pending_is_acceptable_without_custodian_access() = runTest(dispatcher) {
+        login()
+        val incoming = stage5Transfer(id = "ba8378f9-e970-4f13-855a-e2be2d77aac9")
+        transferRepo.items += incoming
+        transferRepo.incomingItems = listOf(incoming)
+        val vm = viewModel(canInitiate = false, canAccept = false)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.canAccept)
+        assertFalse(vm.uiState.value.shouldLeaveUnauthorized())
+        assertEquals(
+            "ba8378f9-e970-4f13-855a-e2be2d77aac9",
+            vm.uiState.value.pendingTransfer?.id?.value
+        )
+    }
+
+    @Test
+    fun incoming_survives_when_pet_access_context_fails() = runTest(dispatcher) {
+        login()
+        val incoming = stage5Transfer(id = "ba8378f9-e970-4f13-855a-e2be2d77aac9")
+        transferRepo.items += incoming
+        transferRepo.incomingItems = listOf(incoming)
+        petRepo.accessResult = Result.failure(IllegalStateException("FORBIDDEN"))
+        val vm = PetTransfersViewModel(
+            petId = "pet-1",
+            transferRepository = transferRepo,
+            petRepository = petRepo,
+            userRepository = userRepo,
+            authRepository = authRepo
+        )
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.canAccept)
+        assertNull(vm.uiState.value.loadErrorMessage)
+        assertFalse(vm.uiState.value.shouldLeaveUnauthorized())
     }
 
     @Test

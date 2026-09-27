@@ -7,10 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,6 +20,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M26PublicDuplicateCandidate
 import com.comunidapp.app.data.model.M26PublicRecommendation
 import com.comunidapp.app.data.model.M26PublicVisualMatch
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
@@ -65,12 +65,12 @@ fun M26HubScreen(
                 is M26HubUiState.Content -> {
                     Text("Sugerencias estimativas; requieren revisión humana cuando corresponda.", color = MaterialTheme.colorScheme.primary)
                     Text("${s.matchCount} matches · ${s.duplicateCount} duplicados · ${s.recommendationCount} recomendaciones aptas · ${s.jobCount} ejecuciones")
-                    Button(onClick = onOpenVisualMatching, modifier = Modifier.fillMaxWidth()) { Text("Matching visual") }
-                    OutlinedButton(onClick = onOpenDuplicates, modifier = Modifier.fillMaxWidth()) { Text("Detección de duplicados") }
-                    OutlinedButton(onClick = onOpenAssistance, modifier = Modifier.fillMaxWidth()) { Text("Asistencia (stub)") }
-                    OutlinedButton(onClick = onOpenRecommendations, modifier = Modifier.fillMaxWidth()) { Text("Recomendaciones evaluadas") }
-                    OutlinedButton(onClick = onOpenHistory, modifier = Modifier.fillMaxWidth()) { Text("Historial personal") }
-                    OutlinedButton(onClick = onOpenReviewQueue, modifier = Modifier.fillMaxWidth()) { Text("Cola de revisión") }
+                    LeoPrimaryButton(text = "Matching visual", onClick = onOpenVisualMatching)
+                    LeoOutlinedButton(text = "Detección de duplicados", onClick = onOpenDuplicates)
+                    LeoOutlinedButton(text = "Asistencia (stub)", onClick = onOpenAssistance)
+                    LeoOutlinedButton(text = "Recomendaciones evaluadas", onClick = onOpenRecommendations)
+                    LeoOutlinedButton(text = "Historial personal", onClick = onOpenHistory)
+                    LeoOutlinedButton(text = "Cola de revisión", onClick = onOpenReviewQueue)
                 }
             }
         }
@@ -121,21 +121,19 @@ fun M26AssistanceScreen(onNavigateBack: () -> Unit, viewModel: M26AssistanceView
                 M26AssistanceUiState.Loading -> LoadingState()
                 M26AssistanceUiState.Empty -> {
                     EmptyState(title = "Sin sesiones", message = "Iniciá una sesión de asistencia stub.")
-                    Button(onClick = { viewModel.startStubSession() }, modifier = Modifier.fillMaxWidth()) { Text("Iniciar sesión stub") }
+                    LeoPrimaryButton(text = "Iniciar sesión stub", onClick = { viewModel.startStubSession() })
                 }
                 is M26AssistanceUiState.Error -> ErrorState(message = s.message)
                 is M26AssistanceUiState.Content -> {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.weight(1f)) {
                         items(s.sessions, key = { "${it.topic}-${it.summary}" }) { session ->
-                            Card(Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    Text("${session.topic} · ${session.status}", fontWeight = FontWeight.Bold)
-                                    Text(session.summary)
-                                }
-                            }
+                            LeoListRow(
+                                title = "${session.topic} · ${session.status}",
+                                subtitle = session.summary
+                            )
                         }
                     }
-                    OutlinedButton(onClick = { viewModel.startStubSession() }, modifier = Modifier.fillMaxWidth()) { Text("Nueva sesión stub") }
+                    LeoOutlinedButton(text = "Nueva sesión stub", onClick = { viewModel.startStubSession() })
                 }
             }
         }
@@ -152,7 +150,7 @@ fun M26RecommendationsScreen(onNavigateBack: () -> Unit, viewModel: M26Recommend
                 M26RecommendationsUiState.Loading -> LoadingState()
                 M26RecommendationsUiState.Empty -> {
                     EmptyState(title = "Sin recomendaciones aptas", message = "No hay recomendaciones evaluadas para mostrar.")
-                    OutlinedButton(onClick = { viewModel.submitSample() }, modifier = Modifier.fillMaxWidth()) { Text("Enviar muestra a revisión") }
+                    LeoOutlinedButton(text = "Enviar muestra a revisión", onClick = { viewModel.submitSample() })
                 }
                 is M26RecommendationsUiState.Error -> ErrorState(message = s.message)
                 is M26RecommendationsUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -174,14 +172,12 @@ fun M26HistoryScreen(onNavigateBack: () -> Unit, viewModel: M26HistoryViewModel 
                 M26HistoryUiState.Empty -> EmptyState(title = "Sin historial", message = "Todavía no solicitaste análisis.")
                 is M26HistoryUiState.Error -> ErrorState(message = s.message)
                 is M26HistoryUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(s.items, key = { it.summary }) { item ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(item.summary, fontWeight = FontWeight.Bold)
-                                Text("${item.resultType} · ${item.status} · modelo ${item.modelName}@${item.modelVersion}")
-                                if (item.isEstimate) Text("Sugerencia estimativa — requiere revisión si aplica.")
-                            }
-                        }
+                        items(s.items, key = { it.summary }) { item ->
+                        LeoListRow(
+                            title = item.summary,
+                            subtitle = "${item.resultType} · ${item.status} · modelo ${item.modelName}@${item.modelVersion}" +
+                                if (item.isEstimate) " · Sugerencia estimativa — requiere revisión si aplica." else ""
+                        )
                     }
                 }
             }
@@ -201,13 +197,14 @@ fun M26ReviewQueueScreen(onNavigateBack: () -> Unit, viewModel: M26ReviewQueueVi
                 is M26ReviewQueueUiState.Error -> ErrorState(message = s.message)
                 is M26ReviewQueueUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(s.items, key = { it.resultId }) { item ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Text(item.summary, fontWeight = FontWeight.Bold)
-                                Text("${item.resultType} · v${item.modelVersion}")
-                                Button(onClick = { viewModel.approve(item.resultId) }, modifier = Modifier.fillMaxWidth()) { Text("Aprobar") }
-                                OutlinedButton(onClick = { viewModel.reject(item.resultId) }, modifier = Modifier.fillMaxWidth()) { Text("Rechazar") }
-                            }
+                        Column(Modifier.fillMaxWidth()) {
+                            LeoListRow(
+                                title = item.summary,
+                                subtitle = "${item.resultType} · v${item.modelVersion}",
+                                showDivider = false
+                            )
+                            LeoPrimaryButton(text = "Aprobar", onClick = { viewModel.approve(item.resultId) })
+                            LeoOutlinedButton(text = "Rechazar", onClick = { viewModel.reject(item.resultId) })
                         }
                     }
                 }
@@ -218,32 +215,24 @@ fun M26ReviewQueueScreen(onNavigateBack: () -> Unit, viewModel: M26ReviewQueueVi
 
 @Composable
 private fun M26VisualMatchCard(item: M26PublicVisualMatch) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("Posible coincidencia (estimación)", fontWeight = FontWeight.Bold)
-            Text("${item.sourceLabel} ↔ ${item.targetLabel}")
-            Text("Similitud estimada ${"%.0f".format(item.score * 100)} · ${item.confidenceBand} · ${item.status}")
-        }
-    }
+    LeoListRow(
+        title = "Posible coincidencia (estimación)",
+        subtitle = "${item.sourceLabel} ↔ ${item.targetLabel} · Similitud estimada ${"%.0f".format(item.score * 100)} · ${item.confidenceBand} · ${item.status}"
+    )
 }
 
 @Composable
 private fun M26DuplicateCard(item: M26PublicDuplicateCandidate) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text("${item.primaryLabel} / ${item.duplicateLabel}", fontWeight = FontWeight.Bold)
-            Text("Similitud ${"%.0f".format(item.similarityScore * 100)}% · ${item.status}")
-        }
-    }
+    LeoListRow(
+        title = "${item.primaryLabel} / ${item.duplicateLabel}",
+        subtitle = "Similitud ${"%.0f".format(item.similarityScore * 100)}% · ${item.status}"
+    )
 }
 
 @Composable
 private fun M26RecommendationCard(item: M26PublicRecommendation) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(item.title, fontWeight = FontWeight.Bold)
-            Text("${item.kind} · revisada=${item.humanReviewed} · apta=${item.approvedForDisplay}")
-            Text(item.rationale)
-        }
-    }
+    LeoListRow(
+        title = item.title,
+        subtitle = "${item.kind} · revisada=${item.humanReviewed} · apta=${item.approvedForDisplay} · ${item.rationale}"
+    )
 }

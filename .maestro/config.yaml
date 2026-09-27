@@ -1,0 +1,5 @@
+# LeoVer STAGING Maestro workspace. No secrets. Flows declare appId via APP_ID.
+name: LeoVer Automated QA
+excludeTags:
+  - manual
+  - reset-required

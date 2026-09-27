@@ -8,11 +8,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -50,13 +49,13 @@ fun ContextualFirstVisitHelp(
 
     if (!visible) return
 
-    Card(
+    Surface(
         modifier = modifier
             .fillMaxWidth()
             .semantics { contentDescription = "Ayuda contextual: $message" },
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.secondaryContainer
-        )
+        color = MaterialTheme.colorScheme.secondaryContainer,
+        shadowElevation = 0.dp,
+        tonalElevation = 0.dp
     ) {
         Row(
             modifier = Modifier

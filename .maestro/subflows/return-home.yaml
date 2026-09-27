@@ -1,0 +1,6 @@
+appId: ${APP_ID}
+---
+- tapOn: "Inicio"
+- extendedWaitUntil:
+    visible: "Inicio"
+    timeout: 10000

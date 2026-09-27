@@ -1,0 +1,7 @@
+appId: ${APP_ID}
+---
+- tapOn: "Perfil"
+- tapOn: "Notificaciones"
+- extendedWaitUntil:
+    visible: "Notificaciones"
+    timeout: 10000

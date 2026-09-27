@@ -22,11 +22,13 @@ class M17DonationFoundationTest {
             contrib(50_00, M17ContributionStatus.CONFIRMED),
             contrib(30_00, M17ContributionStatus.PENDING),
             contrib(20_00, M17ContributionStatus.FAILED),
-            contrib(10_00, M17ContributionStatus.REFUNDED)
+            contrib(10_00, M17ContributionStatus.REFUNDED),
+            contrib(40_00, M17ContributionStatus.REJECTED)
         )
         val summary = M17FinancialCalculator.summarize(goal, contributions)
         assertEquals(50_00, summary.confirmedAmountMinor)
         assertEquals(1, summary.confirmedContributionCount)
+        assertEquals(1, summary.pendingContributionCount)
     }
 
     @Test

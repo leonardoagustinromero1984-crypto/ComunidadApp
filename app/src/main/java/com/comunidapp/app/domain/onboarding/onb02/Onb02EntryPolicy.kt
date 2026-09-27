@@ -24,16 +24,17 @@ object Onb02EntryPolicy {
     }
 
     /**
-     * Reinstall / wiped local prefs: a complete PERSON that did not just
-     * finish Completar perfil must not restart "Cómo querés usar LeoVer".
-     * New users reach MAIN as FULL_PENDING via [markFullPending], not NOT_STARTED.
+     * Reinstall / wiped local prefs: skip the selector only when backend
+     * tutorial_progress FLOW (onb02_flow) is already COMPLETED.
+     * A complete PERSON with empty local prefs is not enough — that is how
+     * new Google users and STAGING resets were skipping Tutorial LeoVer.
      */
     fun skipSelectorForExistingComplete(
         completion: Onb02Completion,
-        personOnboardingComplete: Boolean,
+        remoteTutorialFlowCompleted: Boolean,
         justCompletedProfileSetup: Boolean
     ): Boolean =
-        personOnboardingComplete &&
+        remoteTutorialFlowCompleted &&
             !justCompletedProfileSetup &&
-            completion == Onb02Completion.NOT_STARTED
+            completion != Onb02Completion.FULL_PENDING
 }

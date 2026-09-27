@@ -12,10 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.material3.Button
-import androidx.compose.material3.FilterChip
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -30,11 +26,13 @@ import com.comunidapp.app.data.model.PetSex
 import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.ui.components.AdoptionCard
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.AdoptionListUiState
 import com.comunidapp.app.viewmodel.AdoptionsViewModel
@@ -44,6 +42,8 @@ fun AdoptionsScreen(
     onAdoptionClick: (String) -> Unit,
     onMyApplications: () -> Unit = {},
     onReceivedApplications: () -> Unit = {},
+    onAdoptionProfile: () -> Unit = {},
+    onCreateAdoption: () -> Unit = {},
     showReceivedApplications: Boolean = true,
     showBackButton: Boolean = false,
     onNavigateBack: () -> Unit = {},
@@ -64,6 +64,8 @@ fun AdoptionsScreen(
             onAdoptionClick = onAdoptionClick,
             onMyApplications = onMyApplications,
             onReceivedApplications = onReceivedApplications,
+            onAdoptionProfile = onAdoptionProfile,
+            onCreateAdoption = onCreateAdoption,
             showReceivedApplications = showReceivedApplications,
             topPadding = padding.calculateTopPadding(),
             bottomPadding = padding.calculateBottomPadding(),
@@ -77,6 +79,8 @@ fun AdoptionsContent(
     onAdoptionClick: (String) -> Unit,
     onMyApplications: () -> Unit = {},
     onReceivedApplications: () -> Unit = {},
+    onAdoptionProfile: () -> Unit = {},
+    onCreateAdoption: () -> Unit = {},
     showPrivateActions: Boolean = true,
     showReceivedApplications: Boolean = true,
     topPadding: Dp = 0.dp,
@@ -97,16 +101,40 @@ fun AdoptionsContent(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
                 ) {
-                    OutlinedButton(
+                    LeoOutlinedButton(
+                        text = "Mi perfil de adopción",
+                        onClick = onAdoptionProfile,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+                ) {
+                    LeoOutlinedButton(
+                        text = "Mis postulaciones",
                         onClick = onMyApplications,
                         modifier = Modifier.weight(1f)
-                    ) { Text("Mis postulaciones") }
+                    )
                     if (showReceivedApplications) {
-                        OutlinedButton(
+                        LeoOutlinedButton(
+                            text = "Postulaciones recibidas",
                             onClick = onReceivedApplications,
                             modifier = Modifier.weight(1f)
-                        ) { Text("Recibidas") }
+                        )
+                    } else {
+                        LeoOutlinedButton(
+                            text = "Publicar en adopción",
+                            onClick = onCreateAdoption,
+                            modifier = Modifier.weight(1f)
+                        )
                     }
+                }
+                if (showReceivedApplications) {
+                    LeoPrimaryButton(
+                        text = "Publicar en adopción",
+                        onClick = onCreateAdoption
+                    )
                 }
             }
             V2LocationStringPicker(
@@ -122,25 +150,25 @@ fun AdoptionsContent(
                 horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
             ) {
                 PetSex.entries.forEach { sex ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = sex.toDisplayName(),
                         selected = filters.sex == sex,
                         onClick = {
                             viewModel.onSexFilterChange(
                                 if (filters.sex == sex) null else sex
                             )
-                        },
-                        label = { Text(sex.toDisplayName()) }
+                        }
                     )
                 }
                 PetSize.entries.forEach { size ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = size.toDisplayName(),
                         selected = filters.size == size,
                         onClick = {
                             viewModel.onSizeFilterChange(
                                 if (filters.size == size) null else size
                             )
-                        },
-                        label = { Text(size.toDisplayName()) }
+                        }
                     )
                 }
             }
@@ -162,7 +190,7 @@ fun AdoptionsContent(
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text(state.message)
-                    Button(onClick = viewModel::refresh) { Text("Reintentar") }
+                    LeoPrimaryButton(text = "Reintentar", onClick = viewModel::refresh)
                 }
             }
             is AdoptionListUiState.Content -> LazyColumn(

@@ -70,13 +70,11 @@ class LeoVerOrgSocialQaContractTest {
     }
 
     @Test
-    fun storyAndReelMediaAllowVideoUnlikePostMedia() {
-        assertFalse(FilePurposePolicy.spec(FileAssetPurpose.POST_MEDIA).allowedMimeTypes.any { it.startsWith("video/") })
-        assertEquals(VideoExportPolicy.OLD_POST_MEDIA_LIMIT_BYTES, FilePurposePolicy.spec(FileAssetPurpose.POST_MEDIA).maxSizeBytes)
+    fun postStoryAndReelMediaAllowVideo() {
+        assertTrue(FilePurposePolicy.spec(FileAssetPurpose.POST_MEDIA).allowedMimeTypes.any { it.startsWith("video/") })
         assertTrue(FilePurposePolicy.spec(FileAssetPurpose.STORY_MEDIA).allowedMimeTypes.contains("video/mp4"))
         assertTrue(FilePurposePolicy.spec(FileAssetPurpose.REEL_MEDIA).allowedMimeTypes.contains("video/mp4"))
-        assertTrue(FilePurposePolicy.spec(FileAssetPurpose.STORY_MEDIA).maxSizeBytes > VideoExportPolicy.OLD_POST_MEDIA_LIMIT_BYTES)
-        assertTrue(VideoExportPolicy.ROOT_CAUSE.contains("8 MiB"))
+        assertTrue(FilePurposePolicy.spec(FileAssetPurpose.STORY_MEDIA).maxSizeBytes >= FilePurposePolicy.spec(FileAssetPurpose.POST_MEDIA).maxSizeBytes)
     }
 
     @Test
@@ -97,7 +95,8 @@ class LeoVerOrgSocialQaContractTest {
         ).readText()
         assertFalse(story.contains("ID de mascota"))
         assertFalse(story.contains("ID mascota"))
-        assertTrue(story.contains("Agregar mascota"))
+        assertTrue(story.contains("selectedPetId"))
+        assertTrue(story.contains("Opcional. Si elegís, se guarda en VitaCora."))
         assertTrue(story.contains("BitacoraCopy.SAVE_BUTTON"))
         assertTrue(story.contains("AHORA NO"))
         assertEquals("GUARDAR EN VITACORA", BitacoraCopy.SAVE_BUTTON)
@@ -134,9 +133,9 @@ class LeoVerOrgSocialQaContractTest {
 
     @Test
     fun shareDeepLinkContract() {
-        assertEquals("https://leover.app/p/abc", SocialShare.deepLink(SocialContentKind.POST, "abc"))
-        assertEquals("https://leover.app/r/abc", SocialShare.deepLink(SocialContentKind.REEL, "abc"))
-        assertEquals("https://leover.app/s/abc", SocialShare.deepLink(SocialContentKind.STORY, "abc"))
+        assertEquals("https://leover.com.ar/p/abc", SocialShare.deepLink(SocialContentKind.POST, "abc"))
+        assertEquals("https://leover.com.ar/r/abc", SocialShare.deepLink(SocialContentKind.REEL, "abc"))
+        assertEquals("https://leover.com.ar/s/abc", SocialShare.deepLink(SocialContentKind.STORY, "abc"))
         assertTrue(SocialShare.shareText(SocialContentKind.REEL, "Ana", "abc").contains("LeoVer"))
     }
 

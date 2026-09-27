@@ -12,14 +12,10 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +27,9 @@ import com.comunidapp.app.data.model.PetHealthCatalog
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.model.SterilizationStatus
 import com.comunidapp.app.data.model.VaccinationRecord
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.util.formatDisplayDate
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -102,11 +101,10 @@ fun PetHealthFormSection(
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             SterilizationStatus.entries.forEach { status ->
-                FilterChip(
+                LeoFilterChip(
+                    label = status.toDisplayName(),
                     selected = sterilized == status,
-                    onClick = { onSterilizedChange(status) },
-                    enabled = enabled,
-                    label = { Text(status.toDisplayName()) }
+                    onClick = { if (enabled) onSterilizedChange(status) }
                 )
             }
         }
@@ -169,13 +167,11 @@ fun PetHealthFormSection(
             enabled = enabled
         )
         Spacer(modifier = Modifier.height(8.dp))
-        OutlinedButton(
+        LeoOutlinedButton(
+            text = "Agregar vacuna al historial",
             onClick = onAddVaccination,
-            enabled = enabled && pendingVaccineName.isNotBlank() && pendingVaccineDate.isNotBlank(),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Text("Agregar vacuna al historial")
-        }
+            enabled = enabled && pendingVaccineName.isNotBlank() && pendingVaccineDate.isNotBlank()
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
         HorizontalDivider()
@@ -283,14 +279,9 @@ private fun VaccinationRecordCard(
     onRemove: () -> Unit,
     enabled: Boolean
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(12.dp),
+            modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
@@ -320,5 +311,6 @@ private fun VaccinationRecordCard(
                 )
             }
         }
+        LeoHairline()
     }
 }

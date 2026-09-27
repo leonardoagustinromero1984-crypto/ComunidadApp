@@ -1,0 +1,7 @@
+appId: ${APP_ID}
+---
+- tapOn: "Sumate"
+- tapOn: "Perdidos / Encontrados"
+- extendedWaitUntil:
+    visible: "Perdí a mi mascota"
+    timeout: 10000

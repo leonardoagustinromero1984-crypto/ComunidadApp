@@ -19,6 +19,8 @@ enum class AppErrorKind {
     VALIDATION,
     CONFLICT,
     RATE_LIMITED,
+    QUOTA_EXCEEDED,
+    FEATURE_TEMPORARILY_DISABLED,
     SERVER,
     CONFIGURATION,
     UNKNOWN
@@ -69,13 +71,32 @@ object AppErrorMapper {
                 cause = throwable,
                 code = "VALIDATION"
             )
-            else -> AppError(
-                kind = AppErrorKind.UNKNOWN,
-                userMessage = fallbackUserMessage,
-                technicalMessage = technical,
-                cause = throwable,
-                code = "UNKNOWN"
-            )
+            else -> {
+                val upper = technical.uppercase()
+                when {
+                    upper.contains("FEATURE_TEMPORARILY_DISABLED") ->
+                        AppErrorMapper.featureTemporarilyDisabled(technical, throwable)
+                    upper.contains("FILE_TOO_LARGE") ->
+                        AppError(
+                            kind = AppErrorKind.VALIDATION,
+                            userMessage = "El video supera el tamaño máximo permitido.",
+                            technicalMessage = technical,
+                            cause = throwable,
+                            code = "FILE_TOO_LARGE"
+                        )
+                    upper.contains("QUOTA_EXCEEDED") ->
+                        AppErrorMapper.quotaExceeded(technical, throwable)
+                    upper.contains("RATE_LIMITED") || upper.contains("RATE_LIMIT_EXCEEDED") ->
+                        AppErrorMapper.rateLimited(technical).copy(cause = throwable)
+                    else -> AppError(
+                        kind = AppErrorKind.UNKNOWN,
+                        userMessage = fallbackUserMessage,
+                        technicalMessage = technical,
+                        cause = throwable,
+                        code = "UNKNOWN"
+                    )
+                }
+            }
         }
     }
 
@@ -109,9 +130,31 @@ object AppErrorMapper {
 
     fun rateLimited(technical: String = "rate_limited"): AppError = AppError(
         kind = AppErrorKind.RATE_LIMITED,
-        userMessage = "Demasiados intentos. Probá más tarde.",
+        userMessage = "Estás publicando demasiado rápido. Intentá nuevamente más tarde.",
         technicalMessage = technical,
         code = "RATE_LIMITED"
+    )
+
+    fun quotaExceeded(
+        technical: String = "quota_exceeded",
+        cause: Throwable? = null
+    ): AppError = AppError(
+        kind = AppErrorKind.QUOTA_EXCEEDED,
+        userMessage = "Alcanzaste el límite de uso. Intentá más tarde.",
+        technicalMessage = technical,
+        cause = cause,
+        code = "QUOTA_EXCEEDED"
+    )
+
+    fun featureTemporarilyDisabled(
+        technical: String = "feature_temporarily_disabled",
+        cause: Throwable? = null
+    ): AppError = AppError(
+        kind = AppErrorKind.FEATURE_TEMPORARILY_DISABLED,
+        userMessage = "Esta función no está disponible por ahora.",
+        technicalMessage = technical,
+        cause = cause,
+        code = "FEATURE_TEMPORARILY_DISABLED"
     )
 
     fun conflict(technical: String = "conflict"): AppError = AppError(

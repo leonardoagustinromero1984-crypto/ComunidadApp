@@ -23,4 +23,11 @@ union all select 'PLATFORM_ROLES', count(*) from public.platform_roles
 union all select 'SERVICE_CATEGORIES', count(*) from public.service_categories
 union all select 'STORAGE_OBJECTS', count(*) from storage.objects
 union all select 'STORAGE_BUCKETS', count(*) from storage.buckets
-union all select 'MEDIA_ASSETS', count(*) from public.media_assets;
+union all select 'MEDIA_ASSETS', count(*) from public.media_assets
+union all select 'PLATFORM_ADMIN_IDENTITIES', count(*) from public.platform_admin_identities
+union all select 'STAFF_ROLE_ASSIGNMENTS', count(*) from public.user_platform_role_assignments
+  where revoked_at is null
+    and role_code in ('ADMIN', 'SUPERADMIN', 'MODERATOR', 'SUPPORT')
+union all select 'SUPERADMIN_ASSIGNMENTS', count(*) from public.user_platform_role_assignments
+  where revoked_at is null and role_code = 'SUPERADMIN'
+union all select 'MFA_FACTORS', count(*) from auth.mfa_factors;

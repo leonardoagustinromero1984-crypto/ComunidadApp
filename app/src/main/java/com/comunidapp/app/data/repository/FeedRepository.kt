@@ -11,9 +11,14 @@ interface FeedRepository {
     fun observeActiveStories(): StateFlow<List<FeedPost>>
     suspend fun refreshPosts(): Result<Unit>
     suspend fun refreshStories(): Result<Unit>
+    fun hasMorePosts(): Boolean = false
+    suspend fun loadMorePosts(): Result<Unit> = Result.success(Unit)
+    suspend fun loadSavedPosts(): Result<List<FeedPost>> = Result.success(emptyList())
+    suspend fun ensureVisiblePost(postId: String): Result<FeedPost?> = Result.success(null)
     suspend fun addFeedPost(post: FeedPost): Result<String>
     suspend fun addStory(post: FeedPost, mediaAssetId: String): Result<String>
     suspend fun addReel(post: FeedPost, mediaAssetId: String): Result<String>
+    suspend fun findOwnReelIdByMediaAsset(assetId: String): Result<String?> = Result.success(null)
     suspend fun updateFeedPost(post: FeedPost): Result<Unit>
     suspend fun toggleLike(postId: String, userId: String): Result<Boolean>
     fun observeLikedPostIds(userId: String): Flow<Set<String>>
@@ -27,6 +32,9 @@ interface FeedRepository {
     ): Result<Unit>
     suspend fun deleteOwnComment(commentId: String): Result<Unit>
     suspend fun searchPosts(query: String): List<FeedPost>
+
+    /** Drop in-memory feed so user A cannot leak into user B. */
+    fun clearAccountCache() {}
 }
 
 class MockFeedRepository : FeedRepository {
@@ -55,7 +63,9 @@ class MockFeedRepository : FeedRepository {
             post.copy(
                 id = id,
                 type = com.comunidapp.app.data.model.PostType.STORY,
-                imageUrl = post.imageUrl ?: mediaAssetId
+                mediaAssetId = mediaAssetId,
+                imageUrl = post.imageUrl ?: mediaAssetId,
+                mediaAvailability = com.comunidapp.app.data.model.FeedMediaAvailability.AVAILABLE
             )
         )
         return Result.success(id)
@@ -67,7 +77,9 @@ class MockFeedRepository : FeedRepository {
             post.copy(
                 id = id,
                 type = com.comunidapp.app.data.model.PostType.REEL,
-                imageUrl = post.imageUrl ?: mediaAssetId
+                mediaAssetId = mediaAssetId,
+                imageUrl = post.imageUrl ?: mediaAssetId,
+                mediaAvailability = com.comunidapp.app.data.model.FeedMediaAvailability.AVAILABLE
             )
         )
         return Result.success(id)

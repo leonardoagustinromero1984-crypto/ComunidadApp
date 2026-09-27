@@ -39,6 +39,15 @@ interface PetRepository {
         microchip: String? = null,
         name: String? = null
     ): Result<List<PetDuplicateCandidateRow>>
+
+    /** Pets owned by a person visible on their connection profile wall. */
+    suspend fun listPetsForPersonProfile(personUserId: String): Result<List<Pet>>
+
+    /** Drop in-memory pet list so user A cannot leak into user B. */
+    fun clearAccountCache() {}
+
+    /** Re-fetch accessible pets without clearing the last-good list. */
+    suspend fun refreshAccessiblePets() {}
 }
 
 class MockPetRepository : PetRepository {
@@ -166,5 +175,10 @@ class MockPetRepository : PetRepository {
             reason?.let { PetDuplicateCandidateRow(petId = pet.id, matchReason = it) }
         }
         return Result.success(matches)
+    }
+
+    override suspend fun listPetsForPersonProfile(personUserId: String): Result<List<Pet>> {
+        val pets = InMemoryDataStore.pets.value.filter { it.ownerId == personUserId }
+        return Result.success(pets)
     }
 }

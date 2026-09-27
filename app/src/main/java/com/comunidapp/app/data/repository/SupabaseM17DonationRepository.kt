@@ -17,6 +17,7 @@ import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m17.M17DonationErrorMapper
 import com.comunidapp.app.data.remote.supabase.m17.SupabaseM17RemoteDataSource
 import com.comunidapp.app.data.remote.supabase.m17.toM17CampaignFinancialSummary
+import com.comunidapp.app.data.remote.supabase.m17.toM17ContributionInternal
 import com.comunidapp.app.data.remote.supabase.m17.toM17DonationCampaign
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicCampaign
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicContribution
@@ -205,7 +206,40 @@ class SupabaseM17DonationRepository(
     override suspend fun registerMockContribution(
         input: RegisterM17MockContributionInput
     ): Result<M17Contribution> =
-        M17DonationErrorMapper.fail("M17_PAYMENT_INFRASTRUCTURE_UNAVAILABLE")
+        declareContribution(input.campaignId, input.amountMinor, input.message, input.currency)
+
+    override suspend fun declareContribution(
+        campaignId: String,
+        amountMinor: Long,
+        note: String?,
+        currency: String
+    ): Result<M17Contribution> = try {
+        Result.success(
+            remote.declareContribution(campaignId, amountMinor, note, currency)
+                .toM17ContributionInternal()
+        )
+    } catch (t: Throwable) {
+        M17DonationErrorMapper.failure(t)
+    }
+
+    override suspend fun confirmContribution(contributionId: String): Result<M17Contribution> = try {
+        Result.success(remote.confirmContribution(contributionId).toM17ContributionInternal())
+    } catch (t: Throwable) {
+        M17DonationErrorMapper.failure(t)
+    }
+
+    override suspend fun rejectContribution(contributionId: String): Result<M17Contribution> = try {
+        Result.success(remote.rejectContribution(contributionId).toM17ContributionInternal())
+    } catch (t: Throwable) {
+        M17DonationErrorMapper.failure(t)
+    }
+
+    override suspend fun listManagedContributions(campaignId: String): Result<List<M17Contribution>> =
+        try {
+            Result.success(remote.listManagedContributions(campaignId).map { it.toM17ContributionInternal() })
+        } catch (t: Throwable) {
+            M17DonationErrorMapper.failure(t)
+        }
 
     override suspend fun refreshCampaign(campaignId: String): Result<M17DonationCampaign> =
         getCampaignInternal(campaignId)

@@ -74,9 +74,15 @@ object FilePurposePolicy {
 
     private val IMAGE_EXT = setOf("jpg", "jpeg", "png", "webp")
     private val IMAGE_MIME = setOf("image/jpeg", "image/png", "image/webp")
-    private val STORY_EXT = IMAGE_EXT + setOf("mp4", "mov", "m4v", "webm")
+    private val STORY_EXT = IMAGE_EXT + setOf("mp4", "mov", "m4v", "webm", "3gp", "mkv")
     private val STORY_MIME = IMAGE_MIME + setOf(
-        "video/mp4", "video/quicktime", "video/3gpp", "video/webm"
+        "image/heic",
+        "image/heif",
+        "video/mp4",
+        "video/quicktime",
+        "video/3gpp",
+        "video/webm",
+        "video/x-matroska"
     )
     private val DOC_EXT = setOf("pdf", "jpg", "jpeg", "png", "webp")
     private val DOC_MIME = setOf(
@@ -228,9 +234,9 @@ object FilePurposePolicy {
         FileAssetPurpose.POST_MEDIA to FilePurposeSpec(
             purpose = FileAssetPurpose.POST_MEDIA,
             sensitivity = FileSensitivityClass.PUBLIC_ELIGIBLE,
-            allowedExtensions = IMAGE_EXT,
-            allowedMimeTypes = IMAGE_MIME,
-            maxSizeBytes = 8 * MIB,
+            allowedExtensions = STORY_EXT,
+            allowedMimeTypes = STORY_MIME,
+            maxSizeBytes = 80 * MIB,
             maxCountPerResource = 4,
             allowedVisibilities = PUBLICISH,
             allowedOwnerKinds = setOf(FileOwnerKind.USER, FileOwnerKind.ORGANIZATION),

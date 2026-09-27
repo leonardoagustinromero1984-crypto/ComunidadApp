@@ -24,6 +24,25 @@ import kotlinx.serialization.json.put
 import java.time.Instant
 
 @Serializable
+private data class VitacoraAccessTargetRow(
+    @SerialName("target_kind") val targetKind: String,
+    @SerialName("target_id") val targetId: String,
+    @SerialName("display_name") val displayName: String,
+    val subtitle: String? = null,
+    @SerialName("avatar_asset_id") val avatarAssetId: String? = null,
+    val verified: Boolean = false
+) {
+    fun toDomain() = com.comunidapp.app.data.model.VitacoraAccessTarget(
+        targetKind = targetKind,
+        targetId = targetId,
+        displayName = displayName,
+        subtitle = subtitle.orEmpty(),
+        avatarAssetId = avatarAssetId,
+        verified = verified
+    )
+}
+
+@Serializable
 private data class CanonicalVitacoraGrantRow(
     val id: String,
     @SerialName("pet_id") val petId: String,
@@ -95,6 +114,15 @@ class CanonicalVitacoraAccessRepository(
 
     suspend fun revokeAccess(grantId: String): Result<Unit> =
         vitaCoraRepository.revokeAccess(grantId)
+
+    suspend fun searchAccessTargets(query: String): Result<List<com.comunidapp.app.data.model.VitacoraAccessTarget>> =
+        runCatching {
+            val element: JsonElement = supabase.postgrest.rpc(
+                function = CanonicalBackend.RPC_SEARCH_VITACORA_ACCESS_TARGETS,
+                parameters = buildJsonObject { put("p_query", query.trim()) }
+            ).decodeAs()
+            M08RpcDecoding.decodeRows<VitacoraAccessTargetRow>(element).map { it.toDomain() }
+        }
 
     suspend fun decideProposal(
         proposalId: String,

@@ -29,6 +29,8 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.domain.pets.PetCareTransferCopy
+import com.comunidapp.app.domain.pets.PetPrincipalHolder
 import com.comunidapp.app.domain.pets.PetTransferStatus
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
@@ -48,6 +50,7 @@ private enum class DetailAction { ACCEPT, REJECT, CANCEL }
 fun PetTransferDetailScreen(
     transferId: String,
     onNavigateBack: () -> Unit,
+    onAccepted: () -> Unit = {},
     viewModel: PetTransfersViewModel = viewModel()
 ) {
     val state by viewModel.uiState.collectAsState()
@@ -55,10 +58,20 @@ fun PetTransferDetailScreen(
     var confirmAction by remember { mutableStateOf<DetailAction?>(null) }
     var cancelReason by remember { mutableStateOf("") }
 
+    LaunchedEffect(state.acceptedNavigateToMyPets) {
+        if (state.acceptedNavigateToMyPets) {
+            onAccepted()
+        }
+    }
     LaunchedEffect(state.actionMessage) {
         state.actionMessage?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearActionMessage()
+        }
+    }
+    LaunchedEffect(state.isLoading, state.accessResolved, state.access, state.pendingTransfer, state.loadErrorMessage) {
+        if (state.shouldLeaveUnauthorized()) {
+            onNavigateBack()
         }
     }
 
@@ -68,7 +81,7 @@ fun PetTransferDetailScreen(
             title = {
                 Text(
                     when (action) {
-                        DetailAction.ACCEPT -> "Aceptar transferencia"
+                        DetailAction.ACCEPT -> PetCareTransferCopy.RECEIVER_TITLE
                         DetailAction.REJECT -> "Rechazar transferencia"
                         DetailAction.CANCEL -> "Cancelar transferencia"
                     }
@@ -78,9 +91,23 @@ fun PetTransferDetailScreen(
                 Column {
                     Text(
                         when (action) {
-                            DetailAction.ACCEPT ->
-                                "Vas a convertirte (vos o tu organización) en responsable " +
-                                    "principal de la mascota. ¿Confirmás?"
+                            DetailAction.ACCEPT -> {
+                                val t = state.transferById(transferId)
+                                val pet = state.petName.ifBlank { t?.petDisplayName.orEmpty() }
+                                val request = PetCareTransferCopy.incomingRequest(
+                                    t?.sourceDisplayName.orEmpty(),
+                                    pet
+                                )
+                                val accept = when (t?.toPrincipal) {
+                                    is PetPrincipalHolder.Organization ->
+                                        PetCareTransferCopy.incomingAcceptOrganization(
+                                            t.targetDisplayName.orEmpty(),
+                                            pet
+                                        )
+                                    else -> PetCareTransferCopy.incomingAcceptPerson(pet)
+                                }
+                                "$request $accept"
+                            }
                             DetailAction.REJECT ->
                                 "¿Seguro que querés rechazar esta transferencia?"
                             DetailAction.CANCEL ->
@@ -130,7 +157,7 @@ fun PetTransferDetailScreen(
         containerColor = BrandBackground,
         topBar = {
             LeoTopAppBar(
-                title = "Detalle de transferencia",
+                title = PetCareTransferCopy.RECEIVER_TITLE,
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -173,8 +200,7 @@ fun PetTransferDetailScreen(
                             canCancel = isPending && state.canCancel && !state.isSubmitting,
                             onAccept = { confirmAction = DetailAction.ACCEPT },
                             onReject = { confirmAction = DetailAction.REJECT },
-                            onCancel = { confirmAction = DetailAction.CANCEL },
-                            onOpenDetail = null
+                            onCancel = { confirmAction = DetailAction.CANCEL }
                         )
                         if (!isPending) {
                             Text(

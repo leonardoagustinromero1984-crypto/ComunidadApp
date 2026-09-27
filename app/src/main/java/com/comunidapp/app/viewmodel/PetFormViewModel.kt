@@ -6,6 +6,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.local.PetFormDraftStore
 import com.comunidapp.app.data.local.applyTo
+import com.comunidapp.app.data.local.isRecoverableForEdit
 import com.comunidapp.app.data.local.toDraft
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.PetSex
@@ -30,6 +31,7 @@ import com.comunidapp.app.domain.pets.HistoricalDateRules
 import com.comunidapp.app.domain.pets.PetAgeRules
 import com.comunidapp.app.domain.pets.PetHealthReminders
 import com.comunidapp.app.domain.pets.PetHealthSchedule
+import com.comunidapp.app.domain.pets.PetInternalId
 import com.comunidapp.app.domain.pets.PetPhotoResolver
 import com.comunidapp.app.domain.publish.LocalDebugDiagnostic
 import kotlinx.coroutines.Job
@@ -85,9 +87,13 @@ data class PetFormUiState(
     val debugDiagnostic: String? = null,
     val saveSuccess: Boolean = false,
     val deleteSuccess: Boolean = false,
+    val editDecision: com.comunidapp.app.domain.pets.PetEditAuthorization.Decision? = null,
     val breed: String = "",
-    val speciesOptions: List<PetSpecies> = PetSpecies.entries,
-    val speciesLabels: Map<PetSpecies, String> = emptyMap(),
+    val breedId: String = "",
+    val speciesCode: String = PetSpecies.DOG.name,
+    val speciesOptions: List<com.comunidapp.app.data.repository.CatalogSpecies> = emptyList(),
+    val secondaryClassificationEnabled: Boolean = true,
+    val secondaryLabelSingular: String = "Raza",
     val breedOptions: List<String> = emptyList(),
     val vaccineOptions: List<String> = emptyList(),
     val fleaOptions: List<String> = emptyList(),
@@ -100,6 +106,7 @@ class PetFormViewModel(
     private val editPetId: String? = null,
     private val authRepository: AuthRepository = AuthProvider.repository,
     private val petRepository: PetRepository = DataProvider.petRepository,
+    private val userRepository: com.comunidapp.app.data.repository.UserRepository = DataProvider.userRepository,
     private val duplicateDebounceMs: Long = 400L
 ) : ViewModel() {
 
@@ -107,6 +114,7 @@ class PetFormViewModel(
     private var duplicateJob: Job? = null
     private var draftJob: Job? = null
     private var draftUserId: String? = null
+    private var userChangedBreed: Boolean = false
 
     private val _uiState = MutableStateFlow(PetFormUiState())
     val uiState: StateFlow<PetFormUiState> = _uiState.asStateFlow()
@@ -123,72 +131,110 @@ class PetFormViewModel(
                 return@launch
             }
 
-            val petIdToEdit = editPetId?.takeIf { it.isNotBlank() }
+            val petIdToEdit = PetInternalId.resolveForEdit(
+                raw = editPetId,
+                accessiblePets = petRepository.getPetsByOwner(authUser.id)
+            )
+            if (editPetId != null && editPetId.isNotBlank() && petIdToEdit == null) {
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = "Mascota no encontrada")
+                }
+                return@launch
+            }
             if (petIdToEdit != null) {
                 val pet = petRepository.fetchPetById(petIdToEdit)
+                    ?: petRepository.getPetById(petIdToEdit)
                 val context = petRepository.getPetAccessContext(petIdToEdit).getOrNull()
-                if (pet == null || context == null || !context.canUpdate) {
-                    _uiState.update {
-                        it.copy(isLoading = false, errorMessage = "Mascota no encontrada")
+                val sessionPerson = resolveSessionPerson(authUser.id)
+                val personId = sessionPerson?.id ?: authUser.id
+                val decision = com.comunidapp.app.domain.pets.PetEditAuthorization.decide(
+                    pet = pet,
+                    context = context,
+                    sessionUserId = authUser.id,
+                    sessionPersonId = personId
+                )
+                when (decision) {
+                    com.comunidapp.app.domain.pets.PetEditAuthorization.Decision.PET_NOT_FOUND -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                editDecision = decision,
+                                errorMessage = "Mascota no encontrada"
+                            )
+                        }
+                        return@launch
                     }
-                    return@launch
+                    com.comunidapp.app.domain.pets.PetEditAuthorization.Decision.NO_PERMISSION -> {
+                        _uiState.update {
+                            it.copy(
+                                isLoading = false,
+                                editDecision = decision,
+                                errorMessage = "No tenés permiso para editar esta mascota"
+                            )
+                        }
+                        return@launch
+                    }
+                    com.comunidapp.app.domain.pets.PetEditAuthorization.Decision.CAN_EDIT -> Unit
                 }
-                if (pet.status == "DECEASED") {
+                val editablePet = pet ?: return@launch
+                if (editablePet.status == "DECEASED") {
                     _uiState.update {
                         it.copy(
                             isLoading = false,
-                            petStatus = pet.status,
+                            petStatus = editablePet.status,
                             errorMessage = "No se puede editar una mascota fallecida."
                         )
                     }
                     return@launch
                 }
-                loadedPet = pet
+                loadedPet = editablePet
                 val base = PetFormUiState(
                         isLoading = false,
                         isEditMode = true,
-                        petId = pet.id,
-                        ownerId = pet.ownerId,
-                        name = pet.name,
-                        species = pet.species,
-                        sex = pet.sex,
-                        ageYears = pet.ageYears,
-                        ageYearsInput = pet.ageYears.toString(),
-                        ageMonths = pet.ageMonths,
-                        ageMonthsInput = pet.ageMonths.toString(),
-                        size = pet.size,
-                        description = pet.description,
-                        sterilized = pet.sterilized,
-                        microchipId = pet.microchipId.orEmpty(),
-                        lastVetVisit = pet.lastVetVisit.orEmpty(),
-                        vaccinations = pet.vaccinations,
-                        dewormingProduct = pet.dewormingProduct.orEmpty(),
-                        lastDeworming = pet.lastDeworming.orEmpty(),
+                        editDecision = com.comunidapp.app.domain.pets.PetEditAuthorization.Decision.CAN_EDIT,
+                        petId = editablePet.id,
+                        ownerId = editablePet.ownerId,
+                        name = editablePet.name,
+                        species = editablePet.species,
+                        speciesCode = editablePet.speciesCode
+                            ?: editablePet.species.name,
+                        sex = editablePet.sex,
+                        ageYears = editablePet.ageYears,
+                        ageYearsInput = editablePet.ageYears.toString(),
+                        ageMonths = editablePet.ageMonths,
+                        ageMonthsInput = editablePet.ageMonths.toString(),
+                        size = editablePet.size,
+                        description = editablePet.description,
+                        sterilized = editablePet.sterilized,
+                        microchipId = editablePet.microchipId.orEmpty(),
+                        lastVetVisit = editablePet.lastVetVisit.orEmpty(),
+                        vaccinations = editablePet.vaccinations,
+                        dewormingProduct = editablePet.dewormingProduct.orEmpty(),
+                        lastDeworming = editablePet.lastDeworming.orEmpty(),
                         nextDeworming = PetHealthReminders.dateOf(
-                            pet.reminders,
+                            editablePet.reminders,
                             PetHealthReminders.NEXT_DEWORMING
                         ),
-                        fleaTreatmentProduct = pet.fleaTreatmentProduct.orEmpty(),
-                        lastFleaTreatment = pet.lastFleaTreatment.orEmpty(),
+                        fleaTreatmentProduct = editablePet.fleaTreatmentProduct.orEmpty(),
+                        lastFleaTreatment = editablePet.lastFleaTreatment.orEmpty(),
                         nextFleaTreatment = PetHealthReminders.dateOf(
-                            pet.reminders,
+                            editablePet.reminders,
                             PetHealthReminders.NEXT_FLEA
                         ),
-                        healthNotes = pet.healthNotes.orEmpty(),
-                        allergyName = pet.allergies.firstOrNull().orEmpty(),
-                        medicationName = pet.medications.firstOrNull().orEmpty(),
-                        conditionName = pet.conditions.firstOrNull().orEmpty(),
-                        photoUrl = PetPhotoResolver.displayUrl(pet, authUser.id),
-                        canManageMedia = context.canManageMedia,
-                        petStatus = pet.status,
-                        breed = pet.breed.orEmpty()
+                        healthNotes = editablePet.healthNotes.orEmpty(),
+                        allergyName = editablePet.allergies.firstOrNull().orEmpty(),
+                        medicationName = editablePet.medications.firstOrNull().orEmpty(),
+                        conditionName = editablePet.conditions.firstOrNull().orEmpty(),
+                        photoUrl = PetPhotoResolver.displayUrl(editablePet, authUser.id),
+                        canManageMedia = context?.canManageMedia ?: true,
+                        petStatus = editablePet.status,
+                        breed = editablePet.breed.orEmpty(),
+                        breedId = editablePet.breedId.orEmpty()
                     )
                 draftUserId = authUser.id
-                val drafted = com.comunidapp.app.data.local.PetFormDraftStore
-                    .read(authUser.id, petIdToEdit)
-                    ?.applyTo(base) ?: base
-                _uiState.update { drafted }
-                loadCatalogs(drafted.species)
+                // EDIT mode: backend is source of truth — never apply local draft overlay.
+                _uiState.update { base }
+                loadCatalogs(base.speciesCode)
             } else {
                 draftUserId = authUser.id
                 val base = PetFormUiState(isLoading = false, ownerId = authUser.id, canManageMedia = true)
@@ -196,7 +242,7 @@ class PetFormViewModel(
                     .read(authUser.id, null)
                     ?.applyTo(base) ?: base
                 _uiState.update { drafted }
-                loadCatalogs(drafted.species)
+                loadCatalogs(drafted.speciesCode)
             }
         }
     }
@@ -205,11 +251,28 @@ class PetFormViewModel(
         updateForm { copy(name = value, errorMessage = null) }
         scheduleDuplicateCheck()
     }
-    fun onSpeciesChange(value: PetSpecies) {
-        updateForm { copy(species = value, breed = "", pendingVaccineName = "", errorMessage = null) }
-        loadCatalogs(value)
+    fun onSpeciesChange(value: com.comunidapp.app.data.repository.CatalogSpecies) {
+        userChangedBreed = true
+        updateForm {
+            copy(
+                species = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toPetSpecies(value.code),
+                speciesCode = value.code,
+                secondaryClassificationEnabled = value.secondaryClassificationEnabled,
+                secondaryLabelSingular = value.secondaryLabelSingular
+                    ?: com.comunidapp.app.domain.pets.SecondaryClassificationKind
+                        .defaultLabels(value.secondaryClassificationKind).first,
+                breed = "",
+                breedId = "",
+                pendingVaccineName = "",
+                errorMessage = null
+            )
+        }
+        loadCatalogs(value.code)
     }
-    fun onBreedChange(value: String) = updateForm { copy(breed = value, errorMessage = null) }
+    fun onBreedChange(value: String) {
+        userChangedBreed = true
+        updateForm { copy(breed = value, errorMessage = null) }
+    }
     fun onSexChange(value: PetSex) = updateForm { copy(sex = value, errorMessage = null) }
     fun onAgeYearsInput(raw: String) {
         val digits = raw.filter { it.isDigit() }.take(2)
@@ -345,8 +408,8 @@ class PetFormViewModel(
             }
             return
         }
-        if (state.name.isBlank() || state.description.isBlank()) {
-            _uiState.update { it.copy(errorMessage = "Nombre y descripción son obligatorios") }
+        if (state.name.isBlank()) {
+            _uiState.update { it.copy(errorMessage = "El nombre es obligatorio") }
             return
         }
         if (!PetAgeRules.isValidYears(state.ageYears) ||
@@ -389,13 +452,12 @@ class PetFormViewModel(
                 return@launch
             }
 
-            val userRepository = DataProvider.userRepository
-            var person = userRepository.getUser(authUser.id)
+            var person = resolveSessionPerson(authUser.id)
             var personLoadAttempts = 0
             while (person == null && personLoadAttempts < 3) {
                 personLoadAttempts++
                 delay(400)
-                person = userRepository.getUser(authUser.id)
+                person = resolveSessionPerson(authUser.id)
             }
             if (person == null) {
                 val code = if (personLoadAttempts > 0) {
@@ -422,6 +484,7 @@ class PetFormViewModel(
                 ownerId = state.ownerId?.takeIf { it.isNotBlank() },
                 name = state.name.trim(),
                 species = state.species,
+                speciesCode = state.speciesCode,
                 sex = state.sex,
                 ageYears = state.ageYears,
                 ageMonths = state.ageMonths,
@@ -441,6 +504,7 @@ class PetFormViewModel(
                 medications = listOfNotNull(state.medicationName.trim().takeIf { it.isNotEmpty() }),
                 conditions = listOfNotNull(state.conditionName.trim().takeIf { it.isNotEmpty() }),
                 breed = state.breed.trim().ifBlank { null },
+                breedId = state.breedId.ifBlank { loadedPet?.breedId },
                 reminders = PetHealthReminders.upsert(
                     PetHealthReminders.upsert(
                         loadedPet?.reminders.orEmpty(),
@@ -711,35 +775,99 @@ class PetFormViewModel(
         com.comunidapp.app.data.local.PetFormDraftStore.clear()
     }
 
-    private fun loadCatalogs(species: PetSpecies) {
+    private suspend fun resolveSessionPerson(authUserId: String): com.comunidapp.app.data.model.User? {
+        val session = com.comunidapp.app.domain.user.SessionResolvedPerson.current()
+        if (session != null &&
+            !com.comunidapp.app.domain.user.SessionPersonRouting.isJwtStub(session)
+        ) {
+            return session
+        }
+        return userRepository.getUser(authUserId)?.takeIf {
+            !com.comunidapp.app.domain.user.SessionPersonRouting.isJwtStub(it)
+        }
+    }
+
+    private fun loadCatalogs(speciesCode: String) {
         viewModelScope.launch {
-            val repo = DataProvider.masterCatalogRepository
-            val speciesRows = repo.listSpecies()
-            val labels = mutableMapOf<PetSpecies, String>()
-            val options = speciesRows.map { row ->
-                val mapped = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toPetSpecies(row.code)
-                labels[mapped] = row.name
-                mapped
-            }.distinct().ifEmpty { PetSpecies.entries }
-            val breeds = repo.listBreeds(species.name).map { it.name }
-            val vaccines = repo.listHealthProducts("VACCINE", species.name)
-                .map { it.displayName }
-                .ifEmpty { com.comunidapp.app.data.model.PetHealthCatalog.vaccinesForSpecies(species) }
-            val flea = repo.listHealthProducts("FLEA", species.name)
-                .map { it.displayName }
-                .ifEmpty { com.comunidapp.app.data.model.PetHealthCatalog.fleaAndTickProducts }
-            val deworm = repo.listHealthProducts("DEWORMER", species.name)
-                .map { it.displayName }
-                .ifEmpty { com.comunidapp.app.data.model.PetHealthCatalog.dewormingProducts }
-            _uiState.update {
-                it.copy(
-                    speciesOptions = options,
-                    speciesLabels = labels,
-                    breedOptions = breeds,
-                    vaccineOptions = vaccines,
-                    fleaOptions = flea,
-                    dewormerOptions = deworm
+            runCatching {
+                val repo = DataProvider.masterCatalogRepository
+                val activeRows = repo.listSpecies()
+                val currentCode = speciesCode.ifBlank { _uiState.value.speciesCode }
+                val currentSpecies = repo.getSpecies(currentCode)
+                val options = (activeRows + listOfNotNull(currentSpecies))
+                    .distinctBy { it.code }
+                val selected = options.firstOrNull { it.code.equals(currentCode, true) }
+                    ?: currentSpecies
+                val secondaryEnabled = selected?.secondaryClassificationEnabled == true
+                val secondaryLabel = selected?.secondaryLabelSingular
+                    ?: com.comunidapp.app.domain.pets.SecondaryClassificationKind
+                        .defaultLabels(selected?.secondaryClassificationKind).first
+                    .ifBlank { "Raza" }
+                val mappedSpecies = com.comunidapp.app.domain.pets.PetSpeciesCatalog.toPetSpecies(
+                    selected?.code ?: currentCode
                 )
+                val current = _uiState.value
+                val catalog = if (secondaryEnabled) {
+                    repo.listSecondaryItems(selected?.code ?: currentCode)
+                } else {
+                    emptyList()
+                }
+                val petBreedId = current.breedId.ifBlank { loadedPet?.breedId }
+                val historical = if (secondaryEnabled) {
+                    petBreedId?.let { repo.getSecondaryItem(it) }
+                        ?.takeIf { found -> catalog.none { it.id == found.id } }
+                } else {
+                    null
+                }
+                val catalogForResolve = catalog + listOfNotNull(historical)
+                val resolvedBreed = if (secondaryEnabled) {
+                    com.comunidapp.app.data.remote.supabase.m08.PetFormBreedHydration.resolveSelectedName(
+                        petBreedName = loadedPet?.breed ?: current.breed,
+                        petBreedId = petBreedId,
+                        catalog = catalogForResolve,
+                        userChangedBreed = userChangedBreed,
+                        currentSelection = current.breed
+                    )
+                } else {
+                    ""
+                }
+                val breeds = if (secondaryEnabled) {
+                    (listOf(resolvedBreed).filter { it.isNotEmpty() } + catalog.map { it.name }).distinct()
+                } else {
+                    emptyList()
+                }
+                val resolvedId = if (secondaryEnabled) {
+                    com.comunidapp.app.data.remote.supabase.m08.PetBreedCatalog.idForName(
+                        catalogForResolve,
+                        resolvedBreed
+                    ) ?: petBreedId.orEmpty()
+                } else {
+                    ""
+                }
+                val vaccines = repo.listHealthProducts("VACCINE", selected?.code ?: currentCode)
+                    .map { it.displayName }
+                    .ifEmpty { com.comunidapp.app.data.model.PetHealthCatalog.vaccinesForSpecies(mappedSpecies) }
+                val flea = repo.listHealthProducts("FLEA", selected?.code ?: currentCode)
+                    .map { it.displayName }
+                    .ifEmpty { com.comunidapp.app.data.model.PetHealthCatalog.fleaAndTickProducts }
+                val deworm = repo.listHealthProducts("DEWORMER", selected?.code ?: currentCode)
+                    .map { it.displayName }
+                    .ifEmpty { com.comunidapp.app.data.model.PetHealthCatalog.dewormingProducts }
+                _uiState.update {
+                    it.copy(
+                        species = mappedSpecies,
+                        speciesCode = selected?.code ?: currentCode,
+                        speciesOptions = options,
+                        secondaryClassificationEnabled = secondaryEnabled,
+                        secondaryLabelSingular = secondaryLabel,
+                        breed = resolvedBreed,
+                        breedId = resolvedId,
+                        breedOptions = breeds,
+                        vaccineOptions = vaccines,
+                        fleaOptions = flea,
+                        dewormerOptions = deworm
+                    )
+                }
             }
         }
     }

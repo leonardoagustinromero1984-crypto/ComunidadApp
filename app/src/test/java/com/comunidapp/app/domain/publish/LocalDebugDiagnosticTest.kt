@@ -12,7 +12,7 @@ class LocalDebugDiagnosticTest {
         assertFalse(LocalDebugDiagnostic.isCopyEnabled(debug = false, env = "production"))
         assertFalse(LocalDebugDiagnostic.isCopyEnabled(debug = false, env = "local"))
         assertFalse(LocalDebugDiagnostic.isCopyEnabled(debug = true, env = "production"))
-        assertFalse(LocalDebugDiagnostic.isCopyEnabled(debug = true, env = "staging"))
+        assertTrue(LocalDebugDiagnostic.isCopyEnabled(debug = true, env = "staging"))
     }
 
     @Test
@@ -39,7 +39,8 @@ class LocalDebugDiagnosticTest {
         assertTrue(text.startsWith("LEOVER_DIAGNOSTIC"))
         assertTrue(text.contains("operation=lost_found_create"))
         assertTrue(text.contains("type=LOST"))
-        assertTrue(text.contains("errorCode=42883"))
+        assertTrue(text.contains("errorCode=LF-CREATE-DB"))
+        assertTrue(text.contains("sqlstate=42883"))
         assertTrue(text.contains("gen_random_bytes"))
         assertFalse(text.contains("Authorization", ignoreCase = true))
         assertFalse(text.contains("Bearer", ignoreCase = true))

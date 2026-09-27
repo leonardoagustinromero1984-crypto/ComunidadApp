@@ -51,6 +51,7 @@ object M09AdoptionErrorMapper {
         "AGREEMENT_FORBIDDEN",
         "ADOPTION_NOT_READY_TO_FINALIZE",
         "ADOPTION_ALREADY_FINALIZED",
+        "ADOPTION_USE_CANONICAL_TRANSFER",
         "ADOPTION_TRANSFER_FAILED",
         "FOLLOWUP_NOT_FOUND",
         "FOLLOWUP_ALREADY_COMPLETED",
@@ -119,6 +120,8 @@ object M09AdoptionErrorMapper {
         "AGREEMENT_FORBIDDEN" -> "No tenés permiso sobre este acuerdo."
         "ADOPTION_NOT_READY_TO_FINALIZE" -> "La adopción todavía no está lista para finalizar."
         "ADOPTION_ALREADY_FINALIZED" -> "Esta adopción ya fue finalizada."
+        "ADOPTION_USE_CANONICAL_TRANSFER" ->
+            "Para cambiar la responsabilidad de la mascota usá la transferencia canónica."
         "ADOPTION_USE_FINALIZE" ->
             "Para completar la adopción usá el proceso post-aceptación (entrevista, docs, acuerdo y finalización)."
         "ADOPTION_TRANSFER_FAILED" -> "No se pudo transferir la responsabilidad de la mascota."

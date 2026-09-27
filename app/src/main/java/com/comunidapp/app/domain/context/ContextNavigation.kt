@@ -104,7 +104,7 @@ object ContextNavigation {
                 secondLabel = "Agenda"
                 secondRoute = NavRoutes.MY_VETERINARY_APPOINTMENTS
                 fourthLabel = "Consultorio"
-                fourthRoute = NavRoutes.MY_BUSINESS
+                fourthRoute = NavRoutes.PROFESSIONAL_HUB
             }
             daycare -> {
                 secondLabel = "Reservas"

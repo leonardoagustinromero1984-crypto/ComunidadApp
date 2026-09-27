@@ -36,10 +36,12 @@ class PetProfileUxStaticGuardsTest {
     }
 
     @Test
-    fun petDetail_exposesSingleCareNetworkSectionLabel() {
+    fun petDetail_exposesSingleResponsiblesSectionLabel() {
         val detail = sourceFile("app/src/main/java/com/comunidapp/app/ui/screens/pets/PetDetailScreen.kt").readText()
         val v2 = sourceFile("app/src/main/java/com/comunidapp/app/ui/screens/pets/PetDetailV2Components.kt").readText()
-        assertTrue(detail.contains("Red de cuidado"))
+        assertTrue(detail.contains("\"Responsables\""))
+        assertTrue(detail.contains("Compartir mascota"))
+        assertFalse(detail.contains("Red de cuidado"))
         assertFalse(detail.contains("Personas autorizadas"))
         assertFalse(detail.contains("Responsables y custodias"))
         assertTrue(detail.contains("Archivar mascota"))
@@ -53,7 +55,7 @@ class PetProfileUxStaticGuardsTest {
     fun healthEmptyState_offersAddAction() {
         val v2 = sourceFile("app/src/main/java/com/comunidapp/app/ui/screens/pets/PetDetailV2Components.kt").readText()
         assertTrue(v2.contains("Agregar información"))
-        assertTrue(v2.contains("Todavía no agregaste información de salud"))
+        assertTrue(v2.contains("Todavía no cargaste información de salud"))
     }
 
     @Test

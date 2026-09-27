@@ -22,6 +22,10 @@ export function publicAdoptionPath(publicCode: string): string {
   return `/adopciones/${encodeURIComponent(publicCode)}`;
 }
 
+export function publicPostPath(postId: string): string {
+  return `/p/${encodeURIComponent(postId)}`;
+}
+
 export function resolvePublicImageUrl(photoUrl?: string | null): string | null {
   if (!photoUrl) {
     return null;

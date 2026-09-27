@@ -68,6 +68,19 @@ class AndroidImageIngest(
     private fun normalizeInternal(uriString: String, purpose: FileAssetPurpose): ImageIngestResult {
         if (uriString.isBlank()) throw MediaIngestException(MediaDiagnostic.URI)
         if (ProfileMediaPipeline.shouldSkipReingest(uriString, purpose)) {
+            val uri = Uri.parse(uriString)
+            val mime = contentResolver.getType(uri) ?: inferredMime(uriString)
+            if (MediaIngestionPolicy.isVideoMime(mime) ||
+                uriString.contains("leover_video_", ignoreCase = true)
+            ) {
+                val size = ProfileMediaPipeline.fileLength(uriString)
+                return ImageIngestResult(
+                    uriString,
+                    mime ?: "video/mp4",
+                    size,
+                    normalized = false
+                )
+            }
             val size = ProfileMediaPipeline.fileLength(uriString)
             if (size > 0L) {
                 return ImageIngestResult(uriString, "image/jpeg", size, normalized = true)

@@ -1,6 +1,7 @@
 package com.comunidapp.app.ui.screens.chat
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,17 +10,17 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -40,15 +41,21 @@ import com.comunidapp.app.data.model.Conversation
 import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.leo.LeoEmptyState
+import com.comunidapp.app.ui.components.leo.LeoHairline
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
-import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandOrange
+import com.comunidapp.app.ui.theme.BrandOrangeContainer
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.BrandWhite
+import com.comunidapp.app.ui.theme.LeoBody
 import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoCardTitle
 import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.SurfaceMuted
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.viewmodel.ChatListViewModel
 import com.comunidapp.app.viewmodel.ChatStartState
 import com.comunidapp.app.viewmodel.ChatStartViewModel
@@ -93,8 +100,7 @@ fun ChatListScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(LeoDimens.SpaceMd),
-                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
+                contentPadding = PaddingValues(vertical = LeoDimens.SpaceS)
             ) {
                 items(conversations, key = { it.id }) { conversation ->
                     ConversationCard(
@@ -112,22 +118,51 @@ private fun ConversationCard(
     conversation: Conversation,
     onClick: () -> Unit
 ) {
-    V2SurfaceCard(onClick = onClick) {
-        Text(
-            text = conversation.peerName,
-            style = LeoCardTitle,
-            color = BrandText,
-            fontWeight = FontWeight.SemiBold
-        )
-        conversation.lastMessageText?.let { preview ->
-            Text(
-                text = preview,
-                style = LeoCaption,
-                color = BrandTextSecondary,
-                modifier = Modifier.padding(top = LeoDimens.SpaceMicro),
-                maxLines = 2
-            )
+    val locale = LocalConfiguration.current.locales[0]
+    val time = conversation.lastMessageAt?.let {
+        SimpleDateFormat("HH:mm", locale).format(Date(it))
+    }.orEmpty()
+    val initial = conversation.peerName.trim().firstOrNull()?.uppercaseChar()?.toString() ?: "·"
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(52.dp)
+                    .background(SurfaceMuted, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(text = initial, style = LeoCardTitle, color = BrandText)
+            }
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = conversation.peerName,
+                    style = LeoCardTitle,
+                    color = BrandText,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1
+                )
+                conversation.lastMessageText?.let { preview ->
+                    Text(
+                        text = preview,
+                        style = LeoCaption,
+                        color = BrandTextSecondary,
+                        modifier = Modifier.padding(top = LeoDimens.SpaceMicro),
+                        maxLines = 1
+                    )
+                }
+            }
+            if (time.isNotBlank()) {
+                Text(text = time, style = LeoCaption, color = BrandTextSecondary)
+            }
         }
+        LeoHairline(modifier = Modifier.padding(start = LeoDimens.SpaceMd))
     }
 }
 
@@ -163,12 +198,21 @@ fun ChatStartScreen(
             contentAlignment = Alignment.Center
         ) {
             when (val current = state) {
-                ChatStartState.Loading -> CircularProgressIndicator()
+                ChatStartState.Loading -> CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = BrandOrange,
+                    strokeWidth = 2.dp
+                )
                 is ChatStartState.Error -> Text(
                     text = current.message,
-                    color = MaterialTheme.colorScheme.error
+                    color = UrgentRed,
+                    style = LeoCaption
                 )
-                is ChatStartState.Ready -> CircularProgressIndicator()
+                is ChatStartState.Ready -> CircularProgressIndicator(
+                    modifier = Modifier.size(28.dp),
+                    color = BrandOrange,
+                    strokeWidth = 2.dp
+                )
             }
         }
     }
@@ -185,17 +229,28 @@ fun ChatThreadScreen(
     var draft by remember { mutableStateOf("") }
     val listState = rememberLazyListState()
     val currentUserId = AuthProvider.repository.getCurrentUser()?.id
+    var didInitialScroll by remember { mutableStateOf(false) }
 
     LaunchedEffect(sendState) {
         if (sendState is SendMessageState.Sent) {
             draft = ""
             viewModel.clearSendState()
+            if (messages.isNotEmpty()) {
+                listState.animateScrollToItem(messages.lastIndex)
+            }
         }
     }
 
     LaunchedEffect(messages.size) {
-        if (messages.isNotEmpty()) {
-            listState.animateScrollToItem(messages.lastIndex)
+        if (messages.isNotEmpty() && !didInitialScroll) {
+            listState.scrollToItem(messages.lastIndex)
+            didInitialScroll = true
+        }
+    }
+
+    LaunchedEffect(listState.firstVisibleItemIndex, messages.firstOrNull()?.id) {
+        if (didInitialScroll && listState.firstVisibleItemIndex == 0 && messages.isNotEmpty()) {
+            viewModel.loadOlder()
         }
     }
 
@@ -236,12 +291,13 @@ fun ChatThreadScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                OutlinedTextField(
+                LeoTextField(
                     value = draft,
                     onValueChange = { draft = it },
                     modifier = Modifier.weight(1f),
-                    placeholder = { Text("Escribí un mensaje…") },
-                    maxLines = 4
+                    placeholder = "Escribí un mensaje…",
+                    singleLine = false,
+                    minLines = 1
                 )
                 IconButton(
                     onClick = { viewModel.sendMessage(draft) },
@@ -253,7 +309,7 @@ fun ChatThreadScreen(
             if (sendState is SendMessageState.Error) {
                 Text(
                     text = (sendState as SendMessageState.Error).message,
-                    color = MaterialTheme.colorScheme.error,
+                    color = UrgentRed,
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
                 )
             }
@@ -264,11 +320,7 @@ fun ChatThreadScreen(
 @Composable
 private fun MessageBubble(message: ChatMessage, isMine: Boolean) {
     val alignment = if (isMine) Alignment.CenterEnd else Alignment.CenterStart
-    val color = if (isMine) {
-        MaterialTheme.colorScheme.primaryContainer
-    } else {
-        MaterialTheme.colorScheme.surfaceVariant
-    }
+    val color = if (isMine) BrandOrangeContainer else BrandWhite
     val locale = LocalConfiguration.current.locales[0]
     val time = message.createdAt?.let {
         SimpleDateFormat("HH:mm", locale).format(Date(it))
@@ -278,14 +330,14 @@ private fun MessageBubble(message: ChatMessage, isMine: Boolean) {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.85f)
-                .background(color, RoundedCornerShape(12.dp))
-                .padding(12.dp)
+                .background(color, RoundedCornerShape(18.dp))
+                .padding(horizontal = LeoDimens.SpaceCompact, vertical = LeoDimens.SpaceS)
         ) {
             if (!isMine) {
                 Text(
                     text = message.senderName,
-                    style = MaterialTheme.typography.labelSmall,
-                    fontWeight = FontWeight.SemiBold
+                    style = LeoCaption,
+                    color = BrandText
                 )
             }
             val share = com.comunidapp.app.domain.social.InternalShareCodec.decode(message.content)
@@ -305,23 +357,20 @@ private fun MessageBubble(message: ChatMessage, isMine: Boolean) {
                         com.comunidapp.app.domain.social.SharedContentAvailability.AVAILABLE ->
                             com.comunidapp.app.domain.social.InternalShareCodec.visibleCaption(message.content)
                     },
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold
+                    style = LeoBody,
+                    color = BrandText
                 )
                 if (availability == com.comunidapp.app.domain.social.SharedContentAvailability.AVAILABLE) {
-                    Text(share.deepLink, style = MaterialTheme.typography.labelSmall)
-                    if (share.captionPreview.isNotBlank()) {
-                        Text(share.captionPreview, style = MaterialTheme.typography.bodySmall, maxLines = 2)
-                    }
+                    com.comunidapp.app.ui.screens.social.SharedContentCard(share = share)
                 }
             } else {
-                Text(text = message.content, style = MaterialTheme.typography.bodyMedium)
+                Text(text = message.content, style = LeoBody, color = BrandText)
             }
             if (time.isNotBlank()) {
                 Text(
                     text = time,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = LeoCaption,
+                    color = BrandTextSecondary,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }

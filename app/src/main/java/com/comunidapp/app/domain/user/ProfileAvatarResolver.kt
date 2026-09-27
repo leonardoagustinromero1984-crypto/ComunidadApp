@@ -27,11 +27,16 @@ object ProfileAvatarResolver {
         return null
     }
 
-    suspend fun displayUrl(user: User?): String? {
+    suspend fun displayUrl(
+        user: User?,
+        actorUserId: String? = com.comunidapp.app.data.repository.AuthProvider.repository
+            .getCurrentUser()
+            ?.id
+    ): String? {
         httpOrLocalUrl(user)?.let { return it }
         val path = user?.avatarPath?.takeIf { it.isNotBlank() } ?: return null
         if (isUuid(path)) {
-            val context = FileAuthContext(actorUserId = user?.id)
+            val context = FileAuthContext(actorUserId = actorUserId)
             val resolved = DataProvider.fileDisplayResolver.resolve(
                 assetId = path,
                 legacyReference = null,
@@ -41,7 +46,7 @@ object ProfileAvatarResolver {
             val signed = DataProvider.fileDownloadRepository.requestSignedUrl(
                 request = FileAccessRequest(
                     assetId = path,
-                    actorUserId = user?.id.orEmpty(),
+                    actorUserId = actorUserId.orEmpty(),
                     purpose = FileAssetPurpose.USER_AVATAR,
                     ttlClass = FileSignedTtlClass.PUBLIC_RESOLUTION
                 ),

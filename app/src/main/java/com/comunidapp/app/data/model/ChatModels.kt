@@ -16,6 +16,7 @@ data class Conversation(
     val id: String,
     val peerUserId: String,
     val peerName: String,
+    val peerUsername: String? = null,
     val lastMessageText: String? = null,
     val lastMessageAt: Long? = null,
     val contextType: ChatContextType? = null,

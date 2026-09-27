@@ -6,6 +6,17 @@ object ChatMessageMerge {
     fun replaceFromServer(server: List<ChatMessage>): List<ChatMessage> =
         server.distinctBy { it.id }
 
+    fun unionById(existing: List<ChatMessage>, incoming: List<ChatMessage>): List<ChatMessage> {
+        val byId = LinkedHashMap<String, ChatMessage>()
+        existing.forEach { message ->
+            if (message.id.isNotBlank()) byId[message.id] = message
+        }
+        incoming.forEach { message ->
+            if (message.id.isNotBlank()) byId[message.id] = message
+        }
+        return byId.values.sortedWith(compareBy({ it.createdAt ?: 0L }, { it.id }))
+    }
+
     fun appendConfirmed(existing: List<ChatMessage>, confirmed: ChatMessage): List<ChatMessage> {
         if (confirmed.id.isBlank()) return existing
         if (existing.any { it.id == confirmed.id }) return existing

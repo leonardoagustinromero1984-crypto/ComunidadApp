@@ -43,12 +43,18 @@ object MediaDiagnostic {
     fun fromSignal(code: String?, technicalMessage: String? = null): String? {
         val signal = "${code.orEmpty()} ${technicalMessage.orEmpty()}".uppercase()
         if (signal.isBlank()) return null
+        if ("413" in signal || "PAYLOAD TOO LARGE" in signal) return SIZE
+        val status = Regex("(?:TUS_(?:CREATE|PATCH)_|HTTP_|STATUS_)(\\d{3})").find(signal)
+        if (status != null) {
+            val statusCode = status.groupValues[1]
+            if (statusCode == "413") return SIZE
+            return "MEDIA-UPLOAD-$statusCode"
+        }
         Regex("MEDIA-UPLOAD-(\\d{3})").find(signal)?.let { match ->
+            if (match.groupValues[1] == "413") return SIZE
             return "MEDIA-UPLOAD-${match.groupValues[1]}"
         }
         Regex("MEDIA-[A-Z]+-\\d{2}").find(signal)?.let { return it.value }
-        val status = Regex("(?:TUS_(?:CREATE|PATCH)_|HTTP_|STATUS_)(\\d{3})").find(signal)
-        if (status != null) return "MEDIA-UPLOAD-${status.groupValues[1]}"
         return when {
             "CANCEL" in signal || "DOUBLE_SUBMIT" in signal -> null
             "URI" in signal || "FILE_READ" in signal -> URI

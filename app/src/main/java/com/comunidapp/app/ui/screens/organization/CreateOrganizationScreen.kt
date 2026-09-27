@@ -117,7 +117,7 @@ fun CreateOrganizationScreen(
             OutlinedTextField(
                 value = uiState.publicName,
                 onValueChange = viewModel::onPublicNameChange,
-                label = { Text("Nombre") },
+                label = { Text(com.comunidapp.app.ui.components.leo.LeoRequiredField.label("Nombre")) },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true,
                 enabled = !uiState.isSaving

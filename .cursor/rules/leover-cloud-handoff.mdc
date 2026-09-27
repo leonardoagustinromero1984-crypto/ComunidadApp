@@ -1,0 +1,15 @@
+---
+description: Cursor Cloud and git handoff — never main/PROD; Fast tests only; no emulator by default
+alwaysApply: true
+---
+
+# Cloud / git handoff
+
+- Work on `cloud-handoff/*` or a feature branch. Never commit, push, or merge to `main` unless the user names that action.
+- Never target PROD. Never auto-merge.
+- Daily tests: Fast / Affected. Do not start LeoVer-QA or Maestro unless explicitly requested.
+- Cloud must not declare physical or Maestro E2E PASS.
+- Never commit secrets (`.env`, `local.properties`, QA local JSON, service_role, keystores).
+- Do not edit applied migrations.
+
+Details: `AGENTS.md`, `docs/cloud/CURSOR-CLOUD-SETUP.md`, `.cursor/rules/leover-regression-done.mdc`.

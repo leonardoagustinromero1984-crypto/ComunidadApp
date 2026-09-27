@@ -1,0 +1,29 @@
+appId: ${APP_ID}
+name: "Community nearby QA01"
+tags:
+  - community-care
+  - community
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA01_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-community.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/close-dialogs.yaml
+    env:
+      APP_ID: ${APP_ID}
+- assertVisible: "Cerca mío"
+- tapOn: "Cerca mío"
+- takeScreenshot: community_list
+- assertVisible: "QA - Veterinaria Centro"
+- assertVisible: "QA - Pet Shop Centro"
+- tapOn: "QA - Veterinaria Centro"
+- assertVisible: "Verificado por LeoVer"
+- takeScreenshot: community_vet_centro

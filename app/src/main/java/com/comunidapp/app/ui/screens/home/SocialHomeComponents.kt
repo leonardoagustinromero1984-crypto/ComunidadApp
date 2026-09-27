@@ -65,7 +65,6 @@ import com.comunidapp.app.ui.components.leo.LeoEmptyState
 import com.comunidapp.app.ui.components.leo.LeoFilterChip
 import com.comunidapp.app.ui.components.leo.LeoSearchBar
 import com.comunidapp.app.ui.theme.BrandCream
-import com.comunidapp.app.ui.theme.BrandOrange
 import com.comunidapp.app.ui.theme.BrandOrangeSoft
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandWhite
@@ -181,7 +180,7 @@ fun HomeSocialTabRow(
     ) {
         listOf(
             HomeSocialTab.Feed to "Feed",
-            HomeSocialTab.Reels to "Reels",
+            HomeSocialTab.Reels to "Clips",
             HomeSocialTab.Explore to "Explorar"
         ).forEach { (tab, label) ->
             LeoFilterChip(
@@ -296,22 +295,33 @@ private fun StoryBubble(
             .width(72.dp)
             .clickable(onClick = onClick)
     ) {
+        val ringStyle = com.comunidapp.app.domain.social.StoryRingPolicy.style(
+            hasActiveStory = !isAdd && hasNew
+        )
         Box(contentAlignment = Alignment.Center) {
             Box(
                 modifier = Modifier
                     .size(64.dp)
-                    .border(
-                        width = 2.dp,
-                        brush = if (isAdd) {
-                            Brush.linearGradient(listOf(BrandOrange, BrandOrange))
-                        } else if (hasNew) {
-                            Brush.linearGradient(listOf(leoVisual().primarySoft, leoVisual().primary))
-                        } else {
-                            Brush.linearGradient(listOf(leoVisual().borderSoft, leoVisual().borderSoft))
-                        },
-                        shape = CircleShape
+                    .then(
+                        when (ringStyle) {
+                            com.comunidapp.app.domain.social.StoryRingPolicy.Style.NONE -> Modifier
+                            com.comunidapp.app.domain.social.StoryRingPolicy.Style.ACCENT -> Modifier.border(
+                                width = 2.dp,
+                                brush = Brush.linearGradient(
+                                    listOf(leoVisual().primarySoft, leoVisual().primary)
+                                ),
+                                shape = CircleShape
+                            )
+                            com.comunidapp.app.domain.social.StoryRingPolicy.Style.SEEN -> Modifier.border(
+                                width = 2.dp,
+                                brush = Brush.linearGradient(
+                                    listOf(leoVisual().borderSoft, leoVisual().borderSoft)
+                                ),
+                                shape = CircleShape
+                            )
+                        }
                     )
-                    .padding(3.dp)
+                    .padding(if (ringStyle == com.comunidapp.app.domain.social.StoryRingPolicy.Style.NONE) 0.dp else 3.dp)
                     .clip(CircleShape)
                     .background(leoVisual().surface),
                 contentAlignment = Alignment.Center
@@ -352,55 +362,161 @@ private fun StoryBubble(
 }
 
 @Composable
+fun ClipsCarousel(
+    clips: List<FeedPost>,
+    onClipClick: (String) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    if (clips.isEmpty()) return
+    Column(modifier = modifier.fillMaxWidth()) {
+        Text(
+            text = "Clips",
+            style = LeoCardTitle,
+            color = BrandText,
+            modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm)
+        )
+        LazyRow(
+            contentPadding = PaddingValues(horizontal = LeoDimens.SpaceMd),
+            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+        ) {
+            items(clips, key = { it.id }) { clip ->
+                val url = com.comunidapp.app.domain.social.SocialPostMedia.displayUrls(
+                    clip.imageUrl,
+                    clip.imageUrls
+                ).firstOrNull().orEmpty()
+                Column(
+                    modifier = Modifier
+                        .width(128.dp)
+                        .clickable { onClipClick(clip.id) }
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(9f / 16f)
+                            .clip(RoundedCornerShape(LeoDimens.RadiusCard))
+                    ) {
+                        if (url.isNotBlank()) {
+                            com.comunidapp.app.ui.media.VideoPreviewFrame(
+                                url = url,
+                                contentDescription = clip.authorName
+                            )
+                        } else {
+                            Box(
+                                Modifier
+                                    .fillMaxSize()
+                                    .background(Color(0xFF1A1A1A))
+                            )
+                        }
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.Center)
+                                .size(28.dp)
+                                .clip(CircleShape)
+                                .background(Color.Black.copy(alpha = 0.4f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                Icons.Default.PlayArrow,
+                                contentDescription = "Abrir Clip",
+                                tint = BrandWhite,
+                                modifier = Modifier.size(16.dp)
+                            )
+                        }
+                    }
+                    Text(
+                        text = clip.authorName,
+                        style = LeoCaption,
+                        color = BrandText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 6.dp)
+                    )
+                    val caption = clip.content.trim().ifBlank { clip.title.trim() }
+                        .takeIf {
+                            it.isNotBlank() &&
+                                !it.equals("Reel", ignoreCase = true) &&
+                                !it.equals("Clip", ignoreCase = true)
+                        }
+                    if (caption != null) {
+                        Text(
+                            text = caption,
+                            style = LeoCaption,
+                            color = MutedText,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun HomeReelsTab(
     posts: List<FeedPost>,
     modifier: Modifier = Modifier,
-    onAuthorClick: (String) -> Unit = {}
+    startPostId: String? = null,
+    onAuthorClick: (String) -> Unit = {},
+    onComment: (String) -> Unit = {}
 ) {
     if (posts.isEmpty()) {
         LeoEmptyState(
-            title = "Todavía no hay Reels",
-            message = "Cuando haya videos cortos, van a aparecer aquí. La reproducción nativa queda pendiente.",
+            title = "Todavía no hay Clips",
+            message = "Cuando haya videos cortos, van a aparecer aquí.",
             icon = Icons.Default.PlayArrow,
             modifier = modifier.fillMaxSize()
         )
         return
     }
-    val pagerState = rememberPagerState(pageCount = { posts.size })
+    val startIndex = posts.indexOfFirst { it.id == startPostId }.coerceAtLeast(0)
+    val pagerState = rememberPagerState(initialPage = startIndex, pageCount = { posts.size })
     VerticalPager(
         state = pagerState,
         modifier = modifier.fillMaxSize()
     ) { page ->
         val post = posts[page]
+        val mediaUrls = com.comunidapp.app.domain.social.SocialPostMedia.displayUrls(
+            post.imageUrl,
+            post.imageUrls
+        )
+        val videoUrl = mediaUrls.firstOrNull()
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(Color.Black)
         ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .background(BrandCream),
-                contentAlignment = Alignment.Center
-            ) {
-                if (post.imageUrl != null) {
-                    PetImage(
-                        imageUrl = post.imageUrl,
-                        modifier = Modifier.fillMaxSize(),
-                        contentDescription = post.title
-                    )
-                } else {
-                    Icon(Icons.Default.PlayArrow, null, tint = BrandOrangeSoft, modifier = Modifier.size(72.dp))
-                }
-                Text(
-                    text = "Reproducción pendiente",
-                    style = LeoCaption,
-                    color = BrandText,
-                    modifier = Modifier
-                        .align(Alignment.Center)
-                        .background(BrandWhite.copy(alpha = 0.85f), RoundedCornerShape(8.dp))
-                        .padding(horizontal = 12.dp, vertical = 6.dp)
+            if (!videoUrl.isNullOrBlank() &&
+                com.comunidapp.app.domain.social.SocialPostMedia.isVideoMedia(
+                    post.type,
+                    post.mediaMime,
+                    videoUrl
                 )
+            ) {
+                com.comunidapp.app.ui.media.ReelFeedMedia(
+                    url = videoUrl,
+                    modifier = Modifier.fillMaxSize(),
+                    previewLabel = "Clip",
+                    allowPlayback = pagerState.currentPage == page
+                )
+            } else if (post.imageUrl != null) {
+                PetImage(
+                    imageUrl = post.imageUrl,
+                    modifier = Modifier.fillMaxSize(),
+                    contentDescription = post.title
+                )
+            } else {
+                Box(
+                    modifier = Modifier.fillMaxSize(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        Icons.Default.PlayArrow,
+                        null,
+                        tint = BrandOrangeSoft,
+                        modifier = Modifier.size(72.dp)
+                    )
+                }
             }
             Column(
                 modifier = Modifier
@@ -414,19 +530,20 @@ fun HomeReelsTab(
                     color = BrandWhite,
                     modifier = Modifier.clickable { onAuthorClick(post.authorId) }
                 )
-                Text(
-                    text = post.content.ifBlank { post.title },
-                    style = LeoCaption,
-                    color = BrandWhite,
-                    maxLines = 3,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.padding(top = LeoDimens.SpaceSm)
-                ) {
-                    Icon(Icons.Default.MusicNote, null, tint = BrandWhite, modifier = Modifier.size(16.dp))
-                    Text(" Audio original", style = LeoCaption, color = BrandWhite)
+                val caption = post.content.trim().ifBlank { post.title.trim() }
+                    .takeIf {
+                        it.isNotBlank() &&
+                            !it.equals("Reel", ignoreCase = true) &&
+                            !it.equals("Clip", ignoreCase = true)
+                    }
+                if (caption != null) {
+                    Text(
+                        text = caption,
+                        style = LeoCaption,
+                        color = BrandWhite,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
                 }
             }
             Column(
@@ -437,6 +554,12 @@ fun HomeReelsTab(
                 verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceMd)
             ) {
                 Icon(Icons.Default.FavoriteBorder, contentDescription = "Me gusta", tint = BrandWhite)
+                Icon(
+                    Icons.AutoMirrored.Outlined.Chat,
+                    contentDescription = "Comentar",
+                    tint = BrandWhite,
+                    modifier = Modifier.clickable { onComment(post.id) }
+                )
                 Icon(Icons.Default.Share, contentDescription = "Compartir", tint = BrandWhite)
             }
         }

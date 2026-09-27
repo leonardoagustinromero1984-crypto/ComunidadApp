@@ -35,6 +35,9 @@ interface FileObjectUploader {
         onSession: (TusUploadSessionHint) -> Unit = {}
     ): AppResult<Unit> {
         if (isCancelled()) return fileUploadFailure("CANCELLED")
+        if (mimeType.lowercase().startsWith("video/")) {
+            return fileUploadFailure("VIDEO_REQUIRES_STREAM")
+        }
         return uploadBytes(physicalBucket, storagePath, file.readBytes(), mimeType, onProgress)
     }
 }
@@ -151,7 +154,8 @@ class SupabaseFileObjectUploader(
         val denied = validateTarget(physicalBucket, storagePath, probe, mimeType)
         if (denied != null) return denied
         if (!file.exists() || sizeBytes <= 0L) return fileUploadFailure("VALIDATION")
-        return if (ResumableUploadPolicy.shouldUseTus(sizeBytes)) {
+        val streamVideo = mimeType.lowercase().startsWith("video/")
+        return if (streamVideo || ResumableUploadPolicy.shouldUseTus(sizeBytes, mimeType)) {
             tus.uploadFile(
                 physicalBucket = physicalBucket,
                 storagePath = storagePath,

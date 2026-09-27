@@ -26,6 +26,8 @@ interface AdoptionApplicationRepository {
     suspend fun markUnderReview(id: String): Result<AdoptionApplication>
     suspend fun acceptApplication(id: String): Result<AdoptionApplication>
     suspend fun rejectApplication(id: String, reason: String? = null): Result<AdoptionApplication>
+    suspend fun reactivateApplication(id: String): Result<AdoptionApplication> =
+        Result.failure(UnsupportedOperationException("REACTIVATE_UNAVAILABLE"))
 }
 
 /**
@@ -210,11 +212,9 @@ class MockAdoptionApplicationRepository(
                     (app.status == AdoptionApplicationStatus.SUBMITTED ||
                         app.status == AdoptionApplicationStatus.UNDER_REVIEW) -> {
                     app.copy(
-                        status = AdoptionApplicationStatus.REJECTED,
+                        status = AdoptionApplicationStatus.PAUSED,
                         reviewedAt = now,
                         reviewedBy = actor,
-                        rejectionReason = app.rejectionReason?.ifBlank { null }
-                            ?: "Se seleccionó otra postulación",
                         updatedAt = now
                     )
                 }
@@ -251,6 +251,20 @@ class MockAdoptionApplicationRepository(
                 updatedAt = now
             )
         )
+    }
+
+    override suspend fun reactivateApplication(id: String): Result<AdoptionApplication> {
+        val actor = actorUserId() ?: return fail("NOT_AUTHENTICATED")
+        val existing = store.value.find { it.id == id } ?: return fail("APPLICATION_NOT_FOUND")
+        if (!isManagerOfAdoption(existing.adoptionId, actor)) return fail("APPLICATION_FORBIDDEN")
+        if (existing.status != AdoptionApplicationStatus.PAUSED) return fail("APPLICATION_INVALID_TRANSITION")
+        if (store.value.any {
+                it.adoptionId == existing.adoptionId && it.status == AdoptionApplicationStatus.ACCEPTED
+            }
+        ) {
+            return fail("APPLICATION_ALREADY_ACCEPTED")
+        }
+        return replace(existing.copy(status = AdoptionApplicationStatus.SUBMITTED, updatedAt = System.currentTimeMillis()))
     }
 
     private fun replace(updated: AdoptionApplication): Result<AdoptionApplication> {

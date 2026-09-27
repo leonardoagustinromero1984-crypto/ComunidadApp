@@ -1,15 +1,20 @@
 package com.comunidapp.app.ui.components.leo
 
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -26,9 +31,9 @@ import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -38,13 +43,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.comunidapp.app.data.model.FeedMediaAvailability
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.PostType
+import com.comunidapp.app.domain.social.SocialPostMedia
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandGreen
@@ -60,6 +68,7 @@ import com.comunidapp.app.ui.theme.LeoCardTitle
 import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.theme.MutedText
 import com.comunidapp.app.ui.theme.NeutralBorder
+import com.comunidapp.app.ui.theme.SurfaceMuted
 import com.comunidapp.app.ui.theme.UrgentContainer
 import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.ui.util.displayDate
@@ -78,19 +87,13 @@ fun LeoSocialPostCard(
     onSaveClick: (() -> Unit)? = null,
     onReportClick: (() -> Unit)? = null,
     onBlockClick: (() -> Unit)? = null,
-    onSpecialCta: (() -> Unit)? = null
+    onSpecialCta: (() -> Unit)? = null,
+    onPostClick: (() -> Unit)? = null
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
     val special = specialBadgeFor(post.type)
 
-    Surface(
-        modifier = modifier.fillMaxWidth(),
-        color = BrandWhite,
-        shape = RoundedCornerShape(LeoDimens.RadiusCard),
-        border = androidx.compose.foundation.BorderStroke(1.dp, NeutralBorder),
-        shadowElevation = 0.dp
-    ) {
-        Column {
+    Column(modifier = modifier.fillMaxWidth()) {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -101,7 +104,7 @@ fun LeoSocialPostCard(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(BrandOrangeContainer),
+                        .background(SurfaceMuted),
                     contentAlignment = Alignment.Center
                 ) {
                     if (post.authorImageUrl != null) {
@@ -109,7 +112,8 @@ fun LeoSocialPostCard(
                             imageUrl = post.authorImageUrl,
                             modifier = Modifier.size(40.dp),
                             cornerRadius = 20.dp,
-                            contentDescription = post.authorName
+                            contentDescription = post.authorName,
+                            decodeSize = 40.dp
                         )
                     } else {
                         Icon(Icons.Default.Pets, null, tint = BrandOrangeSoft, modifier = Modifier.size(22.dp))
@@ -167,24 +171,98 @@ fun LeoSocialPostCard(
                 }
             }
 
-            if (post.imageUrl != null) {
-                PetImage(
-                    imageUrl = post.imageUrl,
+            val mediaUrls = SocialPostMedia.displayUrls(post.imageUrl, post.imageUrls)
+            val videoUrl = mediaUrls.firstOrNull()
+            val playVideo = SocialPostMedia.isVideoMedia(post.type, post.mediaMime, videoUrl)
+            if (playVideo && !videoUrl.isNullOrBlank()) {
+                val isReel = post.type == PostType.REEL
+                val openFull = if (!isReel && onPostClick != null) onPostClick else null
+                val boxModifier = if (openFull != null || isReel) {
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(if (isReel) 9f / 16f else 4f / 5f)
+                } else {
+                    Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 220.dp, max = 520.dp)
+                }
+                Box(modifier = boxModifier) {
+                    com.comunidapp.app.ui.media.ReelFeedMedia(
+                        url = videoUrl,
+                        modifier = Modifier.fillMaxSize(),
+                        previewLabel = if (isReel) "Clip" else "Video",
+                        cropPreview = openFull != null || isReel,
+                        onOpenFull = openFull
+                    )
+                }
+            } else if (mediaUrls.isNotEmpty()) {
+                val pagerState = rememberPagerState(pageCount = { mediaUrls.size })
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .aspectRatio(1f),
-                    cornerRadius = 0.dp,
-                    contentDescription = post.title
-                )
+                        .aspectRatio(1f)
+                ) {
+                    HorizontalPager(state = pagerState, modifier = Modifier.fillMaxWidth()) { page ->
+                        PetImage(
+                            imageUrl = mediaUrls[page],
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .aspectRatio(1f)
+                                .then(
+                                    if (onPostClick != null) {
+                                        Modifier.pointerInput(post.id) {
+                                            detectTapGestures(onTap = { onPostClick() })
+                                        }
+                                    } else {
+                                        Modifier
+                                    }
+                                ),
+                            cornerRadius = 0.dp,
+                            contentDescription = post.title
+                        )
+                    }
+                    if (mediaUrls.size > 1) {
+                        Text(
+                            text = "${pagerState.currentPage + 1}/${mediaUrls.size}",
+                            style = LeoCaption.copy(fontWeight = FontWeight.SemiBold),
+                            color = BrandWhite,
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(LeoDimens.SpaceSm)
+                                .background(BrandText.copy(alpha = 0.55f), RoundedCornerShape(12.dp))
+                                .padding(horizontal = 8.dp, vertical = 4.dp)
+                        )
+                    }
+                }
             } else {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(180.dp)
-                        .background(BrandCream),
+                        .background(BrandCream)
+                        .then(
+                            if (onPostClick != null) {
+                                Modifier.clickable { onPostClick() }
+                            } else {
+                                Modifier
+                            }
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(Icons.Default.Pets, contentDescription = null, tint = BrandOrangeSoft, modifier = Modifier.size(48.dp))
+                    if (post.mediaAvailability == FeedMediaAvailability.UNAVAILABLE) {
+                        Text(
+                            text = "Medio no disponible",
+                            style = LeoCaption.copy(fontWeight = FontWeight.SemiBold),
+                            color = MutedText
+                        )
+                    } else {
+                        Icon(
+                            Icons.Default.Pets,
+                            contentDescription = null,
+                            tint = BrandOrangeSoft,
+                            modifier = Modifier.size(48.dp)
+                        )
+                    }
                 }
             }
 
@@ -218,7 +296,13 @@ fun LeoSocialPostCard(
                 }
             }
 
-            Column(modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm)) {
+            Column(
+                modifier = Modifier
+                    .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm)
+                    .then(
+                        if (onPostClick != null) Modifier.clickable { onPostClick() } else Modifier
+                    )
+            ) {
                 if (post.likeCount > 0) {
                     Text(
                         text = "${post.likeCount} me gusta",
@@ -226,16 +310,51 @@ fun LeoSocialPostCard(
                         color = BrandText
                     )
                 }
-                val body = post.content.takeIf { it.isNotBlank() }
-                    ?: post.title.takeIf { it.isNotBlank() }.orEmpty()
-                if (body.isNotBlank()) {
+                val rawTitle = post.title.trim()
+                val rawContent = post.content.trim()
+                val inventedReelTitle = post.type == PostType.REEL &&
+                    (rawTitle.equals("Reel", ignoreCase = true) ||
+                        rawTitle.equals("Clip", ignoreCase = true))
+                val title = if (inventedReelTitle) "" else rawTitle
+                val content = if (post.type == PostType.REEL &&
+                    (rawContent.equals("Reel", ignoreCase = true) ||
+                        rawContent.equals("Clip", ignoreCase = true))
+                ) {
+                    ""
+                } else {
+                    rawContent
+                }
+                if (title.isNotBlank()) {
                     Text(
-                        text = body,
+                        text = title,
+                        style = LeoCaption.copy(fontWeight = FontWeight.SemiBold),
+                        color = BrandText,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 2.dp)
+                    )
+                }
+                if (content.isNotBlank()) {
+                    Text(
+                        text = content,
                         style = LeoCaption,
                         color = BrandText,
                         maxLines = 4,
                         overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(top = 2.dp)
+                        modifier = Modifier.padding(top = if (title.isNotBlank()) 2.dp else 2.dp)
+                    )
+                }
+                val petLabel = post.petNames.filter { it.isNotBlank() }
+                    .ifEmpty { emptyList() }
+                    .joinToString(" · ")
+                if (petLabel.isNotBlank()) {
+                    Text(
+                        text = "🐾 $petLabel",
+                        style = LeoCaption,
+                        color = MutedText,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(top = 4.dp)
                     )
                 }
                 if (post.commentCount > 0) {
@@ -262,7 +381,7 @@ fun LeoSocialPostCard(
                     modifier = Modifier.padding(top = LeoDimens.SpaceSm, bottom = LeoDimens.SpaceSm)
                 )
             }
-        }
+        HorizontalDivider(thickness = 0.5.dp, color = NeutralBorder)
     }
 }
 
@@ -273,6 +392,7 @@ private fun specialBadgeFor(type: PostType): SpecialBadge? = when (type) {
     PostType.LOST_FOUND -> SpecialBadge("PERDIDO / ENCONTRADO", "Ver aviso", UrgentContainer, UrgentRed)
     PostType.URGENT -> SpecialBadge("URGENTE", "Ver detalle", UrgentContainer, UrgentRed)
     PostType.PROMO -> SpecialBadge("PROMO", "Ver más", BrandOrangeContainer, BrandOrange)
+    PostType.REEL -> SpecialBadge("CLIP", "Ver clip", BrandOrangeContainer, BrandOrange)
     else -> null
 }
 

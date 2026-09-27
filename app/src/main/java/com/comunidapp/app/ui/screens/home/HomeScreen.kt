@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.PostType
@@ -59,6 +60,8 @@ fun HomeScreen(
     onNavigateToMyPets: () -> Unit = {},
     onNavigateToPetDetail: (String) -> Unit = {},
     onNavigateToAddPet: () -> Unit = {},
+    onPostClick: (String) -> Unit = {},
+    onOpenClipViewer: (String) -> Unit = {},
     viewModel: HomeViewModel = viewModel()
 ) {
     val posts by viewModel.posts.collectAsState()
@@ -84,7 +87,9 @@ fun HomeScreen(
     }
 
     val storiesTray = stories.filter { it.isActiveStory() }
-    val feedPosts = posts.filter { it.type != PostType.STORY && !it.isExpired() }
+    val feedPosts = com.comunidapp.app.domain.social.SocialFeedComposition.visibleSocialItems(posts)
+    val publications = com.comunidapp.app.domain.social.SocialFeedComposition.publications(feedPosts)
+    val clips = com.comunidapp.app.domain.social.SocialFeedComposition.clips(feedPosts)
     val ownStories = storiesTray.filter { it.authorId == currentUser?.id }
     val otherStories = storiesTray.filter { it.authorId != currentUser?.id }
     val context = androidx.compose.ui.platform.LocalContext.current
@@ -121,7 +126,7 @@ fun HomeScreen(
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(bottom = LeoDimens.SpaceMd),
-                verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
                 item(key = "stories") {
                     StoriesRow(
@@ -147,7 +152,7 @@ fun HomeScreen(
                     )
                 }
                 when {
-                    feedPosts.isEmpty() -> {
+                    publications.isEmpty() && clips.isEmpty() -> {
                         item(key = "empty_feed") {
                             LeoEmptyState(
                                 title = "Tu comunidad empieza acá",
@@ -159,26 +164,39 @@ fun HomeScreen(
                         }
                     }
                     else -> {
-                        itemsIndexed(feedPosts, key = { _, p -> p.id }) { index, post ->
+                        if (clips.isNotEmpty() && publications.isEmpty()) {
+                            item(key = "clips_only") {
+                                ClipsCarousel(clips = clips, onClipClick = onOpenClipViewer)
+                            }
+                        }
+                        itemsIndexed(publications, key = { _, p -> p.id }) { index, post ->
                             LeoSocialPostCard(
                                 post = post,
                                 isLiked = likedIds.contains(post.id),
                                 isSaved = savedIds.contains(post.id),
                                 onAuthorClick = onAuthorClick,
                                 onLikeClick = { viewModel.toggleLike(post.id) },
-                                onCommentClick = { viewModel.openComments(post.id) },
+                                onCommentClick = { onPostClick(post.id) },
                                 onShareClick = { sharePost = post },
                                 onSaveClick = { viewModel.toggleSave(post.id) },
                                 onReportClick = { viewModel.reportPost(post.id) },
                                 onBlockClick = { viewModel.blockAuthor(post.authorId) },
+                                onPostClick = { onPostClick(post.id) },
                                 onSpecialCta = when (post.type) {
                                     PostType.ADOPTION -> onNavigateToSumate
-                                    PostType.LOST_FOUND, PostType.URGENT -> onNavigateToLostFound
+                                    PostType.LOST_FOUND, PostType.URGENT -> ({ onPostClick(post.id) })
                                     else -> null
                                 },
-                                modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)
+                                modifier = Modifier.fillMaxWidth()
                             )
-                            if (index == feedPosts.lastIndex && hasMore) {
+                            if (index == 0 && clips.isNotEmpty()) {
+                                ClipsCarousel(
+                                    clips = clips,
+                                    onClipClick = onOpenClipViewer,
+                                    modifier = Modifier.padding(top = LeoDimens.SpaceSm)
+                                )
+                            }
+                            if (index == publications.lastIndex && hasMore) {
                                 LaunchedEffect(post.id) { viewModel.loadMore() }
                             }
                         }

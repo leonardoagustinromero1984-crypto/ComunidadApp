@@ -1,6 +1,5 @@
 package com.comunidapp.app.ui.components.leo
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -10,17 +9,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import com.comunidapp.app.ui.theme.LeoCaption
@@ -43,16 +38,7 @@ fun LeoVerSettingsSection(
             color = visual.textPrimary,
             modifier = Modifier.padding(horizontal = 4.dp, vertical = LeoDimens.SpaceS)
         )
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(LeoDimens.RadiusCard),
-            color = visual.surface,
-            shadowElevation = 0.dp,
-            tonalElevation = 0.dp,
-            border = androidx.compose.foundation.BorderStroke(1.dp, visual.borderSoft)
-        ) {
-            Column(modifier = Modifier.fillMaxWidth(), content = content)
-        }
+        Column(modifier = Modifier.fillMaxWidth(), content = content)
     }
 }
 
@@ -66,8 +52,9 @@ fun LeoVerSettingsRow(
     trailing: @Composable (() -> Unit)? = null
 ) {
     val visual = leoVisual()
+    Column(modifier = modifier.fillMaxWidth()) {
     Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
             .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact),
@@ -77,11 +64,7 @@ fun LeoVerSettingsRow(
             imageVector = icon,
             contentDescription = null,
             tint = visual.primaryDark,
-            modifier = Modifier
-                .size(36.dp)
-                .clip(CircleShape)
-                .background(visual.primarySoft)
-                .padding(8.dp)
+            modifier = Modifier.size(22.dp)
         )
         Spacer(modifier = Modifier.width(LeoDimens.SpaceCompact))
         Column(modifier = Modifier.weight(1f)) {
@@ -99,5 +82,7 @@ fun LeoVerSettingsRow(
                 tint = visual.textSecondary
             )
         }
+    }
+    LeoHairline(modifier = Modifier.padding(start = LeoDimens.SpaceMd))
     }
 }

@@ -1,8 +1,8 @@
 package com.comunidapp.app.ui.screens.onboarding
 
 import com.comunidapp.app.ui.components.DatePickerField
+import com.comunidapp.app.ui.media.rememberLeoVerPhotoSourcePicker
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
@@ -21,12 +21,8 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
@@ -44,6 +40,9 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.user.ProfileVisibility
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
@@ -51,6 +50,15 @@ import com.comunidapp.app.ui.components.v2.V2FormImagePreview
 import com.comunidapp.app.ui.components.v2.V2LocationCityProvincePicker
 import com.comunidapp.app.ui.media.LeoVerAvatarCropKind
 import com.comunidapp.app.ui.media.rememberLeoVerAvatarCropLauncher
+import com.comunidapp.app.ui.theme.BrandOrange
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoBody
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.LeoSectionTitle
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.viewmodel.OnboardingStep
 import com.comunidapp.app.viewmodel.ProfileOnboardingUiState
 import com.comunidapp.app.viewmodel.ProfileOnboardingViewModel
@@ -68,9 +76,10 @@ fun ProfileOnboardingScreen(
         onCancel = viewModel::cancelPhotoEditor,
         onError = viewModel::onPhotoCropFailed
     )
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri -> uri?.let(cropPhoto) }
+    val pickPhoto = rememberLeoVerPhotoSourcePicker(
+        sheetTitle = "Agregar foto",
+        onSourceSelected = { uri -> cropPhoto(uri) }
+    )
 
     LaunchedEffect(uiState.success) {
         if (uiState.success) {
@@ -99,7 +108,7 @@ fun ProfileOnboardingScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding)
-                    .padding(horizontal = 24.dp)
+                    .padding(horizontal = LeoDimens.SpaceXl)
                     .verticalScroll(rememberScrollState())
             ) {
                 OnboardingProgress(step = uiState.step)
@@ -108,33 +117,27 @@ fun ProfileOnboardingScreen(
                 when (uiState.step) {
                     OnboardingStep.IDENTITY -> IdentityStep(uiState, viewModel)
                     OnboardingStep.LOCATION_PRIVACY -> LocationPrivacyStep(uiState, viewModel)
-                    OnboardingStep.AVATAR_SUMMARY -> AvatarSummaryStep(uiState, viewModel, pickImageLauncher)
+                    OnboardingStep.AVATAR_SUMMARY -> AvatarSummaryStep(uiState, viewModel, pickPhoto)
                 }
 
                 uiState.errorMessage?.let { error ->
                     Spacer(modifier = Modifier.height(12.dp))
                     Text(
                         text = error,
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        color = UrgentRed,
+                        style = LeoCaption
                     )
                     if (uiState.photoUploadFailed) {
                         Spacer(modifier = Modifier.height(8.dp))
                         if (uiState.pendingImageUri != null) {
-                            OutlinedButton(
+                            LeoOutlinedButton(
+                                text = "Reintentar foto",
                                 onClick = viewModel::retryPhotoUpload,
-                                modifier = Modifier.fillMaxWidth(),
                                 enabled = !uiState.isSubmitting
-                            ) {
-                                Text("Reintentar foto")
-                            }
+                            )
                         }
                         TextButton(
-                            onClick = {
-                                pickImageLauncher.launch(
-                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                                )
-                            },
+                            onClick = pickPhoto,
                             enabled = !uiState.isSubmitting
                         ) {
                             Text("Cambiar foto")
@@ -149,25 +152,22 @@ fun ProfileOnboardingScreen(
                 }
 
                 Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = viewModel::goNext,
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isSubmitting && !uiState.photoUploadFailed && !uiState.isProcessingPhoto
-                ) {
-                    if (uiState.isSubmitting) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text(
-                            if (uiState.step == OnboardingStep.AVATAR_SUMMARY) {
-                                "Completar perfil"
-                            } else {
-                                "Continuar"
-                            }
-                        )
-                    }
+                if (uiState.isSubmitting) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = BrandOrange,
+                        strokeWidth = 2.dp
+                    )
+                } else {
+                    LeoPrimaryButton(
+                        text = if (uiState.step == OnboardingStep.AVATAR_SUMMARY) {
+                            "Completar perfil"
+                        } else {
+                            "Continuar"
+                        },
+                        onClick = viewModel::goNext,
+                        enabled = !uiState.photoUploadFailed && !uiState.isProcessingPhoto
+                    )
                 }
                 Spacer(modifier = Modifier.height(24.dp))
             }
@@ -190,8 +190,8 @@ private fun OnboardingProgress(step: OnboardingStep) {
     ) {
         Text(
             text = "Paso $stepIndex de 3",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = LeoCaption,
+            color = BrandTextSecondary
         )
         Spacer(modifier = Modifier.height(8.dp))
         LinearProgressIndicator(
@@ -208,7 +208,8 @@ private fun IdentityStep(
 ) {
     Text(
         text = "Tu identidad pública",
-        style = MaterialTheme.typography.titleMedium
+        style = LeoSectionTitle,
+        color = BrandText
     )
     Spacer(modifier = Modifier.height(4.dp))
     Text(
@@ -217,22 +218,20 @@ private fun IdentityStep(
         } else {
             "Tu nombre de usuario es único y te permite que otros te encuentren en LeoVer."
         },
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        style = LeoCaption,
+        color = BrandTextSecondary
     )
     Spacer(modifier = Modifier.height(16.dp))
     if (!uiState.displayNamePresent) {
-        OutlinedTextField(
+        LeoTextField(
             value = uiState.displayName,
             onValueChange = viewModel::onDisplayNameChange,
-            label = { Text("Nombre para mostrar") },
+            label = "Nombre para mostrar",
+            required = true,
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
             enabled = !uiState.isSubmitting,
             isError = uiState.fieldErrors.containsKey("displayName"),
-            supportingText = {
-                uiState.fieldErrors["displayName"]?.let { Text(it) }
-            }
+            supportingText = uiState.fieldErrors["displayName"]
         )
         Spacer(modifier = Modifier.height(12.dp))
     } else {
@@ -242,25 +241,24 @@ private fun IdentityStep(
     if (uiState.usernameLocked) {
         SummaryRow("Usuario", "@${uiState.username}")
     } else {
-        OutlinedTextField(
+        LeoTextField(
             value = uiState.username,
             onValueChange = viewModel::onUsernameChange,
-            label = { Text("Nombre de usuario") },
+            label = "Nombre de usuario",
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
             enabled = !uiState.isSubmitting,
             isError = uiState.fieldErrors.containsKey("username"),
-            supportingText = {
-                when {
-                    uiState.fieldErrors["username"] != null -> Text(uiState.fieldErrors["username"]!!)
-                    uiState.checkingUsername -> Text("Verificando disponibilidad…")
-                    uiState.usernameAvailable == true -> Text("Usuario disponible")
-                }
+            supportingText = when {
+                uiState.fieldErrors["username"] != null -> uiState.fieldErrors["username"]
+                uiState.checkingUsername -> "Verificando disponibilidad…"
+                uiState.usernameAvailable == true -> "Usuario disponible"
+                else -> null
             },
             trailingIcon = {
                 if (uiState.checkingUsername) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
+                        color = BrandOrange,
                         strokeWidth = 2.dp
                     )
                 }
@@ -279,8 +277,8 @@ private fun IdentityStep(
         uiState.fieldErrors["birthDate"]?.let {
             Text(
                 text = it,
-                color = MaterialTheme.colorScheme.error,
-                style = MaterialTheme.typography.bodySmall
+                color = UrgentRed,
+                style = LeoCaption
             )
         }
     }
@@ -293,13 +291,14 @@ private fun LocationPrivacyStep(
 ) {
     Text(
         text = "Ubicación y privacidad",
-        style = MaterialTheme.typography.titleMedium
+        style = LeoSectionTitle,
+        color = BrandText
     )
     Spacer(modifier = Modifier.height(4.dp))
     Text(
         text = "Podés ajustar qué información compartís con la comunidad.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        style = LeoCaption,
+        color = BrandTextSecondary
     )
     Spacer(modifier = Modifier.height(16.dp))
     V2LocationCityProvincePicker(
@@ -314,10 +313,10 @@ private fun LocationPrivacyStep(
     )
     uiState.fieldErrors["province"]?.let { message ->
         Spacer(modifier = Modifier.height(8.dp))
-        Text(text = message, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+        Text(text = message, color = UrgentRed, style = LeoCaption)
     }
     Spacer(modifier = Modifier.height(20.dp))
-    Text("Visibilidad del perfil social", style = MaterialTheme.typography.titleSmall)
+    Text("Visibilidad del perfil social", style = LeoCardTitle, color = BrandText)
     Spacer(modifier = Modifier.height(4.dp))
     Text(
         text = if (uiState.profileVisibility == ProfileVisibility.PRIVATE) {
@@ -325,14 +324,14 @@ private fun LocationPrivacyStep(
         } else {
             "Cualquier persona puede ver tu perfil social y el contenido que publiques como público."
         },
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        style = LeoCaption,
+        color = BrandTextSecondary
     )
     Spacer(modifier = Modifier.height(4.dp))
     Text(
         text = "Esta configuración no modifica la privacidad de VitaCora ni la información de tus mascotas.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        style = LeoCaption,
+        color = BrandTextSecondary
     )
     Spacer(modifier = Modifier.height(8.dp))
     com.comunidapp.app.domain.user.SocialProfileVisibility.selectable.forEach { visibility ->
@@ -381,7 +380,7 @@ private fun VisibilityOption(
         verticalAlignment = Alignment.CenterVertically
     ) {
         RadioButton(selected = selected, onClick = onSelect, enabled = enabled)
-        Text(text = label, style = MaterialTheme.typography.bodyLarge)
+        Text(text = label, style = LeoBody, color = BrandText)
     }
 }
 
@@ -398,11 +397,11 @@ private fun PrivacyToggle(
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
-            Text(text = title, style = MaterialTheme.typography.titleSmall)
+            Text(text = title, style = LeoCardTitle, color = BrandText)
             Text(
                 text = hint,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = LeoCaption,
+                color = BrandTextSecondary
             )
         }
         Switch(
@@ -417,18 +416,19 @@ private fun PrivacyToggle(
 private fun AvatarSummaryStep(
     uiState: ProfileOnboardingUiState,
     viewModel: ProfileOnboardingViewModel,
-    pickImageLauncher: ActivityResultLauncher<PickVisualMediaRequest>
+    onPickPhoto: () -> Unit
 ) {
 
     Text(
         text = "Foto y resumen",
-        style = MaterialTheme.typography.titleMedium
+        style = LeoSectionTitle,
+        color = BrandText
     )
     Spacer(modifier = Modifier.height(4.dp))
     Text(
         text = "La foto y la biografía son opcionales. Podés completar el perfil sin ellas.",
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
+        style = LeoCaption,
+        color = BrandTextSecondary
     )
     Spacer(modifier = Modifier.height(16.dp))
     Column(
@@ -455,16 +455,11 @@ private fun AvatarSummaryStep(
             CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 2.dp)
         }
         Spacer(modifier = Modifier.height(12.dp))
-        OutlinedButton(
-            onClick = {
-                pickImageLauncher.launch(
-                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
-                )
-            },
+        LeoOutlinedButton(
+            text = "Elegir foto (opcional)",
+            onClick = onPickPhoto,
             enabled = !uiState.isSubmitting && !uiState.isProcessingPhoto
-        ) {
-            Text("Elegir foto (opcional)")
-        }
+        )
         if (uiState.pendingImageUri != null) {
             Spacer(modifier = Modifier.height(8.dp))
             TextButton(
@@ -476,16 +471,17 @@ private fun AvatarSummaryStep(
         }
     }
     Spacer(modifier = Modifier.height(20.dp))
-    OutlinedTextField(
+    LeoTextField(
         value = uiState.bio,
         onValueChange = viewModel::onBioChange,
-        label = { Text("Biografía (opcional)") },
+        label = "Biografía (opcional)",
         modifier = Modifier.fillMaxWidth(),
+        singleLine = false,
         minLines = 3,
         enabled = !uiState.isSubmitting
     )
     Spacer(modifier = Modifier.height(20.dp))
-    Text("Resumen", style = MaterialTheme.typography.titleSmall)
+    Text("Resumen", style = LeoCardTitle, color = BrandText)
     Spacer(modifier = Modifier.height(8.dp))
     SummaryRow("Nombre", uiState.displayName)
     SummaryRow("Usuario", "@${uiState.username}")
@@ -511,12 +507,13 @@ private fun SummaryRow(label: String, value: String) {
     ) {
         Text(
             text = label,
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
+            style = LeoCaption,
+            color = BrandTextSecondary
         )
         Text(
             text = value,
-            style = MaterialTheme.typography.bodyMedium
+            style = LeoBody,
+            color = BrandText
         )
     }
 }

@@ -20,6 +20,7 @@ googleServices = "4.4.2"
 fragmentKtx = "1.8.6"
 coroutines = "1.10.2"
 datastore = "1.1.1"
+work = "2.10.1"
 composeMultiplatform = "1.11.1"
 # JetBrains multiplatform Navigation 2 — version paired with CMP 1.11.1 release notes (not a stack upgrade).
 jetbrainsNavigationCompose = "2.9.2"
@@ -71,6 +72,7 @@ firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.r
 firebase-messaging = { group = "com.google.firebase", name = "firebase-messaging" }
 kotlinx-coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastore" }
+androidx-work-runtime-ktx = { group = "androidx.work", name = "work-runtime-ktx", version.ref = "work" }
 maps-compose = { group = "com.google.maps.android", name = "maps-compose", version.ref = "mapsCompose" }
 play-services-maps = { group = "com.google.android.gms", name = "play-services-maps", version.ref = "playServicesMaps" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }

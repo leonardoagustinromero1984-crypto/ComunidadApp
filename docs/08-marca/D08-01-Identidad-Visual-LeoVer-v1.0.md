@@ -17,9 +17,18 @@
 
 LeoVer conecta mascotas, personas y comunidad. La identidad combina calidez (naranja / Leo) y cuidado natural (verde / Ver) en un símbolo amable, moderno, comunitario y profesional: perro y gato enfrentados con hoja integrada.
 
-Eslogan oficial:
+**Tagline de marca** (acceso / wordmark):
+
+**La comunidad de los Pet Lovers**
+
+Escritura exacta: «La» inicial mayúscula; «Pet Lovers» con P y L mayúsculas; el resto en minúscula.
+No usar variantes («El sitio…», «El encuentro…», «Comunidad de Pet Lovers»).
+
+**Eslogan institucional** (about, tutorial, material institucional):
 
 **Conectamos mascotas, personas y comunidad.**
+
+No sustituir uno por el otro. El tagline acompaña el logo en la pantalla de acceso. El eslogan institucional no se usa como firma bajo el wordmark de login.
 
 ---
 

@@ -40,6 +40,7 @@ data class PublicProfileRpcRow(
     val username: String? = null,
     @SerialName("display_name") val displayName: String? = null,
     @SerialName("avatar_path") val avatarPath: String? = null,
+    @SerialName("avatar_asset_id") val avatarAssetId: String? = null,
     val bio: String? = null,
     @SerialName("location_text") val locationText: String? = null,
     val city: String? = null,
@@ -120,15 +121,24 @@ class UserSupabaseDataSource {
     }
 
     fun observeUser(userId: String): Flow<User?> = flow {
+        var first = true
         while (coroutineContext.isActive) {
             try {
-                emit(getUserAllowThrow(userId))
+                var person = getUserAllowThrow(userId)
+                if (person == null && first) {
+                    delay(400)
+                    person = getUserAllowThrow(userId)
+                }
+                first = false
+                emit(person)
             } catch (_: Exception) {
                 // Transient read errors must not look like "PERSON missing".
             }
             delay(4_000)
         }
     }
+
+    suspend fun fetchPersonOrThrow(userId: String): User? = getUserAllowThrow(userId)
 
     private suspend fun getUserAllowThrow(userId: String): User? {
         val person = supabase.from(SupabaseTables.PERSONS)
@@ -278,7 +288,7 @@ class UserSupabaseDataSource {
                     id = row.id,
                     displayName = row.displayName.orEmpty(),
                     username = row.username,
-                    avatarPath = row.avatarPath,
+                    avatarPath = row.avatarAssetId?.takeIf { it.isNotBlank() } ?: row.avatarPath,
                     bio = row.bio,
                     locationText = row.locationText,
                     city = row.city,

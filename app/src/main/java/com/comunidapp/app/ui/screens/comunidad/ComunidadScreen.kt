@@ -437,6 +437,17 @@ fun ComunidadScreen(
                                 }
                             }
                         } else {
+                            items(uiState.nearbyItems, key = { "nearby-${it.kind}-${it.id}" }) { item ->
+                                LeoVerCard {
+                                    Text(item.name, style = LeoCaption)
+                                    Text(
+                                        "${item.kind} · ${item.badge}" +
+                                            (item.meters?.let { " · ${it.toInt()} m" } ?: ""),
+                                        style = LeoCaption,
+                                        color = visual.textSecondary
+                                    )
+                                }
+                            }
                             items(filteredServices, key = { it.id }) { service ->
                                 LeoVerProviderCard(
                                     service = service,

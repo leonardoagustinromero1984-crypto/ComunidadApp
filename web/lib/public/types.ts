@@ -60,3 +60,14 @@ export type PublicLostFoundCase = {
   created_at?: string | null;
   updated_at?: string | null;
 };
+
+export type PublicPost = {
+  id: string;
+  body?: string | null;
+  content_kind?: string | null;
+  author_name?: string | null;
+  created_at?: string | null;
+  media_bucket?: string | null;
+  media_path?: string | null;
+  media_mime?: string | null;
+};

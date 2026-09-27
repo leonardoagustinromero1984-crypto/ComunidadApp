@@ -1,0 +1,49 @@
+appId: ${APP_ID}
+name: "Adoption QA14 QA15 QA07"
+tags:
+  - community-care
+  - adoption
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA14_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Sumate"
+- tapOn: "Adopción"
+- tapOn: "QA - Luna Adopcion"
+- tapOn: "Quiero adoptar"
+- takeScreenshot: adoption_qa14_form
+- tapOn: "Enviar"
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person-keep.yaml
+    env:
+      USERNAME: ${QA15_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      APP_ID: ${APP_ID}
+- tapOn: "Sumate"
+- tapOn: "Adopción"
+- tapOn: "QA - Luna Adopcion"
+- tapOn: "Quiero adoptar"
+- tapOn: "Enviar"
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person-keep.yaml
+    env:
+      USERNAME: ${QA07_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      APP_ID: ${APP_ID}
+- tapOn: "Perfil"
+- tapOn: "Solicitudes recibidas"
+- takeScreenshot: adoption_received
+- tapOn: "Aceptar"
+- takeScreenshot: adoption_accepted

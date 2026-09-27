@@ -30,8 +30,7 @@ import androidx.compose.material.icons.filled.Pets
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -53,7 +52,10 @@ import androidx.compose.ui.unit.dp
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.data.model.VaccinationRecord
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandGreen
 import com.comunidapp.app.ui.theme.BrandGreenContainer
@@ -67,8 +69,8 @@ import com.comunidapp.app.ui.theme.NeutralBorder
 import com.comunidapp.app.ui.theme.UrgentContainer
 import com.comunidapp.app.ui.util.formatDisplayDate
 
-private val V2CardShape = RoundedCornerShape(20.dp)
-private val V2HeroShape = RoundedCornerShape(24.dp)
+private val V2CardShape = RoundedCornerShape(16.dp)
+private val V2HeroShape = RoundedCornerShape(16.dp)
 
 @Composable
 internal fun PetDetailV2TopBar(
@@ -185,10 +187,14 @@ internal fun PetIdentityBlock(
             maxLines = 2,
             overflow = TextOverflow.Ellipsis
         )
-        if (subtitle.isNotBlank()) {
+        val meta = listOfNotNull(
+            subtitle.takeIf { it.isNotBlank() },
+            ageLabel?.takeIf { it.isNotBlank() }
+        ).joinToString(" · ")
+        if (meta.isNotBlank()) {
             Text(
-                text = subtitle,
-                style = MaterialTheme.typography.bodyLarge,
+                text = meta,
+                style = MaterialTheme.typography.bodyMedium,
                 color = BrandTextSecondary,
                 modifier = Modifier.padding(top = 4.dp),
                 maxLines = 2,
@@ -202,14 +208,6 @@ internal fun PetIdentityBlock(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            if (!ageLabel.isNullOrBlank()) {
-                Text(
-                    text = ageLabel,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Medium,
-                    color = BrandText
-                )
-            }
             PetStatusChip(status = status, reasonCode = reasonCode)
         }
     }
@@ -218,44 +216,20 @@ internal fun PetIdentityBlock(
 @Composable
 internal fun PetPrimaryActions(
     canEdit: Boolean,
-    onEdit: () -> Unit,
-    onShare: () -> Unit
+    onOpenVitacora: () -> Unit,
+    onEdit: () -> Unit
 ) {
     Row(
         modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
     ) {
         if (canEdit) {
-            Button(
-                onClick = onEdit,
-                modifier = Modifier
-                    .weight(1f)
-                    .heightIn(min = 48.dp),
-                shape = RoundedCornerShape(16.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = BrandOrange,
-                    contentColor = BrandWhite
-                ),
-                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
-            ) {
-                Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.width(8.dp))
-                Text("Editar", maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Box(modifier = Modifier.weight(1f)) {
+                LeoOutlinedButton(text = "Editar", onClick = onEdit)
             }
         }
-        OutlinedButton(
-            onClick = onShare,
-            modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 48.dp),
-            shape = RoundedCornerShape(16.dp),
-            border = BorderStroke(1.dp, NeutralBorder),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandText),
-            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 12.dp)
-        ) {
-            Icon(Icons.Default.Share, contentDescription = null, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Compartir", maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Box(modifier = Modifier.weight(1f)) {
+            LeoPrimaryButton(text = "VitaCora", onClick = onOpenVitacora)
         }
     }
 }
@@ -265,15 +239,9 @@ internal fun PetV2Card(
     modifier: Modifier = Modifier,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = V2CardShape,
-        colors = CardDefaults.cardColors(containerColor = BrandWhite),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp),
-        border = BorderStroke(1.dp, NeutralBorder.copy(alpha = 0.7f)),
-        content = {
-            Column(modifier = Modifier.padding(18.dp), content = content)
-        }
+    Column(
+        modifier = modifier.fillMaxWidth().padding(vertical = LeoDimens.SpaceCompact),
+        content = content
     )
 }
 
@@ -318,7 +286,9 @@ internal fun PetInfoCard(rows: List<Pair<String, String>>) {
 internal fun PetHealthSummary(
     pet: Pet,
     canOpenHealth: Boolean,
-    onOpenHealth: () -> Unit
+    onOpenHealth: () -> Unit,
+    healthLoading: Boolean = false,
+    healthLoadError: String? = null
 ) {
     val nextVaccine = pet.vaccinations
         .mapNotNull { it.nextDueDate?.takeIf(String::isNotBlank)?.let { due -> it to due } }
@@ -329,16 +299,12 @@ internal fun PetHealthSummary(
     val pendingReminders = pet.reminders.count { it.title.isNotBlank() || it.date.isNotBlank() }
     val pendingVaccines = pet.vaccinations.count { !it.nextDueDate.isNullOrBlank() }
     val pendingCount = pendingReminders + pendingVaccines
-    val hasHealthData = pet.sterilized != null ||
-        (pet.weightKg != null && pet.weightKg > 0) ||
-        !pet.lastVetVisit.isNullOrBlank() ||
-        !pet.healthNotes.isNullOrBlank() ||
-        pet.allergies.isNotEmpty() ||
-        pet.medications.isNotEmpty() ||
-        pet.conditions.isNotEmpty() ||
-        administeredVaccines > 0 ||
-        !pet.lastDeworming.isNullOrBlank() ||
-        !pet.lastFleaTreatment.isNullOrBlank()
+    val healthState = com.comunidapp.app.domain.pets.PetHealthPresentation.state(
+        pet = pet,
+        healthLoading = healthLoading,
+        healthLoadError = healthLoadError
+    )
+    val hasHealthData = healthState == com.comunidapp.app.domain.pets.PetHealthViewState.DATA
 
     PetV2Card(
         modifier = if (canOpenHealth) {
@@ -408,23 +374,67 @@ internal fun PetHealthSummary(
                 color = BrandText
             )
         }
-        if (nextVaccine == null && pendingCount == 0) {
-            val healthBits = buildList {
-                pet.sterilized?.let { add("Castración: ${if (it.name == "YES") "Sí" else if (it.name == "NO") "No" else it.name}") }
-                pet.weightKg?.takeIf { it > 0 }?.let { add("Peso: ${it.toString().replace('.', ',')} kg") }
-                if (administeredVaccines > 0) {
-                    add("Vacunas registradas: $administeredVaccines")
-                }
-                pet.allergies.takeIf { it.isNotEmpty() }?.let {
-                    add("Alergias: ${it.joinToString()}")
-                } ?: add("Alergias: Ninguna registrada")
-                pet.conditions.takeIf { it.isNotEmpty() }?.let { add("Condiciones: ${it.joinToString()}") }
-                pet.medications.takeIf { it.isNotEmpty() }?.let { add("Medicación: ${it.joinToString()}") }
-                pet.lastVetVisit?.takeIf { it.isNotBlank() }?.let { add("Última visita: $it") }
-                pet.healthNotes?.takeIf { it.isNotBlank() }?.let { add(it) }
+        val healthBits = buildList {
+            pet.sterilized?.let { add("Castración: ${if (it.name == "YES") "Sí" else if (it.name == "NO") "No" else it.name}") }
+            pet.weightKg?.takeIf { it > 0 }?.let { add("Peso: ${it.toString().replace('.', ',')} kg") }
+            if (administeredVaccines > 0) {
+                add("Vacunas registradas: $administeredVaccines")
             }
-            Spacer(modifier = Modifier.height(12.dp))
-            if (hasHealthData) {
+            pet.allergies.takeIf { it.isNotEmpty() }?.let {
+                add("Alergias: ${it.joinToString()}")
+            }
+            pet.conditions.takeIf { it.isNotEmpty() }?.let { add("Condiciones: ${it.joinToString()}") }
+            pet.medications.takeIf { it.isNotEmpty() }?.let { add("Medicación: ${it.joinToString()}") }
+            pet.lastDeworming?.takeIf { it.isNotBlank() }?.let { date ->
+                val product = pet.dewormingProduct?.takeIf { it.isNotBlank() }
+                add(if (product != null) "Desparasitación: $product ($date)" else "Desparasitación: $date")
+            } ?: pet.dewormingProduct?.takeIf { it.isNotBlank() }?.let {
+                add("Desparasitación: $it")
+            }
+            pet.lastFleaTreatment?.takeIf { it.isNotBlank() }?.let { date ->
+                val product = pet.fleaTreatmentProduct?.takeIf { it.isNotBlank() }
+                add(if (product != null) "Antiparasitario: $product ($date)" else "Antiparasitario: $date")
+            } ?: pet.fleaTreatmentProduct?.takeIf { it.isNotBlank() }?.let {
+                add("Antiparasitario: $it")
+            }
+            pet.lastVetVisit?.takeIf { it.isNotBlank() }?.let { add("Última visita: $it") }
+            pet.healthNotes?.takeIf { it.isNotBlank() }?.let { add(it) }
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        when {
+            healthLoading -> {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(vertical = 4.dp)
+                ) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = BrandGreenDark
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "Cargando información de salud…",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = BrandTextSecondary
+                    )
+                }
+            }
+            healthState == com.comunidapp.app.domain.pets.PetHealthViewState.ERROR -> {
+                Text(
+                    text = healthLoadError ?: "No pudimos cargar la información de salud.",
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.error
+                )
+                Text(
+                    text = "Reintentá más tarde o abrí Ver salud.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = BrandTextSecondary,
+                    modifier = Modifier.padding(top = 4.dp)
+                )
+            }
+            hasHealthData -> {
                 healthBits.forEach { line ->
                     Text(
                         text = line,
@@ -433,7 +443,8 @@ internal fun PetHealthSummary(
                         modifier = Modifier.padding(top = 2.dp)
                     )
                 }
-            } else {
+            }
+            else -> {
                 Text(
                     text = "Todavía no cargaste información de salud.",
                     style = MaterialTheme.typography.titleSmall,
@@ -598,7 +609,13 @@ internal fun PetDeceasedBanner(petName: String) {
 
 internal fun petIdentitySubtitle(pet: Pet): String = buildString {
     pet.breed?.takeIf { it.isNotBlank() }?.let { append(it) }
-        ?: append(pet.species.toDisplayName())
+        ?: append(
+            com.comunidapp.app.domain.pets.PetSpeciesCatalog.displayLabel(
+                pet.speciesCode,
+                pet.speciesName,
+                pet.species
+            )
+        )
     append(" · ")
     append(pet.sex.toDisplayName())
 }
@@ -610,8 +627,16 @@ internal fun petInfoRows(pet: Pet): List<Pair<String, String>> = buildList {
     pet.organizationExternalPetId?.takeIf { it.isNotBlank() }?.let {
         add(com.comunidapp.app.domain.vitacora.import.VitacoraImportCopy.ORG_REF_LABEL to it)
     }
-    add("Especie" to pet.species.toDisplayName())
-    pet.breed?.takeIf { it.isNotBlank() }?.let { add("Raza" to it) }
+    add(
+        "Especie" to com.comunidapp.app.domain.pets.PetSpeciesCatalog.displayLabel(
+            pet.speciesCode,
+            pet.speciesName,
+            pet.species
+        )
+    )
+    pet.breed?.takeIf { it.isNotBlank() }?.let {
+        add((pet.secondaryLabelSingular?.takeIf { label -> label.isNotBlank() } ?: "Clasificación") to it)
+    }
     add("Sexo" to pet.sex.toDisplayName())
     add("Tamaño" to pet.size.toDisplayName())
     pet.color?.takeIf { it.isNotBlank() }?.let { add("Color" to it) }

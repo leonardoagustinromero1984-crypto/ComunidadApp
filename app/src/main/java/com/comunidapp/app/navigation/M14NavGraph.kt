@@ -42,7 +42,8 @@ fun NavGraphBuilder.m14PassportRoutes(navController: NavHostController) {
         M14PetPassportScreen(
             petId = petId,
             onNavigateBack = { navController.popBackStack() },
-            onEdit = { id -> navController.navigate(NavRoutes.m14PetPassportEdit(id)) },
+            onEdit = { id -> navController.navigate(NavRoutes.editPet(id)) },
+            onEditHealth = { id -> navController.navigate(NavRoutes.editPet(id, "health")) },
             onCredentials = { id ->
                 navController.navigate(NavRoutes.m14PassportCredentials(id))
             },
@@ -233,6 +234,23 @@ fun NavGraphBuilder.m14PassportRoutes(navController: NavHostController) {
             passportId = passportId,
             onNavigateBack = { navController.popBackStack() },
             onPublic = { code -> navController.navigate(NavRoutes.m14Public(code)) }
+        )
+    }
+    composable(
+        route = NavRoutes.M14_PET_SHARE,
+        arguments = listOf(navArgument(NavRoutes.ARG_PET_ID) { type = NavType.StringType })
+    ) { entry ->
+        val petId = java.net.URLDecoder.decode(
+            entry.arguments?.getString(NavRoutes.ARG_PET_ID).orEmpty(),
+            StandardCharsets.UTF_8.name()
+        )
+        M14PassportShareScreen(
+            passportId = petId,
+            onNavigateBack = { navController.popBackStack() },
+            onPublic = { code -> navController.navigate(NavRoutes.m14Public(code)) },
+            viewModel = androidx.lifecycle.viewmodel.compose.viewModel(
+                factory = com.comunidapp.app.viewmodel.M14SharePassportViewModel.factoryForPet(petId)
+            )
         )
     }
     composable(

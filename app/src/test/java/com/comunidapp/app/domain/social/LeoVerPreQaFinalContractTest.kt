@@ -219,7 +219,8 @@ class LeoVerPreQaFinalContractTest {
         assertTrue(story.contains("SocialEditorUxFlags.STICKERS_UI_VISIBLE"))
         assertTrue(story.contains("MusicPickerSheet"))
         assertTrue(story.contains("StickerPickerSheet"))
-        assertTrue(story.contains("Agregar mascota"))
+        assertTrue(story.contains("selectedPetId"))
+        assertTrue(story.contains("Opcional. Si elegís, se guarda en VitaCora."))
         assertFalse(story.contains("Próximamente"))
         assertFalse(story.contains("ID de mascota"))
         val reelHasLocationOnMain = story.contains("V2LocationStringPicker")
@@ -248,7 +249,7 @@ class LeoVerPreQaFinalContractTest {
 
     @Test
     fun previousSocialContractsStillHold() {
-        assertEquals("https://leover.app/p/abc", SocialShare.deepLink(SocialContentKind.POST, "abc"))
+        assertEquals("https://leover.com.ar/p/abc", SocialShare.deepLink(SocialContentKind.POST, "abc"))
         assertEquals(24L * 60 * 60 * 1000, StoryExpiration.DURATION_MS)
         val tus = UiRegressionGateTest.sourceFile(
             "app/src/main/java/com/comunidapp/app/data/files/SupabaseTusUploader.kt"

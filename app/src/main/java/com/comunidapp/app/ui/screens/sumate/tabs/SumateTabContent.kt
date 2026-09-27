@@ -15,10 +15,6 @@ import androidx.compose.material.icons.filled.Groups
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LocalHospital
 import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -37,13 +33,19 @@ import com.comunidapp.app.data.model.AdoptionEvent
 import com.comunidapp.app.data.model.DonationCampaign
 import com.comunidapp.app.data.model.FosterHomeListing
 import com.comunidapp.app.ui.components.PetImage
-import com.comunidapp.app.ui.components.leo.LeoFeatureCard
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.components.v2.V2NavRow
 import com.comunidapp.app.ui.screens.shelters.ShelterListCard
 import com.comunidapp.app.ui.theme.BrandGreen
-import com.comunidapp.app.ui.theme.BrandGreenContainer
-import com.comunidapp.app.ui.theme.BrandOrangeContainer
-import com.comunidapp.app.ui.theme.BrandOrangeSoft
+import com.comunidapp.app.ui.theme.BrandGreenDark
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.CommunityViewModel
 import com.comunidapp.app.viewmodel.SheltersViewModel
 
@@ -80,12 +82,10 @@ fun FosterHomesContent(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                Button(
-                    onClick = onOpenFosterHomes,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Abrir hogares de tránsito")
-                }
+                LeoPrimaryButton(
+                    text = "Abrir hogares de tránsito",
+                    onClick = onOpenFosterHomes
+                )
             }
             items(homes, key = { it.id }) { home ->
                 FosterHomeCard(
@@ -102,13 +102,10 @@ private fun FosterHomeCard(
     home: FosterHomeListing,
     onRequest: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.padding(12.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            modifier = Modifier.padding(vertical = LeoDimens.SpaceCompact),
+            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
         ) {
             PetImage(
                 imageUrl = home.photoUrl,
@@ -118,50 +115,49 @@ private fun FosterHomeCard(
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = home.hostName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+                    style = LeoCardTitle,
+                    color = BrandText
                 )
                 Text(
-                    text = "📍 ${home.location}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    text = home.location,
+                    style = LeoCaption,
+                    color = BrandTextSecondary
                 )
                 Text(
                     text = if (home.available) "Disponible" else "No disponible",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (home.available) {
-                        MaterialTheme.colorScheme.primary
-                    } else {
-                        MaterialTheme.colorScheme.onSurfaceVariant
-                    },
+                    style = LeoCaption,
+                    color = if (home.available) BrandGreen else BrandTextSecondary,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
                     text = "Capacidad: ${home.capacity} · ${home.acceptedSpecies.joinToString { it.toDisplayName() }}",
-                    style = MaterialTheme.typography.bodySmall,
+                    style = LeoCaption,
+                    color = BrandTextSecondary,
                     modifier = Modifier.padding(top = 4.dp)
                 )
                 Text(
                     text = home.notes,
-                    style = MaterialTheme.typography.bodyMedium,
+                    style = LeoCaption,
+                    color = BrandText,
                     modifier = Modifier.padding(top = 6.dp),
                     maxLines = 3
                 )
                 Text(
                     text = "Contacto: ${home.contactInfo}",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = LeoCaption,
+                    color = BrandTextSecondary,
                     modifier = Modifier.padding(top = 6.dp)
                 )
                 if (home.available) {
-                    Button(
+                    LeoPrimaryButton(
+                        text = "Solicitar tránsito",
                         onClick = onRequest,
-                        modifier = Modifier.padding(top = 8.dp)
-                    ) {
-                        Text("Solicitar tránsito")
-                    }
+                        fillMaxWidth = false
+                    )
                 }
             }
         }
+        LeoHairline()
     }
 }
 
@@ -198,12 +194,10 @@ fun AdoptionEventsContent(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             item {
-                androidx.compose.material3.OutlinedButton(
-                    onClick = onM18Events,
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Eventos comunitarios")
-                }
+                LeoOutlinedButton(
+                    text = "Eventos comunitarios",
+                    onClick = onM18Events
+                )
             }
             items(events, key = { it.id }) { event ->
                 AdoptionEventCard(
@@ -220,56 +214,59 @@ private fun AdoptionEventCard(
     event: AdoptionEvent,
     onInterest: () -> Unit
 ) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = LeoDimens.SpaceCompact)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
             if (event.photoUrl != null) {
                 PetImage(
                     imageUrl = event.photoUrl,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(bottom = 12.dp),
+                        .padding(bottom = LeoDimens.SpaceCompact),
                     contentDescription = event.title
                 )
             }
             Text(
                 text = event.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                style = LeoCardTitle,
+                color = BrandText
             )
             Text(
-                text = "📅 ${event.date}",
-                style = MaterialTheme.typography.labelMedium,
-                color = MaterialTheme.colorScheme.primary,
+                text = event.date,
+                style = LeoCaption,
+                color = BrandTextSecondary,
                 modifier = Modifier.padding(top = 4.dp)
             )
             Text(
-                text = "📍 ${event.location}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = event.location,
+                style = LeoCaption,
+                color = BrandTextSecondary,
                 modifier = Modifier.padding(top = 2.dp)
             )
             Text(
                 text = "Organiza: ${event.organizerName}",
-                style = MaterialTheme.typography.bodySmall,
+                style = LeoCaption,
+                color = BrandTextSecondary,
                 modifier = Modifier.padding(top = 4.dp)
             )
             Text(
                 text = event.description,
-                style = MaterialTheme.typography.bodyMedium,
+                style = LeoCaption,
+                color = BrandText,
                 modifier = Modifier.padding(top = 8.dp)
             )
             Text(
                 text = "Contacto: ${event.contactInfo}",
-                style = MaterialTheme.typography.labelMedium,
+                style = LeoCaption,
+                color = BrandTextSecondary,
                 modifier = Modifier.padding(top = 8.dp)
             )
             TextButton(onClick = onInterest, modifier = Modifier.padding(top = 4.dp)) {
                 Text("Me interesa")
             }
-        }
+        LeoHairline()
     }
 }
 
@@ -294,33 +291,29 @@ fun SheltersContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            LeoFeatureCard(
+            V2NavRow(
                 title = "Refugios",
                 description = "Conocé organizaciones y animales que necesitan ayuda",
                 icon = Icons.Default.Home,
                 onClick = onM16Shelters,
-                containerColor = BrandGreenContainer,
-                iconTint = BrandGreen
+                iconTint = BrandGreenDark
             )
         }
         item {
-            LeoFeatureCard(
+            V2NavRow(
                 title = "Mis organizaciones",
                 description = "Administrá equipos, publicaciones y casos",
                 icon = Icons.Default.Groups,
-                onClick = onShelterOps,
-                containerColor = BrandOrangeContainer,
-                iconTint = BrandOrangeSoft
+                onClick = onShelterOps
             )
         }
         item {
-            LeoFeatureCard(
+            V2NavRow(
                 title = "Veterinarias",
                 description = "Encontrá atención cerca de tu ubicación",
                 icon = Icons.Default.LocalHospital,
                 onClick = onVeterinaryDirectory,
-                containerColor = BrandGreenContainer,
-                iconTint = BrandGreen
+                iconTint = BrandGreenDark
             )
         }
         items(shelters, key = { it.id }) { shelter ->
@@ -347,13 +340,11 @@ fun DonationsContent(
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         item {
-            LeoFeatureCard(
+            V2NavRow(
                 title = "Campañas solidarias",
                 description = "Apoyá causas y donaciones de la comunidad",
                 icon = Icons.Default.VolunteerActivism,
-                onClick = onM17Campaigns,
-                containerColor = BrandOrangeContainer,
-                iconTint = BrandOrangeSoft
+                onClick = onM17Campaigns
             )
         }
         items(campaigns, key = { it.id }) { campaign ->
@@ -364,39 +355,42 @@ fun DonationsContent(
 
 @Composable
 private fun DonationCampaignCard(campaign: DonationCampaign) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = LeoDimens.SpaceCompact)
     ) {
-        Column(modifier = Modifier.padding(16.dp)) {
             Text(
                 text = campaign.title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                style = LeoCardTitle,
+                color = BrandText
             )
             Text(
-                text = "📍 ${campaign.location}",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                text = campaign.location,
+                style = LeoCaption,
+                color = BrandTextSecondary,
                 modifier = Modifier.padding(top = 4.dp)
             )
             Text(
                 text = campaign.description,
-                style = MaterialTheme.typography.bodyMedium,
+                style = LeoCaption,
+                color = BrandText,
                 modifier = Modifier.padding(top = 8.dp)
             )
             Text(
                 text = "Tipo: ${campaign.donationType.name}",
-                style = MaterialTheme.typography.labelMedium,
+                style = LeoCaption,
+                color = BrandTextSecondary,
                 modifier = Modifier.padding(top = 8.dp)
             )
             campaign.goalAmount?.let { goal ->
                 Text(
                     text = "Meta: $$goal · Recaudado: $${campaign.raisedAmount}",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = LeoCaption,
+                    color = BrandTextSecondary,
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
-        }
+        LeoHairline(modifier = Modifier.padding(top = LeoDimens.SpaceCompact))
     }
 }

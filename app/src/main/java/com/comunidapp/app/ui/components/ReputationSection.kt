@@ -4,8 +4,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -14,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.comunidapp.app.data.model.BadgeType
 import com.comunidapp.app.data.model.UserBadge
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -37,10 +36,10 @@ fun ReputationSection(
             verticalArrangement = Arrangement.spacedBy(4.dp)
         ) {
             badges.forEach { badge ->
-                AssistChip(
-                    onClick = {},
-                    label = { Text(badge.badgeType.displayName, style = MaterialTheme.typography.labelSmall) },
-                    shape = RoundedCornerShape(8.dp)
+                LeoFilterChip(
+                    label = badge.badgeType.displayName,
+                    selected = false,
+                    onClick = {}
                 )
             }
         }

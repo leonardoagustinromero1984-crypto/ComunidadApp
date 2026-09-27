@@ -16,11 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +27,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -45,10 +42,16 @@ import com.comunidapp.app.domain.social.SocialEditorUxFlags
 import com.comunidapp.app.domain.social.StoryComposition
 import com.comunidapp.app.domain.social.StoryOverlay
 import com.comunidapp.app.domain.social.toStoryAudio
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.v2.V2FormErrorBanner
 import com.comunidapp.app.ui.components.v2.splitUserFacingFormError
 import com.comunidapp.app.ui.theme.BrandBackground
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.MutedText
 import com.comunidapp.app.viewmodel.PublishViewModel
 import kotlinx.serialization.json.Json
 
@@ -71,7 +74,6 @@ fun StoryComposerScreen(
     var showLocation by remember { mutableStateOf(false) }
     var showMusic by remember { mutableStateOf(false) }
     var showStickers by remember { mutableStateOf(false) }
-    var showText by remember { mutableStateOf(false) }
     var location by remember { mutableStateOf(LocationSelection()) }
     var audio by remember { mutableStateOf(AudioSelection()) }
     var overlays by remember { mutableStateOf<List<StoryOverlay>>(emptyList()) }
@@ -187,7 +189,14 @@ fun StoryComposerScreen(
     Scaffold(
         containerColor = BrandBackground,
         topBar = {
-            LeoTopAppBar(title = "Crear historia", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(
+                title = "Crear historia",
+                showBackButton = true,
+                onBackClick = {
+                    viewModel.resetFormState()
+                    onNavigateBack()
+                }
+            )
         }
     ) { padding ->
         Column(
@@ -207,7 +216,7 @@ fun StoryComposerScreen(
                             transform = photoTransform,
                             editable = true,
                             onTransformChange = { photoTransform = it },
-                            onReset = { photoTransform = baselineTransform },
+                            onReset = { photoTransform = photoTransform.reset() },
                             modifier = Modifier.fillMaxSize(),
                             contentDescription = "Vista previa"
                         )
@@ -215,13 +224,15 @@ fun StoryComposerScreen(
                         StoryVideoPlayer(url = uri.toString(), muted = false)
                     }
                 }
-                StoryOverlayStage(
-                    overlays = overlays,
-                    onChange = { overlays = it },
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 56.dp)
-                )
+                if (overlays.isNotEmpty()) {
+                    StoryOverlayStage(
+                        overlays = overlays,
+                        onChange = { overlays = it },
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 56.dp)
+                    )
+                }
                 if (SocialEditorUxFlags.MUSIC_UI_VISIBLE) {
                     audio.track?.let {
                         CatalogMusicPlayer(it.assetUri, audio.mix.musicVolume, audio.segment.startMs)
@@ -229,41 +240,50 @@ fun StoryComposerScreen(
                 }
             }
             Spacer(Modifier.height(8.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { showCamera = true }, modifier = Modifier.weight(1f)) { Text("Cámara") }
-                OutlinedButton(
-                    onClick = {
-                        gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
-                    },
-                    modifier = Modifier.weight(1f)
-                ) { Text("Galería") }
-            }
-            Spacer(Modifier.height(12.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
-                TextButton(onClick = { showText = !showText }) { Text("Aa\nTexto") }
-                if (SocialEditorUxFlags.STICKERS_UI_VISIBLE) {
-                    TextButton(onClick = { showStickers = true }) { Text("😀\nSticker") }
+            LeoOutlinedButton(text = "Cámara", onClick = { showCamera = true })
+            Spacer(Modifier.height(8.dp))
+            LeoOutlinedButton(
+                text = "Galería",
+                onClick = {
+                    gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageAndVideo))
                 }
-                TextButton(onClick = { showPetPicker = true }) { Text("🐾\nMascota") }
-                TextButton(onClick = { showLocation = true }) { Text("📍\nUbicación") }
-                if (SocialEditorUxFlags.MUSIC_UI_VISIBLE) {
-                    TextButton(onClick = { showMusic = true }) { Text("🎵\nMúsica") }
+            )
+            Spacer(Modifier.height(8.dp))
+            LeoListRow(
+                title = "Mascota",
+                subtitle = selectedPetName ?: "Opcional",
+                onClick = { showPetPicker = true }
+            )
+            LeoListRow(
+                title = "Ubicación",
+                subtitle = DataProvider.locationCatalogRepository.snapshot().displayOf(location).label
+                    .ifBlank { "Agregar ubicación" },
+                onClick = { showLocation = true }
+            )
+            if (SocialEditorUxFlags.STICKERS_UI_VISIBLE || SocialEditorUxFlags.MUSIC_UI_VISIBLE) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly) {
+                    if (SocialEditorUxFlags.STICKERS_UI_VISIBLE) {
+                        TextButton(onClick = { showStickers = true }) { Text("Sticker") }
+                    }
+                    if (SocialEditorUxFlags.MUSIC_UI_VISIBLE) {
+                        TextButton(onClick = { showMusic = true }) { Text("Música") }
+                    }
                 }
             }
-            if (showText) {
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    label = { Text("Aa Texto") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-            }
+            LeoTextField(
+                value = text,
+                onValueChange = { text = it },
+                label = "Texto",
+                singleLine = false,
+                minLines = 2
+            )
             formState.uploadProgress?.let { LinearProgressIndicator(progress = { it / 100f }, modifier = Modifier.fillMaxWidth()) }
             formState.errorMessage?.let { raw ->
                 val split = splitUserFacingFormError(raw)
                 V2FormErrorBanner(
                     title = split?.first ?: "No pudimos publicar la historia",
                     message = split?.second,
+                    onDismiss = viewModel::resetFormState,
                     onRetry = {
                         viewModel.publishStory(
                             text = text,
@@ -278,7 +298,8 @@ fun StoryComposerScreen(
                 )
             }
             Spacer(Modifier.height(16.dp))
-            Button(
+            LeoPrimaryButton(
+                text = if (formState.isLoading) "Publicando…" else "Subir historia",
                 onClick = {
                     viewModel.publishStory(
                         text = text,
@@ -290,11 +311,8 @@ fun StoryComposerScreen(
                         context = context
                     )
                 },
-                enabled = !formState.isLoading && mediaUri != null,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (formState.isLoading) CircularProgressIndicator() else Text("Tu historia")
-            }
+                enabled = !formState.isLoading && mediaUri != null
+            )
         }
     }
 }
@@ -308,8 +326,8 @@ fun ReelComposerScreen(
     val context = LocalContext.current
     var description by remember { mutableStateOf("") }
     var videoUri by remember { mutableStateOf<Uri?>(null) }
-    var selectedPetId by remember { mutableStateOf<String?>(null) }
-    var selectedPetName by remember { mutableStateOf<String?>(null) }
+    var showCamera by remember { mutableStateOf(false) }
+    var selectedPetIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var location by remember { mutableStateOf(LocationSelection()) }
     var showPetPicker by remember { mutableStateOf(false) }
     var showLocation by remember { mutableStateOf(false) }
@@ -321,7 +339,12 @@ fun ReelComposerScreen(
     val formState by viewModel.formState.collectAsState()
     val pets by DataProvider.petRepository.observePets().collectAsState()
     val gallery = rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-        videoUri = uri
+        if (uri != null) {
+            videoUri = uri
+            overlays = emptyList()
+            text = ""
+            audio = AudioSelection()
+        }
     }
 
     fun compositionJson(): String {
@@ -335,22 +358,35 @@ fun ReelComposerScreen(
         )
     }
 
-    LaunchedEffect(formState.isSuccess) {
-        if (formState.isSuccess) {
+    LaunchedEffect(formState.isSuccess, formState.acceptedBackground) {
+        if (formState.isSuccess || formState.acceptedBackground) {
             viewModel.resetFormState()
             onPublishSuccess()
         }
     }
+    if (showCamera) {
+        com.comunidapp.app.ui.media.LeoVerCaptureCamera(
+            mode = com.comunidapp.app.ui.media.LeoVerCaptureMode.VIDEO,
+            onCaptured = { uri, _ ->
+                videoUri = uri
+                overlays = emptyList()
+                text = ""
+                audio = AudioSelection()
+                showCamera = false
+            },
+            onCancel = { showCamera = false },
+            purposeLabel = "Clip"
+        )
+        return
+    }
     if (showPetPicker) {
         ManagedPetPickerSheet(
             pets = pets,
-            selectedPetId = selectedPetId,
-            onSelect = {
-                selectedPetId = it?.id
-                selectedPetName = it?.name
-                showPetPicker = false
-            },
-            onDismiss = { showPetPicker = false }
+            selectedPetId = selectedPetIds.firstOrNull(),
+            onSelect = {},
+            onDismiss = { showPetPicker = false },
+            selectedPetIds = selectedPetIds,
+            onConfirmSelection = { selectedPetIds = it }
         )
     }
     if (showLocation) {
@@ -388,7 +424,16 @@ fun ReelComposerScreen(
 
     Scaffold(
         containerColor = BrandBackground,
-        topBar = { LeoTopAppBar(title = "Nuevo Reel", showBackButton = true, onBackClick = onNavigateBack) }
+        topBar = {
+            LeoTopAppBar(
+                title = "Nuevo Clip",
+                showBackButton = true,
+                onBackClick = {
+                    viewModel.resetFormState()
+                    onNavigateBack()
+                }
+            )
+        }
     ) { padding ->
         Column(
             Modifier
@@ -399,7 +444,12 @@ fun ReelComposerScreen(
         ) {
             Box(Modifier.fillMaxWidth().height(220.dp)) {
                 if (videoUri != null) {
-                    StoryVideoPlayer(url = videoUri.toString(), muted = false)
+                    com.comunidapp.app.ui.media.ReelFeedMedia(
+                        url = videoUri.toString(),
+                        modifier = Modifier.fillMaxSize(),
+                        previewLabel = "Video listo",
+                        allowPlayback = !formState.isLoading
+                    )
                 } else {
                     Text("Elegí un video")
                 }
@@ -408,60 +458,100 @@ fun ReelComposerScreen(
                     audio.track?.let { CatalogMusicPlayer(it.assetUri, audio.mix.musicVolume, audio.segment.startMs) }
                 }
             }
-            OutlinedButton(
-                onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(if (videoUri == null) "Editar video / elegir" else "Cambiar video") }
+            LeoOutlinedButton(
+                text = "Grabar Clip",
+                onClick = { showCamera = true }
+            )
+            Spacer(Modifier.height(8.dp))
+            LeoOutlinedButton(
+                text = if (videoUri == null) "Elegir video de galería" else "Cambiar video",
+                onClick = { gallery.launch(PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.VideoOnly)) }
+            )
             Spacer(Modifier.height(8.dp))
             if (SocialEditorUxFlags.MUSIC_UI_VISIBLE) {
-                OutlinedButton(onClick = { showMusic = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text(if (audio.track == null) "🎵 Música" else "🎵 ${audio.track?.title}")
-                }
+                LeoOutlinedButton(
+                    text = if (audio.track == null) "Música" else audio.track?.title.orEmpty(),
+                    onClick = { showMusic = true }
+                )
             }
-            OutlinedTextField(value = text, onValueChange = { text = it }, label = { Text("Aa Texto") }, modifier = Modifier.fillMaxWidth())
             if (SocialEditorUxFlags.STICKERS_UI_VISIBLE) {
-                OutlinedButton(onClick = { showStickers = true }, modifier = Modifier.fillMaxWidth()) { Text("😀 Stickers") }
+                LeoOutlinedButton(text = "Stickers", onClick = { showStickers = true })
             }
-            Text("DETALLES")
-            OutlinedTextField(
+            LeoTextField(
                 value = description,
                 onValueChange = { description = it },
-                label = { Text("Descripción") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Descripción",
+                singleLine = false,
+                minLines = 3
             )
-            OutlinedButton(onClick = { showPetPicker = true }, modifier = Modifier.fillMaxWidth()) {
-                Text(if (selectedPetName == null) "🐾 Mascota  ·  Agregar mascota >" else "🐾 $selectedPetName")
-            }
-            OutlinedButton(onClick = { showLocation = true }, modifier = Modifier.fillMaxWidth()) {
-                val loc = DataProvider.locationCatalogRepository.snapshot().displayOf(location).label
-                Text(if (loc.isBlank()) "📍 Ubicación  ·  Agregar ubicación >" else "📍 $loc")
+            val names = pets.filter { it.id in selectedPetIds }.map { it.name }
+            LeoListRow(
+                title = "Mascota",
+                subtitle = if (names.isEmpty()) "Opcional. Si elegís, se guarda en VitaCora." else names.joinToString(" · "),
+                onClick = { showPetPicker = true }
+            )
+            LeoListRow(
+                title = "Ubicación",
+                subtitle = DataProvider.locationCatalogRepository.snapshot().displayOf(location).label
+                    .ifBlank { "Agregar ubicación" },
+                onClick = { showLocation = true }
+            )
+            formState.phaseMessage?.takeIf { formState.isLoading }?.let { phase ->
+                Text(phase, style = LeoCaption, color = MutedText, modifier = Modifier.padding(top = 8.dp))
             }
             formState.uploadProgress?.let {
                 LinearProgressIndicator(progress = { it / 100f }, modifier = Modifier.fillMaxWidth())
             }
             formState.errorMessage?.let { raw ->
                 val split = splitUserFacingFormError(raw)
-                V2FormErrorBanner(title = split?.first ?: "No pudimos publicar el reel", message = split?.second)
+                V2FormErrorBanner(
+                    title = split?.first ?: "No pudimos publicar el Clip",
+                    message = split?.second,
+                    onRetry = {
+                        viewModel.publishReel(
+                            description = description,
+                            location = DataProvider.locationCatalogRepository.snapshot().displayOf(location).label,
+                            videoUri = videoUri,
+                            petId = selectedPetIds.firstOrNull(),
+                            localityId = location.localityId,
+                            compositionJson = compositionJson(),
+                            context = context,
+                            petIds = selectedPetIds.toList()
+                        )
+                    },
+                    onDismiss = viewModel::resetFormState
+                )
+            }
+            formState.diagnosticText?.let { trace ->
+                Text(
+                    text = trace,
+                    style = LeoCaption,
+                    color = MutedText,
+                    modifier = Modifier.padding(top = 8.dp)
+                )
             }
             Spacer(Modifier.height(16.dp))
-            Button(
+            LeoPrimaryButton(
+                text = if (formState.isLoading) {
+                    formState.phaseMessage ?: "Publicando…"
+                } else {
+                    "Publicar Clip"
+                },
                 onClick = {
                     val locLabel = DataProvider.locationCatalogRepository.snapshot().displayOf(location).label
                     viewModel.publishReel(
                         description = description,
                         location = locLabel,
                         videoUri = videoUri,
-                        petId = selectedPetId,
+                        petId = selectedPetIds.firstOrNull(),
                         localityId = location.localityId,
                         compositionJson = compositionJson(),
-                        context = context
+                        context = context,
+                        petIds = selectedPetIds.toList()
                     )
                 },
-                enabled = !formState.isLoading && videoUri != null,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (formState.isLoading) CircularProgressIndicator() else Text("Publicar reel")
-            }
+                enabled = !formState.isLoading && videoUri != null
+            )
         }
     }
 }

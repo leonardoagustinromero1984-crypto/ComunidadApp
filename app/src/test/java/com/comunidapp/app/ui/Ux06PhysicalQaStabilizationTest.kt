@@ -41,17 +41,17 @@ class Ux06PhysicalQaStabilizationTest {
         val vm = source("app/src/main/java/com/comunidapp/app/viewmodel/EditProfileViewModel.kt")
         val screen = source("app/src/main/java/com/comunidapp/app/ui/screens/profile/EditProfileScreen.kt")
         assertTrue(vm.contains("editorSourceUri = uri"))
-        assertTrue(screen.contains("AvatarPhotoEditorScreen("))
+        assertTrue(screen.contains("rememberLeoVerAvatarCropLauncher"))
+        assertTrue(screen.contains("onCropped = viewModel::onCroppedPhoto"))
         assertTrue(AvatarPhotoRules.PICK_OPENS_EDITOR)
     }
 
     @Test
     fun PHOTO_CONFIRM_UPLOADS_PROCESSED_RESULT() {
         val vm = source("app/src/main/java/com/comunidapp/app/viewmodel/EditProfileViewModel.kt")
-        assertTrue(vm.contains("fun confirmEditedPhoto"))
-        assertTrue(vm.contains("AvatarPhotoProcessor"))
+        assertTrue(vm.contains("fun onCroppedPhoto"))
+        assertTrue(vm.contains("encodeAlreadyCropped"))
         assertTrue(vm.contains("processedPhotoPath"))
-        assertTrue(vm.contains("AvatarPhotoConfirmPolicy.uriToUpload"))
     }
 
     @Test
@@ -134,8 +134,8 @@ class Ux06PhysicalQaStabilizationTest {
     @Test
     fun VITACORA_MEANING_PRESENT() {
         val body = TutorialCatalog.definition(TutorialId.T00_MULTI_FUNCTION_INTRO).steps[1].body
-        assertTrue(body.contains("vita —vida—"))
-        assertTrue(body.contains("cora"))
+        assertTrue(body.contains("vita (vida)"))
+        assertTrue(body.contains("cora (corazón)"))
         assertFalse(body.contains("bitácora"))
         assertTrue(body.contains("Su vida. Su historia. Sus cuidados."))
     }

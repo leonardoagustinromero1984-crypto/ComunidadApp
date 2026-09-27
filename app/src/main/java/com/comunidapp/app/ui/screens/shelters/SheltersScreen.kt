@@ -1,7 +1,6 @@
 package com.comunidapp.app.ui.screens.shelters
 
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -13,8 +12,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
+import androidx.compose.foundation.clickable
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -30,6 +28,8 @@ import com.comunidapp.app.data.model.Shelter
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.viewmodel.SheltersViewModel
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
 fun SheltersScreen(
@@ -66,13 +66,13 @@ private fun ShelterCard(shelter: Shelter, onClick: () -> Unit) {
 
 @Composable
 fun ShelterListCard(shelter: Shelter, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        onClick = onClick
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
     ) {
         Row(
-            modifier = Modifier.padding(12.dp),
+            modifier = Modifier.padding(LeoDimens.SpaceCompact),
             verticalAlignment = Alignment.CenterVertically
         ) {
             PetImage(
@@ -80,7 +80,7 @@ fun ShelterListCard(shelter: Shelter, onClick: () -> Unit) {
                 modifier = Modifier.size(72.dp),
                 contentDescription = shelter.name
             )
-            Column(modifier = Modifier.padding(start = 12.dp)) {
+            Column(modifier = Modifier.padding(start = LeoDimens.SpaceCompact)) {
                 Text(
                     text = shelter.name,
                     style = MaterialTheme.typography.titleMedium,
@@ -105,5 +105,6 @@ fun ShelterListCard(shelter: Shelter, onClick: () -> Unit) {
                 )
             }
         }
+        LeoHairline()
     }
 }

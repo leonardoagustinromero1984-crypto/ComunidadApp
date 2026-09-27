@@ -1,6 +1,5 @@
 package com.comunidapp.app.ui.screens.m25
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,10 +7,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -25,11 +21,15 @@ import com.comunidapp.app.data.model.M25PublicShopListing
 import com.comunidapp.app.data.model.M25ShopStatus
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.viewmodel.*
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
 @Suppress("UNUSED_PARAMETER")
@@ -51,9 +51,15 @@ fun M25HubScreen(
                 is M25HubUiState.Content -> {
                     Text("Catálogo local sin cobros.", color = MaterialTheme.colorScheme.primary)
                     Text("${s.shopCount} tiendas disponibles")
-                    Button(onClick = onOpenCatalog, modifier = Modifier.fillMaxWidth()) { Text("Explorar tiendas") }
+                    LeoPrimaryButton(
+                        text = "Explorar tiendas",
+                        onClick = onOpenCatalog
+                    )
                     Text("Checkout, carrito y pedidos están fuera de V1.")
-                    OutlinedButton(onClick = onOpenManage, modifier = Modifier.fillMaxWidth()) { Text("Gestionar mis tiendas") }
+                    LeoOutlinedButton(
+                        text = "Gestionar mis tiendas",
+                        onClick = onOpenManage
+                    )
                 }
             }
         }
@@ -130,12 +136,11 @@ fun M25OrdersScreen(onNavigateBack: () -> Unit, onOrderClick: (String) -> Unit =
                 is M25OrdersUiState.Error -> ErrorState(message = s.message)
                 is M25OrdersUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(s.orders, key = { it.id }) { order ->
-                        Card(Modifier.fillMaxWidth().clickable { onOrderClick(order.id) }) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text("${order.shopName} · ${order.status}")
-                                Text("${order.currency} ${order.subtotalCents}")
-                            }
-                        }
+                        LeoListRow(
+                            title = order.shopName,
+                            subtitle = "${order.status} · ${order.currency} ${order.subtotalCents}",
+                            onClick = { onOrderClick(order.id) }
+                        )
                     }
                 }
             }
@@ -154,16 +159,18 @@ fun M25ManageScreen(onNavigateBack: () -> Unit, onOpenMerchantOrders: (String) -
                 is M25ManageUiState.Error -> ErrorState(message = s.message)
                 is M25ManageUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(s.shops, key = { it.id }) { shop ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp)) {
+                        Column(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(LeoDimens.SpaceMd)) {
                                 Text(shop.displayName, fontWeight = FontWeight.Bold)
                                 Text("${shop.status}${if (shop.status == M25ShopStatus.DRAFT) " · publicá con productos activos" else ""}")
                                 if (shop.status == M25ShopStatus.ACTIVE || shop.status == M25ShopStatus.PAUSED) {
-                                    OutlinedButton(onClick = { onOpenMerchantOrders(shop.id) }, modifier = Modifier.fillMaxWidth()) {
-                                        Text("Pedidos del comercio")
-                                    }
+                                    LeoOutlinedButton(
+                                        text = "Pedidos del comercio",
+                                        onClick = { onOpenMerchantOrders(shop.id) }
+                                    )
                                 }
                             }
+                            LeoHairline()
                         }
                     }
                 }
@@ -174,14 +181,15 @@ fun M25ManageScreen(onNavigateBack: () -> Unit, onOpenMerchantOrders: (String) -
 
 @Composable
 private fun M25ShopCard(listing: M25PublicShopListing, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp)) {
-            Text(listing.displayName, fontWeight = FontWeight.Bold)
-            Text("${listing.category} · ${listing.city}")
-            listing.priceSummary?.let { Text(it) }
-            Text("${listing.productCount} productos")
-        }
-    }
+    LeoListRow(
+        title = listing.displayName,
+        subtitle = buildString {
+            append("${listing.category} · ${listing.city}")
+            listing.priceSummary?.let { append(" · $it") }
+            append(" · ${listing.productCount} productos")
+        },
+        onClick = onClick
+    )
 }
 
 @Composable
@@ -195,12 +203,10 @@ fun M25MerchantOrdersScreen(shopId: String, onNavigateBack: () -> Unit, viewMode
                 is M25MerchantOrdersUiState.Error -> ErrorState(message = s.message)
                 is M25MerchantOrdersUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(s.orders, key = { it.id }) { order ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text("${order.status} · ${order.lines.size} ítems")
-                                Text("${order.currency} ${order.subtotalCents}")
-                            }
-                        }
+                        LeoListRow(
+                            title = "${order.status} · ${order.lines.size} ítems",
+                            subtitle = "${order.currency} ${order.subtotalCents}"
+                        )
                     }
                 }
             }

@@ -2,6 +2,7 @@ package com.comunidapp.app.ui.screens.pets
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,12 +12,14 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Pets
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -30,11 +33,11 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.Pet
 import com.comunidapp.app.ui.components.PetCard
 import com.comunidapp.app.ui.components.toDisplayName
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
 import com.comunidapp.app.ui.components.leo.LeoEmptyState
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
-import com.comunidapp.app.ui.components.v2.V2SurfaceCard
+import com.comunidapp.app.ui.components.leo.LeoHairline
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandTextSecondary
 import com.comunidapp.app.ui.theme.BrandWhite
@@ -50,12 +53,35 @@ fun MyPetsScreen(
     onPetClick: (String) -> Unit,
     onAddPet: () -> Unit = {},
     onImportRescuer: (() -> Unit)? = null,
+    onOpenIncomingTransfer: (String) -> Unit = {},
     viewModel: MyPetsViewModel = viewModel()
 ) {
     val pets by viewModel.pets.collectAsState()
+    val incomingTransfers by viewModel.incomingTransfers.collectAsState()
+    val acceptNotice by viewModel.acceptNotice.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
+    LaunchedEffect(acceptNotice) {
+        val message = acceptNotice ?: return@LaunchedEffect
+        snackbarHostState.showSnackbar(message)
+        viewModel.consumeAcceptNotice()
+    }
+    val activeContext by com.comunidapp.app.domain.context.OperationalContextProvider.active.collectAsState()
+    val showImportTools = onImportRescuer != null && (
+        com.comunidapp.app.data.provider.DataProvider.personCapabilityRepository.hasActive(
+            com.comunidapp.app.domain.capability.PersonCapabilityCode.RESCUER
+        ) ||
+            activeContext is com.comunidapp.app.domain.context.OperationalContext.Rescuer
+        )
     var needsPhotoOnly by remember { mutableStateOf(false) }
-    val visible = if (needsPhotoOnly) pets.filter { it.photoUrl.isNullOrBlank() && it.avatarFileAssetId.isNullOrBlank() } else pets
+    val visible = if (showImportTools && needsPhotoOnly) {
+        pets.filter { it.photoUrl.isNullOrBlank() && it.avatarFileAssetId.isNullOrBlank() }
+    } else {
+        pets
+    }
     var showImportHelp by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        viewModel.onVisible()
+    }
 
     Scaffold(
         containerColor = BrandBackground,
@@ -66,7 +92,8 @@ fun MyPetsScreen(
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
-        }
+        },
+        snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize()) {
             LazyColumn(
@@ -85,21 +112,25 @@ fun MyPetsScreen(
                         message = com.comunidapp.app.ui.components.ContextualHelpMessages.PET_PASSPORT
                     )
                 }
-                item {
-                    FilterChip(
-                        selected = needsPhotoOnly,
-                        onClick = { needsPhotoOnly = !needsPhotoOnly },
-                        label = { Text("Necesitan foto") }
-                    )
+                if (incomingTransfers.isNotEmpty()) {
+                    items(incomingTransfers, key = { "incoming-${it.id.value}" }) { transfer ->
+                        IncomingCareTransferCard(
+                            transfer = transfer,
+                            enabled = true,
+                            onAccept = { viewModel.acceptIncoming(transfer) },
+                            onReject = { viewModel.rejectIncoming(transfer) }
+                        )
+                    }
                 }
-                if (onImportRescuer != null && (
-                    com.comunidapp.app.data.provider.DataProvider.personCapabilityRepository.hasActive(
-                        com.comunidapp.app.domain.capability.PersonCapabilityCode.RESCUER
-                    ) ||
-                        com.comunidapp.app.domain.context.OperationalContextProvider.active.value
-                            is com.comunidapp.app.domain.context.OperationalContext.Rescuer
-                    )
-                ) {
+                if (showImportTools) {
+                    val importRescuer = onImportRescuer
+                    item {
+                        LeoFilterChip(
+                            label = "Necesitan foto",
+                            selected = needsPhotoOnly,
+                            onClick = { needsPhotoOnly = !needsPhotoOnly }
+                        )
+                    }
                     item {
                         androidx.compose.material3.OutlinedButton(
                             onClick = onAddPet,
@@ -110,7 +141,7 @@ fun MyPetsScreen(
                     }
                     item {
                         androidx.compose.material3.OutlinedButton(
-                            onClick = onImportRescuer,
+                            onClick = importRescuer,
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Text("Importar mascotas")
@@ -179,12 +210,15 @@ fun MyPetsScreen(
 
 @Composable
 private fun PetHealthCard(pet: Pet) {
-    V2SurfaceCard {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceS)
+    ) {
         Text(
             text = "Salud de ${pet.name}",
             style = LeoCardTitle,
-            color = BrandText,
-            fontWeight = FontWeight.SemiBold
+            color = BrandText
         )
         pet.sterilized?.let {
             Text(
@@ -253,5 +287,6 @@ private fun PetHealthCard(pet: Pet) {
                 )
             }
         }
+        LeoHairline(modifier = Modifier.padding(top = LeoDimens.SpaceS))
     }
 }

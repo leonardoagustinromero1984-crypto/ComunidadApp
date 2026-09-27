@@ -79,8 +79,12 @@ class AdoptionFormViewModel(
                 return@launch
             }
             val pets = runCatching {
-                petRepository.getPetsByOwner(userId)
-                    .filter { it.status.equals("ACTIVE", ignoreCase = true) }
+                com.comunidapp.app.domain.pets.PetManagementContext.filter(
+                    petRepository.getPetsByOwner(userId)
+                        .filter { it.status.equals("ACTIVE", ignoreCase = true) },
+                    com.comunidapp.app.domain.context.OperationalContextProvider.active.value,
+                    userId
+                )
             }.getOrElse { emptyList() }
             if (editingId == null) {
                 _state.update {

@@ -1,0 +1,25 @@
+appId: ${APP_ID}
+name: "Match notification QA01"
+tags:
+  - community-care
+  - match
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA01_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-notifications.yaml
+    env:
+      APP_ID: ${APP_ID}
+- assertVisible: ".*podría coincidir.*"
+- takeScreenshot: match_notification
+- tapOn: ".*podría coincidir.*"
+- extendedWaitUntil:
+    visible: "Podría ser mi mascota"
+    timeout: 15000
+- assertVisible: "No es mi mascota"
+- takeScreenshot: match_candidate

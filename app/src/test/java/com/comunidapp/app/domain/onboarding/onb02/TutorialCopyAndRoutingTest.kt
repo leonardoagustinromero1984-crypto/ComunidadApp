@@ -68,7 +68,8 @@ class TutorialCopyAndRoutingTest {
         assertTrue(last.body.contains("Organización / Negocio"))
         assertTrue(last.highlight.orEmpty().contains("agregar otros perfiles"))
         assertEquals("Empezar", last.primaryCta)
-        assertEquals("Una comunidad que está cuando hace falta", steps[2].title)
+        assertEquals("Tu privacidad en LeoVer", steps[2].title)
+        assertEquals("Una comunidad que está cuando hace falta", steps[3].title)
     }
 
     @Test
@@ -116,7 +117,8 @@ class TutorialCopyAndRoutingTest {
         val reopen = graph.substringAfter("route = NavRoutes.ONB02_REOPEN")
             .substringBefore("composable(NavRoutes.USE_LEOVER_AS)")
         assertTrue(reopen.contains("Onb02FlowKind.REOPEN_FROM_HELP"))
-        assertTrue(reopen.contains("onFinished = { navController.popBackStack() }"))
+        assertTrue(reopen.contains("onFinished = { setupRoute ->"))
+        assertTrue(reopen.contains("navController.popBackStack()"))
         assertFalse(reopen.contains("NavRoutes.CREATE_ORGANIZATION"))
         assertFalse(reopen.contains("Onb02FlowKind.FULL_ONBOARDING"))
         assertFalse(reopen.contains("Onb02FlowKind.ADD_FUNCTION_LATER"))

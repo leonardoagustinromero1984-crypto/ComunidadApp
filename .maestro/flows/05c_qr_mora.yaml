@@ -1,0 +1,20 @@
+appId: ${APP_ID}
+name: "QR direct Mora QA01"
+tags:
+  - community-care
+  - qr
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA01_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Perfil"
+- tapOn: "QA - Mora"
+- tapOn: "Info"
+- tapOn: "Compartir QR"
+- assertVisible: "Compartir QR"
+- assertNotVisible: "VitaCora"
+- takeScreenshot: qr_mora

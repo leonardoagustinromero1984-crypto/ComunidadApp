@@ -1,0 +1,22 @@
+appId: ${APP_ID}
+name: "Smoke login QA01"
+tags:
+  - smoke
+  - p0
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA01_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- assertVisible: "Inicio"
+- assertVisible: "Feed"
+- takeScreenshot: smoke_qa01_home
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- assertVisible: "Correo o usuario"
+- takeScreenshot: smoke_qa01_logout

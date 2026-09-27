@@ -33,7 +33,12 @@ fun LeoVerMap(
     onMapClick: (LeoVerGeoPoint) -> Unit = {},
     onCameraIdle: (LeoVerMapCameraState) -> Unit = {}
 ) {
-    if (!mapsApiKeyConfigured()) {
+    val configured = mapsApiKeyConfigured()
+    MapsTileDiagnostics.logConfigOnce(
+        configured = configured,
+        keyLength = mapsApiKeyLength()
+    )
+    if (!configured) {
         val visual = leoVisual()
         Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             Text(
@@ -63,3 +68,5 @@ fun mapsApiKeyConfigured(): Boolean {
     val key = BuildConfig.MAPS_API_KEY.trim()
     return key.isNotBlank() && key != "MAPS_API_KEY_MISSING"
 }
+
+fun mapsApiKeyLength(): Int = BuildConfig.MAPS_API_KEY.trim().length

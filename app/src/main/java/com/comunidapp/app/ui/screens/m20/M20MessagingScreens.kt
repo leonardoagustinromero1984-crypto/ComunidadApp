@@ -1,6 +1,5 @@
 package com.comunidapp.app.ui.screens.m20
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,9 +10,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -37,7 +34,9 @@ import com.comunidapp.app.data.model.M20ConversationStatus
 import com.comunidapp.app.data.model.M20DeletedContent
 import com.comunidapp.app.data.model.M20PublicConversation
 import com.comunidapp.app.data.model.M20PublicMessage
+import com.comunidapp.app.ui.components.leo.LeoListRow
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
@@ -92,43 +91,16 @@ fun M20ConversationListScreen(
 
 @Composable
 private fun M20ConversationCard(conversation: M20PublicConversation, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    conversation.peerDisplayName,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
-                Text(
-                    m20ConversationStatusLabel(conversation.status),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = when (conversation.status) {
-                        M20ConversationStatus.BLOCKED -> MaterialTheme.colorScheme.error
-                        M20ConversationStatus.ARCHIVED -> MaterialTheme.colorScheme.onSurfaceVariant
-                        M20ConversationStatus.ACTIVE -> MaterialTheme.colorScheme.primary
-                    }
-                )
-            }
-            Text(
-                conversation.conversationType.name.lowercase().replaceFirstChar { it.titlecase() },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            conversation.contextHint?.let { hint ->
-                Text("↗ ${hint.displayLabel}", style = MaterialTheme.typography.labelMedium)
-            }
-            conversation.lastMessagePreview?.let {
-                Text(it, style = MaterialTheme.typography.bodyMedium, maxLines = 2)
-            }
-            if (conversation.unreadCount > 0) {
-                AssistChip(
-                    onClick = onClick,
-                    label = { Text("${conversation.unreadCount} sin leer") }
-                )
-            }
-        }
-    }
+    val unread = if (conversation.unreadCount > 0) " · ${conversation.unreadCount} sin leer" else ""
+    val hint = conversation.contextHint?.displayLabel?.let { " · $it" }.orEmpty()
+    val preview = conversation.lastMessagePreview?.let { " · $it" }.orEmpty()
+    LeoListRow(
+        title = conversation.peerDisplayName,
+        subtitle = "${m20ConversationStatusLabel(conversation.status)} · " +
+            conversation.conversationType.name.lowercase().replaceFirstChar { it.titlecase() } +
+            hint + unread + preview,
+        onClick = onClick
+    )
 }
 
 @Composable
@@ -334,8 +306,11 @@ private fun M20MessageBubble(
 ) {
     val align = if (message.isOwnMessage) Alignment.End else Alignment.Start
     Column(Modifier.fillMaxWidth(), horizontalAlignment = align) {
-        Card(modifier = Modifier.fillMaxWidth(if (message.isOwnMessage) 0.85f else 0.9f)) {
-            Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth(if (message.isOwnMessage) 0.85f else 0.9f)
+                .padding(vertical = LeoDimens.SpaceXs)
+        ) {
                 Text(
                     message.senderDisplayName,
                     style = MaterialTheme.typography.labelMedium,
@@ -376,7 +351,6 @@ private fun M20MessageBubble(
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = if (message.isOwnMessage) TextAlign.End else TextAlign.Start
                 )
-            }
         }
     }
 }

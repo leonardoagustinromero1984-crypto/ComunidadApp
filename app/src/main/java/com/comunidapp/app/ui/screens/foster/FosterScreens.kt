@@ -14,10 +14,8 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
@@ -40,15 +38,15 @@ import com.comunidapp.app.data.model.FosterHomeRequestStatus
 import com.comunidapp.app.data.model.FosterHomeStatus
 import com.comunidapp.app.data.model.FosterPlacementStatus
 import com.comunidapp.app.data.model.FosterUrgency
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
 import com.comunidapp.app.ui.components.v2.V2LocationCityProvincePicker
-import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
-import com.comunidapp.app.ui.components.v2.V2SurfaceCard
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandTextSecondary
 import com.comunidapp.app.ui.theme.LeoCaption
@@ -95,19 +93,15 @@ fun FosterHomesScreen(
                 .padding(padding)
                 .padding(16.dp)
         ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = onMyHome) { Text("Mi hogar") }
-                OutlinedButton(onClick = onReceived) { Text("Recibidas") }
-                OutlinedButton(onClick = onSent) { Text("Enviadas") }
-            }
+            LeoOutlinedButton(text = "Mi hogar", onClick = onMyHome)
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = onPlacements, modifier = Modifier.fillMaxWidth()) {
-                Text("Animales alojados")
-            }
+            LeoOutlinedButton(text = "Recibidas", onClick = onReceived)
             Spacer(Modifier.height(8.dp))
-            OutlinedButton(onClick = onHistory, modifier = Modifier.fillMaxWidth()) {
-                Text("Historial de tránsitos")
-            }
+            LeoOutlinedButton(text = "Enviadas", onClick = onSent)
+            Spacer(Modifier.height(8.dp))
+            LeoOutlinedButton(text = "Animales alojados", onClick = onPlacements)
+            Spacer(Modifier.height(8.dp))
+            LeoOutlinedButton(text = "Historial de tránsitos", onClick = onHistory)
             Spacer(Modifier.height(12.dp))
             when (val s = state) {
                 FosterListUiState.Loading -> LoadingState()
@@ -117,18 +111,21 @@ fun FosterHomesScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(s.homes, key = { it.id }) { home ->
-                        Column(
-                            Modifier
-                                .fillMaxWidth()
-                                .clickable { onHomeClick(home.id) }
-                                .padding(12.dp)
-                        ) {
-                            Text(home.displayName, fontWeight = FontWeight.Bold)
-                            Text("${home.zoneText} · ${home.freeSlots} lugares libres")
-                            Text(
-                                home.acceptedSpecies.joinToString() + " · " +
-                                    home.acceptedSizes.joinToString()
-                            )
+                        Column(Modifier.fillMaxWidth()) {
+                            Column(
+                                Modifier
+                                    .fillMaxWidth()
+                                    .clickable { onHomeClick(home.id) }
+                                    .padding(vertical = 12.dp)
+                            ) {
+                                Text(home.displayName, fontWeight = FontWeight.Bold)
+                                Text("${home.zoneText} · ${home.freeSlots} lugares libres")
+                                Text(
+                                    home.acceptedSpecies.joinToString() + " · " +
+                                        home.acceptedSizes.joinToString()
+                                )
+                            }
+                            LeoHairline()
                         }
                     }
                 }
@@ -166,9 +163,7 @@ fun MyFosterHomeScreen(
                 MyFosterHomeUiState.Loading -> LoadingState()
                 MyFosterHomeUiState.Empty -> {
                     EmptyState(title = "Todavía no tenés un perfil de hogar.")
-                    Button(onClick = onCreate, modifier = Modifier.fillMaxWidth()) {
-                        Text("Crear perfil")
-                    }
+                    LeoPrimaryButton(text = "Crear perfil", onClick = onCreate)
                 }
                 is MyFosterHomeUiState.Error -> ErrorState(message = s.message)
                 is MyFosterHomeUiState.Content -> {
@@ -194,33 +189,28 @@ fun MyFosterHomeScreen(
                     Text("Capacidad: ${h.totalCapacity} mascotas")
                     if (h.zoneText.isNotBlank()) Text("Zona: ${com.comunidapp.app.domain.ux.HumanLocationLabel.visible(h.zoneText)}")
                     Spacer(Modifier.height(12.dp))
-                    Button(onClick = onPlacements, modifier = Modifier.fillMaxWidth()) {
-                        Text("Tránsitos")
-                    }
+                    LeoPrimaryButton(text = "Ver solicitudes abiertas", onClick = { })
+                    LeoPrimaryButton(text = "Tránsitos", onClick = onPlacements)
                     Spacer(Modifier.height(8.dp))
-                    Button(onClick = onNewPlacement, modifier = Modifier.fillMaxWidth()) {
-                        Text("+ Nuevo tránsito")
-                    }
+                    LeoPrimaryButton(text = "+ Nuevo tránsito", onClick = onNewPlacement)
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = onRequests, modifier = Modifier.fillMaxWidth()) {
-                        Text("Solicitudes")
-                    }
+                    LeoOutlinedButton(text = "Solicitudes", onClick = onRequests)
                     Spacer(Modifier.height(8.dp))
-                    OutlinedButton(onClick = { onEdit(h.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Editar disponibilidad")
-                    }
+                    LeoOutlinedButton(text = "Editar disponibilidad", onClick = { onEdit(h.id) })
                     if (h.status != FosterHomeStatus.ACTIVE) {
-                        Button(
+                        Spacer(Modifier.height(8.dp))
+                        LeoPrimaryButton(
+                            text = "Activar disponibilidad",
                             onClick = { viewModel.activate(h.id) },
-                            enabled = !submitting,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Activar disponibilidad") }
+                            enabled = !submitting
+                        )
                     } else {
-                        OutlinedButton(
+                        Spacer(Modifier.height(8.dp))
+                        LeoOutlinedButton(
+                            text = "Pausar disponibilidad",
                             onClick = { viewModel.pause(h.id) },
-                            enabled = !submitting,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Pausar disponibilidad") }
+                            enabled = !submitting
+                        )
                     }
                 }
             }
@@ -270,10 +260,33 @@ fun FosterHomeFormScreen(
                 onProvinceChange = { v -> viewModel.update { it.copy(zoneText = v) } },
                 onLocalityIdChange = { id -> viewModel.update { it.copy(localityId = id) } }
             )
+            Text("Capacidad aproximada")
+            Row {
+                listOf("1", "2", "3").forEach { cap ->
+                    RadioButton(
+                        selected = form.capacity == cap || (cap == "3" && (form.capacity.toIntOrNull() ?: 0) >= 3),
+                        onClick = { viewModel.update { it.copy(capacity = cap) } }
+                    )
+                    Text(if (cap == "3") "3+" else cap)
+                }
+            }
+            Text("Preferencias opcionales")
             OutlinedTextField(
-                form.capacity,
-                { v -> viewModel.update { it.copy(capacity = v) } },
-                label = { Text("Capacidad") },
+                form.speciesPref,
+                { v -> viewModel.update { it.copy(speciesPref = v) } },
+                label = { Text("Perros / gatos / ambos") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                form.agePref,
+                { v -> viewModel.update { it.copy(agePref = v) } },
+                label = { Text("Cachorros / adultos") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                form.notes,
+                { v -> viewModel.update { it.copy(notes = v) } },
+                label = { Text("Tratamientos, convivencia, observaciones") },
                 modifier = Modifier.fillMaxWidth()
             )
             if (editHomeId == null) {
@@ -283,13 +296,11 @@ fun FosterHomeFormScreen(
                 }
             }
             form.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            LeoPrimaryButton(
+                text = if (form.submitting) "Guardando…" else "Guardar",
                 onClick = viewModel::submit,
-                enabled = !form.submitting,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (form.submitting) "Guardando…" else "Guardar")
-            }
+                enabled = !form.submitting
+            )
         }
     }
 }
@@ -325,9 +336,10 @@ fun FosterHomeDetailScreen(
                 h.description?.let { Text(it, modifier = Modifier.padding(top = 8.dp)) }
                 Spacer(Modifier.height(16.dp))
                 if (s.canRequest) {
-                    Button(onClick = { onRequest(h.id) }, modifier = Modifier.fillMaxWidth()) {
-                        Text("Solicitar tránsito")
-                    }
+                    LeoPrimaryButton(
+                        text = "Solicitar tránsito",
+                        onClick = { onRequest(h.id) }
+                    )
                 }
             }
         }
@@ -398,13 +410,11 @@ fun FosterRequestFormScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             form.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-            Button(
+            LeoPrimaryButton(
+                text = if (form.submitting) "Enviando…" else "Enviar solicitud",
                 onClick = viewModel::submit,
-                enabled = !form.submitting && !form.submitted,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (form.submitting) "Enviando…" else "Enviar solicitud")
-            }
+                enabled = !form.submitting && !form.submitted
+            )
         }
     }
 }
@@ -480,48 +490,56 @@ fun FosterRequestsScreen(
                 verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
             ) {
                 items(requests, key = { it.id }) { req ->
-                    V2SurfaceCard(onClick = { onRequestClick(req.id) }) {
-                        Text(
-                            "${req.petName ?: req.petId} · ${req.urgency.name} · ${req.status.name}",
-                            style = LeoCardTitle,
-                            color = BrandText
-                        )
-                        Text(req.message, style = LeoCaption, color = BrandTextSecondary)
-                        if (received) {
-                            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                if (req.status == FosterHomeRequestStatus.SUBMITTED) {
-                                    TextButton(
-                                        onClick = { viewModel.markUnderReview(req.id) },
-                                        enabled = !busy
-                                    ) { Text("Revisar") }
-                                }
-                                if (req.status == FosterHomeRequestStatus.SUBMITTED ||
-                                    req.status == FosterHomeRequestStatus.UNDER_REVIEW
-                                ) {
-                                    TextButton(
-                                        onClick = { confirmAccept = req.id },
-                                        enabled = !busy
-                                    ) { Text("Aceptar") }
-                                    TextButton(
-                                        onClick = { confirmReject = req.id },
-                                        enabled = !busy
-                                    ) { Text("Rechazar") }
-                                }
-                                if (req.status == FosterHomeRequestStatus.ACCEPTED) {
-                                    TextButton(
-                                        onClick = { viewModel.startPlacement(req.id) },
-                                        enabled = !busy
-                                    ) { Text("Registrar ingreso") }
-                                }
-                            }
-                        } else if (req.status == FosterHomeRequestStatus.SUBMITTED ||
-                            req.status == FosterHomeRequestStatus.UNDER_REVIEW
+                    Column(Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onRequestClick(req.id) }
+                                .padding(vertical = LeoDimens.SpaceCompact)
                         ) {
-                            TextButton(
-                                onClick = { viewModel.cancel(req.id) },
-                                enabled = !busy
-                            ) { Text("Cancelar") }
+                            Text(
+                                "${req.petName ?: req.petId} · ${req.urgency.name} · ${req.status.name}",
+                                style = LeoCardTitle,
+                                color = BrandText
+                            )
+                            Text(req.message, style = LeoCaption, color = BrandTextSecondary)
+                            if (received) {
+                                Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    if (req.status == FosterHomeRequestStatus.SUBMITTED) {
+                                        TextButton(
+                                            onClick = { viewModel.markUnderReview(req.id) },
+                                            enabled = !busy
+                                        ) { Text("Revisar") }
+                                    }
+                                    if (req.status == FosterHomeRequestStatus.SUBMITTED ||
+                                        req.status == FosterHomeRequestStatus.UNDER_REVIEW
+                                    ) {
+                                        TextButton(
+                                            onClick = { confirmAccept = req.id },
+                                            enabled = !busy
+                                        ) { Text("Aceptar") }
+                                        TextButton(
+                                            onClick = { confirmReject = req.id },
+                                            enabled = !busy
+                                        ) { Text("Rechazar") }
+                                    }
+                                    if (req.status == FosterHomeRequestStatus.ACCEPTED) {
+                                        TextButton(
+                                            onClick = { viewModel.startPlacement(req.id) },
+                                            enabled = !busy
+                                        ) { Text("Registrar ingreso") }
+                                    }
+                                }
+                            } else if (req.status == FosterHomeRequestStatus.SUBMITTED ||
+                                req.status == FosterHomeRequestStatus.UNDER_REVIEW
+                            ) {
+                                TextButton(
+                                    onClick = { viewModel.cancel(req.id) },
+                                    enabled = !busy
+                                ) { Text("Cancelar") }
+                            }
                         }
+                        LeoHairline()
                     }
                 }
             }
@@ -569,11 +587,11 @@ fun FosterRequestDetailScreen(
                     error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
                     if (req.status == FosterHomeRequestStatus.ACCEPTED) {
                         Spacer(Modifier.height(12.dp))
-                        Button(
+                        LeoPrimaryButton(
+                            text = "Registrar ingreso",
                             onClick = viewModel::startPlacement,
-                            enabled = !busy,
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Registrar ingreso") }
+                            enabled = !busy
+                        )
                     }
                 }
             }
@@ -608,9 +626,7 @@ fun FosterPlacementsScreen(
             verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
         ) {
             item {
-                Button(onClick = onNewPlacement, modifier = Modifier.fillMaxWidth()) {
-                    Text("+ Nuevo tránsito")
-                }
+                LeoPrimaryButton(text = "+ Nuevo tránsito", onClick = onNewPlacement)
             }
             if (placements.isEmpty()) {
                 item {
@@ -620,7 +636,12 @@ fun FosterPlacementsScreen(
                 if (active.isNotEmpty()) {
                     item { Text("Activos", style = LeoCardTitle, color = BrandText) }
                     items(active, key = { it.id }) { p ->
-                        V2SurfaceCard(onClick = { onPlacementClick(p.id) }) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onPlacementClick(p.id) }
+                                .padding(vertical = LeoDimens.SpaceCompact)
+                        ) {
                             Text(p.petName ?: "Mascota", style = LeoCardTitle, color = BrandText)
                             Text(if (p.status == FosterPlacementStatus.ACTIVE) "Activo" else "Reservado")
                             Text(
@@ -628,15 +649,22 @@ fun FosterPlacementsScreen(
                                 else "VitaCora Acceso pendiente"
                             )
                         }
+                        LeoHairline()
                     }
                 }
                 if (previous.isNotEmpty()) {
                     item { Text("Anteriores", style = LeoCardTitle, color = BrandText) }
                     items(previous, key = { it.id }) { p ->
-                        V2SurfaceCard(onClick = { onPlacementClick(p.id) }) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .clickable { onPlacementClick(p.id) }
+                                .padding(vertical = LeoDimens.SpaceCompact)
+                        ) {
                             Text(p.petName ?: "Mascota", style = LeoCardTitle, color = BrandText)
                             Text("Anterior")
                         }
+                        LeoHairline()
                     }
                 }
             }

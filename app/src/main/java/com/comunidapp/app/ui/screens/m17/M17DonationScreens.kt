@@ -3,6 +3,9 @@ package com.comunidapp.app.ui.screens.m17
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -15,15 +18,13 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,13 +35,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.material3.Checkbox
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M17CampaignType
+import com.comunidapp.app.data.model.M17Contribution
+import com.comunidapp.app.data.model.M17ContributionStatus
 import com.comunidapp.app.data.model.M17MockOrganizations
 import com.comunidapp.app.data.model.M17PublicCampaign
 import com.comunidapp.app.data.repository.M17DonationValidators
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.MutedText
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.components.state.EmptyState
@@ -55,6 +62,13 @@ import com.comunidapp.app.viewmodel.M17CampaignsListUiState
 import com.comunidapp.app.viewmodel.M17CampaignsListViewModel
 import com.comunidapp.app.viewmodel.m17CampaignStatusLabel
 import com.comunidapp.app.viewmodel.m17CampaignTypeLabel
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
+import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
 fun M17CampaignsListScreen(
@@ -84,26 +98,50 @@ fun M17CampaignsListScreen(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = query,
                 onValueChange = { query = it; viewModel.setQuery(it) },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Buscar campaña") },
-                singleLine = true
+                label = "Buscar campaña"
             )
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(selected = filter.withPetOnly, onClick = { viewModel.setWithPetOnly(!filter.withPetOnly) }, label = { Text("Con mascota") })
-                FilterChip(selected = filter.nearGoalOnly, onClick = { viewModel.setNearGoalOnly(!filter.nearGoalOnly) }, label = { Text("Cerca del objetivo") })
-                FilterChip(selected = filter.completedOnly, onClick = { viewModel.setCompletedOnly(!filter.completedOnly) }, label = { Text("Completadas") })
-                FilterChip(selected = filter.type == M17CampaignType.MEDICAL, onClick = {
+                LeoFilterChip(
+                    label = "Con mascota",
+                    selected = filter.withPetOnly,
+                    onClick = { viewModel.setWithPetOnly(!filter.withPetOnly) }
+                )
+                LeoFilterChip(
+                    label = "Cerca del objetivo",
+                    selected = filter.nearGoalOnly,
+                    onClick = { viewModel.setNearGoalOnly(!filter.nearGoalOnly) }
+                )
+                LeoFilterChip(
+                    label = "Completadas",
+                    selected = filter.completedOnly,
+                    onClick = { viewModel.setCompletedOnly(!filter.completedOnly) }
+                )
+                LeoFilterChip(
+                    label = "Médicas",
+                    selected = filter.type == M17CampaignType.MEDICAL,
+                    onClick = {
                     viewModel.setType(if (filter.type == M17CampaignType.MEDICAL) null else M17CampaignType.MEDICAL)
-                }, label = { Text("Médicas") })
+                }
+                )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick = { viewModel.clearFilters() }) { Text("Limpiar filtros") }
+                LeoOutlinedButton(
+                    text = "Limpiar filtros",
+                    onClick = { viewModel.clearFilters() }
+                )
                 if (canAdminister) {
-                    OutlinedButton(onClick = onManage) { Text("Administrar") }
-                    Button(onClick = onCreate, modifier = Modifier.wrapContentWidth()) { Text("Nueva") }
+                    LeoOutlinedButton(
+                        text = "Administrar",
+                        onClick = onManage
+                    )
+                    LeoPrimaryButton(
+                        text = "Nueva",
+                        onClick = onCreate,
+                        modifier = Modifier.wrapContentWidth()
+                    )
                 }
             }
             when (val s = state) {
@@ -125,8 +163,12 @@ fun M17CampaignsListScreen(
 
 @Composable
 private fun M17CampaignCard(campaign: M17PublicCampaign, onClick: () -> Unit) {
-    Card(Modifier.fillMaxWidth().clickable(onClick = onClick)) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+    ) {
+        Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(campaign.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(campaign.organizationDisplayName, style = MaterialTheme.typography.bodySmall)
             Text(m17CampaignTypeLabel(campaign.campaignType), style = MaterialTheme.typography.labelMedium)
@@ -143,9 +185,11 @@ private fun M17CampaignCard(campaign: M17PublicCampaign, onClick: () -> Unit) {
                 Text("📍 $it", style = MaterialTheme.typography.bodySmall)
             }
         }
+        LeoHairline()
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun M17CampaignDetailScreen(
     campaignId: String,
@@ -153,13 +197,13 @@ fun M17CampaignDetailScreen(
     viewModel: M17CampaignDetailViewModel = viewModel(factory = M17CampaignDetailViewModel.factory(campaignId))
 ) {
     val campaign by viewModel.campaign.collectAsState()
-    val contributions by viewModel.contributions.collectAsState()
+    val managed by viewModel.managedContributions.collectAsState()
+    val isCreator by viewModel.isCreator.collectAsState()
+    val declaring by viewModel.declaring.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val message by viewModel.message.collectAsState()
-
-    LaunchedEffect(message) {
-        if (message != null) viewModel.consumeMessage()
-    }
+    val context = LocalContext.current
+    var showDeclareSheet by remember { mutableStateOf(false) }
 
     Scaffold(
         containerColor = BrandBackground,
@@ -181,40 +225,78 @@ fun M17CampaignDetailScreen(
                 ) {
                     Text(c.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Text(c.organizationDisplayName, style = MaterialTheme.typography.bodyMedium)
-                    Text(c.description)
+                    if (c.description.isNotBlank()) Text(c.description)
                     Text("Estado: ${m17CampaignStatusLabel(c.status)}")
                     Text(
                         "Recaudado confirmado: " + M17DonationValidators.formatMoneyMinor(c.confirmedAmountMinor, c.currency) +
                             " (${c.progressPercent}% del objetivo)"
                     )
+                    Text(
+                        "${c.confirmedContributionCount} colaboraciones confirmadas",
+                        style = LeoCaption,
+                        color = MutedText
+                    )
                     LinearProgressIndicator(progress = { c.progressPercent.coerceIn(0, 100) / 100f }, modifier = Modifier.fillMaxWidth())
                     c.reference.petPublicName?.let { Text("Mascota: $it", style = MaterialTheme.typography.bodySmall) }
                     c.reference.shelterPublicName?.let { Text("Refugio: $it", style = MaterialTheme.typography.bodySmall) }
+                    LeoHairline()
+                    Text("Datos para transferir", style = LeoCardTitle, fontWeight = FontWeight.SemiBold)
                     Text(
-                        "Los pagos reales todavía no están habilitados en este bloque.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary
+                        "Las transferencias se realizan fuera de LeoVer.",
+                        style = LeoCaption,
+                        color = MutedText
+                    )
+                    val alias = c.paymentAlias?.trim().orEmpty()
+                    if (alias.isNotEmpty()) {
+                        LeoListRow(
+                            title = "Alias",
+                            subtitle = alias
+                        )
+                        LeoOutlinedButton(
+                            text = "Copiar alias",
+                            onClick = {
+                                val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                clipboard.setPrimaryClip(ClipData.newPlainText("Alias", alias))
+                                viewModel.notifyAliasCopied()
+                            }
+                        )
+                    } else {
+                        Text(
+                            "El creador todavía no publicó un alias.",
+                            style = LeoCaption,
+                            color = MutedText
+                        )
+                    }
+                    LeoPrimaryButton(
+                        text = "Colaboré",
+                        onClick = { showDeclareSheet = true }
                     )
                     if (c.publicUpdates.isNotEmpty()) {
                         Text("Actualizaciones", fontWeight = FontWeight.SemiBold)
                         c.publicUpdates.forEach { u -> Text("• ${u.message}", style = MaterialTheme.typography.bodySmall) }
                     }
-                    if (contributions.isNotEmpty()) {
-                        Text("Contribuciones públicas", fontWeight = FontWeight.SemiBold)
-                        contributions.forEach { co ->
-                            Text(
-                                "${co.donorLabel}: ${M17DonationValidators.formatMoneyMinor(co.amountMinor, co.currency)}",
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                    if (isCreator) {
+                        LeoHairline()
+                        Text("Colaboraciones declaradas", style = LeoCardTitle, fontWeight = FontWeight.SemiBold)
+                        Text(
+                            "Confirmá solo si recibiste la transferencia. LeoVer no verifica el dinero.",
+                            style = LeoCaption,
+                            color = MutedText
+                        )
+                        val pending = managed.filter { it.status == M17ContributionStatus.PENDING }
+                        if (pending.isEmpty()) {
+                            Text("No hay declaraciones pendientes.", style = LeoCaption, color = MutedText)
+                        } else {
+                            pending.forEach { item ->
+                                CampaignContributionManageRow(
+                                    contribution = item,
+                                    onConfirm = { viewModel.confirmContribution(item.id) },
+                                    onReject = { viewModel.rejectContribution(item.id) }
+                                )
+                            }
                         }
                     }
-                    OutlinedButton(
-                        onClick = { viewModel.registerMockContribution(1_000_00) },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Contribución de prueba — pagos reales aún no habilitados")
-                    }
-                    Text("Quiero colaborar", fontWeight = FontWeight.SemiBold)
+                    Text("Quiero colaborar en especie", fontWeight = FontWeight.SemiBold)
                     var goods by remember { mutableStateOf(false) }
                     var supplies by remember { mutableStateOf(false) }
                     var transport by remember { mutableStateOf(false) }
@@ -235,7 +317,8 @@ fun M17CampaignDetailScreen(
                         Checkbox(checked = volunteer, onCheckedChange = { volunteer = it })
                         Text("Voluntariado")
                     }
-                    Button(
+                    LeoOutlinedButton(
+                        text = "Ofrecer ayuda",
                         onClick = {
                             val kinds = buildList {
                                 if (goods) add("bienes")
@@ -245,15 +328,70 @@ fun M17CampaignDetailScreen(
                             }
                             viewModel.offerHelp(kinds)
                         },
-                        enabled = goods || supplies || transport || volunteer,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Confirmar colaboración")
-                    }
+                        enabled = goods || supplies || transport || volunteer
+                    )
                     message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
                 }
             }
         }
+    }
+
+    if (showDeclareSheet) {
+        var amount by remember { mutableStateOf("") }
+        var note by remember { mutableStateOf("") }
+        ModalBottomSheet(
+            onDismissRequest = { showDeclareSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            Column(
+                Modifier.padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Text("Declarar colaboración", style = LeoCardTitle, fontWeight = FontWeight.SemiBold)
+                Text(
+                    "Transferí por fuera de LeoVer y declará el monto. Queda pendiente hasta que el creador lo confirme.",
+                    style = LeoCaption,
+                    color = MutedText
+                )
+                LeoTextField(
+                    value = amount,
+                    onValueChange = { amount = it },
+                    label = "Monto"
+                )
+                LeoTextField(
+                    value = note,
+                    onValueChange = { note = it },
+                    label = "Nota (opcional)",
+                    singleLine = false,
+                    minLines = 2
+                )
+                LeoPrimaryButton(
+                    text = if (declaring) "Enviando…" else "Declarar",
+                    onClick = {
+                        viewModel.declareContribution(amount, note)
+                        showDeclareSheet = false
+                    },
+                    enabled = !declaring && M17DonationValidators.parseDeclaredAmountToMinor(amount) != null
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CampaignContributionManageRow(
+    contribution: M17Contribution,
+    onConfirm: () -> Unit,
+    onReject: () -> Unit
+) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
+        LeoListRow(
+            title = M17DonationValidators.formatMoneyMinor(contribution.amountMinor, contribution.currency),
+            subtitle = contribution.message?.takeIf { it.isNotBlank() } ?: "Pendiente de confirmación"
+        )
+        LeoPrimaryButton(text = "Confirmar", onClick = onConfirm)
+        LeoOutlinedButton(text = "Rechazar", onClick = onReject)
+        LeoHairline()
     }
 }
 
@@ -277,14 +415,17 @@ fun M17CampaignManageScreen(
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 M17MockOrganizations.MANAGE_ORGANIZATION_IDS.forEach { orgId ->
-                    FilterChip(
+                    LeoFilterChip(
+                        label = orgId.removePrefix("org_"),
                         selected = selectedOrg == orgId,
-                        onClick = { viewModel.selectOrganization(orgId) },
-                        label = { Text(orgId.removePrefix("org_")) }
+                        onClick = { viewModel.selectOrganization(orgId) }
                     )
                 }
             }
-            Button(onClick = onCreate) { Text("Nueva campaña") }
+            LeoPrimaryButton(
+                text = "Nueva campaña",
+                onClick = onCreate
+            )
             when (val s = state) {
                 M17CampaignManageUiState.Loading -> LoadingState()
                 M17CampaignManageUiState.PermissionDenied -> ErrorState(message = "No tenés permiso para administrar esta organización.")
@@ -296,8 +437,8 @@ fun M17CampaignManageScreen(
                 is M17CampaignManageUiState.Content -> LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     items(s.campaigns, key = { it.id }) { c ->
                         val summary = s.summaryById[c.id]
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Column(Modifier.fillMaxWidth()) {
+                            Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
                                 Text(c.title, fontWeight = FontWeight.Bold)
                                 Text("${m17CampaignStatusLabel(c.status)} · ${m17CampaignTypeLabel(c.campaignType)}")
                                 summary?.let {
@@ -307,19 +448,35 @@ fun M17CampaignManageScreen(
                                     )
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    OutlinedButton(onClick = { onEditCampaign(c.id) }) { Text("Editar") }
+                                    LeoOutlinedButton(
+                                        text = "Editar",
+                                        onClick = { onEditCampaign(c.id) }
+                                    )
                                     if (c.status == com.comunidapp.app.data.model.M17CampaignStatus.DRAFT) {
-                                        Button(onClick = { viewModel.publish(c.id) }) { Text("Publicar") }
+                                        LeoPrimaryButton(
+                                            text = "Publicar",
+                                            onClick = { viewModel.publish(c.id) }
+                                        )
                                     }
                                     if (c.status == com.comunidapp.app.data.model.M17CampaignStatus.PUBLISHED) {
-                                        OutlinedButton(onClick = { viewModel.pause(c.id) }) { Text("Pausar") }
-                                        OutlinedButton(onClick = { viewModel.complete(c.id) }) { Text("Completar") }
+                                        LeoOutlinedButton(
+                                            text = "Pausar",
+                                            onClick = { viewModel.pause(c.id) }
+                                        )
+                                        LeoOutlinedButton(
+                                            text = "Completar",
+                                            onClick = { viewModel.complete(c.id) }
+                                        )
                                     }
                                     if (!c.status.isTerminal) {
-                                        OutlinedButton(onClick = { viewModel.cancel(c.id) }) { Text("Cancelar") }
+                                        LeoOutlinedButton(
+                                            text = "Cancelar",
+                                            onClick = { viewModel.cancel(c.id) }
+                                        )
                                     }
                                 }
                             }
+                            LeoHairline()
                         }
                     }
                 }
@@ -359,55 +516,49 @@ fun M17CampaignEditScreen(
             Modifier.padding(padding).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.title,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(title = it) } },
-                label = { Text("Título") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Título"
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.description,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(description = it) } },
-                label = { Text("Descripción") },
-                modifier = Modifier.fillMaxWidth(),
+                label = "Descripción",
+                singleLine = false,
                 minLines = 3
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = (draft.goalAmountMinor / 100).toString(),
                 onValueChange = { v ->
                     v.toLongOrNull()?.let { major ->
                         viewModel.updateDraft { d -> d.copy(goalAmountMinor = major * 100) }
                     }
                 },
-                label = { Text("Objetivo (unidades principales)") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Objetivo (unidades principales)"
             )
             V2LocationStringPicker(
                 value = draft.publicLocationText,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(publicLocationText = it) } }
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.petPublicName,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(petPublicName = it) } },
-                label = { Text("Mascota (opcional, nombre público)") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Mascota (opcional, nombre público)"
             )
-            OutlinedTextField(
+            LeoTextField(
                 value = draft.shelterPublicName,
                 onValueChange = { viewModel.updateDraft { d -> d.copy(shelterPublicName = it) } },
-                label = { Text("Refugio (opcional, nombre público)") },
-                modifier = Modifier.fillMaxWidth()
+                label = "Refugio (opcional, nombre público)"
             )
             if (state is M17CampaignEditUiState.Error) {
                 Text((state as M17CampaignEditUiState.Error).message, color = MaterialTheme.colorScheme.error)
             }
-            Button(
+            LeoPrimaryButton(
+                text = if (state is M17CampaignEditUiState.Saving) "Guardando…" else "Guardar borrador",
                 onClick = { viewModel.save() },
-                enabled = state !is M17CampaignEditUiState.Saving,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(if (state is M17CampaignEditUiState.Saving) "Guardando…" else "Guardar borrador")
-            }
+                enabled = state !is M17CampaignEditUiState.Saving
+            )
         }
     }
 }

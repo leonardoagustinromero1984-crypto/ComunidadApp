@@ -7,9 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
@@ -25,7 +22,16 @@ import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.ui.files.FileUploadProgressSection
 import com.comunidapp.app.ui.files.PdfOrImageMimeTypes
 import com.comunidapp.app.ui.files.rememberPdfOrImageDocumentPicker
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.screens.moderation.AdministrativePhaseHost
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoBody
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.LeoSectionTitle
 import com.comunidapp.app.viewmodel.moderation.AdministrativeScreenPhase
 import com.comunidapp.app.viewmodel.support.SupportTicketDetailViewModel
 import androidx.compose.runtime.rememberCoroutineScope
@@ -61,34 +67,35 @@ fun SupportTicketDetailScreen(
     ) { contentModifier ->
         val ticket = uiState.ticket
         LazyColumn(
-            modifier = contentModifier.fillMaxSize().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = contentModifier.fillMaxSize().padding(LeoDimens.SpaceMd),
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
         ) {
             item { SnackbarHost(snackbar) }
             if (ticket != null) {
                 item {
-                    Text(ticket.subject, style = MaterialTheme.typography.titleMedium)
-                    Text("Estado: ${ticket.status}")
-                    Text(ticket.description)
+                    Text(ticket.subject, style = LeoSectionTitle, color = BrandText)
+                    Text("Estado: ${ticket.status}", style = LeoCaption, color = BrandTextSecondary)
+                    Text(ticket.description, style = LeoBody, color = BrandText)
                 }
             }
             items(uiState.messages, key = { it.id }) { m ->
-                Text(m.body, style = MaterialTheme.typography.bodyMedium)
+                Text(m.body, style = LeoBody, color = BrandText)
             }
             item {
-                OutlinedTextField(
+                LeoTextField(
                     value = uiState.draft,
                     onValueChange = viewModel::onDraftChange,
-                    label = { Text("Responder") },
-                    modifier = Modifier.fillMaxWidth()
+                    label = "Responder",
+                    singleLine = false,
+                    minLines = 2
                 )
             }
             item {
-                Button(
+                LeoOutlinedButton(
+                    text = "Adjuntar archivo",
                     onClick = { attachmentPicker.launch(PdfOrImageMimeTypes) },
-                    enabled = uiState.phase != AdministrativeScreenPhase.Submitting,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Adjuntar archivo") }
+                    enabled = uiState.phase != AdministrativeScreenPhase.Submitting
+                )
                 FileUploadProgressSection(
                     state = uploadState,
                     onCancel = {
@@ -98,11 +105,11 @@ fun SupportTicketDetailScreen(
                     },
                     onRetry = { scope.launch { DataProvider.fileUploadCoordinator.retry() } }
                 )
-                Button(
+                LeoPrimaryButton(
+                    text = "Enviar mensaje",
                     onClick = { viewModel.sendMessage() },
-                    enabled = uiState.phase != AdministrativeScreenPhase.Submitting,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Enviar mensaje") }
+                    enabled = uiState.phase != AdministrativeScreenPhase.Submitting
+                )
             }
         }
     }

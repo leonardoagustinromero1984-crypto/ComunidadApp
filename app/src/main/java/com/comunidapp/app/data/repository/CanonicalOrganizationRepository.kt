@@ -147,7 +147,26 @@ class CanonicalOrganizationRepository : OrganizationRepository {
     }
 
     override suspend fun requestVerification(organizationId: OrganizationId): Result<Organization> =
-        Result.failure(IllegalStateException("NOT_IMPLEMENTED_PRODUCT"))
+        runCatching {
+            val org = getById(organizationId)
+                ?: throw IllegalStateException("ORGANIZATION_INCOMPLETE")
+            val functionCode = when (org.type) {
+                OrganizationType.SHELTER, OrganizationType.RESCUE_GROUP -> "SHELTER"
+                OrganizationType.NGO -> "NGO"
+                OrganizationType.VETERINARY_CLINIC -> "VETERINARY"
+                else -> "BUSINESS"
+            }
+            CanonicalVerificationRepository().request(
+                functionCode = functionCode,
+                termsAccepted = true,
+                evidenceNote = null,
+                organizationId = organizationId.value
+            ).getOrThrow()
+            refresh()
+            getById(organizationId)?.copy(
+                verificationStatus = OrganizationVerificationStatus.PENDING
+            ) ?: org.copy(verificationStatus = OrganizationVerificationStatus.PENDING)
+        }
 
     override suspend fun linkResource(
         organizationId: OrganizationId,
@@ -184,10 +203,26 @@ class CanonicalOrganizationRepository : OrganizationRepository {
 
     private suspend fun refresh() {
         val element: JsonElement = supabase.postgrest.rpc(CanonicalBackend.RPC_LIST_MY_ORGANIZATIONS).decodeAs()
-        cache = M08RpcDecoding.decodeRows<CanonicalOrgRow>(element).map(::toOrg)
+        val verifications = runCatching {
+            CanonicalVerificationRepository().listMine().getOrDefault(emptyList())
+        }.getOrDefault(emptyList())
+        cache = M08RpcDecoding.decodeRows<CanonicalOrgRow>(element).map { row ->
+            val raw = verifications.firstOrNull { it.organizationId == row.id }?.status
+            toOrg(row, parseVerification(raw))
+        }
     }
 
-    private fun toOrg(row: CanonicalOrgRow): Organization = Organization(
+    private fun parseVerification(raw: String?): OrganizationVerificationStatus = when (raw?.trim()?.uppercase()) {
+        "PENDING" -> OrganizationVerificationStatus.PENDING
+        "VERIFIED" -> OrganizationVerificationStatus.VERIFIED
+        "REJECTED", "SUSPENDED" -> OrganizationVerificationStatus.REJECTED
+        else -> OrganizationVerificationStatus.NOT_REQUESTED
+    }
+
+    private fun toOrg(
+        row: CanonicalOrgRow,
+        verificationStatus: OrganizationVerificationStatus = OrganizationVerificationStatus.NOT_REQUESTED
+    ): Organization = Organization(
         id = OrganizationId(row.id),
         legalName = row.name,
         publicName = row.name,
@@ -203,7 +238,7 @@ class CanonicalOrganizationRepository : OrganizationRepository {
         },
         typeDescription = row.primaryLabel,
         status = if (row.lifecycleStatus == "ARCHIVED") OrganizationStatus.CLOSED else OrganizationStatus.ACTIVE,
-        verificationStatus = OrganizationVerificationStatus.NOT_REQUESTED,
+        verificationStatus = verificationStatus,
         city = row.homeLocalityId,
         createdByUserId = ""
     )

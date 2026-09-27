@@ -1,6 +1,5 @@
 package com.comunidapp.app.ui.screens.m15
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -10,8 +9,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -27,6 +24,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.theme.BrandBackground
@@ -80,21 +80,11 @@ fun M15FosterHubScreen(
                     s.myHome?.let { home ->
                         Text("Tu hogar: ${home.displayName} (${home.status})")
                     }
-                    Button(onClick = onBrowseHomes, modifier = Modifier.fillMaxWidth()) {
-                        Text("Explorar hogares")
-                    }
-                    Button(onClick = onMyHome, modifier = Modifier.fillMaxWidth()) {
-                        Text("Mi hogar de tránsito")
-                    }
-                    Button(onClick = onReceivedRequests, modifier = Modifier.fillMaxWidth()) {
-                        Text("Solicitudes recibidas")
-                    }
-                    Button(onClick = onMyPlacements, modifier = Modifier.fillMaxWidth()) {
-                        Text("Mis alojamientos")
-                    }
-                    Button(onClick = onOperations, modifier = Modifier.fillMaxWidth()) {
-                        Text("Operaciones y métricas")
-                    }
+                    LeoPrimaryButton(text = "Explorar hogares", onClick = onBrowseHomes)
+                    LeoOutlinedButton(text = "Mi hogar de tránsito", onClick = onMyHome)
+                    LeoOutlinedButton(text = "Solicitudes recibidas", onClick = onReceivedRequests)
+                    LeoOutlinedButton(text = "Mis alojamientos", onClick = onMyPlacements)
+                    LeoOutlinedButton(text = "Operaciones y métricas", onClick = onOperations)
                 }
             }
         }
@@ -130,17 +120,11 @@ fun M15FosterHomesListScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     items(s.items, key = { it.id }) { item ->
-                        Card(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { onHomeClick(item.id) }
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(item.displayName, fontWeight = FontWeight.Bold)
-                                Text("${item.zoneText} · ${item.availabilityStatus}")
-                                Text("Cupos libres: ${item.freeSlots}/${item.totalCapacity}")
-                            }
-                        }
+                        LeoListRow(
+                            title = item.displayName,
+                            subtitle = "${item.zoneText} · ${item.availabilityStatus} · Cupos libres: ${item.freeSlots}/${item.totalCapacity}",
+                            onClick = { onHomeClick(item.id) }
+                        )
                     }
                 }
             }
@@ -177,13 +161,11 @@ fun M15FosterHomeDetailScreen(
                 Text("Cupos: ${home.freeSlots}/${home.totalCapacity}")
                 home.description?.let { Text(it) }
                 Spacer(Modifier.height(16.dp))
-                Button(
+                LeoPrimaryButton(
+                    text = "Solicitar tránsito",
                     onClick = { onRequest(home.id) },
-                    modifier = Modifier.fillMaxWidth(),
                     enabled = home.freeSlots > 0
-                ) {
-                    Text("Solicitar tránsito")
-                }
+                )
             } ?: LoadingState()
             message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
@@ -218,13 +200,11 @@ fun M15MyFosterHomeScreen(
                 Text("Disponibilidad: ${h.availabilityStatus}")
                 Text("Capacidad: ${h.totalCapacity}")
                 if (h.status.name == "DRAFT") {
-                    Button(
+                    LeoPrimaryButton(
+                        text = "Activar hogar",
                         onClick = { viewModel.activate() },
-                        enabled = !busy,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Activar hogar")
-                    }
+                        enabled = !busy
+                    )
                 }
             } ?: Column {
                 OutlinedTextField(
@@ -243,7 +223,8 @@ fun M15MyFosterHomeScreen(
                     label = { Text("Capacidad") },
                     modifier = Modifier.fillMaxWidth()
                 )
-                Button(
+                LeoPrimaryButton(
+                    text = "Crear borrador",
                     onClick = {
                         viewModel.createDraft(
                             displayName = name,
@@ -251,11 +232,8 @@ fun M15MyFosterHomeScreen(
                             capacity = capacity.toIntOrNull() ?: 1
                         )
                     },
-                    enabled = !busy && name.isNotBlank() && zone.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Crear borrador")
-                }
+                    enabled = !busy && name.isNotBlank() && zone.isNotBlank()
+                )
             }
             message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
@@ -302,13 +280,11 @@ fun M15FosterRequestFormScreen(
                 label = { Text("Mensaje") },
                 modifier = Modifier.fillMaxWidth()
             )
-            Button(
+            LeoPrimaryButton(
+                text = "Enviar solicitud",
                 onClick = { viewModel.submit(petId, requestMessage) },
-                enabled = !busy && petId.isNotBlank() && requestMessage.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text("Enviar solicitud")
-            }
+                enabled = !busy && petId.isNotBlank() && requestMessage.isNotBlank()
+            )
             message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }
@@ -337,19 +313,15 @@ fun M15FosterRequestsScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(requests, key = { it.id }) { req ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(req.petName ?: req.petId, fontWeight = FontWeight.Bold)
-                                Text("Estado: ${req.status}")
-                                Text(req.message)
-                                if (req.status.name == "SUBMITTED" || req.status.name == "UNDER_REVIEW") {
-                                    Button(onClick = { viewModel.accept(req.id) }) {
-                                        Text("Aceptar")
-                                    }
-                                    Button(onClick = { viewModel.reject(req.id) }) {
-                                        Text("Rechazar")
-                                    }
-                                }
+                        Column(Modifier.fillMaxWidth()) {
+                            LeoListRow(
+                                title = req.petName ?: req.petId,
+                                subtitle = "Estado: ${req.status} · ${req.message}",
+                                showDivider = req.status.name != "SUBMITTED" && req.status.name != "UNDER_REVIEW"
+                            )
+                            if (req.status.name == "SUBMITTED" || req.status.name == "UNDER_REVIEW") {
+                                LeoPrimaryButton(text = "Aceptar", onClick = { viewModel.accept(req.id) })
+                                LeoOutlinedButton(text = "Rechazar", onClick = { viewModel.reject(req.id) })
                             }
                         }
                     }

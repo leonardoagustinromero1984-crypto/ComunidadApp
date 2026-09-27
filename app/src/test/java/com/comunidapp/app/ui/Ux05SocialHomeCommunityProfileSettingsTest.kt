@@ -37,6 +37,19 @@ class Ux05SocialHomeCommunityProfileSettingsTest {
     }
 
     @Test
+    fun HOME_POST_IMAGE_TAP_OPENS_SAME_DETAIL() {
+        val card = source("app/src/main/java/com/comunidapp/app/ui/components/leo/LeoSocialPostCard.kt")
+        assertTrue(card.contains("detectTapGestures(onTap = { onPostClick() })"))
+        assertTrue(card.contains("HorizontalPager("))
+        val home = source("app/src/main/java/com/comunidapp/app/navigation/ComunidappNavGraph.kt")
+        val click = home.indexOf("onPostClick = { postId ->")
+        assertTrue(click >= 0)
+        assertTrue(home.substring(click, click + 280).contains("NavRoutes.postDetail(postId)"))
+        val routes = source("app/src/main/java/com/comunidapp/app/navigation/NavRoutes.kt")
+        assertTrue(routes.contains("posts/{postId}"))
+    }
+
+    @Test
     fun HOME_NO_ADD_PET_SHORTCUT() {
         val home = source("app/src/main/java/com/comunidapp/app/ui/screens/home/HomeScreen.kt")
         assertFalse(home.contains("Agregar mascota"))
@@ -223,7 +236,7 @@ class Ux05SocialHomeCommunityProfileSettingsTest {
         assertTrue(settings.contains("containerColor = visual.background"))
         val v3 = LeoVerVisualPalette.v3Experimental
         assertEquals(androidx.compose.ui.graphics.Color(0xFFFAFBF8), v3.background)
-        assertEquals(androidx.compose.ui.graphics.Color(0xFF49B749), v3.primary)
+        assertEquals(androidx.compose.ui.graphics.Color(0xFFFF7A00), v3.primary)
     }
 
     @Test

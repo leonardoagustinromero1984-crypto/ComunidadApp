@@ -11,15 +11,16 @@ import com.comunidapp.app.data.model.M17CampaignStatus
 import com.comunidapp.app.data.model.M17CampaignType
 import com.comunidapp.app.data.model.M17DonationCampaign
 import com.comunidapp.app.data.model.M17MockOrganizations
+import com.comunidapp.app.data.model.M17Contribution
 import com.comunidapp.app.data.model.M17PublicCampaign
 import com.comunidapp.app.data.model.M17PublicContribution
-import com.comunidapp.app.data.model.RegisterM17MockContributionInput
-import com.comunidapp.app.data.model.M17DonorVisibility
 import com.comunidapp.app.data.model.UpdateM17CampaignDetailsInput
 import com.comunidapp.app.data.model.UpdateM17CampaignGoalInput
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m17.M17DonationErrorMapper
+import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.M17DonationRepository
+import com.comunidapp.app.data.repository.M17DonationValidators
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -114,6 +115,12 @@ class M17CampaignDetailViewModel(
     val campaign: StateFlow<M17PublicCampaign?> = _campaign.asStateFlow()
     private val _contributions = MutableStateFlow<List<M17PublicContribution>>(emptyList())
     val contributions: StateFlow<List<M17PublicContribution>> = _contributions.asStateFlow()
+    private val _managedContributions = MutableStateFlow<List<M17Contribution>>(emptyList())
+    val managedContributions: StateFlow<List<M17Contribution>> = _managedContributions.asStateFlow()
+    private val _isCreator = MutableStateFlow(false)
+    val isCreator: StateFlow<Boolean> = _isCreator.asStateFlow()
+    private val _declaring = MutableStateFlow(false)
+    val declaring: StateFlow<Boolean> = _declaring.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
     private val _loading = MutableStateFlow(true)
@@ -121,41 +128,82 @@ class M17CampaignDetailViewModel(
 
     init { refresh() }
 
+    private fun sessionUserId(): String? = AuthProvider.repository.getCurrentUser()?.id
+
     fun refresh() {
         viewModelScope.launch {
             _loading.value = true
             repository.getPublicCampaignById(campaignId)
-                .onSuccess { _campaign.value = it }
+                .onSuccess { campaign ->
+                    _campaign.value = campaign
+                    _isCreator.value = campaign.createdBy != null &&
+                        campaign.createdBy == sessionUserId()
+                }
                 .onFailure {
                     _message.value = M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
                 }
             repository.observePublicContributions(campaignId)
                 .onSuccess { _contributions.value = it }
+            repository.listManagedContributions(campaignId)
+                .onSuccess { _managedContributions.value = it }
+                .onFailure { _managedContributions.value = emptyList() }
             _loading.value = false
         }
     }
 
-    fun registerMockContribution(amountMinor: Long) {
+    fun declareContribution(amountRaw: String, note: String?) {
         viewModelScope.launch {
+            val amountMinor = M17DonationValidators.parseDeclaredAmountToMinor(amountRaw)
+            if (amountMinor == null) {
+                _message.value = "Ingresá un monto válido."
+                return@launch
+            }
+            _declaring.value = true
             val currency = _campaign.value?.currency ?: "ARS"
-            repository.registerMockContribution(
-                RegisterM17MockContributionInput(
-                    campaignId = campaignId,
-                    amountMinor = amountMinor,
-                    currency = currency,
-                    visibility = M17DonorVisibility.ANONYMOUS,
-                    status = com.comunidapp.app.data.model.M17ContributionStatus.CONFIRMED
-                )
+            repository.declareContribution(
+                campaignId = campaignId,
+                amountMinor = amountMinor,
+                note = note?.trim()?.takeIf { it.isNotEmpty() },
+                currency = currency
             ).onSuccess {
-                _message.value = "Contribución de prueba registrada — pagos reales aún no habilitados."
+                _message.value = "Declaramos tu colaboración. El creador la confirmará cuando reciba la transferencia."
                 refresh()
             }.onFailure {
                 _message.value = M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
             }
+            _declaring.value = false
+        }
+    }
+
+    fun confirmContribution(contributionId: String) {
+        viewModelScope.launch {
+            repository.confirmContribution(contributionId)
+                .onSuccess {
+                    _message.value = "Colaboración confirmada."
+                    refresh()
+                }
+                .onFailure {
+                    _message.value = M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
+                }
+        }
+    }
+
+    fun rejectContribution(contributionId: String) {
+        viewModelScope.launch {
+            repository.rejectContribution(contributionId)
+                .onSuccess {
+                    _message.value = "Colaboración rechazada."
+                    refresh()
+                }
+                .onFailure {
+                    _message.value = M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
+                }
         }
     }
 
     fun consumeMessage() { _message.value = null }
+
+    fun notifyAliasCopied() { _message.value = "Alias copiado." }
 
     fun offerHelp(kinds: List<String>) {
         val summary = kinds.joinToString(", ").ifBlank { "colaboración" }

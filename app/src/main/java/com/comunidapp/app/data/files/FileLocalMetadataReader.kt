@@ -6,6 +6,9 @@ import android.provider.OpenableColumns
 import com.comunidapp.app.core.result.AppErrorMapper
 import com.comunidapp.app.core.result.AppResult
 import com.comunidapp.app.domain.files.FileLocalMetadata
+import com.comunidapp.app.domain.files.FileNameSanitizer
+import com.comunidapp.app.domain.files.FileValidationRules
+import com.comunidapp.app.domain.media.MediaDiagnostic
 
 interface FileLocalMetadataReader {
     suspend fun read(uriString: String): AppResult<FileLocalMetadata>
@@ -34,10 +37,12 @@ class AndroidContentFileMetadataReader(
         if (uri.scheme == "file") {
             val file = uri.path?.let { java.io.File(it) }?.takeIf { it.exists() }
                 ?: error("FILENAME_REQUIRED")
+            val ext = FileNameSanitizer.extensionOf(file.name)
+            val inferred = ext?.let { FileValidationRules.inferMimeFromExtension(it) }
             return AppResult.Success(
                 FileLocalMetadata(
                     originalFilename = file.name.ifBlank { "avatar.jpg" },
-                    declaredMimeType = "image/jpeg",
+                    declaredMimeType = inferred ?: "image/jpeg",
                     sizeBytes = file.length().takeIf { it > 0L } ?: error("SIZE_INVALID"),
                     sourceUriString = uriString
                 )
@@ -66,10 +71,23 @@ class AndroidContentFileMetadataReader(
             ?: contentResolver.openAssetFileDescriptor(uri, "r")?.use { it.length }
                 ?.takeIf { it > 0L }
             ?: error("SIZE_INVALID")
+        val resolverMime = contentResolver.getType(uri)?.trim()?.takeIf { it.isNotEmpty() }
+        val ext = FileNameSanitizer.extensionOf(resolvedName)
+        val declaredMime = when {
+            !resolverMime.isNullOrBlank() &&
+                !resolverMime.equals("application/octet-stream", ignoreCase = true) -> resolverMime
+            else -> ext?.let { FileValidationRules.inferMimeFromExtension(it) }
+        }
+        if (MediaDiagnostic.isStaging) {
+            MediaDiagnostic.logStaging(
+                "MIME-DIAG scheme=${uri.scheme} host=${uri.host} ext=$ext " +
+                    "resolverMime=$resolverMime inferred=$declaredMime size=$resolvedSize"
+            )
+        }
         AppResult.Success(
             FileLocalMetadata(
                 originalFilename = resolvedName,
-                declaredMimeType = contentResolver.getType(uri),
+                declaredMimeType = declaredMime,
                 sizeBytes = resolvedSize,
                 sourceUriString = uriString
             )

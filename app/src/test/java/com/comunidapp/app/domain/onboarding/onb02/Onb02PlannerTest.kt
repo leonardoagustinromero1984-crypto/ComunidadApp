@@ -63,20 +63,21 @@ class Onb02PlannerTest {
     @Test
     fun t00HasCanonicalCommonPages() {
         val steps = TutorialCatalog.definition(TutorialId.T00_MULTI_FUNCTION_INTRO).steps
-        assertEquals(4, steps.size)
+        assertEquals(5, steps.size)
         assertEquals("Bienvenido a LeoVer", steps[0].title)
         assertTrue(steps[1].titleIsVitacoraWordmark)
-        assertEquals("Una comunidad que está cuando hace falta", steps[2].title)
+        assertEquals("Tu privacidad en LeoVer", steps[2].title)
         assertEquals("Siguiente", steps[2].primaryCta)
-        assertEquals(Onb02Copy.PROFILE_EXPLANATION_SLIDE_TITLE, steps[3].title)
-        assertEquals("Empezar", steps[3].primaryCta)
+        assertEquals("Una comunidad que está cuando hace falta", steps[3].title)
+        assertEquals(Onb02Copy.PROFILE_EXPLANATION_SLIDE_TITLE, steps[4].title)
+        assertEquals("Empezar", steps[4].primaryCta)
         assertFalse(steps[1].body.contains("bitácora"))
     }
 
     @Test
     fun t00SkipDoesNotHideMultiselectExplanation() {
         assertTrue(Onb02Planner.selectorExplainsMultiselectEvenIfT00Skipped())
-        assertTrue(Onb02Copy.SELECTOR_SUBTITLE.contains("perfil Persona es la base"))
+        assertTrue(Onb02Copy.SELECTOR_SUBTITLE.contains("perfil Personal es la base"))
     }
 
     @Test

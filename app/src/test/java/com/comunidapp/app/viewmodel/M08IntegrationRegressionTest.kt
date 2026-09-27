@@ -116,11 +116,12 @@ class M08IntegrationRegressionTest {
     @Test
     fun editExistingPet_persistsChanges() = runTest {
         login()
-        petRepo.pet = stage5Pet(id = "pet-1", status = "ACTIVE").copy(description = "Antes")
+        val petId = "11111111-1111-4111-8111-111111111111"
+        petRepo.pet = stage5Pet(id = petId, status = "ACTIVE").copy(description = "Antes")
         petRepo.accessResult = Result.success(
             stage5AccessContext(canRead = true).copy(canUpdate = true, canManageMedia = true)
         )
-        val form = formVm(editPetId = "pet-1")
+        val form = formVm(editPetId = petId)
         advanceUntilIdle()
         assertTrue(form.uiState.value.isEditMode)
         assertEquals("Luna", form.uiState.value.name)
@@ -131,7 +132,7 @@ class M08IntegrationRegressionTest {
 
         assertTrue(form.uiState.value.saveSuccess)
         assertEquals(1, petRepo.updateCalls)
-        assertEquals("Después de edición", petRepo.getPetById("pet-1")?.description)
+        assertEquals("Después de edición", petRepo.getPetById(petId)?.description)
     }
 
     @Test
@@ -238,11 +239,12 @@ class M08IntegrationRegressionTest {
     @Test
     fun editBlocked_afterDeceased() = runTest {
         login()
-        petRepo.pet = stage5Pet(status = "DECEASED")
+        val petId = "11111111-1111-4111-8111-111111111111"
+        petRepo.pet = stage5Pet(id = petId, status = "DECEASED")
         petRepo.accessResult = Result.success(
             stage5AccessContext(canRead = true).copy(canUpdate = true)
         )
-        val form = formVm(editPetId = "pet-1")
+        val form = formVm(editPetId = petId)
         advanceUntilIdle()
 
         assertFalse(form.uiState.value.isEditMode)

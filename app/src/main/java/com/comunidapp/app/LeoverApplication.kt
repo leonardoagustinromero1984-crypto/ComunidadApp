@@ -27,8 +27,10 @@ class LeoverApplication : Application() {
             com.comunidapp.app.core.config.AuthConfigDiagnostics.logSafe("startup")
         }
         LeoverNotificationHelper.ensureChannel(this)
+        com.comunidapp.app.domain.social.ReelPublishController.initialize(this)
         appScope.launch {
             PushTokenRegistrar.syncCurrentToken()
+            com.comunidapp.app.domain.social.ReelPublishScheduler.restoreAndResume(this@LeoverApplication)
         }
     }
 

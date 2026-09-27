@@ -89,4 +89,12 @@ object M17DonationValidators {
         val minor = (amountMinor % 100).toInt()
         return "$currency ${major}.${minor.toString().padStart(2, '0')}"
     }
+
+    fun parseDeclaredAmountToMinor(raw: String): Long? {
+        val normalized = raw.trim().replace(" ", "").replace(',', '.')
+        if (normalized.isEmpty()) return null
+        val value = normalized.toDoubleOrNull() ?: return null
+        val minor = kotlin.math.round(value * 100.0).toLong()
+        return minor.takeIf { it > 0 }
+    }
 }

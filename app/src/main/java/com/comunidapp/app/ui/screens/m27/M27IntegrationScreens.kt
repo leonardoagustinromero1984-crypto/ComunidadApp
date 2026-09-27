@@ -6,22 +6,21 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -60,14 +59,14 @@ fun M27HubScreen(
                 is M27HubUiState.Content -> {
                     Text("Integraciones — operaciones simuladas; entrega externa no productiva.", color = MaterialTheme.colorScheme.primary)
                     Text("${s.webhookCount} webhooks · ${s.oauthCount} OAuth · ${s.keyCount} claves · ${s.appCount} apps · ${s.deliveryCount} entregas")
-                    Button(onClick = onOpenApps, modifier = Modifier.fillMaxWidth()) { Text("Mis aplicaciones") }
-                    OutlinedButton(onClick = onOpenWebhooks, modifier = Modifier.fillMaxWidth()) { Text("Webhooks") }
-                    OutlinedButton(onClick = onOpenOAuth, modifier = Modifier.fillMaxWidth()) { Text("Aplicaciones OAuth (stub)") }
-                    OutlinedButton(onClick = onOpenApiKeys, modifier = Modifier.fillMaxWidth()) { Text("Claves API") }
-                    OutlinedButton(onClick = onOpenContracts, modifier = Modifier.fillMaxWidth()) { Text("Contratos publicados") }
-                    OutlinedButton(onClick = onOpenRateLimits, modifier = Modifier.fillMaxWidth()) { Text("Límites y sandbox") }
-                    OutlinedButton(onClick = onOpenDeliveries, modifier = Modifier.fillMaxWidth()) { Text("Entregas webhook") }
-                    OutlinedButton(onClick = onOpenAudit, modifier = Modifier.fillMaxWidth()) { Text("Auditoría") }
+                    LeoPrimaryButton(text = "Mis aplicaciones", onClick = onOpenApps)
+                    LeoOutlinedButton(text = "Webhooks", onClick = onOpenWebhooks)
+                    LeoOutlinedButton(text = "Aplicaciones OAuth (stub)", onClick = onOpenOAuth)
+                    LeoOutlinedButton(text = "Claves API", onClick = onOpenApiKeys)
+                    LeoOutlinedButton(text = "Contratos publicados", onClick = onOpenContracts)
+                    LeoOutlinedButton(text = "Límites y sandbox", onClick = onOpenRateLimits)
+                    LeoOutlinedButton(text = "Entregas webhook", onClick = onOpenDeliveries)
+                    LeoOutlinedButton(text = "Auditoría", onClick = onOpenAudit)
                 }
             }
         }
@@ -91,23 +90,23 @@ private fun <T> M27ListScreen(
                 M27ListUiState.Empty -> EmptyState(title = "Sin registros", message = "No hay elementos para mostrar.")
                 is M27ListUiState.Error -> ErrorState(message = state.message)
                 is M27ListUiState.Content -> {
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
                         items(state.items.size) { index ->
                             val item = state.items[index]
-                            Card(Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(itemLabel(item), fontWeight = FontWeight.SemiBold)
-                                    Text(itemDetail(item), style = MaterialTheme.typography.bodySmall)
-                                }
-                            }
+                            LeoListRow(
+                                title = itemLabel(item),
+                                subtitle = itemDetail(item)
+                            )
                         }
                     }
                 }
             }
             if (actionLabel != null && onAction != null) {
-                OutlinedButton(onClick = onAction, modifier = Modifier.fillMaxWidth().padding(top = 12.dp)) {
-                    Text(actionLabel)
-                }
+                LeoOutlinedButton(
+                    text = actionLabel,
+                    onClick = onAction,
+                    modifier = Modifier.padding(top = LeoDimens.SpaceCompact)
+                )
             }
         }
     }

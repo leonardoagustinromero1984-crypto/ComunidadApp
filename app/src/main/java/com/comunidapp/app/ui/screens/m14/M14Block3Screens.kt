@@ -7,23 +7,23 @@ import androidx.compose.ui.platform.LocalContext
 import android.content.Intent
 import com.comunidapp.app.ui.util.QrCodeBitmapGenerator
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -43,7 +43,11 @@ import com.comunidapp.app.data.model.M14RemoteFallback
 import com.comunidapp.app.data.model.M14VerificationNextStep
 import com.comunidapp.app.data.model.M14VerificationRequestStatus
 import com.comunidapp.app.data.model.nextStep
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -89,20 +93,19 @@ fun M14ManagedVerificationsScreen(
                 is M14ManagedVerificationsViewModel.UiState.Error -> ErrorState(message = s.message)
                 is M14ManagedVerificationsViewModel.UiState.Content -> LazyColumn {
                     items(s.items, key = { it.id }) { req ->
-                        Card(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 6.dp)
                                 .clickable { onRequestClick(req.id) }
+                                .padding(vertical = LeoDimens.SpaceCompact)
                         ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(req.status.name, fontWeight = FontWeight.Bold)
-                                Text(
-                                    "Credencial: ${req.credentialId}",
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
+                            Text(req.status.name, fontWeight = FontWeight.Bold)
+                            Text(
+                                "Credencial: ${req.credentialId}",
+                                style = MaterialTheme.typography.bodySmall
+                            )
                         }
+                        LeoHairline()
                     }
                 }
             }
@@ -189,26 +192,26 @@ fun M14VerificationDetailScreen(
                 val canExpire =
                     (req.status == M14VerificationRequestStatus.PENDING ||
                         req.status == M14VerificationRequestStatus.UNDER_REVIEW) && !busy
-                Button(
+                LeoPrimaryButton(
+                    text = "Abrir revisión",
                     onClick = { viewModel.openReview() },
-                    enabled = canOpen,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Abrir revisión") }
-                Button(
+                    enabled = canOpen
+                )
+                LeoPrimaryButton(
+                    text = "Aprobar",
                     onClick = { viewModel.approve(reason, note.ifBlank { null }) },
-                    enabled = canDecide,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Aprobar") }
-                OutlinedButton(
+                    enabled = canDecide
+                )
+                LeoOutlinedButton(
+                    text = "Rechazar",
                     onClick = { viewModel.reject(reason, note.ifBlank { null }) },
-                    enabled = canDecide,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Rechazar") }
-                OutlinedButton(
+                    enabled = canDecide
+                )
+                LeoOutlinedButton(
+                    text = "Expirar solicitud",
                     onClick = { viewModel.expire() },
-                    enabled = canExpire,
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Expirar solicitud") }
+                    enabled = canExpire
+                )
                 Text(
                     "Las notas privadas no se muestran en la vista pública.",
                     style = MaterialTheme.typography.bodySmall,
@@ -282,7 +285,8 @@ fun M14IssueVerifiedCredentialScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(12.dp))
-            Button(
+            LeoPrimaryButton(
+                text = "Emitir verificada",
                 onClick = {
                     viewModel.issue(
                         title = title,
@@ -290,9 +294,8 @@ fun M14IssueVerifiedCredentialScreen(
                         issuerOrganizationId = orgId.ifBlank { null },
                         issuerProfessionalId = profId.ifBlank { null }
                     )
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Emitir verificada") }
+                }
+            )
             message?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = MaterialTheme.colorScheme.primary)
@@ -337,10 +340,10 @@ fun M14RevokeCredentialScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             Spacer(Modifier.height(8.dp))
-            Button(
-                onClick = { viewModel.revoke(reason) },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Confirmar revocación") }
+            LeoPrimaryButton(
+                text = "Confirmar revocación",
+                onClick = { viewModel.revoke(reason) }
+            )
             message?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = MaterialTheme.colorScheme.primary)
@@ -370,7 +373,7 @@ fun M14PassportShareScreen(
         containerColor = BrandBackground,
         topBar = {
             LeoTopAppBar(
-                title = "Compartir QR",
+                title = "Compartir VitaCora",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -386,12 +389,16 @@ fun M14PassportShareScreen(
                 Spacer(Modifier.height(8.dp))
             }
             Text(
-                "Compartí este QR para que otras personas puedan abrir la vista pública de la VitaCora de ${passport?.displayName ?: "tu mascota"}.",
+                passport?.displayName ?: "Tu mascota",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+            Spacer(Modifier.height(8.dp))
+            Text(
+                "Compartí este QR para que otras personas puedan ver la VitaCora pública de ${passport?.displayName ?: "tu mascota"}.",
                 style = MaterialTheme.typography.bodyMedium
             )
-            Spacer(Modifier.height(12.dp))
-            Text("N.º ${passport?.passportNumber ?: "—"}", fontWeight = FontWeight.Bold)
-            Spacer(Modifier.height(12.dp))
+            Spacer(Modifier.height(16.dp))
             qrBitmap?.let { bitmap ->
                 Image(
                     bitmap = bitmap.asImageBitmap(),
@@ -401,8 +408,9 @@ fun M14PassportShareScreen(
                         .height(240.dp)
                 )
             } ?: Text("QR no disponible todavía.", style = MaterialTheme.typography.bodySmall)
-            Spacer(Modifier.height(12.dp))
-            Button(
+            Spacer(Modifier.height(16.dp))
+            LeoPrimaryButton(
+                text = "Compartir",
                 onClick = {
                     val shareText = buildString {
                         append("VitaCora de ${passport?.displayName ?: "mi mascota"}")
@@ -415,15 +423,8 @@ fun M14PassportShareScreen(
                     }
                     context.startActivity(Intent.createChooser(intent, "Compartir VitaCora"))
                 },
-                enabled = payload != null,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Compartir") }
-            passport?.publicCode?.let { code ->
-                OutlinedButton(
-                    onClick = { onPublic(code) },
-                    modifier = Modifier.fillMaxWidth()
-                ) { Text("Ver vista pública") }
-            }
+                enabled = payload != null
+            )
             message?.let {
                 Spacer(Modifier.height(8.dp))
                 Text(it, color = MaterialTheme.colorScheme.primary)
@@ -475,25 +476,62 @@ fun M14PassportHistoryScreen(
                 )
                 else -> LazyColumn {
                     items(items, key = { it.id }) { h ->
-                        Card(
+                        Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .padding(vertical = 6.dp)
+                                .padding(vertical = LeoDimens.SpaceCompact)
                         ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(
-                                    VitaCoraHistoryPresentation.titleFor(h),
-                                    fontWeight = FontWeight.Bold
-                                )
-                                VitaCoraHistoryPresentation.detailFor(h)?.let { detail ->
-                                    Text(detail, style = MaterialTheme.typography.bodyMedium)
+                            val date = VitaCoraHistoryPresentation.formatDate(h.createdAt)
+                            if (date.isNotBlank()) {
+                                Text(date, style = MaterialTheme.typography.bodySmall)
+                                Spacer(Modifier.height(4.dp))
+                            }
+                            Text(
+                                VitaCoraHistoryPresentation.titleFor(h),
+                                fontWeight = FontWeight.Bold
+                            )
+                            val mediaUrls = h.mediaDisplayUrls.ifEmpty {
+                                listOfNotNull(h.mediaDisplayUrl)
+                            }
+                            if (mediaUrls.isNotEmpty() &&
+                                VitaCoraHistoryPresentation.isPlayableVideo(h)
+                            ) {
+                                androidx.compose.foundation.layout.Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp, bottom = 8.dp)
+                                        .aspectRatio(9f / 16f)
+                                ) {
+                                    com.comunidapp.app.ui.media.ReelFeedMedia(
+                                        url = mediaUrls.first(),
+                                        modifier = Modifier.fillMaxSize(),
+                                        previewLabel = "Clip"
+                                    )
                                 }
-                                val date = VitaCoraHistoryPresentation.formatDate(h.createdAt)
-                                if (date.isNotBlank()) {
-                                    Text(date, style = MaterialTheme.typography.bodySmall)
+                            } else if (mediaUrls.isNotEmpty()) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .horizontalScroll(rememberScrollState())
+                                        .padding(top = 8.dp, bottom = 8.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    mediaUrls.forEach { url ->
+                                        com.comunidapp.app.ui.components.PetImage(
+                                            imageUrl = url,
+                                            modifier = Modifier
+                                                .size(if (mediaUrls.size == 1) 280.dp else 120.dp)
+                                                .aspectRatio(1f),
+                                            cornerRadius = 12.dp
+                                        )
+                                    }
                                 }
                             }
+                            VitaCoraHistoryPresentation.detailFor(h)?.let { detail ->
+                                Text(detail, style = MaterialTheme.typography.bodyMedium)
+                            }
                         }
+                        LeoHairline()
                     }
                 }
             }

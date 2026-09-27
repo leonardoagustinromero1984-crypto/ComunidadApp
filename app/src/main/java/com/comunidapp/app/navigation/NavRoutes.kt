@@ -32,6 +32,8 @@ object NavRoutes {
     fun onb02Reopen(tutorialId: String) = "onb02/reopen/$tutorialId"
 
     const val HOME = "home"
+    const val POST_DETAIL = "posts/{postId}"
+    const val ARG_POST_ID = "postId"
     const val SUMATE = "sumate"
     const val COMUNIDAD = "comunidad"
     const val MY_BUSINESS = "my_business"
@@ -45,6 +47,20 @@ object NavRoutes {
     const val ADOPTIONS = "adoptions"
     const val SHELTERS = "shelters"
     const val MY_PETS = "my_pets"
+    const val MY_MEMORIES = "my_memories"
+    const val MY_MEMORIES_PET = "my_memories/pet/{petKey}/{petName}"
+    const val ARG_MEMORY_PET_KEY = "petKey"
+    const val ARG_MEMORY_PET_NAME = "petName"
+    const val MEMORY_PET_UNASSIGNED = "_none"
+
+    fun myMemoriesPet(petId: String?, petName: String): String {
+        val key = petId?.trim()?.takeIf { it.isNotEmpty() } ?: MEMORY_PET_UNASSIGNED
+        val name = java.net.URLEncoder.encode(
+            petName.trim().ifBlank { "mascota" },
+            Charsets.UTF_8.name()
+        )
+        return "my_memories/pet/$key/$name"
+    }
     const val LOST_FOUND = "lost_found"
     const val LOST_FOUND_MAP = "lost_found_map"
     const val LOST_FOUND_DETAIL = "lost_found_detail/{postId}"
@@ -62,6 +78,16 @@ object NavRoutes {
         "lost_found_detail/${java.net.URLEncoder.encode(postId, Charsets.UTF_8.name())}"
     /** Mismo formulario de perdido/encontrado, preseleccionado como ENCONTRADO. */
     const val PUBLISH_FOUND_PET = "publish_found_pet"
+    const val RESPONDER_BASE_LOCATION = "responder_base_location"
+    const val LEOVER_VERIFICATION = "leover_verification/{functionCode}?orgId={orgId}"
+    const val ADOPTION_GENERAL_PROFILE = "adoption_general_profile"
+    const val FOSTER_CARE_REQUEST = "foster_care_request/{petId}"
+    const val FOSTER_OPEN_REQUESTS = "foster_open_requests"
+    const val FOSTER_CHOOSE_APPLICANT = "foster_choose_applicant/{requestId}"
+    const val PROFESSIONAL_HUB = "professional_hub"
+    const val PROFESSIONAL_PATIENTS = "professional_patients"
+    const val VET_CREATE_PATIENT = "vet_create_patient"
+    const val M14_PET_SHARE = "m14/pets/{petId}/share"
 
     // M13 — Avistamientos y coincidencias (enriquece Lost/Found; Bloque 1 local)
     const val M13_SIGHTINGS = "m13/sightings"
@@ -339,7 +365,11 @@ object NavRoutes {
     const val EDIT_PROFILE = "edit_profile"
     const val SEARCH_FRIENDS = "search_friends"
     const val MY_FRIENDS = "my_friends"
-    const val USER_PROFILE = "user_profile/{userId}"
+    const val MI_MANADA = "mi_manada"
+    const val USER_PROFILE = "user_profile/{userId}?from={from}"
+    const val ARG_PROFILE_FROM = "from"
+    const val PROFILE_FROM_MANADA = "manada"
+    const val CONNECTED_PET_PROFILE = "connected_pet_profile/{ownerUserId}/{petId}"
 
     const val MY_ORGANIZATIONS = "my_organizations"
     const val CREATE_ORGANIZATION = "create_organization?preselect={preselect}&welfare={welfare}"
@@ -350,7 +380,8 @@ object NavRoutes {
     const val PUBLIC_ORGANIZATION = "public_organization/{slug}"
 
     const val ADD_PET = "add_pet"
-    const val EDIT_PET = "edit_pet/{petId}"
+    const val EDIT_PET = "edit_pet/{petId}?section={section}"
+    const val ARG_PET_SECTION = "section"
 
     const val PUBLISH_GENERAL = "publish_general"
     const val PUBLISH_REEL = "publish_reel"
@@ -359,6 +390,7 @@ object NavRoutes {
     const val PUBLISH_PROMO = "publish_promo"
     const val PUBLISH_ADOPTION = "publish_adoption"
     const val PUBLISH_URGENT = "publish_urgent"
+    const val SAVED_POSTS = "saved_posts"
     const val SEARCH = "search"
     const val MY_ADOPTIONS = "my_adoptions"
     const val CHAT = "chat"
@@ -373,17 +405,42 @@ object NavRoutes {
     const val NOTIFICATIONS = "notifications"
     const val ORG_INVITATION = "org_invitation/{invitationId}"
     const val STORY_VIEWER = "story_viewer/{authorId}"
+    const val CLIP_VIEWER = "clips/{postId}"
     const val ARG_INVITATION_ID = "invitationId"
     const val ARG_STORY_AUTHOR_ID = "authorId"
+    const val ARG_CLIP_POST_ID = "postId"
 
     fun orgInvitation(invitationId: String) =
         "org_invitation/${java.net.URLEncoder.encode(invitationId, Charsets.UTF_8.name())}"
 
     fun storyViewer(authorId: String) =
         "story_viewer/${java.net.URLEncoder.encode(authorId, Charsets.UTF_8.name())}"
+
+    fun clipViewer(postId: String) =
+        "clips/${java.net.URLEncoder.encode(postId, Charsets.UTF_8.name())}"
     const val NOTIFICATION_PREFERENCES = "notification_preferences"
     const val ADMIN_MODERATION = "admin_moderation"
     const val PLATFORM_ADMIN = "platform_admin"
+    const val ADMIN_HUB = "admin_hub"
+    const val ADMIN_STAFF = "admin_staff"
+    const val ADMIN_STAFF_CREATE = "admin_staff/create"
+    const val ADMIN_STAFF_DETAIL = "admin_staff/{staffUserId}"
+    const val ARG_STAFF_USER_ID = "staffUserId"
+    const val ADMIN_CATALOGS = "admin_catalogs"
+    const val ADMIN_CATALOG = "admin_catalogs/{catalogKey}"
+    const val ARG_CATALOG_KEY = "catalogKey"
+    const val ADMIN_SPECIES = "admin_species"
+    const val ADMIN_SPECIES_CREATE = "admin_species/create"
+    const val ADMIN_SPECIES_DETAIL = "admin_species/{speciesCode}"
+    const val ARG_SPECIES_CODE = "speciesCode"
+
+    fun adminSpeciesDetail(code: String) =
+        "admin_species/${java.net.URLEncoder.encode(code, Charsets.UTF_8.name())}"
+
+    fun adminStaffDetail(userId: String) =
+        "admin_staff/${java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())}"
+
+    fun adminCatalog(catalogKey: String) = "admin_catalogs/$catalogKey"
     const val ADMIN_VITACORA_IMPORTS = "admin_vitacora_imports"
     const val ADMIN_VITACORA_IMPORT_NEW = "admin_vitacora_import_new"
     const val VITACORA_IMPORT = "vitacora_import/{organizationId}/{orgName}"
@@ -406,7 +463,7 @@ object NavRoutes {
     const val SUPPORT_ADMIN_QUEUE = "support_admin_queue"
     const val SUPPORT_ADMIN_TICKET = "support_admin_ticket/{ticketId}"
     const val ADMINISTRATIVE_AUDIT = "administrative_audit"
-    const val ADMINISTRATIVE_OPS_HUB = "administrative_ops_hub"
+    const val ADMINISTRATIVE_OPS_HUB = ADMIN_HUB
     const val OBSERVABILITY_OVERVIEW = "observability_overview"
     const val OBSERVABILITY_METRICS = "observability_metrics"
     const val OBSERVABILITY_HEALTH = "observability_health"
@@ -443,11 +500,13 @@ object NavRoutes {
     const val ARG_EMERGENCY_ID = "emergencyId"
     const val ARG_EVENT_ID = "eventId"
     const val ARG_PET_ID = "petId"
+    const val ARG_OWNER_USER_ID = "ownerUserId"
     const val ARG_TRANSFER_ID = "transferId"
     const val ARG_EMAIL = "email"
     const val ARG_USER_ID = "userId"
     const val ARG_SERVICE_ID = "serviceId"
     const val ARG_ORGANIZATION_ID = "organizationId"
+    const val ARG_VERIFICATION_ORG_ID = "orgId"
     const val ARG_ORG_PRESELECT = "preselect"
     const val ARG_ORG_WELFARE = "welfare"
     const val ARG_SLUG = "slug"
@@ -482,6 +541,13 @@ object NavRoutes {
         "foster_home_form/${java.net.URLEncoder.encode(fosterHomeId, Charsets.UTF_8.name())}"
     fun fosterRequestForm(fosterHomeId: String) =
         "foster_request_form/${java.net.URLEncoder.encode(fosterHomeId, Charsets.UTF_8.name())}"
+    fun leoverVerification(functionCode: String, organizationId: String = "") =
+        "leover_verification/${java.net.URLEncoder.encode(functionCode, Charsets.UTF_8.name())}" +
+            "?orgId=${java.net.URLEncoder.encode(organizationId, Charsets.UTF_8.name())}"
+    fun fosterCareRequest(petId: String) =
+        "foster_care_request/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
+    fun fosterChooseApplicant(requestId: String) =
+        "foster_choose_applicant/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
     fun fosterRequestDetail(requestId: String) =
         "foster_request_detail/${java.net.URLEncoder.encode(requestId, Charsets.UTF_8.name())}"
     fun fosterPlacementDetail(placementId: String) =
@@ -597,6 +663,10 @@ object NavRoutes {
         val encoded = java.net.URLEncoder.encode(petId.trim(), Charsets.UTF_8.name())
         return "pet_detail/$encoded"
     }
+    fun postDetail(postId: String): String {
+        val encoded = java.net.URLEncoder.encode(postId.trim(), Charsets.UTF_8.name())
+        return "posts/$encoded"
+    }
     fun petResponsibilities(petId: String) =
         "pet_responsibilities/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
     fun petAuthorizations(petId: String) =
@@ -610,12 +680,22 @@ object NavRoutes {
         "pet_status_history/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}"
     fun emailVerification(email: String) = "email_verification/$email"
     fun firstRunOnboarding(restart: Boolean = false) = "first_run_onboarding/$restart"
-    fun editPet(petId: String): String {
+    fun editPet(petId: String, section: String? = null): String {
         val encoded = java.net.URLEncoder.encode(petId.trim(), Charsets.UTF_8.name())
-        return "edit_pet/$encoded"
+        val base = "edit_pet/$encoded"
+        val focus = section?.trim()?.takeIf { it.isNotEmpty() } ?: return base
+        return "$base?section=${java.net.URLEncoder.encode(focus, Charsets.UTF_8.name())}"
     }
-    fun userProfile(userId: String) =
-        "user_profile/${java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())}"
+    fun userProfile(userId: String, from: String? = null): String {
+        val encoded = java.net.URLEncoder.encode(userId, Charsets.UTF_8.name())
+        val source = from?.trim()?.takeIf { it.isNotEmpty() } ?: return "user_profile/$encoded"
+        return "user_profile/$encoded?from=$source"
+    }
+    fun connectedPetProfile(ownerUserId: String, petId: String) =
+        "connected_pet_profile/" +
+            java.net.URLEncoder.encode(ownerUserId, Charsets.UTF_8.name()) +
+            "/" +
+            java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())
     fun createOrganization(preselect: String = "", welfare: Boolean = false): String =
         "create_organization?preselect=$preselect&welfare=$welfare"
     fun editOrganization(organizationId: String) =
@@ -661,6 +741,8 @@ object NavRoutes {
 
     fun m14PetPassport(petId: String) =
         "m14/pets/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}/passport"
+    fun m14PetShare(petId: String) =
+        "m14/pets/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}/share"
     fun m14PetPassportEdit(petId: String) =
         "m14/pets/${java.net.URLEncoder.encode(petId, Charsets.UTF_8.name())}/passport/edit"
     fun m14PassportCredentials(passportId: String) =

@@ -13,9 +13,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -27,14 +24,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.AppNotification
 import com.comunidapp.app.notifications.NotificationInboxRefreshCoordinator
+import com.comunidapp.app.ui.components.leo.LeoEmptyState
+import com.comunidapp.app.ui.components.leo.LeoHairline
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.util.formatRelativeTime
 import com.comunidapp.app.viewmodel.NotificationsViewModel
 
@@ -43,9 +45,11 @@ fun NotificationsScreen(
     onNavigateBack: () -> Unit,
     onNavigateToPreferences: () -> Unit = {},
     onOpenInvitation: (String) -> Unit = {},
+    onOpenCareTransfer: (String) -> Unit = {},
     viewModel: NotificationsViewModel = viewModel()
 ) {
     val notifications by viewModel.notifications.collectAsState()
+    val incomingTransfers by viewModel.incomingTransfers.collectAsState()
     val unreadCount by viewModel.unreadCount.collectAsState()
 
     LaunchedEffect(Unit) {
@@ -79,29 +83,50 @@ fun NotificationsScreen(
             )
         }
     ) { padding ->
-        if (notifications.isEmpty()) {
+        if (notifications.isEmpty() && incomingTransfers.isEmpty()) {
             Box(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
                 contentAlignment = Alignment.Center
             ) {
-                Text(
-                    text = "No tenés notificaciones en LeoVer",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                LeoEmptyState(
+                    title = "Sin notificaciones",
+                    message = "Cuando haya novedades, van a aparecer acá."
                 )
             }
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
                 contentPadding = PaddingValues(
-                    start = 16.dp,
-                    end = 16.dp,
-                    top = padding.calculateTopPadding() + 8.dp,
-                    bottom = padding.calculateBottomPadding() + 8.dp
+                    top = padding.calculateTopPadding() + LeoDimens.SpaceS,
+                    bottom = padding.calculateBottomPadding() + LeoDimens.SpaceS
                 ),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(0.dp)
             ) {
+                items(incomingTransfers, key = { "care-${it.id.value}" }) { transfer ->
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { onOpenCareTransfer(transfer.petId.value) }
+                            .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact)
+                    ) {
+                            Text(
+                                text = com.comunidapp.app.domain.pets.PetCareTransferCopy.RECEIVER_TITLE,
+                                style = LeoCardTitle,
+                                color = BrandText
+                            )
+                            Text(
+                                text = com.comunidapp.app.domain.pets.PetCareTransferCopy.incomingRequest(
+                                    sourceName = transfer.sourceDisplayName.orEmpty(),
+                                    petName = transfer.petDisplayName.orEmpty()
+                                ),
+                                style = LeoCaption,
+                                color = BrandTextSecondary
+                            )
+                    }
+                    LeoHairline(modifier = Modifier.padding(start = LeoDimens.SpaceMd))
+                }
                 items(notifications, key = { it.id }) { notification ->
                     NotificationCard(
                         notification = notification,
@@ -127,43 +152,35 @@ private fun NotificationCard(
     onArchive: () -> Unit,
     onDelete: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onClick)
-            .semantics { contentDescription = "Notificación ${notification.title}" },
-        colors = CardDefaults.cardColors(
-            containerColor = if (notification.isUnread) {
-                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
-            } else {
-                MaterialTheme.colorScheme.surface
-            }
-        ),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onClick)
+                .semantics { contentDescription = "Notificación ${notification.title}" }
+                .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact)
+        ) {
             Text(
                 text = notification.title,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = if (notification.isUnread) FontWeight.Bold else FontWeight.SemiBold
+                style = LeoCardTitle,
+                color = BrandText
             )
-            Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = notification.body,
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = LeoCaption,
+                color = BrandTextSecondary
             )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp),
+                    .padding(top = LeoDimens.SpaceS),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
                     text = formatRelativeTime(notification.createdAt ?: 0L),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = LeoCaption,
+                    color = BrandTextSecondary
                 )
                 Row {
                     TextButton(onClick = onArchive) { Text("Archivar") }
@@ -171,5 +188,6 @@ private fun NotificationCard(
                 }
             }
         }
+        LeoHairline(modifier = Modifier.padding(start = LeoDimens.SpaceMd))
     }
 }

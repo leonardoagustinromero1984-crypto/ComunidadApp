@@ -218,8 +218,9 @@ object AddFunctionCatalog {
             "GROOMING" -> hasProvider(occupied, "GROOMING") || LeoverFunction.GROOMING in occupied.extras
             "TRAINER" -> hasProvider(occupied, "TRAINING") || LeoverFunction.TRAINER in occupied.extras
             "VETERINARY_PROFESSIONAL" ->
-                LeoverFunction.VETERINARY_PROFESSIONAL in occupied.extras ||
-                    occupied.contexts.any { it is OperationalContext.Veterinary }
+                IndependentVeterinaryActivation.occupyCatalog(
+                    IndependentVeterinaryActivation.isPersistedActive(occupied.contexts)
+                )
             "SHELTER" -> occupied.contexts.any { ContextIdentityMapping.isRefugeNav(it) }
             "VETERINARY_CLINIC" -> occupied.contexts.any { ctx ->
                 ctx is OperationalContext.Veterinary ||

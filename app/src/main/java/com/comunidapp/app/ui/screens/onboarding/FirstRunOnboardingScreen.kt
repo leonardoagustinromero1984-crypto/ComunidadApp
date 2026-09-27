@@ -12,12 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -41,12 +35,22 @@ import com.comunidapp.app.domain.onboarding.OnboardingIntentRoutes
 import com.comunidapp.app.domain.onboarding.OnboardingStep
 import com.comunidapp.app.ui.components.BrandLogo
 import com.comunidapp.app.ui.components.LoadingState
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoBody
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
 import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.LeoDisplay
+import com.comunidapp.app.ui.theme.LeoPageTitle
+import com.comunidapp.app.ui.theme.LeoSectionTitle
+import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.viewmodel.FirstRunOnboardingNavEffect
 import com.comunidapp.app.viewmodel.FirstRunOnboardingViewModel
 
@@ -107,8 +111,8 @@ fun FirstRunOnboardingScreen(
                 if (uiState.persistFailed) {
                     Text(
                         text = "No pudimos guardar el progreso local. Podés continuar igual.",
-                        color = MaterialTheme.colorScheme.error,
-                        style = MaterialTheme.typography.bodySmall
+                        color = UrgentRed,
+                        style = LeoCaption
                     )
                 }
                 when (step) {
@@ -176,37 +180,31 @@ private fun WelcomeStep(viewModel: FirstRunOnboardingViewModel) {
         BrandLogo(modifier = Modifier.height(72.dp))
         Text(
             text = "Bienvenido a LeoVer",
-            style = MaterialTheme.typography.headlineMedium,
+            style = LeoDisplay,
+            color = BrandText,
             modifier = Modifier.semantics { heading() }
         )
         Text(
             text = stringResource(R.string.brand_slogan),
-            style = MaterialTheme.typography.titleMedium,
+            style = LeoSectionTitle,
             color = BrandText,
             textAlign = TextAlign.Center
         )
         Text(
             text = "Una identidad para cada mascota y una red para ayudarla durante toda su vida.",
-            style = MaterialTheme.typography.bodyLarge,
+            style = LeoBody,
+            color = BrandText,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(8.dp))
-        Button(
-            onClick = viewModel::onBeginTutorial,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-        ) {
-            Text("Comenzar")
-        }
-        OutlinedButton(
-            onClick = viewModel::onExploreFirst,
-            modifier = Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-        ) {
-            Text("Explorar primero")
-        }
+        LeoPrimaryButton(
+            text = "Comenzar",
+            onClick = viewModel::onBeginTutorial
+        )
+        LeoOutlinedButton(
+            text = "Explorar primero",
+            onClick = viewModel::onExploreFirst
+        )
     }
 }
 
@@ -222,18 +220,16 @@ private fun InfoStep(
         indicator?.let {
             Text(
                 text = it,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
+                style = LeoCaption,
+                color = BrandTextSecondary
             )
         }
-        Text(text = title, style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
-        Text(text = body, style = MaterialTheme.typography.bodyLarge)
-        Button(
-            onClick = onNext,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-        ) {
-            Text("Siguiente")
-        }
+        Text(text = title, style = LeoSectionTitle, color = BrandText, modifier = Modifier.semantics { heading() })
+        Text(text = body, style = LeoBody, color = BrandText)
+        LeoPrimaryButton(
+            text = "Siguiente",
+            onClick = onNext
+        )
         TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
             Text("Omitir tutorial")
         }
@@ -260,7 +256,8 @@ private fun IntentStep(
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             text = "¿Qué querés hacer primero?",
-            style = MaterialTheme.typography.titleLarge,
+            style = LeoSectionTitle,
+            color = BrandText,
             modifier = Modifier.semantics { heading() }
         )
         options.forEach { (intent, label) ->
@@ -276,7 +273,7 @@ private fun IntentStep(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(selected = selected == intent, onClick = { onSelect(intent) })
-                Text(text = label, style = MaterialTheme.typography.bodyLarge, modifier = Modifier.padding(start = 8.dp))
+                Text(text = label, style = LeoBody, color = BrandText, modifier = Modifier.padding(start = 8.dp))
             }
         }
         TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
@@ -298,30 +295,29 @@ private fun MinimalSetupStep(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = "Configuración inicial",
-            style = MaterialTheme.typography.titleLarge,
+            style = LeoSectionTitle,
+            color = BrandText,
             modifier = Modifier.semantics { heading() }
         )
         Text(
             text = "Solo pedimos lo mínimo. La zona es aproximada (por ejemplo: San Vicente, Buenos Aires).",
-            style = MaterialTheme.typography.bodyMedium
+            style = LeoBody,
+            color = BrandText
         )
-        OutlinedTextField(
+        LeoTextField(
             value = displayName,
             onValueChange = onDisplayNameChange,
-            label = { Text("Nombre visible") },
-            modifier = Modifier.fillMaxWidth(),
-            singleLine = true
+            label = "Nombre visible",
+            modifier = Modifier.fillMaxWidth()
         )
         V2LocationStringPicker(
             value = zone,
             onValueChange = onZoneChange
         )
         error?.let {
-            Text(text = it, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            Text(text = it, color = UrgentRed, style = LeoCaption)
         }
-        Button(onClick = onContinue, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Continuar")
-        }
+        LeoPrimaryButton(text = "Continuar", onClick = onContinue)
         TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
             Text("Omitir por ahora")
         }
@@ -337,19 +333,17 @@ private fun PrivacyStep(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = "Vos decidís qué información compartir",
-            style = MaterialTheme.typography.titleLarge,
+            style = LeoSectionTitle,
+            color = BrandText,
             modifier = Modifier.semantics { heading() }
         )
         Text(
             text = "Tus datos personales y ubicaciones exactas no se mostrarán públicamente de forma automática. Cada publicación tendrá controles de privacidad.",
-            style = MaterialTheme.typography.bodyLarge
+            style = LeoBody,
+            color = BrandText
         )
-        Button(onClick = onUnderstood, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Entendido")
-        }
-        OutlinedButton(onClick = onReview, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Revisar privacidad")
-        }
+        LeoPrimaryButton(text = "Entendido", onClick = onUnderstood)
+        LeoOutlinedButton(text = "Revisar privacidad", onClick = onReview)
         TextButton(onClick = onSkip, modifier = Modifier.fillMaxWidth()) {
             Text("Omitir tutorial")
         }
@@ -365,31 +359,27 @@ private fun CompletionStep(
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(
             text = "Tu cuenta está lista",
-            style = MaterialTheme.typography.headlineSmall,
+            style = LeoPageTitle,
+            color = BrandText,
             modifier = Modifier.semantics { heading() }
         )
         Text(
             text = "Podés completar tu perfil y tus preferencias cuando quieras.",
-            style = MaterialTheme.typography.bodyLarge
+            style = LeoBody,
+            color = BrandText
         )
         if (intent == OnboardingIntent.ORGANIZATION) {
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+            Column(
+                Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Opciones para organizaciones", style = MaterialTheme.typography.titleSmall)
-                    Text("• Crear una organización", style = MaterialTheme.typography.bodySmall)
-                    Text("• Ingresar con invitación", style = MaterialTheme.typography.bodySmall)
-                    Text("• Explorar refugios", style = MaterialTheme.typography.bodySmall)
-                }
+                Text("Opciones para organizaciones", style = LeoCardTitle, color = BrandText)
+                Text("• Crear una organización", style = LeoCaption, color = BrandTextSecondary)
+                Text("• Ingresar con invitación", style = LeoCaption, color = BrandTextSecondary)
+                Text("• Explorar refugios", style = LeoCaption, color = BrandTextSecondary)
             }
         }
-        Button(onClick = onPrimary, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text(OnboardingIntentRoutes.primaryCtaLabel(intent))
-        }
-        OutlinedButton(onClick = onHome, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-            Text("Ir al inicio")
-        }
+        LeoPrimaryButton(text = OnboardingIntentRoutes.primaryCtaLabel(intent), onClick = onPrimary)
+        LeoOutlinedButton(text = "Ir al inicio", onClick = onHome)
     }
 }

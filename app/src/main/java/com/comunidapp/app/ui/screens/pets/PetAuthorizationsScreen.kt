@@ -1,7 +1,6 @@
 package com.comunidapp.app.ui.screens.pets
 
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -14,13 +13,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -43,6 +37,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.pets.PetAuthorization
 import com.comunidapp.app.domain.pets.PetCapability
+import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
@@ -218,11 +216,7 @@ private fun GrantAuthorizationSection(viewModel: PetAuthorizationsViewModel) {
         )
     }
 
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
             Text(
                 text = "Nueva autorización",
                 style = MaterialTheme.typography.titleMedium,
@@ -283,7 +277,8 @@ private fun GrantAuthorizationSection(viewModel: PetAuthorizationsViewModel) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             PetAuthorizationsViewModel.GRANTABLE_CAPABILITIES.forEach { capability ->
-                FilterChip(
+                LeoFilterChip(
+                    label = PetAuthorizationsViewModel.capabilityLabel(capability),
                     selected = capability in selectedCapabilities,
                     onClick = {
                         selectedCapabilities = if (capability in selectedCapabilities) {
@@ -292,7 +287,6 @@ private fun GrantAuthorizationSection(viewModel: PetAuthorizationsViewModel) {
                             selectedCapabilities + capability
                         }
                     },
-                    label = { Text(PetAuthorizationsViewModel.capabilityLabel(capability)) },
                     modifier = Modifier.padding(top = 4.dp)
                 )
             }
@@ -314,24 +308,20 @@ private fun GrantAuthorizationSection(viewModel: PetAuthorizationsViewModel) {
                 singleLine = true
             )
 
-            Button(
+            LeoPrimaryButton(
+                text = "Otorgar autorización",
                 onClick = {
                     if (validUntilText.isNotBlank() && parseDateToEpochMs(validUntilText) == null) {
                         dateError = true
-                        return@Button
+                        return@LeoPrimaryButton
                     }
                     showConfirm = true
                 },
                 enabled = !state.isSubmitting &&
                     selectedPersonId != null &&
                     selectedCapabilities.isNotEmpty(),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 12.dp)
-            ) {
-                Text("Otorgar autorización")
-            }
-        }
+                modifier = Modifier.padding(top = 12.dp)
+            )
     }
 }
 
@@ -342,44 +332,43 @@ private fun AuthorizationCard(
     canRevoke: Boolean,
     onRevoke: () -> Unit
 ) {
-    Card(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 8.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
+            .padding(top = 8.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "Persona: ${authorization.granteeUserId}",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            Text(
-                text = authorization.capabilities.joinToString {
-                    PetAuthorizationsViewModel.capabilityLabel(it)
-                },
-                style = MaterialTheme.typography.bodyMedium
-            )
-            Text(
-                text = buildString {
-                    append(authorizationStatusLabel(displayStatus))
-                    append(" · Desde: ${formatEpochDate(authorization.validFromEpochMs)}")
-                    authorization.validToEpochMs?.let {
-                        append(" · Hasta: ${formatEpochDate(it)}")
-                    }
-                },
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-            if (canRevoke) {
-                OutlinedButton(
-                    onClick = onRevoke,
-                    modifier = Modifier.padding(top = 8.dp)
-                ) {
-                    Text("Revocar", color = MaterialTheme.colorScheme.error)
+        Text(
+            text = "Persona: ${authorization.granteeUserId}",
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(
+            text = authorization.capabilities.joinToString {
+                PetAuthorizationsViewModel.capabilityLabel(it)
+            },
+            style = MaterialTheme.typography.bodyMedium
+        )
+        Text(
+            text = buildString {
+                append(authorizationStatusLabel(displayStatus))
+                formatEpochDate(authorization.validFromEpochMs)?.let { from ->
+                    append(" · Desde: $from")
                 }
-            }
+                authorization.validToEpochMs?.let {
+                    formatEpochDate(it)?.let { to -> append(" · Hasta: $to") }
+                }
+            },
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        if (canRevoke) {
+            LeoOutlinedButton(
+                text = "Revocar",
+                onClick = onRevoke,
+                modifier = Modifier.padding(top = 8.dp)
+            )
         }
+        LeoHairline(modifier = Modifier.padding(top = 8.dp))
     }
 }
 

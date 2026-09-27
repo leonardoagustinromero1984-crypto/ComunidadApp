@@ -23,8 +23,6 @@ import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
@@ -44,6 +42,8 @@ import androidx.compose.ui.unit.dp
 import com.comunidapp.app.data.model.FeedPost
 import com.comunidapp.app.data.model.PostType
 import com.comunidapp.app.ui.util.displayDate
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.theme.OrangeContainer
 import com.comunidapp.app.ui.theme.UrgentContainer
 import com.comunidapp.app.ui.theme.UrgentRed
@@ -64,12 +64,8 @@ fun FeedPostCard(
     var menuExpanded by remember { mutableStateOf(false) }
     val showOverflow = onSaveClick != null || onReportClick != null || onBlockClick != null
 
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(12.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(LeoDimens.SpaceMd)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Box(
                     modifier = Modifier
@@ -245,6 +241,7 @@ fun FeedPostCard(
                 }
             }
         }
+        LeoHairline()
     }
 }
 
@@ -257,7 +254,7 @@ private fun PostTypeBadge(type: PostType) {
         PostType.QUESTION -> "Pregunta" to MaterialTheme.colorScheme.tertiaryContainer
         PostType.PROMO -> "Publicidad" to MaterialTheme.colorScheme.secondaryContainer
         PostType.GENERAL -> "General" to MaterialTheme.colorScheme.surfaceVariant
-        PostType.REEL -> "Reel" to MaterialTheme.colorScheme.secondaryContainer
+        PostType.REEL -> "Clip" to MaterialTheme.colorScheme.secondaryContainer
         PostType.STORY -> "Historia" to MaterialTheme.colorScheme.tertiaryContainer
     }
     val textColor = if (type == PostType.URGENT) UrgentRed else MaterialTheme.colorScheme.onSurface

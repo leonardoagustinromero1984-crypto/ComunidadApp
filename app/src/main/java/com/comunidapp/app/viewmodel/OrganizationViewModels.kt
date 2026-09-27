@@ -240,6 +240,7 @@ data class EditOrganizationUiState(
     val showPhone: Boolean = false,
     val verificationStatus: OrganizationVerificationStatus =
         OrganizationVerificationStatus.NOT_REQUESTED,
+    val functionCode: String = "SHELTER",
     val canRequestVerification: Boolean = false,
     val logoPath: String? = null,
     val logoUrl: String? = null,
@@ -328,6 +329,12 @@ class EditOrganizationViewModel(
                     showEmail = org.contactVisibility.showEmail,
                     showPhone = org.contactVisibility.showPhone,
                     verificationStatus = org.verificationStatus,
+                    functionCode = when (org.type) {
+                        OrganizationType.SHELTER, OrganizationType.RESCUE_GROUP -> "SHELTER"
+                        OrganizationType.NGO -> "NGO"
+                        OrganizationType.VETERINARY_CLINIC -> "VETERINARY"
+                        else -> "BUSINESS"
+                    },
                     canRequestVerification = canRequest &&
                         org.verificationStatus in setOf(
                             OrganizationVerificationStatus.NOT_REQUESTED,

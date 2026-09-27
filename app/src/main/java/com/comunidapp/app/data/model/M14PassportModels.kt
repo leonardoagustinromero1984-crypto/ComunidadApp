@@ -206,7 +206,11 @@ data class M14PassportHistory(
     val actorUserId: String?,
     val reason: String?,
     val createdAt: Long,
-    val metadataEvent: String? = null
+    val metadataEvent: String? = null,
+    val mediaDisplayUrl: String? = null,
+    val mediaMime: String? = null,
+    val sourceContentKind: String? = null,
+    val mediaDisplayUrls: List<String> = emptyList()
 )
 
 /** Vista pública redactada — sin petId, userId, docs, notas ni microchip completo. */

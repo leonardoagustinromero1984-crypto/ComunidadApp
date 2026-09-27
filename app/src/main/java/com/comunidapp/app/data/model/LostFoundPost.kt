@@ -17,5 +17,11 @@ data class LostFoundPost(
     val longitude: Double? = null,
     val date: String,
     val createdAt: Long? = null,
-    val petId: String? = null
+    val petId: String? = null,
+    val canClaim: Boolean = false,
+    val claimedBy: String? = null,
+    val sex: PetSex? = null,
+    val size: PetSize? = null,
+    val isCustodian: Boolean = false,
+    val estimatedAgeMonths: Int? = null
 )

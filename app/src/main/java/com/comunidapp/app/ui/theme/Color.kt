@@ -36,8 +36,11 @@ val BrandOrangeDeep = Color(0xFFE56E00)
 val BrandTextSecondary = Color(0xFF667085)
 val MutedText = BrandTextSecondary
 
-/** Canonical soft border. */
+/** Canonical soft border / hairline. */
 val NeutralBorder = Color(0xFFE5EAE4)
+val Hairline = NeutralBorder
+/** Superficie muted para placeholders y burbujas ajenas. */
+val SurfaceMuted = Color(0xFFF7F6F3)
 
 val BrandGrayLight = Color(0xFFE0E0E0)
 val BrandGrayMedium = Color(0xFF9E9E9E)

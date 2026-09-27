@@ -1,16 +1,11 @@
 package com.comunidapp.app.ui.screens.moderation
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
@@ -21,8 +16,10 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.moderation.AdministrativeScreenPhase
 import com.comunidapp.app.viewmodel.moderation.MyModerationAppealsViewModel
 
@@ -50,8 +47,8 @@ fun MyModerationAppealsScreen(
     ) { contentModifier ->
         LazyColumn(
             modifier = contentModifier.fillMaxSize(),
-            contentPadding = PaddingValues(16.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
+            contentPadding = PaddingValues(LeoDimens.SpaceMd),
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
         ) {
             item { SnackbarHost(snackbar) }
             item {
@@ -71,20 +68,19 @@ fun MyModerationAppealsScreen(
                 )
             }
             item {
-                Button(onClick = { viewModel.submitAppeal() }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Enviar apelación")
-                }
+                LeoPrimaryButton(
+                    text = "Enviar apelación",
+                    onClick = { viewModel.submitAppeal() }
+                )
             }
             items(uiState.appeals, key = { it.id }) { a ->
-                Card(modifier = Modifier.fillMaxWidth()) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(a.status.name, style = MaterialTheme.typography.titleMedium)
-                        Text(a.statement.take(160), style = MaterialTheme.typography.bodySmall)
-                        a.decisionReason?.let {
-                            Text("Decisión: $it", style = MaterialTheme.typography.bodySmall)
-                        }
+                LeoListRow(
+                    title = a.status.name,
+                    subtitle = buildString {
+                        append(a.statement.take(160))
+                        a.decisionReason?.let { append(" · Decisión: $it") }
                     }
-                }
+                )
             }
         }
     }

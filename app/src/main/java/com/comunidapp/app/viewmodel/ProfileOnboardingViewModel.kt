@@ -508,6 +508,17 @@ class ProfileOnboardingViewModel(
                     }
             }
 
+            userRepository.updatePrivacySettings(state.userId, privacy)
+                .onFailure { error ->
+                    _uiState.update {
+                        it.copy(
+                            isSubmitting = false,
+                            errorMessage = error.message ?: "No se pudo guardar la privacidad del perfil."
+                        )
+                    }
+                    return@launch
+                }
+
             _uiState.update {
                 it.copy(
                     isSubmitting = false,

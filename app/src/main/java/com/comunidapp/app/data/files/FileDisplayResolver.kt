@@ -5,6 +5,7 @@ import com.comunidapp.app.core.result.AppResult
 import com.comunidapp.app.data.repository.FileAssetRepository
 import com.comunidapp.app.data.repository.FileDownloadRepository
 import com.comunidapp.app.domain.files.FileAccessRequest
+import com.comunidapp.app.domain.files.FileAssetPurpose
 import com.comunidapp.app.domain.files.FileAssetVisibility
 import com.comunidapp.app.domain.files.FilePurposePolicy
 import com.comunidapp.app.domain.files.FileSignedTtlClass
@@ -39,23 +40,22 @@ class FileDisplayResolver(
             temporaryUrls[assetId]?.takeIf { (it.expiresAtEpochMs ?: 0L) > clock() }?.let {
                 return AppResult.Success(it)
             }
-            val asset = when (val result = assetRepository.getAsset(assetId)) {
-                is AppResult.Success -> result.data
-                is AppResult.Failure -> return result
-            }
-            if (context.organizationId != null &&
+            val asset = (assetRepository.getAsset(assetId) as? AppResult.Success)?.data
+            if (asset != null &&
+                context.organizationId != null &&
                 asset.owner is com.comunidapp.app.domain.files.FileAssetOwner.Organization &&
                 asset.owner.organizationId != context.organizationId
             ) {
                 return fileUploadFailure("ORG_MISMATCH", AppErrorKind.FORBIDDEN)
             }
-            val sensitive = FilePurposePolicy.isSensitive(asset.purpose)
+            val purpose = asset?.purpose ?: FileAssetPurpose.POST_MEDIA
+            val sensitive = FilePurposePolicy.isSensitive(purpose)
             if (deepLinkSensitive && sensitive &&
-                FileAuthorization.canRead(context, asset) != FileAccessDecision.ALLOWED
+                (asset == null || FileAuthorization.canRead(context, asset) != FileAccessDecision.ALLOWED)
             ) {
                 return fileUploadFailure("FORBIDDEN", AppErrorKind.FORBIDDEN)
             }
-            val ttl = if (asset.visibility == FileAssetVisibility.PUBLIC && !sensitive) {
+            val ttl = if (asset?.visibility == FileAssetVisibility.PUBLIC && !sensitive) {
                 FileSignedTtlClass.PUBLIC_RESOLUTION
             } else if (sensitive) {
                 FileSignedTtlClass.SENSITIVE_SHORT
@@ -64,9 +64,9 @@ class FileDisplayResolver(
             }
             val signed = downloadRepository.requestSignedUrl(
                 request = FileAccessRequest(
-                    assetId = asset.id,
+                    assetId = asset?.id ?: assetId,
                     actorUserId = context.actorUserId.orEmpty(),
-                    purpose = asset.purpose,
+                    purpose = purpose,
                     ttlClass = ttl
                 ),
                 context = context,
@@ -79,13 +79,14 @@ class FileDisplayResolver(
                     if (isForbiddenPermanentReference(value)) {
                         fileUploadFailure("DISPLAY_REFERENCE_INVALID")
                     } else {
+                        val resolvedId = asset?.id ?: assetId
                         val reference = FileDisplayReference(
-                            assetId = asset.id,
+                            assetId = resolvedId,
                             displayValue = value,
                             expiresAtEpochMs = signed.data.expiresAtEpochMs,
                             legacyReadOnly = false
                         )
-                        temporaryUrls[asset.id] = reference
+                        temporaryUrls[resolvedId] = reference
                         AppResult.Success(reference)
                     }
                 }

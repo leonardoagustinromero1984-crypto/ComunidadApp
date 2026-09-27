@@ -331,6 +331,7 @@ dependencies {
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.maps.compose)
     implementation(libs.play.services.maps)
     implementation(libs.play.services.location)

@@ -34,11 +34,13 @@ object LeoVerTheme {
         val s: Dp = LeoDimens.SpaceS
         val m: Dp = LeoDimens.SpaceM
         val l: Dp = LeoDimens.SpaceL
+        val comfortable: Dp = LeoDimens.Space20
         val xl: Dp = LeoDimens.SpaceXl
         val xxl: Dp = LeoDimens.SpaceXxl
     }
 
     object shapes {
+        val tight: Dp = LeoDimens.RadiusSmall
         val small: Dp = LeoDimens.RadiusChip
         val card: Dp = LeoDimens.RadiusCard
         val large: Dp = LeoDimens.RadiusLarge
@@ -47,6 +49,7 @@ object LeoVerTheme {
     }
 
     object typography {
+        val display: TextStyle = LeoDisplay
         val screenTitle: TextStyle = LeoPageTitle
         val sectionTitle: TextStyle = LeoSectionTitle
         val cardTitle: TextStyle = LeoCardTitle

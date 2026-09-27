@@ -301,18 +301,23 @@ object Onb02StoreProvider {
     fun decideEntry(
         userId: String,
         justCompletedProfileSetup: Boolean,
-        personOnboardingComplete: Boolean = false
+        personOnboardingComplete: Boolean = false,
+        remoteTutorialFlowCompleted: Boolean = false
     ): Onb02FlowKind? {
         val store = instance
+        @Suppress("UNUSED_PARAMETER")
+        val ignoredPersonComplete = personOnboardingComplete
         if (
             Onb02EntryPolicy.skipSelectorForExistingComplete(
                 completion = store.completion(userId),
-                personOnboardingComplete = personOnboardingComplete,
+                remoteTutorialFlowCompleted = remoteTutorialFlowCompleted,
                 justCompletedProfileSetup = justCompletedProfileSetup
             )
         ) {
-            store.markCompleted(userId)
             store.markSelectionConfirmed(userId)
+            if (store.completion(userId) == Onb02Completion.NOT_STARTED) {
+                store.markCompleted(userId)
+            }
             return null
         }
         return when (store.completion(userId)) {

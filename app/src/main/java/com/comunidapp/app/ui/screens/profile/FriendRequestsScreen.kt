@@ -13,11 +13,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,12 +25,21 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.components.leo.LeoEmptyState
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandOrange
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.LeoSectionTitle
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.PetImage
-import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.viewmodel.FriendRequestItem
 import com.comunidapp.app.viewmodel.FriendRequestsViewModel
 
@@ -65,9 +70,9 @@ fun FriendRequestsScreen(
                         .padding(padding),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No tenés solicitudes pendientes",
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    LeoEmptyState(
+                        title = "No tenés solicitudes pendientes",
+                        message = "Cuando alguien te envíe una solicitud, va a aparecer acá."
                     )
                 }
             }
@@ -75,20 +80,20 @@ fun FriendRequestsScreen(
                 LazyColumn(
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(
-                        start = 16.dp,
-                        end = 16.dp,
-                        top = padding.calculateTopPadding() + 8.dp,
-                        bottom = padding.calculateBottomPadding() + 8.dp
+                        top = padding.calculateTopPadding() + LeoDimens.SpaceS,
+                        bottom = padding.calculateBottomPadding() + LeoDimens.SpaceS
                     ),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                    verticalArrangement = Arrangement.spacedBy(0.dp)
                 ) {
                     uiState.actionMessage?.let { message ->
                         item {
                             Text(
                                 text = message,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.primary,
-                                modifier = Modifier.fillMaxWidth()
+                                style = LeoCaption,
+                                color = BrandTextSecondary,
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = LeoDimens.SpaceMd)
                             )
                         }
                     }
@@ -142,9 +147,9 @@ private fun SectionHeader(
 ) {
     Text(
         text = "$title ($count)",
-        style = MaterialTheme.typography.titleMedium,
-        fontWeight = FontWeight.Bold,
-        modifier = modifier.padding(bottom = 4.dp)
+        style = LeoSectionTitle,
+        color = BrandText,
+        modifier = modifier.padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceS)
     )
 }
 
@@ -156,39 +161,35 @@ private fun IncomingRequestCard(
     onAccept: () -> Unit,
     onReject: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
+    Column(modifier = Modifier.fillMaxWidth()) {
+        RequestUserRow(user = item.user, onClick = onUserClick)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceS),
+            horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)
         ) {
-            RequestUserRow(user = item.user, onClick = onUserClick)
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                Button(
+            if (isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(22.dp),
+                    color = BrandOrange,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                LeoPrimaryButton(
+                    text = "Aceptar",
                     onClick = onAccept,
-                    enabled = !isLoading,
-                    modifier = Modifier.weight(1f)
-                ) {
-                    if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(18.dp),
-                            strokeWidth = 2.dp
-                        )
-                    } else {
-                        Text("Aceptar")
-                    }
-                }
-                OutlinedButton(
+                    modifier = Modifier.weight(1f),
+                    fillMaxWidth = false
+                )
+                LeoOutlinedButton(
+                    text = "Rechazar",
                     onClick = onReject,
-                    enabled = !isLoading,
                     modifier = Modifier.weight(1f)
-                ) {
-                    Text("Rechazar")
-                }
+                )
             }
         }
+        LeoHairline(modifier = Modifier.padding(start = LeoDimens.SpaceMd))
     }
 }
 
@@ -199,27 +200,24 @@ private fun OutgoingRequestCard(
     onUserClick: () -> Unit,
     onCancel: () -> Unit
 ) {
-    Card(modifier = Modifier.fillMaxWidth()) {
-        Column(
-            modifier = Modifier.padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(10.dp)
-        ) {
-            RequestUserRow(user = item.user, onClick = onUserClick)
-            OutlinedButton(
+    Column(modifier = Modifier.fillMaxWidth()) {
+        RequestUserRow(user = item.user, onClick = onUserClick)
+        if (isLoading) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .padding(horizontal = LeoDimens.SpaceMd)
+                    .size(22.dp),
+                color = BrandOrange,
+                strokeWidth = 2.dp
+            )
+        } else {
+            LeoOutlinedButton(
+                text = "Cancelar solicitud",
                 onClick = onCancel,
-                enabled = !isLoading,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                if (isLoading) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(18.dp),
-                        strokeWidth = 2.dp
-                    )
-                } else {
-                    Text("Cancelar solicitud")
-                }
-            }
+                modifier = Modifier.padding(horizontal = LeoDimens.SpaceMd)
+            )
         }
+        LeoHairline(modifier = Modifier.padding(start = LeoDimens.SpaceMd, top = LeoDimens.SpaceS))
     }
 }
 
@@ -231,34 +229,35 @@ private fun RequestUserRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .clickable(onClick = onClick)
+            .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
+        horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceCompact)
     ) {
         PetImage(
             imageUrl = user.profileImageUrl,
             modifier = Modifier
-                .size(48.dp)
+                .size(52.dp)
                 .clip(CircleShape),
-            cornerRadius = 24.dp,
+            cornerRadius = 26.dp,
             contentDescription = user.name
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = user.name,
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
+                style = LeoCardTitle,
+                color = BrandText
             )
             Text(
                 text = "Persona",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                style = LeoCaption,
+                color = BrandTextSecondary
             )
             user.locationText?.let { location ->
                 Text(
                     text = location,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                    style = LeoCaption,
+                    color = BrandTextSecondary
                 )
             }
         }

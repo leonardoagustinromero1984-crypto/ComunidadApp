@@ -125,6 +125,27 @@ export async function fetchPublicFoundCase(publicCode: string): Promise<PublicLo
   return normalizeLostFound(data as PublicLostFoundCase, "FOUND");
 }
 
+export async function fetchPublicPost(postId: string): Promise<import("./types").PublicPost | null> {
+  const supabase = await createClient();
+  const { data, error } = await supabase.rpc("canon_get_public_social_post", {
+    p_post_id: postId,
+  });
+
+  if (error) {
+    if (isNotPublicRpcError(error)) {
+      return null;
+    }
+    throw error;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  assertNoSensitiveLeak(data);
+  return data as import("./types").PublicPost;
+}
+
 function normalizeLostFound(
   row: PublicLostFoundCase,
   expected: "LOST" | "FOUND",

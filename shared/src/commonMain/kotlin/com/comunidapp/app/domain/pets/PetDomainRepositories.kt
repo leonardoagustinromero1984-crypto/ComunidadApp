@@ -57,4 +57,6 @@ interface PetTransferRepository {
     suspend fun cancel(transferId: PetTransferId, atEpochMs: Long, reason: String? = null): Result<Unit>
     suspend fun expire(transferId: PetTransferId, atEpochMs: Long): Result<Unit>
     suspend fun listHistory(petId: PetId): List<PetTransfer>
+    suspend fun listIncoming(): List<PetTransfer> = emptyList()
+    suspend fun searchTargets(query: String): List<PetTransferTargetHit> = emptyList()
 }

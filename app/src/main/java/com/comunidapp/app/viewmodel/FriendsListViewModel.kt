@@ -21,8 +21,12 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withPermit
 
 data class FriendListItem(
     val user: User,
@@ -34,6 +38,7 @@ data class FriendsListUiState(
     val isLoading: Boolean = true,
     val friends: List<FriendListItem> = emptyList(),
     val incoming: List<FriendListItem> = emptyList(),
+    val incomingCount: Int = 0,
     val outgoing: List<FriendListItem> = emptyList(),
     val actionInProgressId: String? = null,
     val actionMessage: String? = null
@@ -66,14 +71,19 @@ class FriendsListViewModel(
                             it.status == FriendConnectionStatus.PENDING &&
                                 it.addresseeId == authUser.id
                         }
-                        val friends = resolve(authUser.id, accepted)
-                        val incoming = resolve(authUser.id, pendingIn)
-                        val outgoing = resolve(authUser.id, pendingOut)
+                        emit(FriendsListUiState(isLoading = true, incomingCount = pendingIn.size))
+                        val probe = com.comunidapp.app.domain.perf.ScreenPerfProbe.begin("mi_manada")
+                        val friends = probe.network { resolve(authUser.id, accepted) }
+                        val incoming = probe.network { resolve(authUser.id, pendingIn) }
+                        val outgoing = probe.network { resolve(authUser.id, pendingOut) }
+                        probe.markFirstContent()
+                        probe.finish(com.comunidapp.app.domain.perf.ScreenPerfProbe.Ledger.snapshot())
                         emit(
                             FriendsListUiState(
                                 isLoading = false,
                                 friends = friends,
                                 incoming = incoming,
+                                incomingCount = pendingIn.size,
                                 outgoing = outgoing,
                                 actionInProgressId = _actionInProgressId.value,
                                 actionMessage = _actionMessage.value
@@ -94,20 +104,28 @@ class FriendsListViewModel(
                 if (conn.requesterId == viewerId) conn.addresseeId else conn.requesterId
             }.toSet()
         }
-        return connections.mapNotNull { connection ->
-            val otherId = if (connection.requesterId == viewerId) {
-                connection.addresseeId
-            } else {
-                connection.requesterId
-            }
-            val public = userRepository.getPublicProfile(viewerId, otherId).getOrNull()
-            val user = public?.toBridgeUser() ?: return@mapNotNull null
-            FriendListItem(
-                user = user,
-                connection = connection,
-                pending = connection.status == FriendConnectionStatus.PENDING
-            )
-        }.filter { it.user.id in ids || it.pending }
+        if (connections.isEmpty()) return emptyList()
+        return coroutineScope {
+            val gate = Semaphore(6)
+            connections.map { connection ->
+                async {
+                    gate.withPermit {
+                        val otherId = if (connection.requesterId == viewerId) {
+                            connection.addresseeId
+                        } else {
+                            connection.requesterId
+                        }
+                        val public = userRepository.getPublicProfile(viewerId, otherId).getOrNull()
+                        val user = public?.toBridgeUser() ?: return@withPermit null
+                        FriendListItem(
+                            user = user,
+                            connection = connection,
+                            pending = connection.status == FriendConnectionStatus.PENDING
+                        )
+                    }
+                }
+            }.awaitAll().filterNotNull().filter { it.user.id in ids || it.pending }
+        }
     }
 
     fun acceptRequest(connectionId: String) {
@@ -121,6 +139,23 @@ class FriendsListViewModel(
                     _actionMessage.value = FriendshipErrorMapper.userMessage(
                         it,
                         FriendshipErrorMapper.Operation.RESPOND
+                    )
+                }
+            _actionInProgressId.value = null
+        }
+    }
+
+    fun removeFromManada(connectionId: String) {
+        val userId = authRepository.getCurrentUser()?.id ?: return
+        viewModelScope.launch {
+            _actionInProgressId.value = connectionId
+            _actionMessage.value = null
+            friendRepository.removeAcceptedConnection(connectionId, userId)
+                .onSuccess { _actionMessage.value = "Ya no está en tu manada" }
+                .onFailure {
+                    _actionMessage.value = FriendshipErrorMapper.userMessage(
+                        it,
+                        FriendshipErrorMapper.Operation.REMOVE
                     )
                 }
             _actionInProgressId.value = null

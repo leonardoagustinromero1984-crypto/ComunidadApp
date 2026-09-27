@@ -25,6 +25,10 @@ import kotlinx.coroutines.withContext
 class SupabaseTusUploader(
     private val http: HttpClient = HttpClient(Android) {
         expectSuccess = false
+        engine {
+            connectTimeout = 20_000
+            socketTimeout = 90_000
+        }
     }
 ) {
     suspend fun uploadFile(

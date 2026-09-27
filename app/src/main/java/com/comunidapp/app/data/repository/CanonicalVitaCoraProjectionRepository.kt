@@ -163,10 +163,18 @@ class CanonicalVitaCoraProjectionRepository(
         return M08RpcDecoding.decodeRows<CanonicalMomentRow>(element)
             .filter { row ->
                 row.kind.uppercase() in setOf(
-                    "SOCIAL", "PHOTO", "MEMORY", "NOTE", "MILESTONE", "ARRIVAL", "BIRTHDAY", "TRIP"
+                    "SOCIAL", "PHOTO", "MEMORY", "NOTE", "MILESTONE", "ARRIVAL", "BIRTHDAY", "TRIP",
+                    "CARE_CREATED", "CARE_TRANSFER"
                 )
             }
             .map { row ->
+                val social = if (row.kind.equals("SOCIAL", ignoreCase = true)) {
+                    com.comunidapp.app.domain.vitacora.VitaCoraSocialMedia.resolve(row.body)
+                } else {
+                    null
+                }
+                val contentId = com.comunidapp.app.domain.vitacora.VitaCoraSocialMomentCodec
+                    .decode(row.body)?.contentId?.trim()?.takeIf { it.isNotEmpty() }
                 M14PassportHistory(
                     id = row.id,
                     passportId = petId,
@@ -177,8 +185,38 @@ class CanonicalVitaCoraProjectionRepository(
                     createdAt = row.createdAt?.let {
                         runCatching { Instant.parse(it).toEpochMilli() }.getOrDefault(0L)
                     } ?: 0L,
-                    metadataEvent = row.kind
-                )
+                    metadataEvent = row.kind,
+                    mediaDisplayUrl = social?.displayUrl,
+                    mediaMime = social?.mime,
+                    sourceContentKind = social?.contentKind,
+                    mediaDisplayUrls = social?.allUrls.orEmpty()
+                ) to contentId
+            }
+            .let { rows ->
+                val socialGrouped = linkedMapOf<String, M14PassportHistory>()
+                val others = mutableListOf<M14PassportHistory>()
+                for ((item, contentId) in rows) {
+                    val isSocial = item.metadataEvent.equals("SOCIAL", ignoreCase = true)
+                    if (isSocial && !contentId.isNullOrBlank()) {
+                        val key = contentId
+                        val existing = socialGrouped[key]
+                        if (existing == null) {
+                            socialGrouped[key] = item
+                        } else {
+                            val mergedUrls = (existing.mediaDisplayUrls + item.mediaDisplayUrls)
+                                .ifEmpty { listOfNotNull(existing.mediaDisplayUrl, item.mediaDisplayUrl) }
+                                .distinct()
+                            socialGrouped[key] = existing.copy(
+                                mediaDisplayUrl = mergedUrls.firstOrNull() ?: existing.mediaDisplayUrl,
+                                mediaDisplayUrls = mergedUrls,
+                                createdAt = maxOf(existing.createdAt, item.createdAt)
+                            )
+                        }
+                    } else {
+                        others += item
+                    }
+                }
+                (socialGrouped.values + others).sortedByDescending { it.createdAt }
             }
     }
 }

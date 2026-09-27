@@ -12,13 +12,14 @@ import org.junit.Test
 class LeoVerProfileActorTaxonomyContractTest {
 
     @Test
-    fun PROFILE_ACTOR_FIRST_LEVEL_IS_EXACTLY_FIVE() {
-        assertEquals(5, ProfileActorTaxonomy.FIRST_LEVEL_ACTOR_COUNT)
-        assertEquals(5, ProfileActorTaxonomy.firstLevel.size)
+    fun PROFILE_ACTOR_FIRST_LEVEL_IS_EXACTLY_SIX() {
+        assertEquals(6, ProfileActorTaxonomy.FIRST_LEVEL_ACTOR_COUNT)
+        assertEquals(6, ProfileActorTaxonomy.firstLevel.size)
         assertEquals(
             listOf(
                 ProfileActorKind.PERSON,
                 ProfileActorKind.INDEPENDENT_RESCUER,
+                ProfileActorKind.FOSTER,
                 ProfileActorKind.REFUGE,
                 ProfileActorKind.INDEPENDENT_PROFESSIONAL,
                 ProfileActorKind.BUSINESS
@@ -26,7 +27,8 @@ class LeoVerProfileActorTaxonomyContractTest {
             ProfileActorTaxonomy.firstLevel
         )
         val labels = ProfileActorTaxonomy.firstLevelLabels()
-        assertTrue(labels.contains("Persona"))
+        assertTrue(labels.contains("Personal"))
+        assertTrue(labels.contains("Hogar de tránsito"))
         assertTrue(labels.contains("Rescatista independiente"))
         assertTrue(labels.contains("Refugio / Organización de rescate"))
         assertTrue(labels.contains("Profesional independiente"))

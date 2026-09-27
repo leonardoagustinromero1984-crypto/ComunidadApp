@@ -1,29 +1,22 @@
 package com.comunidapp.app.ui.screens.pets
 
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.remote.supabase.m08.PetStatusHistoryM08Row
+import com.comunidapp.app.ui.components.leo.LeoListRow
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
@@ -79,45 +72,19 @@ fun PetStatusHistoryScreen(
 
 @Composable
 private fun StatusHistoryCard(entry: PetStatusHistoryM08Row) {
-    Card(
-        modifier = Modifier.fillMaxWidth(),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
-            Text(
-                text = statusTransitionLabel(
-                    entry.previousStatus,
-                    entry.newStatus,
-                    entry.reasonCode
-                ),
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
-            )
-            entry.createdAt?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = "Fecha: $it",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            entry.reasonCode?.takeIf { it.isNotBlank() }?.let { reason ->
-                Text(
-                    text = "Motivo: ${petStatusReasonLabel(reason)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-            entry.actorUserId?.takeIf { it.isNotBlank() }?.let {
-                Text(
-                    text = "Por: $it",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(top = 4.dp)
-                )
-            }
-        }
-    }
+    val subtitle = listOfNotNull(
+        entry.createdAt?.takeIf { it.isNotBlank() }?.let { "Fecha: $it" },
+        entry.reasonCode?.takeIf { it.isNotBlank() }?.let { "Motivo: ${petStatusReasonLabel(it)}" },
+        entry.actorUserId?.takeIf { it.isNotBlank() }?.let { "Por: $it" }
+    ).joinToString(" · ").ifBlank { null }
+    LeoListRow(
+        title = statusTransitionLabel(
+            entry.previousStatus,
+            entry.newStatus,
+            entry.reasonCode
+        ),
+        subtitle = subtitle
+    )
 }
 
 private fun statusTransitionLabel(

@@ -24,7 +24,8 @@ data class AdminUserSummary(
     val username: String?,
     val accountStatus: AccountStatus,
     val onboardingStatus: String?,
-    val email: String? = null
+    val email: String? = null,
+    val createdAtIso: String? = null
 )
 
 data class AdminRoleAssignment(
@@ -42,12 +43,19 @@ data class AdminStatusHistoryEntry(
     val changedAtEpochMs: Long?
 )
 
+data class AdminDashboardSummary(
+    val users: Int? = null,
+    val organizations: Int? = null,
+    val openReports: Int? = null
+)
+
 /**
  * Administración de plataforma (M02 Etapa 4). Separado de [UserRepository].
  * Cambios solo vía RPC; Android no escribe tablas de roles/estado.
  */
 interface PlatformAdministrationRepository {
     suspend fun searchUsers(query: String, limit: Int = 20): Result<List<AdminUserSummary>>
+    suspend fun dashboardSummary(): Result<AdminDashboardSummary>
     suspend fun getUserRoles(targetUserId: String): Result<List<AdminRoleAssignment>>
     suspend fun getStatusHistory(
         targetUserId: String,
@@ -81,7 +89,15 @@ private data class AdminUserRpcRow(
     val username: String? = null,
     @SerialName("account_status") val accountStatus: String? = null,
     @SerialName("onboarding_status") val onboardingStatus: String? = null,
-    val email: String? = null
+    val email: String? = null,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+private data class AdminDashboardRpcRow(
+    val users: Int? = null,
+    val organizations: Int? = null,
+    @SerialName("open_reports") val openReports: Int? = null
 )
 
 @Serializable
@@ -125,7 +141,7 @@ class MockPlatformAdministrationRepository(
         val actor = MockData.currentUser.id
         val canSearch = permissionRepository.hasPermission(actor, PermissionCode.ROLES_VIEW) ||
             permissionRepository.hasPermission(actor, PermissionCode.USERS_CHANGE_STATUS) ||
-            permissionRepository.hasPermission(actor, PermissionCode.MODERATION_VIEW)
+            permissionRepository.hasPermission(actor, PermissionCode.USERS_VIEW_PRIVATE)
         if (!canSearch) return Result.failure(IllegalStateException("FORBIDDEN"))
         val canPrivate = permissionRepository.hasPermission(actor, PermissionCode.USERS_VIEW_PRIVATE)
         val q = query.trim().lowercase()
@@ -144,10 +160,28 @@ class MockPlatformAdministrationRepository(
                     username = it.username,
                     accountStatus = UserProfileMapper.parseAccount(it.accountStatus),
                     onboardingStatus = it.onboardingStatus,
-                    email = if (canPrivate) it.email else null
+                    email = if (canPrivate) it.email else null,
+                    createdAtIso = null
                 )
             }
         return Result.success(list)
+    }
+
+    override suspend fun dashboardSummary(): Result<AdminDashboardSummary> {
+        val actor = MockData.currentUser.id
+        val canSee =
+            permissionRepository.hasPermission(actor, PermissionCode.ROLES_VIEW) ||
+                permissionRepository.hasPermission(actor, PermissionCode.USERS_CHANGE_STATUS) ||
+                permissionRepository.hasPermission(actor, PermissionCode.USERS_VIEW_PRIVATE) ||
+                permissionRepository.hasPermission(actor, PermissionCode.MODERATION_VIEW)
+        if (!canSee) return Result.failure(IllegalStateException("FORBIDDEN"))
+        return Result.success(
+            AdminDashboardSummary(
+                users = MockUserStore.allUsers().size,
+                organizations = null,
+                openReports = null
+            )
+        )
     }
 
     override suspend fun getUserRoles(targetUserId: String): Result<List<AdminRoleAssignment>> {
@@ -278,10 +312,37 @@ class SupabasePlatformAdministrationRepository : PlatformAdministrationRepositor
                             username = it.username,
                             accountStatus = UserProfileMapper.parseAccount(it.accountStatus),
                             onboardingStatus = it.onboardingStatus,
-                            email = it.email
+                            email = it.email,
+                            createdAtIso = it.createdAt
                         )
                     }
                 }
+            )
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    override suspend fun dashboardSummary(): Result<AdminDashboardSummary> {
+        return try {
+            val element = supabase.postgrest.rpc(
+                function = "canon_admin_dashboard_summary"
+            ).decodeAs<JsonElement>()
+            val obj = when (element) {
+                is JsonArray -> element.firstOrNull()
+                else -> element
+            }
+            val row = obj?.let {
+                runCatching {
+                    json.decodeFromJsonElement(AdminDashboardRpcRow.serializer(), it)
+                }.getOrNull()
+            }
+            Result.success(
+                AdminDashboardSummary(
+                    users = row?.users,
+                    organizations = row?.organizations,
+                    openReports = row?.openReports
+                )
             )
         } catch (e: Exception) {
             Result.failure(e)

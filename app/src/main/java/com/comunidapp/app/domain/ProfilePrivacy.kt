@@ -18,21 +18,20 @@ object ProfilePrivacy {
     ): ProfileRelation {
         if (viewerId == null) return ProfileRelation.LOCKED
         if (viewerId == target.id) return ProfileRelation.SELF
-        if (isPublicProfile(target)) return ProfileRelation.PUBLIC_PROFILE
 
         val link = connections.firstOrNull { conn ->
             involves(conn, viewerId, target.id) && conn.status != FriendConnectionStatus.REJECTED
-        } ?: return ProfileRelation.LOCKED
-
-        return when (link.status) {
-            // Accepted follow (existing connection graph). Not an AMIGO relationship.
-            FriendConnectionStatus.ACCEPTED -> ProfileRelation.FRIENDS
+        }
+        when (link?.status) {
+            FriendConnectionStatus.ACCEPTED -> return ProfileRelation.FRIENDS
             FriendConnectionStatus.PENDING -> {
-                if (link.requesterId == viewerId) ProfileRelation.PENDING_OUTGOING
+                return if (link.requesterId == viewerId) ProfileRelation.PENDING_OUTGOING
                 else ProfileRelation.PENDING_INCOMING
             }
-            FriendConnectionStatus.REJECTED -> ProfileRelation.LOCKED
+            FriendConnectionStatus.REJECTED, null -> Unit
         }
+        if (isPublicProfile(target)) return ProfileRelation.PUBLIC_PROFILE
+        return ProfileRelation.LOCKED
     }
 
     fun canViewFullProfile(relation: ProfileRelation): Boolean =
@@ -57,6 +56,19 @@ object ProfilePrivacy {
         if (viewerId == null) return emptyList()
         return posts.filter { post -> canViewPost(post, usersById, viewerId, friendIds) }
     }
+
+    fun filterVisiblePosts(
+        posts: List<FeedPost>,
+        viewerId: String?,
+        connections: List<FriendConnection>,
+        authorProfilePublicById: Map<String, Boolean> = emptyMap()
+    ): List<FeedPost> =
+        com.comunidapp.app.domain.social.SocialFeedVisibilityRules.filterVisiblePosts(
+            posts,
+            viewerId,
+            connections,
+            authorProfilePublicById
+        )
 
     fun filterVisiblePets(
         pets: List<Pet>,
@@ -87,8 +99,15 @@ object ProfilePrivacy {
         friendIds: Set<String>
     ): Boolean {
         if (post.authorId == viewerId) return true
-        val author = usersById[post.authorId] ?: return false
-        return canViewUserContent(author, viewerId, friendIds)
+        val author = usersById[post.authorId]
+        val authorPublic = author?.let { isPublicProfile(it) } ?: true
+        return com.comunidapp.app.domain.social.SocialFeedVisibilityRules.isVisibleToViewer(
+            postVisibility = post.visibility,
+            authorId = post.authorId,
+            viewerId = viewerId,
+            acceptedConnectionAuthorIds = friendIds,
+            authorProfilePublic = authorPublic
+        )
     }
 
     private fun canViewUserContent(

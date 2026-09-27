@@ -14,6 +14,7 @@ import com.comunidapp.app.data.model.M28GrantStatus
 import com.comunidapp.app.data.model.M28PassportUpdateProposal
 import com.comunidapp.app.data.model.M28PatientSummary
 import com.comunidapp.app.data.model.M28ProfessionalAccessGrant
+import com.comunidapp.app.data.model.VitacoraAccessTarget
 import com.comunidapp.app.data.model.M28ProfessionalCare
 import com.comunidapp.app.data.model.M28ProposalDecision
 import com.comunidapp.app.data.model.M28ProposalStatus
@@ -32,6 +33,7 @@ interface M28Repository {
     suspend fun grantAccess(input: M28GrantProfessionalAccessInput): Result<M28ProfessionalAccessGrant>
     suspend fun revokeAccess(grantId: String): Result<M28ProfessionalAccessGrant>
     suspend fun listGrantsForResponsible(petId: String): Result<List<M28ProfessionalAccessGrant>>
+    suspend fun searchAccessTargets(query: String): Result<List<VitacoraAccessTarget>> = Result.success(emptyList())
     suspend fun listClinicPatients(clinicId: String, actorUserId: String, actorOrgRole: String?): Result<List<M28PatientSummary>>
     suspend fun createCareDraft(input: M28CreateCareDraftInput, actorUserId: String): Result<M28ProfessionalCare>
     suspend fun updateCareDraft(input: M28UpdateCareDraftInput, actorUserId: String): Result<M28ProfessionalCare>

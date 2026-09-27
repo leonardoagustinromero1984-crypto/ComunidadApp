@@ -15,6 +15,9 @@ import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.notifications.NotificationDeepLink
 import com.comunidapp.app.domain.notifications.NotificationDeepLinkRoute
 import com.comunidapp.app.navigation.ComunidappNavGraph
+import com.comunidapp.app.navigation.LeoVerDeepLinkStore
+import com.comunidapp.app.navigation.NavRoutes
+import com.comunidapp.app.data.repository.M14PublicQrPayloadService
 import com.comunidapp.app.notifications.LeoverNotificationHelper
 import com.comunidapp.app.notifications.NotificationChannelRegistry
 import com.comunidapp.app.notifications.NotificationPendingNavigationStore
@@ -37,11 +40,12 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         NotificationChannelRegistry.ensureChannels(this)
         handleAuthDeepLink(intent)
+        handlePassportDeepLink(intent)
         captureNotificationDeepLink(intent)
         // POST_NOTIFICATIONS se pide en contexto (preferencias), no al iniciar la app.
         enableEdgeToEdge()
         setContent {
-            ComunidappTheme {
+            ComunidappTheme(darkTheme = false) {
                 val sessionViewModel: SessionViewModel = viewModel()
                 val sessionState by sessionViewModel.sessionState.collectAsState()
                 keepSplashScreen = sessionState == SessionState.Loading
@@ -67,6 +71,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         setIntent(intent)
         handleAuthDeepLink(intent)
+        handlePassportDeepLink(intent)
         captureNotificationDeepLink(intent)
     }
 
@@ -123,6 +128,17 @@ class MainActivity : ComponentActivity() {
         }
         AuthLinkNoticeStore.publish(kind)
         pendingDeepLinkKind = kind
+    }
+
+    private fun handlePassportDeepLink(intent: Intent?) {
+        val uri = intent?.data ?: return
+        if (uri.scheme != "leover" || uri.host != "passport") return
+        val segment = uri.lastPathSegment?.trim().orEmpty()
+        if (segment.isEmpty()) return
+        M14PublicQrPayloadService.extractPublicCode("leover://passport/$segment")
+            .onSuccess { publicCode ->
+                LeoVerDeepLinkStore.offer(NavRoutes.m14Public(publicCode))
+            }
     }
 
     companion object {

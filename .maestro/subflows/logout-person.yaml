@@ -1,0 +1,14 @@
+appId: ${APP_ID}
+---
+- tapOn: "Perfil"
+- tapOn: "Cerrar sesión"
+- runFlow:
+    when:
+      visible: "Cerrar sesión"
+    commands:
+      - tapOn:
+          text: "Cerrar sesión"
+          index: 1
+- extendedWaitUntil:
+    visible: "Correo o usuario"
+    timeout: 20000

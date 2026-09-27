@@ -2,7 +2,9 @@
 
 **Estado:** aprobado como referencia oficial inicial  
 **Fecha:** 5 de agosto de 2026  
-**Eslogan:** **Conectamos mascotas, personas y comunidad.**
+**Tagline de marca:** **La comunidad de los Pet Lovers**  
+**Eslogan institucional:** **Conectamos mascotas, personas y comunidad.**  
+Fuente canónica de ambas frases: `docs/08-marca/D08-01-Identidad-Visual-LeoVer-v1.0.md`.
 
 ![Referencia visual oficial](LeoVer-identidad-visual-oficial-v1.0.png)
 
@@ -17,6 +19,7 @@ LeoVer es cercana, confiable, activa, humana, clara y optimista. La mascota es e
 ## 2. Nombre y mensajes
 
 - Escritura oficial: **LeoVer**.
+- Tagline de marca: **La comunidad de los Pet Lovers**
 - Eslogan institucional: **Conectamos mascotas, personas y comunidad.**
 - Mensaje de producto: **Una identidad para tu mascota. Una red para ayudarla durante toda su vida.**
 - Promesa: Cuando una mascota necesite ayuda, cuidado o un servicio, LeoVer permitirá encontrar y coordinar la información, las personas y las acciones adecuadas desde una misma red.
@@ -111,7 +114,8 @@ No se afirmará autoría humana exclusiva sobre una imagen generada mediante IA.
 ## Guía rápida
 
 - Nombre: **LeoVer**.
-- Eslogan: **Conectamos mascotas, personas y comunidad.**
+- Tagline de marca: **La comunidad de los Pet Lovers**
+- Eslogan institucional: **Conectamos mascotas, personas y comunidad.**
 - Tipografía: **Inter**.
 - Donaciones: transferencia directa, comisión 0 %.
 - Usuarios, familias, rescatistas, refugios y organizaciones de ayuda: gratuitos.

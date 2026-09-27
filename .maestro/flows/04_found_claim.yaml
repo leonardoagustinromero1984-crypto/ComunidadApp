@@ -1,0 +1,39 @@
+appId: ${APP_ID}
+name: "FOUND claim QA03 then finder loses special action"
+tags:
+  - community-care
+  - claim
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA03_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- tapOn: "Encontrados"
+- takeScreenshot: claim_open_list
+- tapOn: ".*QA.*"
+- tapOn: "Tomar caso"
+- takeScreenshot: claim_success
+- assertVisible: "Animal recibido / En cuidado"
+- tapOn: "Animal recibido / En cuidado"
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person-keep.yaml
+    env:
+      USERNAME: ${QA02_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-notifications.yaml
+    env:
+      APP_ID: ${APP_ID}
+- assertNotVisible: "Sí, corresponde"

@@ -1,0 +1,43 @@
+appId: ${APP_ID}
+name: "Transit QA07 Bruno QA06"
+tags:
+  - community-care
+  - transit
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA07_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "QA - Bruno Transito"
+- tapOn: "Necesito hogar de tránsito"
+- tapOn: "Publicar solicitud"
+- takeScreenshot: transit_request
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person-keep.yaml
+    env:
+      USERNAME: ${QA06_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      APP_ID: ${APP_ID}
+- tapOn: "Tránsitos"
+- tapOn: "Postularme"
+- takeScreenshot: transit_apply
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person-keep.yaml
+    env:
+      USERNAME: ${QA07_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      APP_ID: ${APP_ID}
+- tapOn: "QA - Bruno Transito"
+- tapOn: "Elegir"
+- takeScreenshot: transit_chosen

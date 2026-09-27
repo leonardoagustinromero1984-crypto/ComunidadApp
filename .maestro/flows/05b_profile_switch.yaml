@@ -1,0 +1,24 @@
+appId: ${APP_ID}
+name: "Profile switch QA07"
+tags:
+  - community-care
+  - profile
+---
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA07_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- tapOn: "Perfil"
+- tapOn: "Usar LeoVer como"
+- takeScreenshot: profile_switch_sheet
+- tapOn:
+    index: 0
+    text: ".*"
+- extendedWaitUntil:
+    visible: "Inicio"
+    timeout: 15000
+- assertNotVisible: "Usar LeoVer como"
+- takeScreenshot: profile_switch_home

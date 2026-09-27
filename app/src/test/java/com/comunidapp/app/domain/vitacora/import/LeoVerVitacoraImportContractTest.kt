@@ -29,9 +29,9 @@ class LeoVerVitacoraImportContractTest {
         ).readText()
         assertTrue(screens.contains("Importar mascotas"))
         val admin = UiRegressionGateTest.sourceFile(
-            "app/src/main/java/com/comunidapp/app/ui/screens/admin/PlatformAdminScreen.kt"
+            "app/src/main/java/com/comunidapp/app/ui/screens/vitacora/VitacoraImportScreens.kt"
         ).readText()
-        assertTrue(admin.contains("Importaciones"))
+        assertTrue(admin.contains("title = \"Importaciones\""))
         assertFalse(screens.contains("Leover"))
     }
 

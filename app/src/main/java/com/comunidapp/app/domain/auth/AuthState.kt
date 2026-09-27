@@ -24,6 +24,13 @@ sealed interface AuthState {
         val user: AuthUser
     ) : AuthState
 
+    data class AdminAuthenticated(
+        val user: AuthUser,
+        val mustChangePassword: Boolean = false,
+        val mfaEnrollmentRequired: Boolean = false,
+        val mfaChallengeRequired: Boolean = false
+    ) : AuthState
+
     /**
      * Sesión válida sin consentimiento vigente de versiones legales actuales.
      * Bloquea el flujo principal hasta aceptar (RPC con auth.uid()).

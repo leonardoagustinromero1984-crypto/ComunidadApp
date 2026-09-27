@@ -9,7 +9,6 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,6 +19,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.util.formatDisplayDate
 import com.comunidapp.app.ui.util.isoDateFromMillis
 import com.comunidapp.app.ui.util.millisFromIsoDate
@@ -35,19 +35,21 @@ fun DatePickerField(
     onDateSelected: (String) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    required: Boolean = false,
     placeholder: String = "Seleccionar fecha",
     historicalOnly: Boolean = false
 ) {
     var showDialog by remember { mutableStateOf(false) }
     val displayValue = isoDate.takeIf { it.isNotBlank() }?.let { formatDisplayDate(it) }.orEmpty()
 
-    OutlinedTextField(
+    LeoTextField(
         value = displayValue,
         onValueChange = {},
-        readOnly = true,
         enabled = enabled,
-        label = { Text(label) },
-        placeholder = { Text(placeholder) },
+        readOnly = true,
+        label = label,
+        required = required,
+        placeholder = placeholder,
         trailingIcon = {
             IconButton(onClick = { if (enabled) showDialog = true }, enabled = enabled) {
                 Icon(Icons.Default.CalendarMonth, contentDescription = "Elegir fecha")

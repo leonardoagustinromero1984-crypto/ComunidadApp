@@ -61,6 +61,20 @@ class CanonicalHolderMappingTest {
     }
 
     @Test
+    fun creatorPersonIsPrincipalEvenIfListedAfterInvitedOwner() {
+        val mapped = CanonicalHolderMapping.map(
+            listOf(
+                CanonicalHolderMapping.HolderInput("b", "PERSON", "OWNER", "ACTIVE", "B", null, "B"),
+                CanonicalHolderMapping.HolderInput("a", "PERSON", "OWNER", "ACTIVE", "A", null, "A")
+            ),
+            creatorPersonId = "A"
+        )
+        assertEquals(PetResponsibilityRole.CO_RESPONSIBLE, mapped[0].uiRole)
+        assertEquals(PetResponsibilityRole.PRINCIPAL, mapped[1].uiRole)
+        assertEquals("A", mapped.first { it.uiRole == PetResponsibilityRole.PRINCIPAL }.personId)
+    }
+
+    @Test
     fun doesNotCollapseToSingleOwner() {
         val mapped = CanonicalHolderMapping.map(
             listOf(

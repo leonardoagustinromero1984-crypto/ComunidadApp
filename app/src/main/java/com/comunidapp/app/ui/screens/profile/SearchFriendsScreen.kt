@@ -21,18 +21,13 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextField
-import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
@@ -41,13 +36,21 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.ui.components.leo.LeoEmptyState
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoSearchBar
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.BrandOrange
+import com.comunidapp.app.ui.theme.BrandText
+import com.comunidapp.app.ui.theme.BrandTextSecondary
+import com.comunidapp.app.ui.theme.LeoCaption
+import com.comunidapp.app.ui.theme.LeoCardTitle
+import com.comunidapp.app.ui.theme.LeoDimens
+import com.comunidapp.app.ui.theme.SurfaceMuted
 import com.comunidapp.app.ui.components.PetImage
 import com.comunidapp.app.ui.components.toDisplayName
 import com.comunidapp.app.viewmodel.FriendActionState
@@ -58,6 +61,7 @@ import com.comunidapp.app.viewmodel.UserSearchItem
 fun SearchFriendsScreen(
     onNavigateBack: () -> Unit,
     onUserClick: (String) -> Unit = {},
+    showTopBar: Boolean = true,
     viewModel: SearchFriendsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -70,11 +74,13 @@ fun SearchFriendsScreen(
     Scaffold(
         containerColor = BrandBackground,
         topBar = {
-            LeoTopAppBar(
-                title = "Buscar amigos",
-                showBackButton = true,
-                onBackClick = onNavigateBack
-            )
+            if (showTopBar) {
+                LeoTopAppBar(
+                    title = "Encontrar personas",
+                    showBackButton = true,
+                    onBackClick = onNavigateBack
+                )
+            }
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { padding ->
@@ -83,22 +89,13 @@ fun SearchFriendsScreen(
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            TextField(
+            LeoSearchBar(
                 value = uiState.query,
                 onValueChange = viewModel::onQueryChange,
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
-                placeholder = { Text("Nombre, email o ciudad...") },
-                leadingIcon = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                },
-                singleLine = true,
-                shape = RoundedCornerShape(16.dp),
-                colors = TextFieldDefaults.colors(
-                    focusedIndicatorColor = MaterialTheme.colorScheme.primary,
-                    unfocusedIndicatorColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.4f)
-                )
+                    .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceS),
+                placeholder = "Nombre, email o ciudad..."
             )
 
             if (uiState.query.trim().length < 2) {
@@ -112,7 +109,11 @@ fun SearchFriendsScreen(
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(28.dp),
+                        color = BrandOrange,
+                        strokeWidth = 2.dp
+                    )
                 }
             } else if (uiState.results.isEmpty()) {
                 Box(
@@ -121,16 +122,15 @@ fun SearchFriendsScreen(
                         .padding(32.dp),
                     contentAlignment = Alignment.Center
                 ) {
-                    Text(
-                        text = "No encontramos usuarios con ese criterio.",
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    LeoEmptyState(
+                        title = "Nadie coincide",
+                        message = "No encontramos usuarios con ese criterio.",
+                        icon = Icons.Default.Search
                     )
                 }
             } else {
                 LazyColumn(
-                    contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    contentPadding = PaddingValues(vertical = 8.dp)
                 ) {
                     items(uiState.results, key = { it.user.id }) { item ->
                         UserSearchCard(
@@ -147,26 +147,18 @@ fun SearchFriendsScreen(
 
 @Composable
 private fun SearchHintCard(modifier: Modifier = Modifier) {
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.45f)
-        )
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = modifier.fillMaxWidth().padding(LeoDimens.SpaceMd)) {
             Text(
                 text = "Encontrá personas de la comunidad",
-                style = MaterialTheme.typography.titleSmall,
-                fontWeight = FontWeight.SemiBold
+                style = LeoCardTitle,
+                color = BrandText
             )
             Text(
                 text = "Escribí al menos 2 letras para buscar por nombre, email o ubicación.",
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(top = 6.dp)
+                style = LeoCaption,
+                color = BrandTextSecondary,
+                modifier = Modifier.padding(top = LeoDimens.SpaceS)
             )
-        }
     }
 }
 
@@ -176,24 +168,19 @@ private fun UserSearchCard(
     onUserClick: () -> Unit,
     onAddFriend: () -> Unit
 ) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clickable(onClick = onUserClick),
-        shape = RoundedCornerShape(14.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
-    ) {
+    Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .clickable(onClick = onUserClick)
+                .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceCompact),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Box(
                 modifier = Modifier
                     .size(52.dp)
                     .clip(CircleShape)
-                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .background(SurfaceMuted)
             ) {
                 PetImage(
                     imageUrl = item.user.profileImageUrl,
@@ -210,15 +197,15 @@ private fun UserSearchCard(
             ) {
                 Text(
                     text = item.user.name,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.SemiBold,
+                    style = LeoCardTitle,
+                    color = BrandText,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
                 Text(
                     text = "Persona",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.primary
+                    style = LeoCaption,
+                    color = BrandTextSecondary
                 )
                 item.user.locationText?.let { location ->
                     Row(
@@ -229,12 +216,12 @@ private fun UserSearchCard(
                             Icons.Default.LocationOn,
                             contentDescription = null,
                             modifier = Modifier.size(14.dp),
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                            tint = BrandTextSecondary
                         )
                         Text(
                             text = location,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = LeoCaption,
+                            color = BrandTextSecondary,
                             modifier = Modifier.padding(start = 2.dp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis
@@ -249,13 +236,13 @@ private fun UserSearchCard(
                         Icon(
                             Icons.Default.Check,
                             contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary,
+                            tint = BrandOrange,
                             modifier = Modifier.size(18.dp)
                         )
                         Text(
-                            text = "Amigo",
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.primary,
+                            text = "Conexión",
+                            style = LeoCaption,
+                            color = BrandOrange,
                             modifier = Modifier.padding(start = 4.dp)
                         )
                     }
@@ -263,8 +250,8 @@ private fun UserSearchCard(
                 FriendActionState.PENDING -> {
                     Text(
                         text = "Enviada",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        style = LeoCaption,
+                        color = BrandTextSecondary
                     )
                 }
                 FriendActionState.LOADING -> {
@@ -277,10 +264,11 @@ private fun UserSearchCard(
                     ) {
                         Icon(Icons.Default.PersonAdd, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.size(4.dp))
-                        Text("Agregar")
+                        Text("Conectar")
                     }
                 }
             }
         }
+        LeoHairline(modifier = Modifier.padding(start = LeoDimens.SpaceMd))
     }
 }

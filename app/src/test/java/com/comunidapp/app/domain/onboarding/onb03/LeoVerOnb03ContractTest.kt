@@ -302,9 +302,10 @@ class LeoVerOnb03ContractTest {
         val googleFn = repo.substringAfter("override suspend fun signInWithGoogle")
             .substringBefore("override fun linkedAuthMethods")
         assertFalse(googleFn.contains("google oauth without session"))
-        assertTrue(googleFn.contains("GoogleOAuthPending.pendingUser"))
+        assertTrue(googleFn.contains("signInWith(Google) auto-open disconnected"))
+        assertFalse(googleFn.contains("GoogleOAuthPending.pendingUser"))
         assertEquals(GoogleAuthLifecycle.WAITING_EXTERNAL_AUTH.name, GoogleAuthLifecycle.WAITING_EXTERNAL_AUTH.name)
-        assertTrue(GoogleOAuthPending.FIRST_TAP_ERROR_ROOT_CAUSE.contains("currentUserOrNull"))
+        assertTrue(GoogleOAuthPending.FIRST_TAP_ERROR_ROOT_CAUSE.contains("ExternalBrowser"))
         val login = source("app/src/main/java/com/comunidapp/app/viewmodel/LoginViewModel.kt")
         assertTrue(login.contains("WAITING_EXTERNAL_AUTH"))
         assertTrue(login.contains("if (_uiState.value.isBusy) return"))
@@ -313,9 +314,10 @@ class LeoVerOnb03ContractTest {
     @Test
     fun COMMON_TUTORIAL_COPY_AND_VITACORA_HEART() {
         val t00 = TutorialCatalog.definition(TutorialId.T00_MULTI_FUNCTION_INTRO)
-        assertEquals(4, t00.steps.size)
+        assertEquals(5, t00.steps.size)
         assertEquals("Bienvenido a LeoVer", t00.steps[0].title)
         assertTrue(t00.steps[1].titleIsVitacoraWordmark)
+        assertEquals("Tu privacidad en LeoVer", t00.steps[2].title)
         assertFalse(t00.steps[1].body.contains("bitácora", ignoreCase = true))
         assertFalse(t00.steps[1].body.contains("evoca una bitácora"))
         assertEquals(Onb02Copy.PROFILE_EXPLANATION_SLIDE_TITLE, t00.steps.last().title)
@@ -370,6 +372,9 @@ class LeoVerOnb03ContractTest {
             commercialOrg = false
         )
         assertFalse(refuge.tutorials.contains(TutorialId.T13_COMMERCIAL_ORGANIZATION))
+        assertFalse(refuge.tutorials.contains(TutorialId.T10A_VETERINARY_CLINIC))
+        assertFalse(refuge.tutorials.contains(TutorialId.T10_ORGANIZATION))
+        assertEquals(listOf(TutorialId.T10B_SHELTER), refuge.tutorials)
         val invite = TutorialQueueResolver.queue(
             CanonicalTutorialEvent.ORGANIZATION_INVITATION_ACCEPTED,
             consumed = { false },

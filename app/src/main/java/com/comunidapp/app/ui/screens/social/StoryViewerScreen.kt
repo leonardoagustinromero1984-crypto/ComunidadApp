@@ -53,9 +53,7 @@ fun StoryViewerScreen(
     onClose: () -> Unit
 ) {
     if (stories.isEmpty()) {
-        Box(Modifier.fillMaxSize().background(Color.Black), contentAlignment = Alignment.Center) {
-            TextButton(onClick = onClose) { Text("Cerrar", color = Color.White) }
-        }
+        LaunchedEffect(Unit) { onClose() }
         return
     }
     var index by remember(stories) { mutableIntStateOf(initialIndex.coerceIn(0, stories.lastIndex)) }
@@ -214,14 +212,22 @@ private fun OverlayView(overlay: StoryOverlay) {
 }
 
 @Composable
-internal fun StoryVideoPlayer(url: String, muted: Boolean, volume: Float = 1f, onEnded: () -> Unit = {}) {
+fun StoryVideoPlayer(
+    url: String,
+    muted: Boolean,
+    volume: Float = 1f,
+    onEnded: () -> Unit = {},
+    showController: Boolean = false,
+    playWhenReady: Boolean = true,
+    cropToFill: Boolean = false
+) {
     val context = LocalContext.current
     val player = remember(url) {
         ExoPlayer.Builder(context).build().apply {
             setMediaItem(MediaItem.fromUri(url))
             this.volume = if (muted) 0f else volume.coerceIn(0f, 1f)
             prepare()
-            playWhenReady = true
+            this.playWhenReady = playWhenReady
         }
     }
     DisposableEffect(player) {
@@ -240,8 +246,13 @@ internal fun StoryVideoPlayer(url: String, muted: Boolean, volume: Float = 1f, o
         modifier = Modifier.fillMaxSize(),
         factory = { ctx ->
             PlayerView(ctx).apply {
-                useController = false
+                useController = showController
                 this.player = player
+                resizeMode = if (cropToFill) {
+                    androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_ZOOM
+                } else {
+                    androidx.media3.ui.AspectRatioFrameLayout.RESIZE_MODE_FIT
+                }
                 layoutParams = ViewGroup.LayoutParams(
                     ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.MATCH_PARENT

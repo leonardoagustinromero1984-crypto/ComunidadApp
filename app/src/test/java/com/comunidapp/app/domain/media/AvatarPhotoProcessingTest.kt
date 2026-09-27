@@ -17,7 +17,8 @@ class AvatarPhotoProcessingTest {
         )
         assertEquals("file:///cache/avatar-edit/avatar_1.jpg", uploaded)
         val vm = File("src/main/java/com/comunidapp/app/viewmodel/EditProfileViewModel.kt").readText()
-        assertTrue(vm.contains("AvatarPhotoProcessor"))
+        assertTrue(vm.contains("fun onCroppedPhoto"))
+        assertTrue(vm.contains("encodeAlreadyCropped"))
         assertTrue(vm.contains("processedPhotoPath"))
     }
 
@@ -111,7 +112,7 @@ class AvatarPhotoProcessingTest {
         assertEquals(before.pendingProcessedUri, after.pendingProcessedUri)
         assertEquals("avatars/current.jpg", after.avatarPath)
         val vm = File("src/main/java/com/comunidapp/app/viewmodel/EditProfileViewModel.kt").readText()
-        val cancel = vm.substringAfter("fun cancelPhotoEditor").substringBefore("fun saveProfile")
+        val cancel = vm.substringAfter("fun cancelPhotoEditor").substringBefore("fun skipPhotoAndContinue")
         assertFalse(cancel.contains("pendingImageUri = null"))
         assertFalse(cancel.contains("avatarPath = null"))
     }

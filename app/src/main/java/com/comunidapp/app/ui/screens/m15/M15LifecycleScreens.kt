@@ -1,6 +1,5 @@
 package com.comunidapp.app.ui.screens.m15
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -12,8 +11,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -35,6 +32,9 @@ import com.comunidapp.app.data.model.M15EvolutionEventType
 import com.comunidapp.app.data.model.M15ExpenseCategory
 import com.comunidapp.app.data.model.M15FosterPlacementStatus
 import com.comunidapp.app.data.model.M15HelpRequestType
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
@@ -69,14 +69,11 @@ fun M15PlacementsListScreen(
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(placements, key = { it.id }) { p ->
-                        Card(
-                            Modifier.fillMaxWidth().clickable { onPlacementClick(p.id) }
-                        ) {
-                            Column(Modifier.padding(12.dp)) {
-                                Text(p.petName ?: p.petId, fontWeight = FontWeight.Bold)
-                                Text("Estado: ${p.status}")
-                            }
-                        }
+                        LeoListRow(
+                            title = p.petName ?: p.petId,
+                            subtitle = "Estado: ${p.status}",
+                            onClick = { onPlacementClick(p.id) }
+                        )
                     }
                 }
             }
@@ -112,18 +109,10 @@ fun M15PlacementDetailScreen(
                 p.dischargeOutcome?.let { Text("Egreso: $it") }
                 val open = p.status == M15FosterPlacementStatus.ACTIVE ||
                     p.status == M15FosterPlacementStatus.RESERVED
-                Button(onClick = onEvolution, enabled = open, modifier = Modifier.fillMaxWidth()) {
-                    Text("Evolución")
-                }
-                Button(onClick = onExpenses, enabled = open, modifier = Modifier.fillMaxWidth()) {
-                    Text("Gastos")
-                }
-                Button(onClick = onHelp, enabled = open, modifier = Modifier.fillMaxWidth()) {
-                    Text("Pedidos de ayuda")
-                }
-                Button(onClick = onDischarge, enabled = open, modifier = Modifier.fillMaxWidth()) {
-                    Text("Egreso")
-                }
+                LeoPrimaryButton(text = "Evolución", onClick = onEvolution, enabled = open)
+                LeoOutlinedButton(text = "Gastos", onClick = onExpenses, enabled = open)
+                LeoOutlinedButton(text = "Pedidos de ayuda", onClick = onHelp, enabled = open)
+                LeoOutlinedButton(text = "Egreso", onClick = onDischarge, enabled = open)
             } ?: LoadingState()
             message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
@@ -145,17 +134,12 @@ fun M15EvolutionListScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
-            Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Agregar registro") }
+            LeoPrimaryButton(text = "Agregar registro", onClick = onAdd)
             Spacer(Modifier.height(8.dp))
             if (items.isEmpty()) EmptyState(title = "Sin registros", message = "Todavía no hay evolución.")
             else LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(items, key = { it.id }) { e ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(e.eventType.name, fontWeight = FontWeight.Bold)
-                            Text(e.summary)
-                        }
-                    }
+                    LeoListRow(title = e.eventType.name, subtitle = e.summary)
                 }
             }
         }
@@ -181,13 +165,13 @@ fun M15EvolutionFormScreen(
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             OutlinedTextField(summary, { summary = it }, label = { Text("Resumen") }, modifier = Modifier.fillMaxWidth())
-            Button(
+            LeoPrimaryButton(
+                text = "Guardar",
                 onClick = {
                     viewModel.submit(summary, M15EvolutionEventType.GENERAL_UPDATE, false)
                 },
-                enabled = summary.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Guardar") }
+                enabled = summary.isNotBlank()
+            )
             message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }
@@ -215,24 +199,24 @@ fun M15DischargeScreen(
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             OutlinedTextField(note, { note = it }, label = { Text("Nota privada") }, modifier = Modifier.fillMaxWidth())
-            Button(
+            LeoPrimaryButton(
+                text = "Finalizar — retorno al responsable",
                 onClick = {
                     viewModel.discharge(M15DischargeReason.RETURNED_TO_RESPONSIBLE, M15DischargeOutcome.COMPLETED, note)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Finalizar — retorno al responsable") }
-            Button(
+                }
+            )
+            LeoOutlinedButton(
+                text = "Interrumpir — emergencia",
                 onClick = {
                     viewModel.discharge(M15DischargeReason.EMERGENCY, M15DischargeOutcome.INTERRUPTED, note)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Interrumpir — emergencia") }
-            Button(
+                }
+            )
+            LeoOutlinedButton(
+                text = "Cancelar reserva",
                 onClick = {
                     viewModel.discharge(M15DischargeReason.OTHER, M15DischargeOutcome.CANCELLED, note)
-                },
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Cancelar reserva") }
+                }
+            )
             message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }
@@ -253,16 +237,14 @@ fun M15ExpensesScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
-            Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Registrar gasto") }
+            LeoPrimaryButton(text = "Registrar gasto", onClick = onAdd)
             Spacer(Modifier.height(8.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(items, key = { it.id }) { e ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text("${e.category} — ${e.amountMinor} ${e.currency}")
-                            Text(e.description)
-                        }
-                    }
+                    LeoListRow(
+                        title = "${e.category} — ${e.amountMinor} ${e.currency}",
+                        subtitle = e.description
+                    )
                 }
             }
         }
@@ -290,13 +272,13 @@ fun M15ExpenseFormScreen(
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             OutlinedTextField(description, { description = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(amount, { amount = it.filter { c -> c.isDigit() } }, label = { Text("Importe (centavos)") }, modifier = Modifier.fillMaxWidth())
-            Button(
+            LeoPrimaryButton(
+                text = "Guardar",
                 onClick = {
                     viewModel.submit(description, amount.toLongOrNull() ?: 0L, M15ExpenseCategory.FOOD)
                 },
-                enabled = description.isNotBlank() && (amount.toLongOrNull() ?: 0L) > 0,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Guardar") }
+                enabled = description.isNotBlank() && (amount.toLongOrNull() ?: 0L) > 0
+            )
             message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }
@@ -317,16 +299,11 @@ fun M15HelpListScreen(
         }
     ) { padding ->
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
-            Button(onClick = onAdd, modifier = Modifier.fillMaxWidth()) { Text("Nuevo pedido") }
+            LeoPrimaryButton(text = "Nuevo pedido", onClick = onAdd)
             Spacer(Modifier.height(8.dp))
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 items(items, key = { it.id }) { h ->
-                    Card(Modifier.fillMaxWidth()) {
-                        Column(Modifier.padding(12.dp)) {
-                            Text(h.title, fontWeight = FontWeight.Bold)
-                            Text("${h.type} — ${h.status}")
-                        }
-                    }
+                    LeoListRow(title = h.title, subtitle = "${h.type} — ${h.status}")
                 }
             }
         }
@@ -354,11 +331,11 @@ fun M15HelpFormScreen(
         Column(Modifier.padding(padding).padding(16.dp).fillMaxSize()) {
             OutlinedTextField(title, { title = it }, label = { Text("Título") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(description, { description = it }, label = { Text("Descripción") }, modifier = Modifier.fillMaxWidth())
-            Button(
+            LeoPrimaryButton(
+                text = "Publicar",
                 onClick = { viewModel.submit(title, description, M15HelpRequestType.FOOD) },
-                enabled = title.isNotBlank() && description.isNotBlank(),
-                modifier = Modifier.fillMaxWidth()
-            ) { Text("Publicar") }
+                enabled = title.isNotBlank() && description.isNotBlank()
+            )
             message?.let { Text(it, color = MaterialTheme.colorScheme.error) }
         }
     }

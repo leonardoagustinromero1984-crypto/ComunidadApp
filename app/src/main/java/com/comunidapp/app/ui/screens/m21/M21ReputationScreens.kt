@@ -1,18 +1,13 @@
 package com.comunidapp.app.ui.screens.m21
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.Button
-import androidx.compose.material3.Card
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -26,6 +21,10 @@ import com.comunidapp.app.data.model.M21PublicReview
 import com.comunidapp.app.data.model.M21PublicVerification
 import com.comunidapp.app.data.model.M21ReviewTargetType
 import com.comunidapp.app.data.model.M21ReputationBreakdown
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.BrandCream
@@ -99,20 +98,14 @@ fun M21HubScreen(
                         },
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Button(onClick = onOpenReviews, modifier = Modifier.fillMaxWidth()) {
-                        Text("Mis reseñas")
-                    }
-                    OutlinedButton(onClick = onOpenVerifications, modifier = Modifier.fillMaxWidth()) {
-                        Text("Verificaciones")
-                    }
-                    OutlinedButton(
+                    LeoPrimaryButton(text = "Mis reseñas", onClick = onOpenReviews)
+                    LeoOutlinedButton(text = "Verificaciones", onClick = onOpenVerifications)
+                    LeoOutlinedButton(
+                        text = "Ver reputación de refugio demo",
                         onClick = {
                             onOpenSubject(M21ReviewTargetType.ORGANIZATION, com.comunidapp.app.data.model.M21MockTargetIds.ORGANIZATION)
-                        },
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Text("Ver reputación de refugio demo")
-                    }
+                        }
+                    )
                 }
             }
         }
@@ -190,33 +183,36 @@ fun M21ReviewDetailScreen(
                 is M21ReviewDetailUiState.Content -> {
                     M21ReviewCard(s.review)
                     s.review.publicResponse?.let { response ->
-                        Card(Modifier.fillMaxWidth()) {
-                            Column(Modifier.padding(16.dp)) {
-                                Text("Respuesta del sujeto", fontWeight = FontWeight.Bold)
-                                Text(response.content)
-                            }
+                        Column(Modifier.fillMaxWidth()) {
+                            Text("Respuesta del sujeto", fontWeight = FontWeight.Bold)
+                            Text(response.content)
+                            LeoHairline(modifier = Modifier.padding(top = 8.dp))
                         }
                     }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (s.canEdit) {
-                            OutlinedButton(onClick = {
-                                viewModel.editReview("Contenido editado desde UI", 4) {}
-                            }) { Text("Editar") }
+                            LeoOutlinedButton(
+                                text = "Editar",
+                                onClick = { viewModel.editReview("Contenido editado desde UI", 4) {} }
+                            )
                         }
                         if (s.canRespond) {
-                            Button(onClick = {
-                                viewModel.respond("Gracias por tu feedback constructivo.") {}
-                            }) { Text("Responder") }
+                            LeoPrimaryButton(
+                                text = "Responder",
+                                onClick = { viewModel.respond("Gracias por tu feedback constructivo.") {} }
+                            )
                         }
                         if (s.canDispute) {
-                            OutlinedButton(onClick = {
-                                viewModel.dispute("Solicito revisión por error factual en la reseña.") {}
-                            }) { Text("Disputar") }
+                            LeoOutlinedButton(
+                                text = "Disputar",
+                                onClick = { viewModel.dispute("Solicito revisión por error factual en la reseña.") {} }
+                            )
                         }
                         if (s.canReport) {
-                            OutlinedButton(onClick = {
-                                viewModel.report("spam") {}
-                            }) { Text("Reportar") }
+                            LeoOutlinedButton(
+                                text = "Reportar",
+                                onClick = { viewModel.report("spam") {} }
+                            )
                         }
                     }
                 }
@@ -262,12 +258,11 @@ fun M21ReviewsScreen(
                             }
                         }
                     }
-                    Button(
+                    LeoPrimaryButton(
+                        text = "Dejar reseña demo",
                         onClick = { viewModel.submitDemoReview(onDone = {}) },
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                    ) {
-                        Text("Dejar reseña demo")
-                    }
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
                 }
             }
         }
@@ -276,25 +271,11 @@ fun M21ReviewsScreen(
 
 @Composable
 private fun M21ReviewCard(review: M21PublicReview, onClick: (() -> Unit)? = null) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .then(if (onClick != null) Modifier.clickable(onClick = onClick) else Modifier)
-    ) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            review.title?.let { Text(it, fontWeight = FontWeight.Bold) }
-            Text(review.targetDisplayLabel, fontWeight = FontWeight.Bold)
-            Text("${review.rating}/5 · ${review.targetType.name.lowercase()}")
-            Text(review.content, style = MaterialTheme.typography.bodyMedium)
-            review.eligibleExperienceBadge?.let {
-                Text(it, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            }
-            if (review.hasResponse) {
-                Text("Incluye respuesta", style = MaterialTheme.typography.labelSmall)
-            }
-            Text(review.status.name, style = MaterialTheme.typography.labelSmall)
-        }
-    }
+    LeoListRow(
+        title = review.title ?: review.targetDisplayLabel,
+        subtitle = "${review.targetDisplayLabel} · ${review.rating}/5 · ${review.status.name} · ${review.content}",
+        onClick = onClick
+    )
 }
 
 @Composable
@@ -321,12 +302,11 @@ fun M21VerificationsScreen(
                             items(s.items, key = { it.id }) { item -> M21VerificationCard(item) }
                         }
                     }
-                    Button(
+                    LeoPrimaryButton(
+                        text = "Solicitar verificación de identidad",
                         onClick = { viewModel.submitIdentityVerification() },
-                        modifier = Modifier.fillMaxWidth().padding(top = 12.dp)
-                    ) {
-                        Text("Solicitar verificación de identidad")
-                    }
+                        modifier = Modifier.padding(top = 12.dp)
+                    )
                 }
             }
         }
@@ -335,11 +315,9 @@ fun M21VerificationsScreen(
 
 @Composable
 private fun M21VerificationCard(item: M21PublicVerification) {
-    Card(Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(item.displayLabel, fontWeight = FontWeight.Bold)
-            Text("${item.verificationType.name} · ${item.status.name}")
-            item.licenseSummary?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
-        }
-    }
+    LeoListRow(
+        title = item.displayLabel,
+        subtitle = "${item.verificationType.name} · ${item.status.name}" +
+            (item.licenseSummary?.let { " · $it" }.orEmpty())
+    )
 }

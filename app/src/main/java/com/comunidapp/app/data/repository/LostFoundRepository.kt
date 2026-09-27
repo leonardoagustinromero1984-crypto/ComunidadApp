@@ -18,7 +18,53 @@ interface LostFoundRepository {
     suspend fun addLostFoundPost(post: LostFoundPost): Result<String>
     suspend fun updateLostFoundPost(post: LostFoundPost): Result<Unit>
     suspend fun updateStatus(id: String, status: LostFoundStatus): Result<Unit>
+    suspend fun claimLostFound(alertId: String): Result<LostFoundClaimResult> =
+        Result.failure(UnsupportedOperationException("CLAIM_UNAVAILABLE"))
+
+    suspend fun attachLostFoundPhoto(alertId: String, assetId: String): Result<Unit> =
+        Result.success(Unit)
+
+    suspend fun assertFoundMightBeMine(foundId: String, lostId: String): Result<String> =
+        Result.failure(UnsupportedOperationException("OWNER_ASSERT_UNAVAILABLE"))
+
+    suspend fun listFoundMatchCandidates(foundId: String): Result<List<LostFoundMatchCandidate>> =
+        Result.success(emptyList())
+
+    suspend fun confirmFoundOwnerMatch(candidateId: String): Result<Unit> =
+        Result.failure(UnsupportedOperationException("OWNER_CONFIRM_UNAVAILABLE"))
+
+    suspend fun rejectFoundMightBeMine(foundId: String, lostId: String): Result<Unit> =
+        Result.success(Unit)
+
+    suspend fun rejectFoundOwnerMatch(candidateId: String): Result<Unit> =
+        Result.success(Unit)
+
+    suspend fun markLostFoundInCare(alertId: String): Result<Unit> =
+        Result.success(Unit)
 }
+
+data class LostFoundMatchCandidate(
+    val id: String,
+    val lostAlertId: String?,
+    val assertedBy: String?,
+    val status: String,
+    val score: Double? = null,
+    val matchReason: String? = null
+)
+
+data class LostFoundClaimResult(
+    val alertId: String,
+    val petId: String?,
+    val status: String,
+    val alreadyTaken: Boolean = false
+)
+
+data class ResponderBaseSnapshot(
+    val hasBaseLocation: Boolean,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val address: String? = null
+)
 
 class MockLostFoundRepository : LostFoundRepository {
     override fun observeLostFoundPosts(): StateFlow<List<LostFoundPost>> =
@@ -53,5 +99,17 @@ class MockLostFoundRepository : LostFoundRepository {
         )
         InMemoryDataStore.addLostFoundPost(existing.copy(status = status))
         return Result.success(Unit)
+    }
+
+    override suspend fun claimLostFound(alertId: String): Result<LostFoundClaimResult> {
+        val existing = InMemoryDataStore.lostFoundPosts.value.find { it.id == alertId }
+            ?: return Result.failure(NoSuchElementException("ALERT_NOT_FOUND"))
+        if (existing.status != LostFoundStatus.ACTIVE) {
+            return Result.success(
+                LostFoundClaimResult(alertId, existing.petId, existing.status.name, alreadyTaken = true)
+            )
+        }
+        InMemoryDataStore.addLostFoundPost(existing.copy(status = LostFoundStatus.CLAIMED))
+        return Result.success(LostFoundClaimResult(alertId, existing.petId, "CLAIMED"))
     }
 }

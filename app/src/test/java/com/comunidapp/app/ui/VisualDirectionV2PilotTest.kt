@@ -22,12 +22,12 @@ class VisualDirectionV2PilotTest {
         assertEquals(Color(0xFF263238), v3.textPrimary)
         assertEquals(Color(0xFF667085), v3.textSecondary)
         assertEquals(Color(0xFFE5EAE4), v3.borderSoft)
-        assertEquals(Color(0xFF49B749), v3.primary)
-        assertEquals(Color(0xFF247A3D), v3.primaryDark)
-        assertEquals(Color(0xFFEEF8EE), v3.primarySoft)
+        assertEquals(Color(0xFFFF7A00), v3.primary)
+        assertEquals(Color(0xFFE56E00), v3.primaryDark)
+        assertEquals(Color(0xFFFFE8CC), v3.primarySoft)
         assertEquals(Color(0xFF49B749), v3.secondary)
-        assertEquals(Color(0xFFEFA066), v3.accent)
-        assertEquals(Color(0xFFD96B68), v3.error)
+        assertEquals(Color(0xFFFF7A00), v3.accent)
+        assertEquals(Color(0xFFE53935), v3.error)
     }
 
     @Test

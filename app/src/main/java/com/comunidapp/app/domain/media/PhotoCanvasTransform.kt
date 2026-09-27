@@ -39,7 +39,7 @@ data class PhotoCanvasTransform(
     fun withMode(mode: PhotoCanvasFitMode): PhotoCanvasTransform =
         copy(fitMode = mode.name, offsetX = 0f, offsetY = 0f, scale = 1f)
 
-    fun reset(): PhotoCanvasTransform = PhotoCanvasTransform()
+    fun reset(): PhotoCanvasTransform = copy(offsetX = 0f, offsetY = 0f, scale = 1f)
 
     fun translationX(canvasW: Float): Float = offsetX * canvasW
     fun translationY(canvasH: Float): Float = offsetY * canvasH

@@ -11,12 +11,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -34,10 +30,13 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.domain.organization.authorization.MembershipDisplay
 import com.comunidapp.app.domain.organization.authorization.OrganizationMembership
 import com.comunidapp.app.domain.organization.authorization.OrganizationRoleCode
+import com.comunidapp.app.ui.components.leo.LeoHairline
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
+import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.viewmodel.OrganizationTeamViewModel
 
 @Composable
@@ -117,8 +116,7 @@ fun OrganizationTeamScreen(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(padding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
+                contentPadding = PaddingValues(LeoDimens.SpaceMd)
             ) {
                 uiState.errorMessage?.let { msg ->
                     item {
@@ -130,7 +128,7 @@ fun OrganizationTeamScreen(
                         Text(text = msg, color = MaterialTheme.colorScheme.primary)
                     }
                 }
-                        if (uiState.canInvite) {
+                if (uiState.canInvite) {
                     item {
                         InviteMemberSection(
                             query = uiState.personQuery,
@@ -163,7 +161,7 @@ fun OrganizationTeamScreen(
                     }
                 } else {
                     items(uiState.members, key = { it.id }) { member ->
-                        MemberCard(
+                        MemberRow(
                             member = member,
                             canManageRoles = uiState.canManageRoles,
                             canRemove = uiState.canRemove,
@@ -186,11 +184,8 @@ fun OrganizationTeamScreen(
                         )
                     }
                     items(uiState.invitations, key = { it.id }) { invitation ->
-                        OutlinedCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp)
-                        ) {
-                            Column(modifier = Modifier.padding(16.dp)) {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            Column(modifier = Modifier.padding(vertical = LeoDimens.SpaceCompact)) {
                                 Text(
                                     text = "${MembershipDisplay.visibleRole(invitation.invitedRole)} · ${invitation.status.name}",
                                     fontWeight = FontWeight.Medium
@@ -206,20 +201,22 @@ fun OrganizationTeamScreen(
                                     }
                                 }
                             }
+                            LeoHairline()
                         }
                     }
                 }
                 item {
                     Spacer(modifier = Modifier.height(8.dp))
-                    OutlinedButton(
-                        onClick = { showLeaveDialog = true },
-                        modifier = Modifier.fillMaxWidth()
-                    ) { Text("Salir de la organización") }
+                    LeoOutlinedButton(
+                        text = "Salir de la organización",
+                        onClick = { showLeaveDialog = true }
+                    )
                     if (uiState.canTransferOwnership) {
-                        OutlinedButton(
-                            onClick = { showCloseDialog = true },
-                            modifier = Modifier.fillMaxWidth()
-                        ) { Text("Cerrar organización") }
+                        Spacer(modifier = Modifier.height(8.dp))
+                        LeoOutlinedButton(
+                            text = "Cerrar organización",
+                            onClick = { showCloseDialog = true }
+                        )
                     }
                 }
             }
@@ -241,58 +238,57 @@ private fun InviteMemberSection(
     onTogglePermission: (String) -> Unit,
     onInvite: () -> Unit
 ) {
-    OutlinedCard(
+    Column(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp)
+        verticalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Invitar persona", fontWeight = FontWeight.SemiBold)
-            OutlinedTextField(
-                value = query,
-                onValueChange = onQueryChange,
-                label = { Text("Buscar por nombre o @usuario") },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true
-            )
-            hits.forEach { hit ->
-                TextButton(onClick = { onSelectPerson(hit) }, modifier = Modifier.fillMaxWidth()) {
-                    Text("${hit.displayName}  @${hit.username}")
-                }
+        Text("Invitar persona", fontWeight = FontWeight.SemiBold)
+        OutlinedTextField(
+            value = query,
+            onValueChange = onQueryChange,
+            label = { Text("Buscar por nombre o @usuario") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true
+        )
+        hits.forEach { hit ->
+            TextButton(onClick = { onSelectPerson(hit) }, modifier = Modifier.fillMaxWidth()) {
+                Text("${hit.displayName}  @${hit.username}")
             }
-            selected?.let {
-                Text(
-                    text = "Seleccionada: ${it.displayName}  @${it.username}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
-            Text(text = "Rol: ${MembershipDisplay.visibleRole(role)}", style = MaterialTheme.typography.labelLarge)
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                listOf(OrganizationRoleCode.ADMIN, OrganizationRoleCode.MEMBER).forEach { r ->
-                    TextButton(onClick = { onRoleChange(r) }) {
-                        Text(MembershipDisplay.visibleRole(r))
-                    }
-                }
-            }
-            if (role == OrganizationRoleCode.MEMBER) {
-                Text("Permisos", fontWeight = FontWeight.SemiBold)
-                com.comunidapp.app.domain.organization.OrgInvitePolicy.MEMBER_PERMISSION_OPTIONS.forEach { option ->
-                    TextButton(onClick = { onTogglePermission(option.catalogCode) }) {
-                        val mark = if (option.catalogCode in selectedPermissions) "[x]" else "[ ]"
-                        Text("$mark ${option.visibleLabel}")
-                    }
-                }
-            }
-            Button(
-                onClick = onInvite,
-                enabled = !isInviting,
-                modifier = Modifier.fillMaxWidth()
-            ) { Text(if (isInviting) "Enviando…" else "Enviar invitación") }
         }
+        selected?.let {
+            Text(
+                text = "Seleccionada: ${it.displayName}  @${it.username}",
+                style = MaterialTheme.typography.bodySmall
+            )
+        }
+        Text(text = "Rol: ${MembershipDisplay.visibleRole(role)}", style = MaterialTheme.typography.labelLarge)
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            listOf(OrganizationRoleCode.ADMIN, OrganizationRoleCode.MEMBER).forEach { r ->
+                TextButton(onClick = { onRoleChange(r) }) {
+                    Text(MembershipDisplay.visibleRole(r))
+                }
+            }
+        }
+        if (role == OrganizationRoleCode.MEMBER) {
+            Text("Permisos", fontWeight = FontWeight.SemiBold)
+            com.comunidapp.app.domain.organization.OrgInvitePolicy.MEMBER_PERMISSION_OPTIONS.forEach { option ->
+                TextButton(onClick = { onTogglePermission(option.catalogCode) }) {
+                    val mark = if (option.catalogCode in selectedPermissions) "[x]" else "[ ]"
+                    Text("$mark ${option.visibleLabel}")
+                }
+            }
+        }
+        LeoPrimaryButton(
+            text = if (isInviting) "Enviando…" else "Enviar invitación",
+            onClick = onInvite,
+            enabled = !isInviting
+        )
+        LeoHairline(modifier = Modifier.padding(top = LeoDimens.SpaceCompact))
     }
 }
 
 @Composable
-private fun MemberCard(
+private fun MemberRow(
     member: OrganizationMembership,
     canManageRoles: Boolean,
     canRemove: Boolean,
@@ -303,11 +299,8 @@ private fun MemberCard(
     onRemove: () -> Unit,
     onTransfer: () -> Unit
 ) {
-    OutlinedCard(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp)
-    ) {
-        Column(modifier = Modifier.padding(16.dp)) {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.padding(vertical = LeoDimens.SpaceCompact)) {
             Text(text = MembershipDisplay.visibleRole(member.role), fontWeight = FontWeight.Medium)
             Text(
                 text = "${MembershipDisplay.visibleRole(member.role)} · ${member.status.name}",
@@ -333,5 +326,6 @@ private fun MemberCard(
                 TextButton(onClick = onTransfer) { Text("Transferir administración") }
             }
         }
+        LeoHairline()
     }
 }

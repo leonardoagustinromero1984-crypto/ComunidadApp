@@ -37,14 +37,19 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.onFocusEvent
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
+import coil.request.ImageRequest
+import coil.size.Size
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.theme.BrandBackground
@@ -78,19 +83,29 @@ fun Modifier.v2KeepVisibleOnFocus(): Modifier = composed {
 }
 
 /**
- * Preview de foto en formularios: imagen completa (Fit), sin recorte destructivo.
+ * Preview de foto en formularios.
+ * Compact = tile acotado con Coil sized (no decode full-res).
  * El upload sigue enviando el archivo original.
  */
 @Composable
 fun V2FormImagePreview(
     imageUrl: String?,
     modifier: Modifier = Modifier,
-    contentDescription: String? = "Vista previa"
+    contentDescription: String? = "Vista previa",
+    compact: Boolean = false,
+    compactSize: Dp = 112.dp
 ) {
-    Box(
-        modifier = modifier
+    val context = LocalContext.current
+    val density = LocalDensity.current
+    val boxModifier = if (compact) {
+        modifier.size(compactSize)
+    } else {
+        modifier
             .fillMaxWidth()
             .aspectRatio(4f / 3f)
+    }
+    Box(
+        modifier = boxModifier
             .clip(RoundedCornerShape(LeoDimens.RadiusCardFeature))
             .background(BrandWhite),
         contentAlignment = Alignment.Center
@@ -102,13 +117,25 @@ fun V2FormImagePreview(
                 color = BrandTextSecondary
             )
         } else {
+            val decodePx = if (compact) {
+                with(density) { compactSize.roundToPx().coerceAtLeast(1) * 2 }
+            } else {
+                0
+            }
+            val request = remember(imageUrl, compact, decodePx) {
+                val builder = ImageRequest.Builder(context).data(imageUrl).crossfade(true)
+                if (compact && decodePx > 0) {
+                    builder.size(Size(decodePx, decodePx))
+                }
+                builder.build()
+            }
             AsyncImage(
-                model = imageUrl,
+                model = request,
                 contentDescription = contentDescription,
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(LeoDimens.SpaceSm),
-                contentScale = ContentScale.Fit
+                    .padding(if (compact) 0.dp else LeoDimens.SpaceSm),
+                contentScale = if (compact) ContentScale.Crop else ContentScale.Fit
             )
         }
     }
@@ -119,6 +146,7 @@ fun V2FormErrorBanner(
     title: String,
     message: String? = null,
     onRetry: (() -> Unit)? = null,
+    onDismiss: (() -> Unit)? = null,
     onCopyDiagnostic: (() -> Unit)? = null,
     modifier: Modifier = Modifier
 ) {
@@ -143,10 +171,13 @@ fun V2FormErrorBanner(
                 Spacer(Modifier.height(4.dp))
                 Text(text = message, style = LeoCaption, color = BrandTextSecondary)
             }
-            if (onRetry != null || onCopyDiagnostic != null) {
+            if (onRetry != null || onDismiss != null || onCopyDiagnostic != null) {
                 Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (onRetry != null) {
                         TextButton(onClick = onRetry) { Text("Reintentar") }
+                    }
+                    if (onDismiss != null) {
+                        TextButton(onClick = onDismiss) { Text("Cerrar") }
                     }
                     if (onCopyDiagnostic != null) {
                         TextButton(onClick = onCopyDiagnostic) { Text("Copiar diagnóstico") }
@@ -164,6 +195,8 @@ fun V2FormTextField(
     label: String,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    required: Boolean = false,
+    errorMessage: String? = null,
     singleLine: Boolean = true,
     minLines: Int = 1,
     maxLines: Int = if (singleLine) 1 else 6,
@@ -174,10 +207,13 @@ fun V2FormTextField(
 ) {
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
+    val visibleLabel = com.comunidapp.app.ui.components.leo.LeoRequiredField.label(label, required)
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
-        label = { Text(label) },
+        label = { Text(visibleLabel) },
+        isError = !errorMessage.isNullOrBlank(),
+        supportingText = errorMessage?.takeIf { it.isNotBlank() }?.let { { Text(it) } },
         modifier = modifier
             .fillMaxWidth()
             .v2KeepVisibleOnFocus(),
@@ -214,6 +250,7 @@ fun V2FormScaffold(
     errorTitle: String? = null,
     errorMessage: String? = null,
     onRetry: (() -> Unit)? = null,
+    onDismissError: (() -> Unit)? = null,
     onCopyDiagnostic: (() -> Unit)? = null,
     content: @Composable ColumnScope.() -> Unit
 ) {
@@ -239,6 +276,7 @@ fun V2FormScaffold(
                     title = errorTitle ?: "No pudimos completar la acción",
                     message = errorMessage,
                     onRetry = onRetry,
+                    onDismiss = onDismissError,
                     onCopyDiagnostic = onCopyDiagnostic
                 )
             }

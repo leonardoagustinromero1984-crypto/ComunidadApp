@@ -1,5 +1,6 @@
 package com.comunidapp.app.domain.social
 
+import com.comunidapp.app.domain.publiclinks.LeoVerPublicUrls
 import kotlinx.serialization.Serializable
 
 enum class SocialContentKind {
@@ -58,9 +59,9 @@ object LeoVerAudioCatalog {
 
 object SocialShare {
     fun deepLink(kind: SocialContentKind, id: String): String = when (kind) {
-        SocialContentKind.POST -> "https://leover.app/p/$id"
-        SocialContentKind.REEL -> "https://leover.app/r/$id"
-        SocialContentKind.STORY -> "https://leover.app/s/$id"
+        SocialContentKind.POST -> LeoVerPublicUrls.post(id)
+        SocialContentKind.REEL -> LeoVerPublicUrls.reel(id)
+        SocialContentKind.STORY -> LeoVerPublicUrls.story(id)
     }
 
     fun shareText(kind: SocialContentKind, authorName: String, id: String): String {
@@ -81,13 +82,79 @@ object VideoExportPolicy {
         com.comunidapp.app.domain.media.MediaIngestionPolicy.VIDEO_PROCESSED_HARD_CAP_BYTES
     const val TARGET_MAX_BYTES = PROCESSED_HARD_CAP_BYTES
     const val TARGET_MAX_EDGE = 1080
+    const val EDGE_720 = 720
+    const val TARGET_BITRATE_1080_BPS = 4_500_000L
+    const val MAX_BITRATE_1080_BPS = 5_000_000L
+    const val TARGET_BITRATE_720_BPS = 3_500_000L
+    const val MAX_BITRATE_720_BPS = 4_000_000L
+    const val TARGET_BITRATE_BPS = TARGET_BITRATE_1080_BPS
+    const val MAX_BITRATE_BPS = MAX_BITRATE_1080_BPS
+    const val TARGET_AUDIO_BITRATE_BPS = 128_000
     const val TARGET_VIDEO_MIME = "video/mp4"
     const val TARGET_VIDEO_CODEC = "H.264"
     const val TARGET_AUDIO_CODEC = "AAC"
+    const val DECISION_PASSTHROUGH = "PASSTHROUGH"
+    const val DECISION_TRANSCODE = "TRANSCODE"
     const val UNIVERSAL_40MIB_ENCODE_TARGET = false
     const val ROOT_CAUSE =
         "FilePurposePolicy.POST_MEDIA allowed only images and rejected files over 8 MiB " +
             "before any transcode, so short phone videos failed SIZE/EXTENSION validation."
+
+    fun bitrateBps(sizeBytes: Long?, durationMs: Long?): Long? {
+        if (sizeBytes == null || sizeBytes <= 0L || durationMs == null || durationMs <= 0L) return null
+        return (sizeBytes * 8_000L) / durationMs
+    }
+
+    fun isCompatibleCodec(mimeOrCodec: String?): Boolean {
+        val signal = mimeOrCodec.orEmpty().lowercase()
+        if (signal.isBlank()) return false
+        if (signal.contains("hevc") || signal.contains("h265") || signal.contains("vp9") ||
+            signal.contains("av1") || signal.contains("webm")
+        ) {
+            return false
+        }
+        return signal.contains("avc") || signal.contains("h264")
+    }
+
+    fun isExportOutputName(name: String): Boolean =
+        name.startsWith("leover_export_") && name.endsWith(".mp4", ignoreCase = true)
+
+    fun deleteExportOutput(path: String?) {
+        val file = java.io.File(path ?: return)
+        if (isExportOutputName(file.name)) file.delete()
+    }
+
+    fun needsScale(maxEdge: Int?): Boolean =
+        maxEdge != null && maxEdge > TARGET_MAX_EDGE
+
+    fun outputEdge(maxEdge: Int?): Int {
+        val edge = maxEdge ?: TARGET_MAX_EDGE
+        return edge.coerceAtMost(TARGET_MAX_EDGE)
+    }
+
+    fun is1080Class(maxEdge: Int?): Boolean = outputEdge(maxEdge) > EDGE_720
+
+    fun targetBitrateBps(maxEdge: Int?): Long =
+        if (is1080Class(maxEdge)) TARGET_BITRATE_1080_BPS else TARGET_BITRATE_720_BPS
+
+    fun maxPassthroughBitrateBps(maxEdge: Int?): Long =
+        if (is1080Class(maxEdge)) MAX_BITRATE_1080_BPS else MAX_BITRATE_720_BPS
+
+    fun shouldPassthrough(
+        maxEdge: Int?,
+        bitrateBps: Long?,
+        sizeBytes: Long?,
+        mimeOrCodec: String?,
+        durationMs: Long? = null
+    ): Boolean {
+        if (!isCompatibleCodec(mimeOrCodec)) return false
+        if (needsScale(maxEdge)) return false
+        if ((sizeBytes ?: Long.MAX_VALUE) > PROCESSED_HARD_CAP_BYTES) return false
+        val bitrate = bitrateBps ?: bitrateBps(sizeBytes, durationMs)
+        if (bitrate != null) return bitrate <= maxPassthroughBitrateBps(maxEdge)
+        val size = sizeBytes ?: return false
+        return size <= 8L * 1024L * 1024L && (maxEdge == null || maxEdge <= TARGET_MAX_EDGE)
+    }
 }
 
 object BitacoraCopy {
@@ -95,7 +162,15 @@ object BitacoraCopy {
     const val SAVE_BUTTON = "GUARDAR EN VITACORA"
     fun savePrompt(kind: SocialContentKind, petName: String): String = when (kind) {
         SocialContentKind.STORY -> "¿Querés guardar esta historia en la VitaCora de $petName?"
-        SocialContentKind.REEL -> "¿Querés guardar este reel en la VitaCora de $petName?"
+        SocialContentKind.REEL -> "¿Querés guardar este Clip en la VitaCora de $petName?"
         SocialContentKind.POST -> "¿Querés guardar esta publicación en la VitaCora de $petName?"
+    }
+
+    fun composerCheckboxLabel(petCount: Int): String = composerPetSelectionHint(petCount)
+
+    fun composerPetSelectionHint(petCount: Int): String = when {
+        petCount <= 0 -> "No se guardará en VitaCora."
+        petCount == 1 -> "Se guardará en la VitaCora de 1 mascota."
+        else -> "Se guardará en la VitaCora de $petCount mascotas."
     }
 }

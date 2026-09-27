@@ -8,6 +8,7 @@ import com.comunidapp.app.data.remote.supabase.m08.AccessiblePetM08Row
 import com.comunidapp.app.data.remote.supabase.m08.PetM08Row
 import com.comunidapp.app.domain.pets.PetBirth
 import com.comunidapp.app.domain.pets.PetBirthPrecision
+import com.comunidapp.app.domain.pets.PetSpeciesCatalog
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import java.time.LocalDate
@@ -27,7 +28,9 @@ data class CanonicalPetHolderRow(
     @SerialName("person_id") val personId: String? = null,
     @SerialName("organization_id") val organizationId: String? = null,
     @SerialName("display_name") val displayName: String? = null,
-    @SerialName("avatar_asset_id") val avatarAssetId: String? = null
+    @SerialName("avatar_asset_id") val avatarAssetId: String? = null,
+    @SerialName("care_role") val careRole: String? = null,
+    val username: String? = null
 )
 
 @Serializable
@@ -38,6 +41,7 @@ data class CanonicalPetRow(
     @SerialName("species_code") val speciesCode: String = "",
     val sex: String? = null,
     val size: String? = null,
+    @SerialName("breed_id") val breedId: String? = null,
     @SerialName("avatar_asset_id") val avatarAssetId: String? = null,
     @SerialName("public_code") val publicCode: String? = null,
     @SerialName("home_locality_id") val homeLocalityId: String? = null,
@@ -51,7 +55,10 @@ data class CanonicalPetRow(
     @SerialName("created_at") val createdAt: String? = null,
     @SerialName("updated_at") val updatedAt: String? = null,
     @SerialName("archived_at") val archivedAt: String? = null,
-    @SerialName("public_vitacora_number") val publicVitacoraNumber: Long? = null
+    @SerialName("public_vitacora_number") val publicVitacoraNumber: Long? = null,
+    @SerialName("management_context_kind") val managementContextKind: String? = null,
+    @SerialName("management_context_id") val managementContextId: String? = null,
+    @SerialName("origin_kind") val originKind: String = "STANDARD"
 )
 
 fun CanonicalPetRow.toBirth(): PetBirth {
@@ -72,7 +79,7 @@ fun CanonicalPetRow.toPetM08Row(): PetM08Row {
     val age = birth.approximateYearsMonths()
     return PetM08Row(
         id = id,
-        ownerId = null,
+        ownerId = createdByUserId?.takeIf { it.isNotBlank() },
         name = name,
         photoUrl = null,
         species = speciesCode.ifBlank { "OTHER" },
@@ -81,13 +88,19 @@ fun CanonicalPetRow.toPetM08Row(): PetM08Row {
         ageMonths = age?.second ?: 0,
         size = size ?: PetSize.MEDIUM.name,
         description = "",
+        breed = null,
+        breedId = breedId,
         status = lifecycleStatus,
         archivedAt = archivedAt,
         avatarFileAssetId = avatarAssetId,
         createdAt = createdAt,
         updatedAt = updatedAt,
         publicCode = publicCode,
-        publicVitacoraNumber = publicVitacoraNumber
+        publicVitacoraNumber = publicVitacoraNumber,
+        createdByUserId = createdByUserId,
+        managementContextKind = managementContextKind,
+        managementContextId = managementContextId,
+        originKind = originKind
     )
 }
 
@@ -104,19 +117,25 @@ fun CanonicalPetRow.toAccessibleRow(): AccessiblePetM08Row {
         ageMonths = row.ageMonths,
         size = row.size,
         description = "",
+        breed = row.breed,
+        breedId = row.breedId,
         status = row.status,
         archivedAt = row.archivedAt,
         avatarFileAssetId = row.avatarFileAssetId,
         createdAt = row.createdAt,
         updatedAt = row.updatedAt,
         relationCode = "OWNER",
-        canUpdate = false,
-        canManageHealth = false,
-        canManageMedia = false,
+        canUpdate = true,
+        canManageHealth = true,
+        canManageMedia = true,
         canArchive = false,
         canMarkDeceased = false,
         publicCode = row.publicCode,
-        publicVitacoraNumber = publicVitacoraNumber
+        publicVitacoraNumber = publicVitacoraNumber,
+        createdByUserId = createdByUserId,
+        managementContextKind = managementContextKind,
+        managementContextId = managementContextId,
+        originKind = row.originKind
     )
 }
 
@@ -125,15 +144,18 @@ fun CanonicalPetRow.toPet(): Pet {
     val age = birth.approximateYearsMonths()
     return Pet(
         id = id,
-        ownerId = null,
+        ownerId = createdByUserId?.takeIf { it.isNotBlank() },
         name = name,
         photoUrl = null,
-        species = runCatching { PetSpecies.valueOf(speciesCode) }.getOrDefault(PetSpecies.OTHER),
+        species = PetSpeciesCatalog.toPetSpecies(speciesCode),
+        speciesCode = speciesCode.takeIf { it.isNotBlank() },
         sex = runCatching { PetSex.valueOf(sex ?: "UNKNOWN") }.getOrDefault(PetSex.UNKNOWN),
         ageYears = age?.first ?: 0,
         ageMonths = age?.second ?: 0,
         size = runCatching { PetSize.valueOf(size ?: "MEDIUM") }.getOrDefault(PetSize.MEDIUM),
         description = "",
+        breed = null,
+        breedId = breedId,
         status = lifecycleStatus,
         archivedAt = archivedAt?.let { runCatching { java.time.Instant.parse(it).toEpochMilli() }.getOrNull() },
         avatarFileAssetId = avatarAssetId,
@@ -146,6 +168,9 @@ fun CanonicalPetRow.toPet(): Pet {
         estimatedAsOf = birth.estimatedAsOf?.toString(),
         publicCode = publicCode,
         homeLocalityId = homeLocalityId,
-        publicVitacoraNumber = publicVitacoraNumber
+        publicVitacoraNumber = publicVitacoraNumber,
+        managementContextKind = managementContextKind,
+        managementContextId = managementContextId,
+        originKind = originKind
     )
 }

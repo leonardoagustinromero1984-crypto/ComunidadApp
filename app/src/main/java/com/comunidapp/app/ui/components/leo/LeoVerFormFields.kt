@@ -10,6 +10,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.VisualTransformation
 import com.comunidapp.app.ui.components.HealthOptionDropdown
 import com.comunidapp.app.ui.theme.BrandOrangeSoft
 import com.comunidapp.app.ui.theme.BrandText
@@ -26,24 +27,33 @@ fun LeoTextField(
     label: String? = null,
     placeholder: String? = null,
     enabled: Boolean = true,
+    readOnly: Boolean = false,
+    required: Boolean = false,
     isError: Boolean = false,
     supportingText: String? = null,
     singleLine: Boolean = true,
+    minLines: Int = 1,
     keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
-    keyboardActions: KeyboardActions = KeyboardActions.Default
+    keyboardActions: KeyboardActions = KeyboardActions.Default,
+    visualTransformation: VisualTransformation = VisualTransformation.None,
+    trailingIcon: @Composable (() -> Unit)? = null
 ) {
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
         enabled = enabled,
+        readOnly = readOnly,
         isError = isError,
         singleLine = singleLine,
-        label = label?.let { { Text(it) } },
+        minLines = if (singleLine) 1 else minLines,
+        label = label?.let { { Text(LeoRequiredField.label(it, required)) } },
         placeholder = placeholder?.let { { Text(it, color = MutedText) } },
         supportingText = supportingText?.let { { Text(it) } },
         keyboardOptions = keyboardOptions,
         keyboardActions = keyboardActions,
+        visualTransformation = visualTransformation,
+        trailingIcon = trailingIcon,
         shape = RoundedCornerShape(LeoDimens.RadiusField),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = BrandWhite,
@@ -71,8 +81,17 @@ fun LeoVerTextField(
     keyboardOptions: KeyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
     keyboardActions: KeyboardActions = KeyboardActions.Default
 ) = LeoTextField(
-    value, onValueChange, modifier, label, placeholder, enabled, isError,
-    supportingText, singleLine, keyboardOptions, keyboardActions
+    value = value,
+    onValueChange = onValueChange,
+    modifier = modifier,
+    label = label,
+    placeholder = placeholder,
+    enabled = enabled,
+    isError = isError,
+    supportingText = supportingText,
+    singleLine = singleLine,
+    keyboardOptions = keyboardOptions,
+    keyboardActions = keyboardActions
 )
 
 /** Canonical option selector — reuses [HealthOptionDropdown], not a second menu system. */

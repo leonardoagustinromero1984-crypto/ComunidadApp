@@ -77,7 +77,14 @@ The SDK requires a Maps SDK for Android key from Google Cloud. This is **not** P
      - `com.comunidapp.app.staging`
    - SHA-1 / SHA-256 of the signing certificate(s) used for QA and release
    - API restriction: **Maps SDK for Android** only — never Places, Geocoding, Routes, Navigation, Street View
-3. Put the key in `local.properties` (gitignored):
+3. Restrict Android apps with the **real staging package** and the **debug/staging certificate**:
+   - Package (STAGING APK): `com.comunidapp.app.staging`
+   - Also allow: `com.comunidapp.app`, `com.comunidapp.app.local`
+   - Debug SHA-1 (this machine): `5C:C4:73:97:49:01:75:60:6D:FD:F9:EF:25:7B:EA:DC:E1:D5:67:8D`
+   - Debug SHA-256: `4C:AA:28:B0:32:C0:15:3C:40:20:FD:EB:39:D6:C7:E8:73:18:E2:68:28:44:F1:2E:54:04:AF:1F:71:68:59:EF`
+   - If the key is restricted to another package (for example `com.comunidapp.app` only) or another SHA, tiles stay blank even when `MAPS_API_KEY` is injected.
+4. Enable **Maps SDK for Android** on the same Google Cloud project that owns the key. Billing must be active if Google requires it for that project.
+5. Put the key in `local.properties` (gitignored):
 
 ```
 MAPS_API_KEY=YOUR_KEY_HERE

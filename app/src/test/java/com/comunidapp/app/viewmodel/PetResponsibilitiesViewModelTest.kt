@@ -31,6 +31,7 @@ class PetResponsibilitiesViewModelTest {
     private lateinit var petRepo: FakeStage5PetRepository
     private lateinit var respRepo: FakeStage5ResponsibilityRepository
     private lateinit var userRepo: FakeStage5UserRepository
+    private lateinit var careRepo: FakeCareNetworkRepository
 
     @Before
     fun setUp() {
@@ -40,6 +41,7 @@ class PetResponsibilitiesViewModelTest {
         petRepo = FakeStage5PetRepository()
         respRepo = FakeStage5ResponsibilityRepository()
         userRepo = FakeStage5UserRepository()
+        careRepo = FakeCareNetworkRepository()
     }
 
     @After
@@ -62,6 +64,7 @@ class PetResponsibilitiesViewModelTest {
             petRepository = petRepo,
             userRepository = userRepo,
             authRepository = authRepo,
+            careNetworkRepository = careRepo,
             nowEpochMs = { 10_000L },
             searchDebounceMs = 0L
         )
@@ -313,5 +316,64 @@ class PetResponsibilitiesViewModelTest {
         advanceUntilIdle()
         assertEquals(0, userRepo.searchCalls)
         assertTrue(vm.uiState.value.searchResults.isEmpty())
+    }
+
+    @Test
+    fun load_shows_pet_name_for_care_network_copy() = runTest(dispatcher) {
+        login()
+        petRepo.pet = stage5Pet().copy(name = "Samu")
+        val vm = viewModel()
+        advanceUntilIdle()
+        assertEquals("Samu", vm.uiState.value.petName)
+    }
+
+    @Test
+    fun inviteResponsible_sends_pending_not_active() = runTest(dispatcher) {
+        login()
+        val vm = viewModel(canManage = true)
+        advanceUntilIdle()
+        vm.inviteResponsible("72c565ed-4431-4bf2-8b5e-4c8b0a8703dd")
+        advanceUntilIdle()
+        assertEquals(1, careRepo.inviteCalls)
+        assertEquals("72c565ed-4431-4bf2-8b5e-4c8b0a8703dd", careRepo.lastInvitedPersonId)
+        assertTrue(vm.uiState.value.actionMessage.orEmpty().contains("aceptación", ignoreCase = true))
+        assertFalse(vm.uiState.value.actionMessage.orEmpty().contains("iniciar sesión", ignoreCase = true))
+    }
+
+    @Test
+    fun inviteResponsible_missingRpcDoesNotLookLikeLogout() = runTest(dispatcher) {
+        login()
+        careRepo.inviteFailure = Exception(
+            "PGRST202 Could not find the function public.canon_invite_pet_responsible"
+        )
+        val vm = viewModel(canManage = true)
+        advanceUntilIdle()
+        vm.inviteResponsible("72c565ed-4431-4bf2-8b5e-4c8b0a8703dd")
+        advanceUntilIdle()
+        val message = vm.uiState.value.actionMessage.orEmpty()
+        assertFalse(message.contains("iniciar sesión", ignoreCase = true))
+        assertTrue(message.contains("función", ignoreCase = true))
+    }
+
+    @Test
+    fun leaveThisPet_endsOwnLinkWithoutDeletingPet() = runTest(dispatcher) {
+        login()
+        respRepo.items += stage5Responsibility(
+            id = "resp-p",
+            role = PetResponsibilityRole.PRINCIPAL,
+            holder = PetPrincipalHolder.Person("user_other")
+        )
+        respRepo.items += stage5Responsibility(
+            id = "resp-b",
+            role = PetResponsibilityRole.CO_RESPONSIBLE,
+            holder = PetPrincipalHolder.Person(MockData.currentUser.id)
+        )
+        val vm = viewModel(canManage = false)
+        advanceUntilIdle()
+        assertTrue(vm.uiState.value.canLeave)
+        vm.leaveThisPet()
+        advanceUntilIdle()
+        assertEquals(1, careRepo.leaveCalls)
+        assertTrue(vm.uiState.value.actionMessage.orEmpty().contains("responsable", ignoreCase = true))
     }
 }

@@ -3,6 +3,7 @@ package com.comunidapp.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.comunidapp.app.core.logging.AppLog
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m08.M08PetErrorMapper
 import com.comunidapp.app.data.remote.supabase.m08.PetAccessContext
@@ -11,6 +12,7 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.UserRepository
 import com.comunidapp.app.domain.organization.OrganizationId
+import com.comunidapp.app.domain.pets.IncomingCareTransferInbox
 import com.comunidapp.app.domain.pets.PetId
 import com.comunidapp.app.domain.pets.PetPrincipalHolder
 import com.comunidapp.app.domain.pets.PetTransfer
@@ -24,10 +26,12 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class PetTransfersUiState(
     val isLoading: Boolean = true,
+    val accessResolved: Boolean = false,
     val loadErrorMessage: String? = null,
     val access: PetAccessContext? = null,
     val petStatus: String = "ACTIVE",
@@ -37,20 +41,33 @@ data class PetTransfersUiState(
     val actionMessage: String? = null,
     val searchQuery: String = "",
     val searchResults: List<PublicUserProfile> = emptyList(),
-    val isSearching: Boolean = false
+    val targetHits: List<com.comunidapp.app.domain.pets.PetTransferTargetHit> = emptyList(),
+    val isSearching: Boolean = false,
+    val petName: String = "",
+    val sharePersonalMedia: Boolean = false,
+    val incomingTargetPending: Boolean = false,
+    val acceptedNavigateToMyPets: Boolean = false
 ) {
     val isEmpty: Boolean
         get() = !isLoading && loadErrorMessage == null &&
             pendingTransfer == null && history.isEmpty()
 
     val canInitiate: Boolean get() = access?.canInitiateTransfer == true
-    val canAccept: Boolean get() = access?.canAcceptTransfer == true
+    val canAccept: Boolean
+        get() = access?.canAcceptTransfer == true || incomingTargetPending
     val canCancel: Boolean get() = access?.canCancelTransfer == true
 
     val mutationsLocked: Boolean get() = petStatus != "ACTIVE"
 
     fun transferById(transferId: String): PetTransfer? =
         (listOfNotNull(pendingTransfer) + history).firstOrNull { it.id.value == transferId }
+
+    fun shouldLeaveUnauthorized(): Boolean {
+        if (isLoading || !accessResolved) return false
+        if (loadErrorMessage != null) return false
+        if (canInitiate || canAccept || pendingTransfer != null) return false
+        return access != null
+    }
 }
 
 /**
@@ -64,6 +81,7 @@ class PetTransfersViewModel(
     private val petRepository: PetRepository = DataProvider.petRepository,
     private val userRepository: UserRepository = DataProvider.userRepository,
     private val authRepository: AuthRepository = AuthProvider.repository,
+    private val incomingInbox: IncomingCareTransferInbox? = null,
     private val nowEpochMs: () -> Long = { System.currentTimeMillis() },
     private val searchDebounceMs: Long = 300L
 ) : ViewModel() {
@@ -79,10 +97,34 @@ class PetTransfersViewModel(
 
     fun load() {
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true, loadErrorMessage = null) }
+            inboxLog("TRANSFER_SCREEN_LOAD_START petPresent=${petId.isNotBlank()}")
+            _uiState.update {
+                it.copy(isLoading = true, accessResolved = false, loadErrorMessage = null)
+            }
             val repo = transferRepository
             if (repo == null) {
-                failLoad("M08_FEATURE_UNAVAILABLE")
+                val access = petRepository.getPetAccessContext(petId).getOrElse { error ->
+                    failLoad(M08PetErrorMapper.codeOf(error))
+                    return@launch
+                }
+                if (!access.canRead) {
+                    failLoad("FORBIDDEN")
+                    return@launch
+                }
+                val pet = runCatching { petRepository.fetchPetById(petId) }.getOrNull()
+                val petStatus = pet?.status ?: "ACTIVE"
+                _uiState.update {
+                    it.copy(
+                        isLoading = false,
+                        accessResolved = true,
+                        loadErrorMessage = null,
+                        access = access.copy(canInitiateTransfer = false),
+                        petStatus = petStatus,
+                        petName = pet?.name.orEmpty(),
+                        pendingTransfer = null,
+                        history = emptyList()
+                    )
+                }
                 return@launch
             }
             if (petId.isBlank()) {
@@ -93,30 +135,67 @@ class PetTransfersViewModel(
                 failLoad("NOT_AUTHENTICATED")
                 return@launch
             }
-            val access = petRepository.getPetAccessContext(petId).getOrElse { error ->
-                failLoad(M08PetErrorMapper.codeOf(error))
-                return@launch
-            }
-            if (!access.canRead) {
-                failLoad("FORBIDDEN")
-                return@launch
-            }
-            val petStatus = runCatching { petRepository.fetchPetById(petId)?.status }
-                .getOrNull() ?: "ACTIVE"
+            val incomingForPet = runCatching { repo.listIncoming() }
+                .getOrDefault(emptyList())
+                .filter { it.petId.value == petId && it.status == PetTransferStatus.PENDING }
+            inboxLog("INCOMING_FOR_PET count=${incomingForPet.size} ids=${incomingForPet.map { it.id.value }}")
+
+            val accessResult = petRepository.getPetAccessContext(petId)
+            val access = accessResult.getOrNull()
+            val accessError = accessResult.exceptionOrNull()
+            val incomingPending = incomingForPet.firstOrNull()
+            val canAcceptFromContext = access?.canAcceptTransfer == true
+            val canAcceptFromInbox = incomingPending != null
+            inboxLog(
+                "CAN_ACCEPT_RESULT transferId=${incomingPending?.id?.value ?: "none"} " +
+                    "canAcceptTransfer=$canAcceptFromContext inboxPending=$canAcceptFromInbox " +
+                    "contextError=${accessError?.let { M08PetErrorMapper.codeOf(it) } ?: "none"}"
+            )
+
             val transfers = runCatching { repo.listHistory(PetId(petId)) }.getOrElse { error ->
-                failLoad(M08PetErrorMapper.codeOf(error))
-                return@launch
+                if (incomingPending != null) {
+                    inboxLog("LIST_HISTORY_FAIL use_inbox type=${error::class.java.simpleName}")
+                    incomingForPet
+                } else {
+                    failLoad(M08PetErrorMapper.codeOf(error))
+                    return@launch
+                }
             }
+            val pending = transfers.firstOrNull { t ->
+                t.status == PetTransferStatus.PENDING
+            } ?: incomingPending
+            val resolvedAccess = when {
+                access != null -> access.copy(
+                    canRead = access.canRead || incomingPending != null,
+                    canAcceptTransfer = access.canAcceptTransfer || incomingPending != null
+                )
+                pending != null -> incomingTargetAccess(petId, pending)
+                else -> {
+                    failLoad(accessError?.let { M08PetErrorMapper.codeOf(it) } ?: "FORBIDDEN")
+                    return@launch
+                }
+            }
+            val pet = runCatching { petRepository.fetchPetById(petId) }.getOrNull()
+            val petStatus = pet?.status ?: "ACTIVE"
+            inboxLog(
+                "UI_STATE_AFTER_SET pending=${pending?.id?.value ?: "none"} " +
+                    "canAccept=${resolvedAccess.canAcceptTransfer} canInitiate=${resolvedAccess.canInitiateTransfer}"
+            )
             _uiState.update {
                 it.copy(
                     isLoading = false,
+                    accessResolved = true,
                     loadErrorMessage = null,
-                    access = access,
+                    access = resolvedAccess,
                     petStatus = petStatus,
-                    pendingTransfer = transfers.firstOrNull { t ->
-                        t.status == PetTransferStatus.PENDING
+                    petName = pet?.name.orEmpty().ifBlank {
+                        pending?.petDisplayName.orEmpty().ifBlank {
+                            transfers.firstOrNull()?.petDisplayName.orEmpty()
+                        }
                     },
-                    history = transfers.filter { t -> t.status != PetTransferStatus.PENDING }
+                    pendingTransfer = pending,
+                    incomingTargetPending = incomingPending != null,
+                    history = transfers.filter { it.id != pending?.id }
                 )
             }
         }
@@ -126,7 +205,9 @@ class PetTransfersViewModel(
         _uiState.update { it.copy(searchQuery = query) }
         searchJob?.cancel()
         if (query.trim().length < 2) {
-            _uiState.update { it.copy(searchResults = emptyList(), isSearching = false) }
+            _uiState.update {
+                it.copy(searchResults = emptyList(), targetHits = emptyList(), isSearching = false)
+            }
             return
         }
         searchJob = viewModelScope.launch {
@@ -134,14 +215,34 @@ class PetTransfersViewModel(
             delay(searchDebounceMs)
             val viewerId = authRepository.getCurrentUser()?.id
             if (viewerId == null) {
-                _uiState.update { it.copy(isSearching = false, searchResults = emptyList()) }
+                _uiState.update {
+                    it.copy(isSearching = false, searchResults = emptyList(), targetHits = emptyList())
+                }
                 return@launch
             }
             val results = userRepository.searchPublicProfiles(viewerId, query.trim(), limit = 10)
                 .getOrDefault(emptyList())
                 .filter { it.id != viewerId }
-            _uiState.update { it.copy(isSearching = false, searchResults = results) }
+            val friendIds = runCatching {
+                DataProvider.friendRepository.observeConnections(viewerId).first()
+            }.getOrDefault(emptyList())
+                .filter { it.status == com.comunidapp.app.data.model.FriendConnectionStatus.ACCEPTED }
+                .map { conn ->
+                    if (conn.requesterId == viewerId) conn.addresseeId else conn.requesterId
+                }
+                .toSet()
+            val manadaOnly = results.filter { it.id in friendIds }
+            val targets = runCatching { transferRepository?.searchTargets(query.trim()) }
+                .getOrNull()
+                .orEmpty()
+            _uiState.update {
+                it.copy(isSearching = false, searchResults = manadaOnly, targetHits = targets)
+            }
         }
+    }
+
+    fun setSharePersonalMedia(share: Boolean) {
+        _uiState.update { it.copy(sharePersonalMedia = share) }
     }
 
     fun initiate(toPersonId: String?, toOrganizationId: String?) {
@@ -199,7 +300,8 @@ class PetTransfersViewModel(
             status = PetTransferStatus.PENDING,
             requestedAtEpochMs = now,
             expiresAtEpochMs = now + DEFAULT_EXPIRY_MS,
-            requestedByUserId = actorId
+            requestedByUserId = actorId,
+            sharePersonalMedia = state.sharePersonalMedia
         )
         viewModelScope.launch {
             _uiState.update { it.copy(isSubmitting = true) }
@@ -220,7 +322,11 @@ class PetTransfersViewModel(
     }
 
     fun accept(transferId: String) {
-        resolve(transferId, requireCapability = { it.canAccept }) { repo, id ->
+        resolve(
+            transferId,
+            requireCapability = { it.canAccept },
+            navigateToMyPetsOnSuccess = true
+        ) { repo, id ->
             repo.accept(id, nowEpochMs())
         }
     }
@@ -244,6 +350,7 @@ class PetTransfersViewModel(
     private fun resolve(
         transferId: String,
         requireCapability: (PetTransfersUiState) -> Boolean,
+        navigateToMyPetsOnSuccess: Boolean = false,
         action: suspend (PetTransferRepository, PetTransferId) -> Result<Unit>
     ) {
         val state = _uiState.value
@@ -270,12 +377,32 @@ class PetTransfersViewModel(
             _uiState.update { it.copy(isSubmitting = true) }
             action(repo, PetTransferId(transferId))
                 .onSuccess {
-                    _uiState.update {
-                        it.copy(isSubmitting = false, actionMessage = "Transferencia actualizada.")
+                    if (navigateToMyPetsOnSuccess) {
+                        incomingInbox?.remove(transferId)
+                        incomingInbox?.publishAcceptedNotice(
+                            _uiState.value.petName.ifBlank {
+                                transfer.petDisplayName.orEmpty()
+                            }
+                        )
+                        if (incomingInbox != null) {
+                            runCatching { incomingInbox.refresh("post_accept") }
+                        }
+                        runCatching { petRepository.refreshAccessiblePets() }
+                        _uiState.update {
+                            it.copy(
+                                isSubmitting = false,
+                                actionMessage = null,
+                                pendingTransfer = null,
+                                incomingTargetPending = false,
+                                acceptedNavigateToMyPets = true
+                            )
+                        }
+                    } else {
+                        _uiState.update {
+                            it.copy(isSubmitting = false, actionMessage = "Transferencia actualizada.")
+                        }
+                        load()
                     }
-                    // Reload also refreshes the access context so a new principal
-                    // (accepted transfer) is reflected immediately.
-                    load()
                 }
                 .onFailure { error -> submitFailed(error) }
         }
@@ -304,9 +431,41 @@ class PetTransfersViewModel(
         }
     }
 
+    private fun incomingTargetAccess(petId: String, pending: PetTransfer): PetAccessContext {
+        return PetAccessContext(
+            petId = petId,
+            relationCode = "TRANSFER_TARGET",
+            principalPersonId = pending.fromPrincipal.let { holder ->
+                (holder as? PetPrincipalHolder.Person)?.userId
+            },
+            principalOrganizationId = pending.fromPrincipal.let { holder ->
+                (holder as? PetPrincipalHolder.Organization)?.organizationId?.value
+            },
+            principalDisplayName = pending.sourceDisplayName,
+            capabilities = emptyList(),
+            canRead = true,
+            canUpdate = false,
+            canManageHealth = false,
+            canManageMedia = false,
+            canManageResponsibilities = false,
+            canManageAuthorizations = false,
+            canInitiateTransfer = false,
+            canAcceptTransfer = true,
+            canCancelTransfer = false,
+            canArchive = false,
+            canRestore = false,
+            canMarkDeceased = false,
+            canViewHistory = false
+        )
+    }
+
     private fun failLoad(code: String) {
         _uiState.update {
-            it.copy(isLoading = false, loadErrorMessage = M08PetErrorMapper.userMessage(code))
+            it.copy(
+                isLoading = false,
+                accessResolved = true,
+                loadErrorMessage = transferLoadErrorMessage(code)
+            )
         }
     }
 
@@ -315,6 +474,12 @@ class PetTransfersViewModel(
     }
 
     companion object {
+        private const val TAG = "CareInbox"
+
+        private fun inboxLog(message: String) {
+            runCatching { AppLog.info(TAG, message) }
+        }
+
         /** Mismo default que el backend (`m08_initiate_pet_transfer`: +7 días). */
         const val DEFAULT_EXPIRY_MS: Long = 7L * 24 * 60 * 60 * 1000
 
@@ -324,9 +489,17 @@ class PetTransfersViewModel(
                 override fun <T : ViewModel> create(modelClass: Class<T>): T {
                     return PetTransfersViewModel(
                         petId = petId,
-                        transferRepository = DataProvider.petTransferRepository
+                        transferRepository = DataProvider.petTransferRepository,
+                        incomingInbox = DataProvider.incomingCareTransferInbox
                     ) as T
                 }
             }
     }
 }
+
+internal fun transferLoadErrorMessage(code: String): String =
+    if (code == "UNKNOWN") {
+        "No pudimos cargar las transferencias. Intentá de nuevo."
+    } else {
+        M08PetErrorMapper.userMessage(code)
+    }
