@@ -79,7 +79,7 @@ JVM and contract coverage on this branch. **COVERED** here is not a Maestro pass
 | QR DIRECT ROUTE | `CloudBaselineRepair02ContractTest` opens `m14/pets/{petId}/share` | COVERED |
 | REUNIFICATION VITACORA | `ReunificationVitaCoraInvariantTest` and `VitaCoraReunificationRetirement1104Test`. Migration 1104 retires the provisional VitaCora. The Mora read is the post-apply check and was not run in this block. | COVERED |
 
-Final consolidation JVM, recorded from `:app:testLocalDebugUnitTest` and `:shared:testAndroidHostTest` on this revision: app **3120/3120**, shared **390/390**, 0 FAIL. The two tests above the previous app baseline of 3118 are `ReunificationVitaCoraInvariantTest`.
+JVM on this revision, from `:app:testLocalDebugUnitTest` and `:shared:testAndroidHostTest`: app **3138/3138**, shared **390/390**, 0 FAIL. The previous app baseline was 3120. The added tests are `VitaCoraReunificationRetirement1104Test` (18) on top of `ReunificationVitaCoraInvariantTest`.
 
 Maestro flows and the emulator were not executed in the final Community Care consolidation. Physical QR scan, real GPS, camera capture, and the OS push shade stay manual. REG-LF-006 COVERED is the contract plus the read-only STAGING fixture. It is not a device pass.
 
