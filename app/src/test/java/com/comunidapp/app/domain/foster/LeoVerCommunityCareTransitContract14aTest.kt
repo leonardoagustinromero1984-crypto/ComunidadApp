@@ -269,11 +269,9 @@ class LeoVerCommunityCareTransitContract14aTest {
     }
 
     @Test
-    fun androidRepositoryIsPreparedAndDataProviderStaysOnTheMemoryRequestPath() {
+    fun androidRepositoryConstantsStayOnThe1102ReadContract() {
         val backend = source("app/src/main/java/com/comunidapp/app/domain/canonical/CanonicalBackend.kt")
         val repository = source("app/src/main/java/com/comunidapp/app/data/repository/CanonicalFosterTransitRepository.kt")
-        val provider = source("app/src/main/java/com/comunidapp/app/data/provider/DataProvider.kt")
-        val screens = source("app/src/main/java/com/comunidapp/app/ui/screens/foster/FosterCareRequestScreens.kt")
         assertTrue(backend.contains("const val RPC_LIST_MY_FOSTER_REQUESTS = \"canon_list_my_foster_requests\""))
         assertTrue(backend.contains("const val RPC_LIST_MY_FOSTER_APPLICATIONS = \"canon_list_my_foster_applications\""))
         assertTrue(backend.contains("const val RPC_GET_ACTIVE_FOSTER_TRANSIT = \"canon_get_active_foster_transit\""))
@@ -286,29 +284,17 @@ class LeoVerCommunityCareTransitContract14aTest {
         assertTrue(repository.contains("interface CanonicalFosterTransitRepository"))
         assertFalse(repository.contains("Mock"))
         assertFalse(repository.contains("Result.success(emptyList())"))
-        assertFalse(provider.contains("CanonicalFosterTransitRepository"))
-        assertFalse(provider.contains("RpcCanonicalFosterTransitRepository"))
-        val block = provider.substring(
-            provider.indexOf("val fosterRequestRepository"),
-            provider.indexOf("val fosterPlacementRepository")
-        )
-        assertTrue(block.contains("MockFosterRequestRepository"))
-        assertFalse(block.contains("useSupabase ->"))
-        assertFalse(screens.contains("CanonicalFosterTransitRepository"))
-        assertFalse(screens.contains("RPC_LIST_MY_FOSTER_REQUESTS"))
-        assertFalse(screens.contains("RPC_GET_ACTIVE_FOSTER_TRANSIT"))
     }
 
     @Test
-    fun transitScreenNavigationStaysDeferred() {
-        val hits = kotlinMainSources().flatMap { file ->
-            file.readLines().map { it.trim() }
-        }.filter { line ->
-            line.contains("navigate(NavRoutes.fosterCareRequest") ||
-                line.contains("navigate(NavRoutes.FOSTER_OPEN_REQUESTS") ||
-                line.contains("navigate(NavRoutes.fosterChooseApplicant")
-        }
-        assertTrue(hits.isEmpty())
+    fun transitRoutesStayRegisteredForTheLiveScreens() {
+        val graph = source("app/src/main/java/com/comunidapp/app/navigation/ComunidappNavGraph.kt")
+        assertTrue(graph.contains("composable(NavRoutes.FOSTER_CARE_REQUEST)"))
+        assertTrue(graph.contains("composable(NavRoutes.FOSTER_OPEN_REQUESTS)"))
+        assertTrue(graph.contains("composable(NavRoutes.FOSTER_CHOOSE_APPLICANT)"))
+        assertTrue(graph.contains("RequestFosterForPetScreen"))
+        assertTrue(graph.contains("OpenFosterRequestsScreen"))
+        assertTrue(graph.contains("ChooseFosterApplicantScreen"))
     }
 
     @Test
@@ -397,11 +383,6 @@ class LeoVerCommunityCareTransitContract14aTest {
         val end = sql.indexOf("\$\$;", start)
         check(end > start) { "UNCLOSED:$name" }
         return sql.substring(start, end)
-    }
-
-    private fun kotlinMainSources(): List<File> {
-        val root = sourceFile("app/src/main")
-        return root.walkTopDown().filter { it.isFile && it.extension == "kt" }.toList()
     }
 
     private fun source(relativePath: String): String = sourceFile(relativePath).readText()

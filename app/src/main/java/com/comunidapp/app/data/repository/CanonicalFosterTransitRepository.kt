@@ -1,9 +1,12 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.model.FosterHomeRequest
 import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.canonical.CanonicalBackend
 import com.comunidapp.app.domain.ux.CanonicalUiErrorMapper
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -77,6 +80,29 @@ data class CanonicalActiveFosterTransit(
     val notes: String? = null
 )
 
+@Serializable
+data class CanonicalOpenFosterRequest(
+    val id: String,
+    @SerialName("pet_id") val petId: String,
+    @SerialName("pet_name") val petName: String? = null,
+    val species: String? = null,
+    val sex: String? = null,
+    val needs: String? = null,
+    val notes: String? = null,
+    val status: String,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
+@Serializable
+data class CanonicalFosterApplicantRow(
+    val id: String,
+    @SerialName("foster_user_id") val fosterUserId: String? = null,
+    @SerialName("foster_name") val fosterName: String? = null,
+    val status: String,
+    @SerialName("locality_id") val localityId: String? = null,
+    @SerialName("created_at") val createdAt: String? = null
+)
+
 /**
  * Decodes 1102 jsonb without the shared row normalizer.
  * That normalizer treats a text field named "needs" as a jsonb array.
@@ -94,6 +120,17 @@ internal object CanonicalFosterTransitDecoding {
 
     fun transit(element: JsonElement): CanonicalActiveFosterTransit =
         json.decodeFromJsonElement(unwrapObject(element))
+
+    fun openRequests(element: JsonElement): List<CanonicalOpenFosterRequest> = decodeList(element)
+
+    fun applicants(element: JsonElement): List<CanonicalFosterApplicantRow> = decodeList(element)
+
+    fun id(element: JsonElement): String {
+        val value = unwrap(element)
+        val text = (value as? JsonPrimitive)?.content?.trim().orEmpty()
+        if (text.length < 32) throw IllegalStateException("FOSTER_TRANSIT_ID_MISSING")
+        return text
+    }
 
     private inline fun <reified T> decodeList(element: JsonElement): List<T> {
         return when (val value = unwrap(element)) {
@@ -126,14 +163,45 @@ internal object CanonicalFosterTransitDecoding {
 }
 
 /**
- * Canonical transit reads introduced by migration 1102.
- * Not bound from [com.comunidapp.app.data.provider.DataProvider] until that
- * migration is applied. Failures stay failures; there is no local stand-in.
+ * Canonical transit contract from migration 1102.
+ * Bound from [com.comunidapp.app.data.provider.DataProvider] on canonical staging.
+ * Failures stay failures; there is no local stand-in.
  */
 interface CanonicalFosterTransitRepository {
     suspend fun listMyFosterRequests(): Result<List<CanonicalFosterTransitRequest>>
     suspend fun listMyFosterApplications(): Result<List<CanonicalFosterTransitApplication>>
     suspend fun getActiveFosterTransit(petId: String): Result<CanonicalActiveFosterTransit>
+    suspend fun listOpenFosterRequests(): Result<List<CanonicalOpenFosterRequest>>
+    suspend fun listFosterRequestApplications(requestId: String): Result<List<CanonicalFosterApplicantRow>>
+    suspend fun requestFosterForPet(petId: String, needs: String?, notes: String?): Result<String>
+    suspend fun applyToFosterRequest(requestId: String): Result<String>
+    suspend fun selectFosterApplicant(applicationId: String): Result<String>
+}
+
+/**
+ * Rebuilds the request, application, and active transit from backend lists.
+ * Navigation arguments are not the source of those ids.
+ */
+internal object CanonicalFosterTransitRecovery {
+    val nonTerminalRequest = setOf("REQUESTED", "MATCHED", "ACTIVE")
+
+    fun requestForPet(
+        rows: List<CanonicalFosterTransitRequest>,
+        petId: String
+    ): CanonicalFosterTransitRequest? {
+        val open = rows.filter { it.petId == petId && it.status in nonTerminalRequest }
+        if (open.size > 1) throw IllegalStateException("FOSTER_REQUEST_DUPLICATES_PRESENT")
+        return open.firstOrNull()
+    }
+
+    fun applicationForRequest(
+        rows: List<CanonicalFosterTransitApplication>,
+        requestId: String
+    ): CanonicalFosterTransitApplication? {
+        val mine = rows.filter { it.requestId == requestId }
+        if (mine.size > 1) throw IllegalStateException("FOSTER_APPLICATION_DUPLICATES_PRESENT")
+        return mine.firstOrNull()
+    }
 }
 
 class RpcCanonicalFosterTransitRepository : CanonicalFosterTransitRepository {
@@ -153,6 +221,42 @@ class RpcCanonicalFosterTransitRepository : CanonicalFosterTransitRepository {
             buildJsonObject { put("p_pet_id", petId) }
         ) { CanonicalFosterTransitDecoding.transit(it) }
 
+    override suspend fun listOpenFosterRequests(): Result<List<CanonicalOpenFosterRequest>> =
+        call(CanonicalBackend.RPC_LIST_OPEN_FOSTER_REQUESTS) {
+            CanonicalFosterTransitDecoding.openRequests(it)
+        }
+
+    override suspend fun listFosterRequestApplications(
+        requestId: String
+    ): Result<List<CanonicalFosterApplicantRow>> =
+        call(
+            CanonicalBackend.RPC_LIST_FOSTER_REQUEST_APPS,
+            buildJsonObject { put("p_request_id", requestId) }
+        ) { CanonicalFosterTransitDecoding.applicants(it) }
+
+    override suspend fun requestFosterForPet(
+        petId: String,
+        needs: String?,
+        notes: String?
+    ): Result<String> = call(
+        CanonicalBackend.RPC_REQUEST_FOSTER_FOR_PET,
+        buildJsonObject {
+            put("p_pet_id", petId)
+            put("p_needs", needs.orEmpty())
+            put("p_notes", notes.orEmpty())
+        }
+    ) { CanonicalFosterTransitDecoding.id(it) }
+
+    override suspend fun applyToFosterRequest(requestId: String): Result<String> = call(
+        CanonicalBackend.RPC_APPLY_TO_FOSTER_REQUEST,
+        buildJsonObject { put("p_request_id", requestId) }
+    ) { CanonicalFosterTransitDecoding.id(it) }
+
+    override suspend fun selectFosterApplicant(applicationId: String): Result<String> = call(
+        CanonicalBackend.RPC_SELECT_FOSTER_APPLICANT,
+        buildJsonObject { put("p_application_id", applicationId) }
+    ) { CanonicalFosterTransitDecoding.id(it) }
+
     private suspend fun <T> call(
         function: String,
         parameters: JsonObject? = null,
@@ -169,4 +273,54 @@ class RpcCanonicalFosterTransitRepository : CanonicalFosterTransitRepository {
             CanonicalUiErrorMapper.userMessage(error, "No se pudo leer el tránsito.")
         )
     }
+}
+
+/**
+ * Canonical staging must not pretend an in-memory foster request succeeded.
+ * The transit screens use [RpcCanonicalFosterTransitRepository].
+ */
+class CanonicalFosterRequestRejectedRepository : FosterRequestRepository {
+    private fun fail(): Result<FosterHomeRequest> =
+        Result.failure(IllegalStateException("CANONICAL_TRANSIT_USES_RPC"))
+
+    private fun observe(): Flow<List<FosterHomeRequest>> = flow {
+        throw IllegalStateException("CANONICAL_TRANSIT_USES_RPC")
+    }
+
+    override fun observeSentRequests(userId: String): Flow<List<FosterHomeRequest>> = observe()
+
+    override fun observeReceivedRequests(ownerUserId: String): Flow<List<FosterHomeRequest>> = observe()
+
+    override suspend fun getRequestById(id: String): Result<FosterHomeRequest> = fail()
+
+    override suspend fun submitRequest(input: SubmitFosterRequestInput): Result<FosterHomeRequest> = fail()
+
+    override suspend fun cancelRequest(requestId: String): Result<FosterHomeRequest> = fail()
+
+    override suspend fun markUnderReview(requestId: String): Result<FosterHomeRequest> = fail()
+
+    override suspend fun acceptRequest(requestId: String): Result<FosterHomeRequest> = fail()
+
+    override suspend fun rejectRequest(requestId: String, reason: String?): Result<FosterHomeRequest> = fail()
+}
+
+class UnavailableCanonicalFosterTransitRepository : CanonicalFosterTransitRepository {
+    private fun <T> fail(): Result<T> =
+        Result.failure(IllegalStateException("CANONICAL_TRANSIT_UNAVAILABLE"))
+
+    override suspend fun listMyFosterRequests() = fail()
+
+    override suspend fun listMyFosterApplications() = fail()
+
+    override suspend fun getActiveFosterTransit(petId: String) = fail()
+
+    override suspend fun listOpenFosterRequests() = fail()
+
+    override suspend fun listFosterRequestApplications(requestId: String) = fail()
+
+    override suspend fun requestFosterForPet(petId: String, needs: String?, notes: String?) = fail()
+
+    override suspend fun applyToFosterRequest(requestId: String) = fail()
+
+    override suspend fun selectFosterApplicant(applicationId: String) = fail()
 }

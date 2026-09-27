@@ -225,6 +225,10 @@ import com.comunidapp.app.data.repository.CanonicalNotificationInboxRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationRepository
 import com.comunidapp.app.data.repository.CanonicalFosterHomeRepository
 import com.comunidapp.app.data.repository.CanonicalFosterPlacementRepository
+import com.comunidapp.app.data.repository.CanonicalFosterRequestRejectedRepository
+import com.comunidapp.app.data.repository.CanonicalFosterTransitRepository
+import com.comunidapp.app.data.repository.RpcCanonicalFosterTransitRepository
+import com.comunidapp.app.data.repository.UnavailableCanonicalFosterTransitRepository
 import com.comunidapp.app.data.repository.CanonicalDaycareRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationInvitationRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationMembershipRepository
@@ -626,11 +630,19 @@ object DataProvider {
         }
     }
 
-    val fosterRequestRepository: FosterRequestRepository by lazy {
-        if (useLegacyRemoteModules) {
-            SupabaseFosterRequestRepository()
+    val canonicalFosterTransitRepository: CanonicalFosterTransitRepository by lazy {
+        if (useSupabase && !useLegacyRemoteModules) {
+            RpcCanonicalFosterTransitRepository()
         } else {
-            MockFosterRequestRepository(
+            UnavailableCanonicalFosterTransitRepository()
+        }
+    }
+
+    val fosterRequestRepository: FosterRequestRepository by lazy {
+        when {
+            useLegacyRemoteModules -> SupabaseFosterRequestRepository()
+            useSupabase -> CanonicalFosterRequestRejectedRepository()
+            else -> MockFosterRequestRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m10FosterStore,
                 resolvePet = { id ->
