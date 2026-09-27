@@ -219,6 +219,7 @@ import com.comunidapp.app.data.repository.CanonicalM28Repository
 import com.comunidapp.app.data.repository.CanonicalFeedRepository
 import com.comunidapp.app.data.repository.CanonicalLocationCatalogRepository
 import com.comunidapp.app.data.repository.CanonicalLostFoundRepository
+import com.comunidapp.app.data.repository.CanonicalNotificationInboxRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationRepository
 import com.comunidapp.app.data.repository.CanonicalFosterHomeRepository
 import com.comunidapp.app.data.repository.CanonicalFosterPlacementRepository
@@ -1439,7 +1440,8 @@ object DataProvider {
 
     /**
      * M06 — mocks deterministas para modo local y contratos server-side no expuestos al cliente.
-     * Etapa 3 usa Supabase real para inbox/preferencias/instalaciones cuando corresponde.
+     * El proyecto legacy sigue usando los RPC M06. Canonical staging lista la bandeja
+     * visible con canon_list_my_notifications y no usa el inbox en memoria.
      */
     private val m06Stage2ContractMocks: MockNotificationRepositories by lazy {
         MockNotificationRepositories.create(
@@ -1449,7 +1451,11 @@ object DataProvider {
     }
 
     val notificationInboxRepository: NotificationInboxRepository by lazy {
-        if (useLegacyRemoteModules) SupabaseNotificationInboxRepository() else m06Stage2ContractMocks.inbox
+        when {
+            useLegacyRemoteModules -> SupabaseNotificationInboxRepository()
+            useSupabase -> CanonicalNotificationInboxRepository()
+            else -> m06Stage2ContractMocks.inbox
+        }
     }
 
     val notificationPreferenceRepository: NotificationPreferenceRepository by lazy {

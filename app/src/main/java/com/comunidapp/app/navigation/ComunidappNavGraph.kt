@@ -3427,6 +3427,9 @@ private fun NavGraphBuilder.mainAppRoutes(
             },
             onOpenCareTransfer = { petId ->
                 navController.navigate(NavRoutes.petTransfers(petId))
+            },
+            onOpenLostFound = { alertId ->
+                navController.navigate(NavRoutes.lostFoundDetail(alertId))
             }
         )
     }

@@ -360,6 +360,8 @@ class CanonicalLostFoundRepository : LostFoundRepository {
         refresh()
     }
 
+    override suspend fun refreshAlerts(): Result<Unit> = runCatching { refresh() }
+
     override suspend fun markLostFoundInCare(alertId: String): Result<Unit> = runCatching {
         supabase.postgrest.rpc(
             function = CanonicalBackend.RPC_MARK_LOST_FOUND_IN_CARE,
