@@ -20,20 +20,25 @@ Maestro execution: NOT RUN.
 | Field | Value |
 | --- | --- |
 | Branch | `cursor/physical-qa-maestro-prep-16a` |
-| Git SHA | filled after the staging debug build |
+| Git SHA | `d377fcab49ecf9ca74c97d6f74231312a091e38d` |
 | Gradle task | `:app:assembleStagingDebug` |
-| APK path | filled after the build |
-| Filename | filled after the build |
-| Size | filled after the build |
-| SHA-256 | filled after the build |
+| APK path | `apk/LeoVer-M08-Staging-debug.apk` |
+| Gradle output | `app/build/outputs/apk/staging/debug/app-staging-debug.apk` |
+| Filename | `LeoVer-M08-Staging-debug.apk` |
+| Size | 57,422,411 bytes |
+| SHA-256 | `4dd3c43335dc87fd4a9cc6f2ce0f59084f22daf6752b3f78bf83739a75dc3073` |
 | Package | `com.comunidapp.app.staging` |
+| App label | LeoVer Staging |
 | versionName | `1.1-staging` |
 | versionCode | `2` |
 
+The two paths are the same bytes. This SHA is the APK compiled from `d377fcab49ecf9ca74c97d6f74231312a091e38d`. A later documentation commit on this branch does not change that binary.
 Install this exact APK. A localDebug build is not a substitute.
 `apk/` is gitignored. The binary is not committed.
 
-Maps SDK key: this environment had no `MAPS_API_KEY` in `local.properties`. The map case below must record whether tiles render. Do not paste any key into the evidence.
+JVM regression on that commit, local flavor in mock mode (`SUPABASE_ENABLED=false`): APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail. Report `artifacts/qa/regression/20260927-234951/report.md`. A prior run failed two `M08IntegrationRegressionTest` pet-save assertions because `SUPABASE_STAGING_*` in `local.properties` turned on the local-flavor staging fallback. Those credentials were removed for the regression and restored only for `assembleStagingDebug`.
+
+Maps SDK key: this environment had no `MAPS_API_KEY` in `local.properties`. The packaged manifest contains the placeholder `MAPS_API_KEY_MISSING`. The map case below must record whether tiles render. Do not paste any key into the evidence.
 
 ## Actor map
 

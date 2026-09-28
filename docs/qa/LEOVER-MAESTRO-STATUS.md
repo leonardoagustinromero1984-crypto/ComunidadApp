@@ -10,6 +10,23 @@ Application id: `com.comunidapp.app.staging`.
 Static check: `python3 scripts/qa/validate-maestro-static.py`.
 The Windows runner `scripts/qa/run-maestro-e2e.ps1` skips flows whose tags include `manual`, `reset-required`, `needs-fresh-fixture`, `physical-two-device`, or `physical-only`. `.maestro/config.yaml` excludes the same set except `physical-only`, which is also tagged `manual`.
 
+## Build under test
+
+Recorded in `docs/qa/LEOVER-PHYSICAL-QA-PLAN.md`.
+
+| Field | Value |
+| --- | --- |
+| Built from | `d377fcab49ecf9ca74c97d6f74231312a091e38d` |
+| Gradle task | `:app:assembleStagingDebug` |
+| APK | `apk/LeoVer-M08-Staging-debug.apk` |
+| Size | 57,422,411 bytes |
+| SHA-256 | `4dd3c43335dc87fd4a9cc6f2ce0f59084f22daf6752b3f78bf83739a75dc3073` |
+| Package | `com.comunidapp.app.staging` |
+| versionName | `1.1-staging` |
+| versionCode | `2` |
+
+JVM on that commit, local flavor in mock mode: APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail.
+
 ## Completed fixtures — do not reset
 
 | Fixture | Id | Current state | Maestro rule |
