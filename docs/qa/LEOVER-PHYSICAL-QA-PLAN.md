@@ -17,36 +17,38 @@ Maestro execution: NOT RUN.
 
 ## Build under test
 
-The 16A binary `apk/LeoVer-M08-Staging-debug.apk` (`4dd3c43335dc87fd4a9cc6f2ce0f59084f22daf6752b3f78bf83739a75dc3073`) is not the install candidate. Its manifest used the placeholder `MAPS_API_KEY_MISSING`. Install the 16B file below.
+The 16A binary `apk/LeoVer-M08-Staging-debug.apk` (`4dd3c43335dc87fd4a9cc6f2ce0f59084f22daf6752b3f78bf83739a75dc3073`) is not the install candidate. Its manifest used the placeholder `MAPS_API_KEY_MISSING`.
+
+The 16B binary `apk/LeoVer-M08-Staging-physical-qa.apk` (`7c5331a97f9342133c7eead50219f3872070ba6120e8b5180d330c54653741f1`) is not the install candidate. It was signed by the Cloud debug certificate (`SHA-1 0D:8E:4A:85:0B:6F:81:F5:AD:A1:21:E4:E9:5A:6C:4D:A5:BD:E6:3E`). Install the 16D file below.
 
 | Field | Value |
 | --- | --- |
-| Branch | `cursor/physical-qa-apk-16b` |
-| APK source Git SHA | `ededd7f81ddff0e9f5e83c83dd07331f4b146ca2` |
+| Branch | `cursor/physical-qa-stable-signing-16d` |
+| APK source Git SHA | `74792960f04fb92cb890b43f1b9ca6e612c5e5f0` |
 | Gradle task | `:app:assembleStagingDebug` |
-| APK path | `apk/LeoVer-M08-Staging-physical-qa.apk` |
+| APK path | `apk/LeoVer-M08-Staging-physical-qa-stable.apk` |
 | Gradle output | `app/build/outputs/apk/staging/debug/app-staging-debug.apk` |
-| Filename | `LeoVer-M08-Staging-physical-qa.apk` |
-| Size | 57,422,455 bytes |
-| SHA-256 | `7c5331a97f9342133c7eead50219f3872070ba6120e8b5180d330c54653741f1` |
+| Filename | `LeoVer-M08-Staging-physical-qa-stable.apk` |
+| Size | 57,505,510 bytes |
+| SHA-256 | `c2ea8dd44f742a083e46c91baa23da5ab427331400dca3edb04585d1aa2cd3db` |
 | Package | `com.comunidapp.app.staging` |
 | App label | LeoVer Staging |
 | versionName | `1.1-staging` |
 | versionCode | `2` |
-| Signing SHA-1 | `0D:8E:4A:85:0B:6F:81:F5:AD:A1:21:E4:E9:5A:6C:4D:A5:BD:E6:3E` |
-| Signing SHA-256 | `28:58:E5:8E:0B:70:A9:BE:45:BE:A8:7B:DE:00:78:2C:D3:31:3C:F5:C3:E4:59:2D:EC:0D:C9:31:6F:CF:2D:AB` |
+| Signing SHA-1 | `92:D3:AF:F2:AC:CF:50:B8:68:15:95:26:4F:ED:C8:C2:DC:2B:E5:EF` |
+| Signing SHA-256 | `07:FF:08:A5:B9:46:B3:59:A8:6F:B4:47:B4:9F:51:A6:08:C2:67:58:FF:ED:5B:48:96:8E:E9:3D:63:5A:AD:09` |
 
-The two 16B paths are the same bytes. This SHA is the APK compiled from `ededd7f81ddff0e9f5e83c83dd07331f4b146ca2`. A later documentation commit on this branch does not change that binary.
+This SHA-256 is the APK compiled from `74792960f04fb92cb890b43f1b9ca6e612c5e5f0`. A later documentation commit on this branch does not change that binary.
 Install this exact APK. A localDebug build is not a substitute.
-`apk/` is gitignored. The binary is not committed.
+`apk/` is gitignored. The binary is not committed. The stable QA keystore is decoded outside the repository at build time and is not committed.
 
-The signer is the Android debug certificate created on the Cloud build (`CN=Android Debug, O=Android, C=US`). It is not the older debug SHA-1 recorded in `docs/02-arquitectura/MAP-01-free-only-maps-android.md`.
+`apksigner` verified APK Signature Scheme v2. `keytool -printcert -jarfile` printed the same SHA-1 and SHA-256. Both match the stable QA certificate.
 
-JVM regression after this assemble, local flavor in mock mode (`SUPABASE_ENABLED=false`): APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail. Report `artifacts/qa/regression/20260928-011733/report.md`. Staging credentials were present only while assembling this APK, then removed before the regression.
+JVM regression after this assemble, local flavor in mock mode (`SUPABASE_ENABLED=false`): APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail. Report `artifacts/qa/regression/20260928-134803/report.md`. Staging credentials were present only while assembling this APK, then removed before the regression.
 
-Maps SDK key: `MAPS_API_KEY` was injected from the Cloud environment into gitignored `local.properties` for the assemble only. The packaged manifest meta-data `com.google.android.geo.API_KEY` is resolved, not blank, and is not `MAPS_API_KEY_MISSING`. The sentinel string remains in `LeoVerMap.kt` as a comparison, so it still exists in one dex. The manifest value is not that sentinel. Do not paste any key into the evidence. The map case below must still record whether tiles render. The expected Google restriction is package `com.comunidapp.app.staging` plus the signing certificate above. This block did not change Google Cloud.
+Maps SDK key: `MAPS_API_KEY` was injected from the Cloud environment into gitignored `local.properties` for the assemble only. The packaged manifest meta-data `com.google.android.geo.API_KEY` is resolved, not blank, and is not `MAPS_API_KEY_MISSING`. The sentinel string remains in one dex as a comparison. The manifest value is not that sentinel. Do not paste any key into the evidence. The map case below must still record whether tiles render. The expected Google restriction is package `com.comunidapp.app.staging` plus the signing certificate above. This block did not change Google Cloud.
 
-Google OAuth preflight: `google-services.json` registers `com.comunidapp.app.staging`. Every `oauth_client` on that entry is `client_type` 3. There is no `client_type` 1 and no `certificate_hash`, so the signing certificate is not bound to an Android OAuth client. Do not treat Continuar con Google as preflight-passed. Username login can start. Supabase still uses the web client and the custom scheme `com.comunidapp.app://login-callback`.
+Google OAuth: the app package is `com.comunidapp.app.staging` and the final APK presents the stable SHA-1 above, so `GOOGLE_OAUTH_CERT_READY_FOR_REGISTRATION` is YES. `google-services.json` still has no `client_type` 1 and no `certificate_hash`. This block did not register the certificate. Do not treat Continuar con Google as already working. Username login can start. Supabase still uses the web client and the custom scheme `com.comunidapp.app://login-callback`.
 
 Supabase: project `tobqbddfcyitwgbkthhy`, `SUPABASE_ENABLED` true, credential source `STAGING`. The configured URL is not the legacy ref. `service_role` was not packaged as a credential. The word `service_role` remains in source as a forbidden-token check.
 
