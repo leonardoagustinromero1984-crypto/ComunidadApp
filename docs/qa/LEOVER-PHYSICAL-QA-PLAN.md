@@ -17,28 +17,38 @@ Maestro execution: NOT RUN.
 
 ## Build under test
 
+The 16A binary `apk/LeoVer-M08-Staging-debug.apk` (`4dd3c43335dc87fd4a9cc6f2ce0f59084f22daf6752b3f78bf83739a75dc3073`) is not the install candidate. Its manifest used the placeholder `MAPS_API_KEY_MISSING`. Install the 16B file below.
+
 | Field | Value |
 | --- | --- |
-| Branch | `cursor/physical-qa-maestro-prep-16a` |
-| Git SHA | `d377fcab49ecf9ca74c97d6f74231312a091e38d` |
+| Branch | `cursor/physical-qa-apk-16b` |
+| APK source Git SHA | `ededd7f81ddff0e9f5e83c83dd07331f4b146ca2` |
 | Gradle task | `:app:assembleStagingDebug` |
-| APK path | `apk/LeoVer-M08-Staging-debug.apk` |
+| APK path | `apk/LeoVer-M08-Staging-physical-qa.apk` |
 | Gradle output | `app/build/outputs/apk/staging/debug/app-staging-debug.apk` |
-| Filename | `LeoVer-M08-Staging-debug.apk` |
-| Size | 57,422,411 bytes |
-| SHA-256 | `4dd3c43335dc87fd4a9cc6f2ce0f59084f22daf6752b3f78bf83739a75dc3073` |
+| Filename | `LeoVer-M08-Staging-physical-qa.apk` |
+| Size | 57,422,455 bytes |
+| SHA-256 | `7c5331a97f9342133c7eead50219f3872070ba6120e8b5180d330c54653741f1` |
 | Package | `com.comunidapp.app.staging` |
 | App label | LeoVer Staging |
 | versionName | `1.1-staging` |
 | versionCode | `2` |
+| Signing SHA-1 | `0D:8E:4A:85:0B:6F:81:F5:AD:A1:21:E4:E9:5A:6C:4D:A5:BD:E6:3E` |
+| Signing SHA-256 | `28:58:E5:8E:0B:70:A9:BE:45:BE:A8:7B:DE:00:78:2C:D3:31:3C:F5:C3:E4:59:2D:EC:0D:C9:31:6F:CF:2D:AB` |
 
-The two paths are the same bytes. This SHA is the APK compiled from `d377fcab49ecf9ca74c97d6f74231312a091e38d`. A later documentation commit on this branch does not change that binary.
+The two 16B paths are the same bytes. This SHA is the APK compiled from `ededd7f81ddff0e9f5e83c83dd07331f4b146ca2`. A later documentation commit on this branch does not change that binary.
 Install this exact APK. A localDebug build is not a substitute.
 `apk/` is gitignored. The binary is not committed.
 
-JVM regression on that commit, local flavor in mock mode (`SUPABASE_ENABLED=false`): APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail. Report `artifacts/qa/regression/20260927-234951/report.md`. A prior run failed two `M08IntegrationRegressionTest` pet-save assertions because `SUPABASE_STAGING_*` in `local.properties` turned on the local-flavor staging fallback. Those credentials were removed for the regression and restored only for `assembleStagingDebug`.
+The signer is the Android debug certificate created on the Cloud build (`CN=Android Debug, O=Android, C=US`). It is not the older debug SHA-1 recorded in `docs/02-arquitectura/MAP-01-free-only-maps-android.md`.
 
-Maps SDK key: this environment had no `MAPS_API_KEY` in `local.properties`. The packaged manifest contains the placeholder `MAPS_API_KEY_MISSING`. The map case below must record whether tiles render. Do not paste any key into the evidence.
+JVM regression after this assemble, local flavor in mock mode (`SUPABASE_ENABLED=false`): APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail. Report `artifacts/qa/regression/20260928-011733/report.md`. Staging credentials were present only while assembling this APK, then removed before the regression.
+
+Maps SDK key: `MAPS_API_KEY` was injected from the Cloud environment into gitignored `local.properties` for the assemble only. The packaged manifest meta-data `com.google.android.geo.API_KEY` is resolved, not blank, and is not `MAPS_API_KEY_MISSING`. The sentinel string remains in `LeoVerMap.kt` as a comparison, so it still exists in one dex. The manifest value is not that sentinel. Do not paste any key into the evidence. The map case below must still record whether tiles render. The expected Google restriction is package `com.comunidapp.app.staging` plus the signing certificate above. This block did not change Google Cloud.
+
+Google OAuth preflight: `google-services.json` registers `com.comunidapp.app.staging`. Every `oauth_client` on that entry is `client_type` 3. There is no `client_type` 1 and no `certificate_hash`, so the signing certificate is not bound to an Android OAuth client. Do not treat Continuar con Google as preflight-passed. Username login can start. Supabase still uses the web client and the custom scheme `com.comunidapp.app://login-callback`.
+
+Supabase: project `tobqbddfcyitwgbkthhy`, `SUPABASE_ENABLED` true, credential source `STAGING`. The configured URL is not the legacy ref. `service_role` was not packaged as a credential. The word `service_role` remains in source as a forbidden-token check.
 
 ## Actor map
 
@@ -136,9 +146,9 @@ Evidence means a screenshot or a short video saved with the case id. Do not mark
 | | |
 | --- | --- |
 | ACTOR | QA03 |
-| PRECONDITION | This APK. Maps key may be absent from the build. Google Play services present. |
+| PRECONDITION | This APK. The Maps key is packaged. Google Play services present. Tiles can still fail if the key is restricted to another package or another certificate. |
 | STEPS | Sumate → Perdidos / Encontrados → Ver mapa de alertas. Stay on Mapa, then open Lista. Do not claim. |
-| EXPECTED RESULT | The screen title is Mapa de alertas. If the key is missing, tiles may fail and that result is recorded, not treated as a product pass. Lista opens. Tomar caso is not used. The IN_CARE case is not an open pin that can be claimed. |
+| EXPECTED RESULT | The screen title is Mapa de alertas. Record whether tiles render. A blank map is an observation, not a product pass. Lista opens. Tomar caso is not used. The IN_CARE case is not an open pin that can be claimed. |
 | EVIDENCE TO CAPTURE | Map surface and the Lista. Note whether tiles rendered. |
 
 ### PHY-QR-SCAN — physical scan

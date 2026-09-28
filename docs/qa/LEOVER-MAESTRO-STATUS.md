@@ -1,6 +1,6 @@
 # LeoVer Maestro status
 
-Prepared for the physical QA cycle on branch `cursor/physical-qa-maestro-prep-16a`.
+Prepared for the physical QA cycle. The install candidate is the 16B APK on branch `cursor/physical-qa-apk-16b`, recorded in `docs/qa/LEOVER-PHYSICAL-QA-PLAN.md`. Maestro flows were prepared on `cursor/physical-qa-maestro-prep-16a`.
 Backend max remains migration `20260927230000_1104_vitacora_reunification_retirement`.
 This block did not execute Maestro, an emulator, or a device, and it did not mutate STAGING.
 
@@ -16,16 +16,16 @@ Recorded in `docs/qa/LEOVER-PHYSICAL-QA-PLAN.md`.
 
 | Field | Value |
 | --- | --- |
-| Built from | `d377fcab49ecf9ca74c97d6f74231312a091e38d` |
+| Built from | `ededd7f81ddff0e9f5e83c83dd07331f4b146ca2` |
 | Gradle task | `:app:assembleStagingDebug` |
-| APK | `apk/LeoVer-M08-Staging-debug.apk` |
-| Size | 57,422,411 bytes |
-| SHA-256 | `4dd3c43335dc87fd4a9cc6f2ce0f59084f22daf6752b3f78bf83739a75dc3073` |
+| APK | `apk/LeoVer-M08-Staging-physical-qa.apk` |
+| Size | 57,422,455 bytes |
+| SHA-256 | `7c5331a97f9342133c7eead50219f3872070ba6120e8b5180d330c54653741f1` |
 | Package | `com.comunidapp.app.staging` |
 | versionName | `1.1-staging` |
 | versionCode | `2` |
 
-JVM on that commit, local flavor in mock mode: APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail.
+The 16A file `apk/LeoVer-M08-Staging-debug.apk` is not the install candidate. JVM after this assemble, local flavor in mock mode: APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail.
 
 ## Completed fixtures — do not reset
 
