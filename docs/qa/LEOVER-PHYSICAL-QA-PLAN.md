@@ -21,34 +21,27 @@ The 16A binary `apk/LeoVer-M08-Staging-debug.apk` (`4dd3c43335dc87fd4a9cc6f2ce0f
 
 The 16B binary `apk/LeoVer-M08-Staging-physical-qa.apk` (`7c5331a97f9342133c7eead50219f3872070ba6120e8b5180d330c54653741f1`) is not the install candidate. It was signed by the Cloud debug certificate (`SHA-1 0D:8E:4A:85:0B:6F:81:F5:AD:A1:21:E4:E9:5A:6C:4D:A5:BD:E6:3E`).
 
-The 16D file `apk/LeoVer-M08-Staging-physical-qa-stable.apk` has the same SHA-256 as the 16E file below. Install the 16E filename.
+The 16D and 16E bytes `c2ea8dd44f742a083e46c91baa23da5ab427331400dca3edb04585d1aa2cd3db` are not the install candidate. That file was an ephemeral artifact and no longer exists. A rebuild is not treated as byte-identical unless its own SHA-256 matches.
+
+Install the GitHub Actions artifact `LeoVer-M08-Staging-physical-qa-final` from workflow `Staging physical QA APK` (`.github/workflows/staging-physical-qa-apk.yml`). The file inside the artifact is `LeoVer-M08-Staging-physical-qa-final.apk`. A localDebug build is not a substitute. The APK is not committed. `apk/` stays gitignored.
 
 | Field | Value |
 | --- | --- |
-| Branch | `cursor/google-auth-finalization-16e` |
-| APK source Git SHA | `6d5fe73bb891dea0216f3f7a5b84f967d29e5cd6` |
+| Branch | `cursor/physical-qa-artifact-16f` |
 | Gradle task | `:app:assembleStagingDebug --no-configuration-cache` |
-| APK path | `apk/LeoVer-M08-Staging-physical-qa-final.apk` |
-| Gradle output | `app/build/outputs/apk/staging/debug/app-staging-debug.apk` |
+| Artifact name | `LeoVer-M08-Staging-physical-qa-final` |
 | Filename | `LeoVer-M08-Staging-physical-qa-final.apk` |
-| Size | 57,505,510 bytes |
-| SHA-256 | `c2ea8dd44f742a083e46c91baa23da5ab427331400dca3edb04585d1aa2cd3db` |
 | Package | `com.comunidapp.app.staging` |
 | App label | LeoVer Staging |
 | versionName | `1.1-staging` |
 | versionCode | `2` |
 | Signing SHA-1 | `92:D3:AF:F2:AC:CF:50:B8:68:15:95:26:4F:ED:C8:C2:DC:2B:E5:EF` |
 | Signing SHA-256 | `07:FF:08:A5:B9:46:B3:59:A8:6F:B4:47:B4:9F:51:A6:08:C2:67:58:FF:ED:5B:48:96:8E:E9:3D:63:5A:AD:09` |
+| APK SHA-256 | The workflow verifier prints it on the run summary. It is not `c2ea8dd44f742a083e46c91baa23da5ab427331400dca3edb04585d1aa2cd3db` unless that exact digest is printed. |
 
-This SHA-256 is the APK compiled from `6d5fe73bb891dea0216f3f7a5b84f967d29e5cd6`. A later documentation commit on this branch does not change that binary. The bytes match the 16D stable APK because the auth code, Maps placeholder, and stable QA certificate did not change.
-Install this exact APK. A localDebug build is not a substitute.
-`apk/` is gitignored. The binary is not committed. The stable QA keystore is decoded outside the repository at build time and is not committed.
+The stable QA certificate is the physical QA requirement. Signing material is read from GitHub Actions secrets (`LEOVER_STAGING_QA_KEYSTORE_B64`, store password, key password, key alias). The workflow does not print those values. The keystore is decoded outside the repository at build time.
 
-`apksigner verify -v --print-certs` reported APK Signature Scheme v2 true and v1 false. `keytool -printcert -jarfile` printed the same SHA-1 and SHA-256. Both match the stable QA certificate. A mismatch fails the build closed.
-
-JVM regression after this assemble, local flavor in mock mode (`SUPABASE_ENABLED=false`): APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail. Report `artifacts/qa/regression/20260928-180141/report.md`. Staging credentials and `MAPS_API_KEY` were present only while assembling this APK, then removed before the regression.
-
-Maps SDK key: `MAPS_API_KEY` was injected from the Cloud environment into gitignored `local.properties` for the assemble only. The packaged manifest meta-data `com.google.android.geo.API_KEY` is resolved, length 39, matches the injected value, and is not blank and not `MAPS_API_KEY_MISSING`. The sentinel string remains in `classes20.dex` as a comparison. The manifest value is the injected key. Do not paste any key into the evidence. The map case below must still record whether tiles render. The expected Google restriction is package `com.comunidapp.app.staging` plus the signing certificate above. This block did not change Google Cloud.
+The verifier fails the job unless the package, version, staging host `tobqbddfcyitwgbkthhy`, Maps manifest meta-data, and both signing fingerprints match. Maps and the Supabase client key are injected from secrets into gitignored `local.properties` for the assemble only. The Maps value must be present and must not be blank or `MAPS_API_KEY_MISSING`. Do not paste any key into the evidence. The map case below must still record whether tiles render. The expected Google restriction is package `com.comunidapp.app.staging` plus the signing certificate above. This block did not change Google Cloud, Google OAuth, or Maps configuration.
 
 ## Google auth implementation (16E)
 
