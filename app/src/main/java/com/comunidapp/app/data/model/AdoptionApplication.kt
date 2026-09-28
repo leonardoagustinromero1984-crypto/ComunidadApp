@@ -69,7 +69,8 @@ enum class AdoptionApplicationStatus {
         fun fromString(value: String?): AdoptionApplicationStatus {
             val raw = value?.trim()?.uppercase().orEmpty()
             return when (raw) {
-                "PENDING" -> SUBMITTED // legacy adoption_requests
+                "PENDING" -> SUBMITTED // canonical default and legacy adoption_requests
+                "IN_REVIEW" -> UNDER_REVIEW
                 else -> entries.find { it.name == raw } ?: SUBMITTED
             }
         }

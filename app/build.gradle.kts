@@ -6,6 +6,10 @@ plugins {
     jacoco
 }
 
+import java.nio.file.Files
+import java.nio.file.StandardOpenOption
+import java.nio.file.attribute.PosixFilePermission
+import java.util.Base64
 import java.util.Properties
 
 val localProperties = Properties()
@@ -104,6 +108,101 @@ val resolvedLocalEnabled = resolvedLocal.enabled
 val resolvedLocalSource = resolvedLocal.source
 val mapsApiKey = prop("MAPS_API_KEY").ifBlank { "MAPS_API_KEY_MISSING" }
 
+fun stagingBuildRequested(): Boolean {
+    val tasks = gradle.startParameter.taskNames.joinToString(" ").lowercase()
+    return tasks.contains("staging") || project.hasProperty("enableStagingBuild")
+}
+
+fun envSecret(name: String): String = System.getenv(name)?.trim().orEmpty()
+
+data class StagingQaSigningSecrets(
+    val keystoreBase64: String,
+    val storePassword: String,
+    val keyPassword: String,
+    val keyAlias: String,
+)
+
+fun loadStagingQaSigningSecrets(): StagingQaSigningSecrets {
+    val required = listOf(
+        "LEOVER_STAGING_QA_KEYSTORE_B64",
+        "LEOVER_STAGING_QA_STORE_PASSWORD",
+        "LEOVER_STAGING_QA_KEY_PASSWORD",
+        "LEOVER_STAGING_QA_KEY_ALIAS",
+    )
+    val values = required.associateWith { envSecret(it) }
+    val missing = required.filter { values.getValue(it).isBlank() }
+    if (missing.isNotEmpty()) {
+        throw GradleException(
+            "Staging QA signing secrets missing (${missing.joinToString(", ")}). " +
+                "stagingDebug refuses the default debug certificate."
+        )
+    }
+    return StagingQaSigningSecrets(
+        keystoreBase64 = values.getValue("LEOVER_STAGING_QA_KEYSTORE_B64"),
+        storePassword = values.getValue("LEOVER_STAGING_QA_STORE_PASSWORD"),
+        keyPassword = values.getValue("LEOVER_STAGING_QA_KEY_PASSWORD"),
+        keyAlias = values.getValue("LEOVER_STAGING_QA_KEY_ALIAS"),
+    )
+}
+
+fun materializeStagingQaKeystore(keystoreBase64: String): File {
+    val repoRoot = rootProject.projectDir.canonicalFile
+    val parent = File(System.getProperty("java.io.tmpdir"), "lv-m08-staging-debug-ks").canonicalFile
+    if (parent == repoRoot || parent.path.startsWith(repoRoot.path + File.separator)) {
+        throw GradleException("Refusing to write the staging QA keystore inside the repository.")
+    }
+    parent.mkdirs()
+    Files.setPosixFilePermissions(
+        parent.toPath(),
+        setOf(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+            PosixFilePermission.OWNER_EXECUTE,
+        ),
+    )
+    val cleaned = keystoreBase64.replace(Regex("\\s+"), "")
+    val bytes = try {
+        Base64.getDecoder().decode(cleaned)
+    } catch (error: IllegalArgumentException) {
+        throw GradleException("LEOVER_STAGING_QA_KEYSTORE_B64 is not valid Base64.")
+    }
+    if (bytes.isEmpty()) {
+        throw GradleException("LEOVER_STAGING_QA_KEYSTORE_B64 decoded to an empty keystore.")
+    }
+    val keystore = File(parent, "staging-qa.keystore")
+    Files.write(
+        keystore.toPath(),
+        bytes,
+        StandardOpenOption.CREATE,
+        StandardOpenOption.TRUNCATE_EXISTING,
+        StandardOpenOption.WRITE,
+    )
+    Files.setPosixFilePermissions(
+        keystore.toPath(),
+        setOf(
+            PosixFilePermission.OWNER_READ,
+            PosixFilePermission.OWNER_WRITE,
+        ),
+    )
+    return keystore
+}
+
+fun detectKeystoreStoreType(keystore: File): String {
+    val header = keystore.inputStream().use { input ->
+        ByteArray(4).also { buffer ->
+            val read = input.read(buffer)
+            if (read < 4) {
+                throw GradleException("Staging QA keystore is too small to be a keystore.")
+            }
+        }
+    }
+    val jks = header[0] == 0xFE.toByte() &&
+        header[1] == 0xED.toByte() &&
+        header[2] == 0xFE.toByte() &&
+        header[3] == 0xED.toByte()
+    return if (jks) "JKS" else "PKCS12"
+}
+
 android {
     namespace = "com.comunidapp.app"
     compileSdk {
@@ -170,6 +269,25 @@ android {
         }
     }
 
+    // stagingDebug only. Release keeps its existing (unset) signing config.
+    // The keystore is decoded outside the repo and is never a project file.
+    if (stagingBuildRequested()) {
+        signingConfigs {
+            create("stagingQa") {
+                val secrets = loadStagingQaSigningSecrets()
+                val keystore = materializeStagingQaKeystore(secrets.keystoreBase64)
+                storeFile = keystore
+                storeType = detectKeystoreStoreType(keystore)
+                storePassword = secrets.storePassword
+                keyPassword = secrets.keyPassword
+                keyAlias = secrets.keyAlias
+                // v1 lets keytool read the APK certificate. v2 is the install signature.
+                enableV1Signing = true
+                enableV2Signing = true
+            }
+        }
+    }
+
     buildTypes {
         debug {
             // Off by default on low-RAM machines; enable with -PenableUnitTestCoverage=true
@@ -202,14 +320,51 @@ androidComponents {
             ?.second
             ?: return@beforeVariants
         val tasks = gradle.startParameter.taskNames.joinToString(" ").lowercase()
-        val enableStaging = tasks.contains("staging") ||
-            project.hasProperty("enableStagingBuild")
+        val enableStaging = stagingBuildRequested()
         val enableProduction = tasks.contains("production") ||
             project.hasProperty("enableProductionBuild")
         when (envFlavor) {
             "staging" -> variant.enable = enableStaging
             "production" -> variant.enable = enableProduction
         }
+    }
+    if (stagingBuildRequested()) {
+        onVariants(selector().withName("stagingDebug")) { variant ->
+            variant.signingConfig.setConfig(android.signingConfigs.getByName("stagingQa"))
+        }
+    }
+}
+
+val prepareStagingQaKeystore = tasks.register("prepareStagingQaKeystore") {
+    group = "build"
+    description = "Decode the staging QA keystore into a temporary file outside the repository."
+    doLast {
+        if (!stagingBuildRequested()) {
+            throw GradleException(
+                "prepareStagingQaKeystore is only for stagingDebug. " +
+                    "Refusing to materialize the QA keystore for other variants."
+            )
+        }
+        val secrets = loadStagingQaSigningSecrets()
+        val keystore = materializeStagingQaKeystore(secrets.keystoreBase64)
+        if (!keystore.isFile || keystore.length() <= 0L) {
+            throw GradleException("Staging QA keystore was not written outside the repository.")
+        }
+        val repoRoot = rootProject.projectDir.canonicalFile
+        val canonical = keystore.canonicalFile
+        if (canonical == repoRoot || canonical.path.startsWith(repoRoot.path + File.separator)) {
+            throw GradleException("Refusing to write the staging QA keystore inside the repository.")
+        }
+    }
+}
+
+tasks.configureEach {
+    val stagingDebugSigningTask = name == "signStagingDebug" ||
+        name == "packageStagingDebug" ||
+        name == "validateSigningStagingDebug" ||
+        name == "assembleStagingDebug"
+    if (stagingDebugSigningTask) {
+        dependsOn(prepareStagingQaKeystore)
     }
 }
 

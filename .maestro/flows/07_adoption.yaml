@@ -1,9 +1,12 @@
 appId: ${APP_ID}
-name: "Adoption QA14 QA15 QA07"
+name: "Adoption read Luna completed"
 tags:
   - community-care
   - adoption
+  - updated-ready
 ---
+# UPDATED_READY. Luna publication is CLOSED. QA14 application is COMPLETED.
+# QA15 application is CLOSED. QA14 is PERSON OWNER. Do not apply or accept.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -11,39 +14,64 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-my-pet.yaml
+    env:
+      APP_ID: ${APP_ID}
+      PET_NAME: "QA - Luna Adopcion"
+- assertVisible: "QA - Luna Adopcion"
+- takeScreenshot: adoption_luna_owner_pet
+- tapOn: "Inicio"
 - tapOn: "Sumate"
 - tapOn: "Adopción"
-- tapOn: "QA - Luna Adopcion"
-- tapOn: "Quiero adoptar"
-- takeScreenshot: adoption_qa14_form
-- tapOn: "Enviar"
+- extendedWaitUntil:
+    visible: "Adopciones"
+    timeout: 15000
+- assertNotVisible: "QA - Luna Adopcion"
+- tapOn: "Mis postulaciones"
+- extendedWaitUntil:
+    visible: "Mis postulaciones"
+    timeout: 15000
+- assertVisible: "Completada"
+- assertNotVisible: "Quiero adoptar"
+- assertNotVisible: "Enviar postulación"
+- takeScreenshot: adoption_qa14_completed
 - runFlow:
     file: ../subflows/logout-person.yaml
     env:
       APP_ID: ${APP_ID}
 - runFlow:
-    file: ../subflows/login-person-keep.yaml
+    file: ../subflows/login-person.yaml
     env:
       USERNAME: ${QA15_USERNAME}
       PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
 - tapOn: "Sumate"
 - tapOn: "Adopción"
-- tapOn: "QA - Luna Adopcion"
-- tapOn: "Quiero adoptar"
-- tapOn: "Enviar"
+- tapOn: "Mis postulaciones"
+- extendedWaitUntil:
+    visible: "Mis postulaciones"
+    timeout: 15000
+- assertVisible: "Cerrada"
+- assertNotVisible: "Quiero adoptar"
+- takeScreenshot: adoption_qa15_closed
 - runFlow:
     file: ../subflows/logout-person.yaml
     env:
       APP_ID: ${APP_ID}
 - runFlow:
-    file: ../subflows/login-person-keep.yaml
+    file: ../subflows/login-person.yaml
     env:
       USERNAME: ${QA07_USERNAME}
       PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
-- tapOn: "Perfil"
-- tapOn: "Solicitudes recibidas"
-- takeScreenshot: adoption_received
-- tapOn: "Aceptar"
-- takeScreenshot: adoption_accepted
+- tapOn: "Sumate"
+- tapOn: "Adopción"
+- tapOn: "Postulaciones recibidas"
+- extendedWaitUntil:
+    visible: "Postulaciones recibidas"
+    timeout: 15000
+- assertNotVisible: "Aceptar"
+- takeScreenshot: adoption_received_no_accept

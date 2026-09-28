@@ -3,7 +3,10 @@ name: "Responder exclusions QA05 QA06 QA04 QA07"
 tags:
   - community-care
   - exclusions
+  - updated-ready
 ---
+# UPDATED_READY. No actor claims the IN_CARE FOUND.
+# QA06 is foster history and must not see FOUND responder claim actions.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -15,6 +18,7 @@ tags:
     file: ../subflows/open-lost-found.yaml
     env:
       APP_ID: ${APP_ID}
+- assertNotVisible: "Tomar caso"
 - takeScreenshot: qa05_lost_found
 - runFlow:
     file: ../subflows/logout-person.yaml
@@ -31,7 +35,16 @@ tags:
     file: ../subflows/open-lost-found.yaml
     env:
       APP_ID: ${APP_ID}
-- takeScreenshot: qa06_lost_found
+- assertNotVisible: "Tomar caso"
+- assertNotVisible: "Animal recibido / En cuidado"
+- takeScreenshot: qa06_not_found_responder
+- tapOn: "Volver"
+- tapOn: "Solicitudes de tránsito"
+- extendedWaitUntil:
+    visible: "Solicitudes de tránsito"
+    timeout: 15000
+- assertVisible: "tránsito finalizado"
+- takeScreenshot: qa06_foster_not_claim
 - runFlow:
     file: ../subflows/logout-person.yaml
     env:
@@ -47,7 +60,8 @@ tags:
     file: ../subflows/open-lost-found.yaml
     env:
       APP_ID: ${APP_ID}
-- takeScreenshot: qa04_eligible
+- assertNotVisible: "Tomar caso"
+- takeScreenshot: qa04_no_claim_on_terminal_found
 - runFlow:
     file: ../subflows/logout-person.yaml
     env:
@@ -63,4 +77,5 @@ tags:
     file: ../subflows/open-lost-found.yaml
     env:
       APP_ID: ${APP_ID}
-- takeScreenshot: qa07_shelter_eligible
+- assertNotVisible: "Tomar caso"
+- takeScreenshot: qa07_no_claim_on_terminal_found

@@ -1,0 +1,34 @@
+appId: ${APP_ID}
+name: "Two-device responder race PHYSICAL_TWO_DEVICE_REQUIRED"
+tags:
+  - community-care
+  - claim
+  - manual
+  - needs-fresh-fixture
+  - physical-two-device
+---
+# PHYSICAL_TWO_DEVICE_REQUIRED and NEEDS_FRESH_FIXTURE.
+# Do not run on Cloud, on one emulator, or against the IN_CARE pin
+# 3e238403-174b-4ce8-82fd-58daa4faa636.
+# Device A claims a new OPEN FOUND first. Device B then taps Tomar caso
+# and must see "El caso fue asignado a un colaborador más cercano."
+# One custodian. No ownership. The fail-closed assert blocks every tap below.
+- assertVisible: "FRESH_FIXTURE_REQUIRED"
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA04_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- tapOn: "Ver mapa de alertas"
+- tapOn: "Lista"
+- tapOn: "Ver alerta"
+- tapOn: "Tomar caso"
+- assertVisible: "El caso fue asignado a un colaborador más cercano."
+- assertNotVisible: "Tomaste el caso."
+- takeScreenshot: device_b_already_claimed

@@ -1,9 +1,12 @@
 appId: ${APP_ID}
-name: "Agenda QA10"
+name: "Agenda read QA10"
 tags:
   - community-care
   - agenda
+  - updated-ready
 ---
+# UPDATED_READY. Veterinary Agenda opens "Mis turnos".
+# Does not create a turn and does not tap Confirmar or Atendido.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -11,10 +14,15 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/switch-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: "Veterinaria · QA - Veterinaria Centro"
 - tapOn: "Agenda"
-- tapOn: "Nuevo turno"
-- inputText: "QA-MAESTRO-TURNO"
-- tapOn: "Confirmar"
-- takeScreenshot: agenda_created
-- tapOn: "Atendido"
-- takeScreenshot: agenda_attended
+- extendedWaitUntil:
+    visible: "Mis turnos"
+    timeout: 15000
+- assertNotVisible: "Nuevo turno"
+- assertNotVisible: "Atendido"
+- takeScreenshot: agenda_read

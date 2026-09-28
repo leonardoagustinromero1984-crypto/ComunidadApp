@@ -212,6 +212,8 @@ import com.comunidapp.app.data.repository.LostFoundRepository
 import com.comunidapp.app.data.repository.MockAdoptionRepository
 import com.comunidapp.app.data.repository.MockFeedRepository
 import com.comunidapp.app.data.repository.MockLostFoundRepository
+import com.comunidapp.app.data.repository.CanonicalAdoptionApplicationRepository
+import com.comunidapp.app.data.repository.CanonicalAdoptionCompletionRepository
 import com.comunidapp.app.data.repository.CanonicalAdoptionRepository
 import com.comunidapp.app.data.repository.CanonicalChatRepository
 import com.comunidapp.app.data.repository.CanonicalFriendRepository
@@ -219,9 +221,14 @@ import com.comunidapp.app.data.repository.CanonicalM28Repository
 import com.comunidapp.app.data.repository.CanonicalFeedRepository
 import com.comunidapp.app.data.repository.CanonicalLocationCatalogRepository
 import com.comunidapp.app.data.repository.CanonicalLostFoundRepository
+import com.comunidapp.app.data.repository.CanonicalNotificationInboxRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationRepository
 import com.comunidapp.app.data.repository.CanonicalFosterHomeRepository
 import com.comunidapp.app.data.repository.CanonicalFosterPlacementRepository
+import com.comunidapp.app.data.repository.CanonicalFosterRequestRejectedRepository
+import com.comunidapp.app.data.repository.CanonicalFosterTransitRepository
+import com.comunidapp.app.data.repository.RpcCanonicalFosterTransitRepository
+import com.comunidapp.app.data.repository.UnavailableCanonicalFosterTransitRepository
 import com.comunidapp.app.data.repository.CanonicalDaycareRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationInvitationRepository
 import com.comunidapp.app.data.repository.CanonicalOrganizationMembershipRepository
@@ -519,10 +526,10 @@ object DataProvider {
     private val m09CompletionStore by lazy { M09CompletionMemoryStore() }
 
     val adoptionApplicationRepository: AdoptionApplicationRepository by lazy {
-        if (useLegacyRemoteModules) {
-            SupabaseAdoptionApplicationRepository()
-        } else {
-            MockAdoptionApplicationRepository(
+        when {
+            useLegacyRemoteModules -> SupabaseAdoptionApplicationRepository()
+            useSupabase -> CanonicalAdoptionApplicationRepository()
+            else -> MockAdoptionApplicationRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 actorName = { AuthProvider.repository.getCurrentUser()?.name ?: "Usuario" },
                 store = m09ApplicationStore
@@ -540,6 +547,8 @@ object DataProvider {
         (adoptionApplicationRepository as? MockAdoptionApplicationRepository)?.snapshot()
             ?: m09ApplicationStore.value
 
+    // Interviews, documents, and agreements are not canonical completion gates.
+    // They stay in memory on canonical STAGING until a later contract.
     val adoptionInterviewRepository: AdoptionInterviewRepository by lazy {
         if (useLegacyRemoteModules) {
             SupabaseAdoptionInterviewRepository()
@@ -580,10 +589,14 @@ object DataProvider {
     }
 
     val adoptionCompletionRepository: AdoptionCompletionRepository by lazy {
-        if (useLegacyRemoteModules) {
-            SupabaseAdoptionCompletionRepository()
-        } else {
-            MockAdoptionCompletionRepository(
+        when {
+            useLegacyRemoteModules -> SupabaseAdoptionCompletionRepository()
+            useSupabase -> CanonicalAdoptionCompletionRepository(
+                applications = { adoptionApplicationRepository },
+                adoptions = { adoptionRepository },
+                transfers = { petTransferRepository }
+            )
+            else -> MockAdoptionCompletionRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 applications = { m09ApplicationsSnapshot() },
                 isManager = ::m09IsManager,
@@ -617,11 +630,19 @@ object DataProvider {
         }
     }
 
-    val fosterRequestRepository: FosterRequestRepository by lazy {
-        if (useLegacyRemoteModules) {
-            SupabaseFosterRequestRepository()
+    val canonicalFosterTransitRepository: CanonicalFosterTransitRepository by lazy {
+        if (useSupabase && !useLegacyRemoteModules) {
+            RpcCanonicalFosterTransitRepository()
         } else {
-            MockFosterRequestRepository(
+            UnavailableCanonicalFosterTransitRepository()
+        }
+    }
+
+    val fosterRequestRepository: FosterRequestRepository by lazy {
+        when {
+            useLegacyRemoteModules -> SupabaseFosterRequestRepository()
+            useSupabase -> CanonicalFosterRequestRejectedRepository()
+            else -> MockFosterRequestRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m10FosterStore,
                 resolvePet = { id ->
@@ -1439,7 +1460,8 @@ object DataProvider {
 
     /**
      * M06 — mocks deterministas para modo local y contratos server-side no expuestos al cliente.
-     * Etapa 3 usa Supabase real para inbox/preferencias/instalaciones cuando corresponde.
+     * El proyecto legacy sigue usando los RPC M06. Canonical staging lista la bandeja
+     * visible con canon_list_my_notifications y no usa el inbox en memoria.
      */
     private val m06Stage2ContractMocks: MockNotificationRepositories by lazy {
         MockNotificationRepositories.create(
@@ -1449,7 +1471,11 @@ object DataProvider {
     }
 
     val notificationInboxRepository: NotificationInboxRepository by lazy {
-        if (useLegacyRemoteModules) SupabaseNotificationInboxRepository() else m06Stage2ContractMocks.inbox
+        when {
+            useLegacyRemoteModules -> SupabaseNotificationInboxRepository()
+            useSupabase -> CanonicalNotificationInboxRepository()
+            else -> m06Stage2ContractMocks.inbox
+        }
     }
 
     val notificationPreferenceRepository: NotificationPreferenceRepository by lazy {

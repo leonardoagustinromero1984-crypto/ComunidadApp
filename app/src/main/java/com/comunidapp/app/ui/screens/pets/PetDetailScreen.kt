@@ -56,6 +56,7 @@ fun PetDetailScreen(
     onNavigateToM28Grants: (String) -> Unit = {},
     onNavigateToM28Proposals: (String) -> Unit = {},
     onNavigateToReportLost: () -> Unit = {},
+    onNavigateToFosterTransit: (String) -> Unit = {},
     viewModel: PetDetailViewModel = viewModel()
 ) {
     val pet by viewModel.pet.collectAsState()
@@ -380,8 +381,10 @@ fun PetDetailScreen(
                             petName = data.name,
                             mutationsEnabled = isActive,
                             showTransfer = access?.canInitiateTransfer == true,
+                            showFosterTransit = isActive,
                             onOpenResponsibles = { onNavigateToResponsibilities(data.id) },
-                            onOpenTransfers = { onNavigateToTransfers(data.id) }
+                            onOpenTransfers = { onNavigateToTransfers(data.id) },
+                            onOpenFosterTransit = { onNavigateToFosterTransit(data.id) }
                         )
                     }
 
@@ -462,8 +465,10 @@ private fun PetResponsiblesSection(
     petName: String,
     mutationsEnabled: Boolean,
     showTransfer: Boolean,
+    showFosterTransit: Boolean,
     onOpenResponsibles: () -> Unit,
-    onOpenTransfers: () -> Unit
+    onOpenTransfers: () -> Unit,
+    onOpenFosterTransit: () -> Unit
 ) {
     PetV2Card {
         Text(
@@ -498,6 +503,14 @@ private fun PetResponsiblesSection(
                 enabled = mutationsEnabled
             ) {
                 Text(com.comunidapp.app.domain.pets.PetCareTransferCopy.SCREEN_TITLE)
+            }
+        }
+        if (showFosterTransit) {
+            TextButton(
+                onClick = onOpenFosterTransit,
+                enabled = mutationsEnabled
+            ) {
+                Text("Buscar hogar de tránsito")
             }
         }
     }

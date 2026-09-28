@@ -58,6 +58,7 @@ fun SumateScreen(
     onCreateEvent: () -> Unit = {},
     onOpenAdoptions: () -> Unit = {},
     onOpenLostFound: () -> Unit = {},
+    onOpenFosterRequests: () -> Unit = {},
     context: OperationalContext = OperationalContext.Personal,
     viewModel: SumateViewModel = viewModel()
 ) {
@@ -132,12 +133,28 @@ fun SumateScreen(
                     iconTint = BrandOrangeSoft,
                     iconContainer = BrandOrangeContainer
                 )
+                V2NavRow(
+                    title = "Solicitudes de tránsito",
+                    description = "Mascotas que buscan un hogar temporal",
+                    icon = Icons.Default.HomeWork,
+                    onClick = onOpenFosterRequests,
+                    iconTint = BrandOrangeSoft,
+                    iconContainer = BrandOrangeContainer
+                )
             } else if (context is OperationalContext.Foster) {
                 V2NavRow(
                     title = "Hogares de tránsito",
                     description = "Gestión de tránsitos y solicitudes",
                     icon = Icons.Default.HomeWork,
                     onClick = onFosterHomes,
+                    iconTint = BrandOrangeSoft,
+                    iconContainer = BrandOrangeContainer
+                )
+                V2NavRow(
+                    title = "Solicitudes de tránsito",
+                    description = "Mascotas que buscan un hogar temporal",
+                    icon = Icons.Default.HomeWork,
+                    onClick = onOpenFosterRequests,
                     iconTint = BrandOrangeSoft,
                     iconContainer = BrandOrangeContainer
                 )

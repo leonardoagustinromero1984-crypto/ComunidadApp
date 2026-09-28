@@ -1,0 +1,30 @@
+appId: ${APP_ID}
+name: "FOUND claim NEEDS_FRESH_FIXTURE"
+tags:
+  - community-care
+  - claim
+  - needs-fresh-fixture
+  - reset-required
+---
+# NEEDS_FRESH_FIXTURE. Requires a new OPEN FOUND. Do not claim the IN_CARE pin.
+# QA06 must stay out of this flow.
+- assertVisible: "FRESH_FIXTURE_REQUIRED"
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA04_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- tapOn: "Ver mapa de alertas"
+- tapOn: "Lista"
+- tapOn: "Ver alerta"
+- tapOn: "Tomar caso"
+- assertVisible: "Tomaste el caso."
+- tapOn: "Animal recibido / En cuidado"
+- assertVisible: "El animal quedó registrado bajo cuidado."
+- takeScreenshot: claim_fresh_in_care

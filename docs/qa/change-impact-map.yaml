@@ -86,6 +86,8 @@ mappings:
       - app/src/main/java/com/comunidapp/app/ui/screens/lostfound/
       - app/src/main/java/com/comunidapp/app/ui/screens/publish/
       - shared/src/commonMain/kotlin/com/comunidapp/shared/lostfound/
+      - scripts/qa/probe-community-care-live-lost-found.py
+      - infra/supabase-canonical/supabase/migrations/20260927230000_1104_vitacora_reunification_retirement.sql
     modules: [LOST_FOUND, VITACORA, SECURITY]
     suites: [FAST]
     gradle_tests:
@@ -119,11 +121,15 @@ mappings:
     paths:
       - app/src/main/java/com/comunidapp/app/viewmodel/M10
       - app/src/main/java/com/comunidapp/app/data/repository/CareNetworkRepository.kt
+      - app/src/main/java/com/comunidapp/app/data/repository/CanonicalFosterTransitRepository.kt
+      - app/src/main/java/com/comunidapp/app/ui/screens/foster/
+      - scripts/qa/probe-community-care-live-transit.py
     modules: [TRANSIT]
     suites: [FAST]
     gradle_tests:
       - com.comunidapp.app.viewmodel.M10FosterCareManagementTest
       - com.comunidapp.app.viewmodel.CareNetworkPersonViewModelTest
+      - com.comunidapp.app.domain.foster.*
     maestro_required: false
 
   - id: ADOPTION

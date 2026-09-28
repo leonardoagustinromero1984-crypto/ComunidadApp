@@ -75,22 +75,11 @@ class AlertMapViewModel(
         lostFoundRepository.observeLostFoundPosts(),
         _ui
     ) { all, state ->
-        _ui.update { it.copy(isLoading = false, loadError = null) }
         filterAlerts(all, state)
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     init {
-        viewModelScope.launch {
-            runCatching { lostFoundRepository.observeLostFoundPosts().value }
-                .onFailure {
-                    _ui.update {
-                        it.copy(
-                            isLoading = false,
-                            loadError = "No pudimos cargar las alertas"
-                        )
-                    }
-                }
-        }
+        reloadAlerts()
     }
 
     fun setViewMode(mode: AlertMapViewMode) {
@@ -163,10 +152,14 @@ class AlertMapViewModel(
     }
 
     fun retry() {
+        reloadAlerts()
+    }
+
+    private fun reloadAlerts() {
         _ui.update { it.copy(isLoading = true, loadError = null) }
         viewModelScope.launch {
-            runCatching { lostFoundRepository.observeLostFoundPosts().value }
-                .onSuccess { _ui.update { s -> s.copy(isLoading = false) } }
+            lostFoundRepository.refreshAlerts()
+                .onSuccess { _ui.update { state -> state.copy(isLoading = false, loadError = null) } }
                 .onFailure {
                     _ui.update {
                         it.copy(isLoading = false, loadError = "No pudimos cargar las alertas")

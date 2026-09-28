@@ -141,6 +141,7 @@ fun MyFosterHomeScreen(
     onEdit: (String) -> Unit,
     onPlacements: () -> Unit = {},
     onRequests: () -> Unit = {},
+    onOpenRequests: () -> Unit = {},
     onNewPlacement: () -> Unit = {},
     viewModel: MyFosterHomeViewModel = viewModel(factory = MyFosterHomeViewModel.factory())
 ) {
@@ -189,7 +190,7 @@ fun MyFosterHomeScreen(
                     Text("Capacidad: ${h.totalCapacity} mascotas")
                     if (h.zoneText.isNotBlank()) Text("Zona: ${com.comunidapp.app.domain.ux.HumanLocationLabel.visible(h.zoneText)}")
                     Spacer(Modifier.height(12.dp))
-                    LeoPrimaryButton(text = "Ver solicitudes abiertas", onClick = { })
+                    LeoPrimaryButton(text = "Ver solicitudes abiertas", onClick = onOpenRequests)
                     LeoPrimaryButton(text = "Tránsitos", onClick = onPlacements)
                     Spacer(Modifier.height(8.dp))
                     LeoPrimaryButton(text = "+ Nuevo tránsito", onClick = onNewPlacement)

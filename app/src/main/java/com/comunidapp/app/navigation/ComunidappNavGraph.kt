@@ -954,6 +954,7 @@ private fun NavGraphBuilder.mainAppRoutes(
             onCreateFound = { navController.navigate(NavRoutes.PUBLISH_FOUND_PET) },
             onCreateFoster = { navController.navigate(NavRoutes.FOSTER_HOME_FORM) },
             onCreateEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) },
+            onOpenFosterRequests = { navController.navigate(NavRoutes.FOSTER_OPEN_REQUESTS) },
             context = context
         )
     }
@@ -1647,7 +1648,10 @@ private fun NavGraphBuilder.mainAppRoutes(
         )
         com.comunidapp.app.ui.screens.foster.RequestFosterForPetScreen(
             petId = petId,
-            onNavigateBack = { navController.popBackStack() }
+            onNavigateBack = { navController.popBackStack() },
+            onChooseApplicant = { requestId ->
+                navController.navigate(NavRoutes.fosterChooseApplicant(requestId))
+            }
         )
     }
     composable(NavRoutes.FOSTER_OPEN_REQUESTS) {
@@ -1929,6 +1933,7 @@ private fun NavGraphBuilder.mainAppRoutes(
             onEdit = { id -> navController.navigate(NavRoutes.fosterHomeFormEdit(id)) },
             onPlacements = { navController.navigate(NavRoutes.FOSTER_PLACEMENTS) },
             onRequests = { navController.navigate(NavRoutes.FOSTER_REQUESTS_RECEIVED) },
+            onOpenRequests = { navController.navigate(NavRoutes.FOSTER_OPEN_REQUESTS) },
             onNewPlacement = { navController.navigate(NavRoutes.FOSTER_NEW_PLACEMENT) }
         )
     }
@@ -3124,6 +3129,9 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateToM28Grants = { id -> navController.navigate(NavRoutes.m28PetGrants(id)) },
             onNavigateToM28Proposals = { id -> navController.navigate(NavRoutes.m28PetProposals(id)) },
             onNavigateToReportLost = { navController.navigate(NavRoutes.publishLostFound(petId)) },
+            onNavigateToFosterTransit = { id ->
+                navController.navigate(NavRoutes.fosterCareRequest(id))
+            },
             viewModel = viewModel(
                 viewModelStoreOwner = backStackEntry,
                 key = "pet_detail_$petId",
@@ -3427,6 +3435,9 @@ private fun NavGraphBuilder.mainAppRoutes(
             },
             onOpenCareTransfer = { petId ->
                 navController.navigate(NavRoutes.petTransfers(petId))
+            },
+            onOpenLostFound = { alertId ->
+                navController.navigate(NavRoutes.lostFoundDetail(alertId))
             }
         )
     }

@@ -1,0 +1,37 @@
+appId: ${APP_ID}
+name: "LOST publish NEEDS_FRESH_FIXTURE"
+tags:
+  - community-care
+  - lost
+  - needs-fresh-fixture
+  - reset-required
+---
+# NEEDS_FRESH_FIXTURE. Do not run against Mora f58305a1-0b83-40ed-bbc3-fdcdc0120fb5.
+# The fail-closed assert stops before Publicar. Delete it only after a new
+# mutable pet exists that is not a completed Community Care fixture.
+- assertVisible: "FRESH_FIXTURE_REQUIRED"
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA01_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- tapOn: "Perdí a mi mascota"
+- extendedWaitUntil:
+    visible: "Foto *"
+    timeout: 10000
+- assertVisible: "Mascota LeoVer *"
+- addMedia:
+    - "../fixtures/qa-pet.jpg"
+- tapOn: "Agregar foto"
+- scrollUntilVisible:
+    element: "Publicar"
+    direction: DOWN
+    timeout: 8000
+- tapOn: "Publicar"
+- takeScreenshot: lost_published_fresh
