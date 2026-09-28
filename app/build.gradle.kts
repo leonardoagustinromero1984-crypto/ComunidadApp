@@ -281,6 +281,9 @@ android {
                 storePassword = secrets.storePassword
                 keyPassword = secrets.keyPassword
                 keyAlias = secrets.keyAlias
+                // v1 lets keytool read the APK certificate. v2 is the install signature.
+                enableV1Signing = true
+                enableV2Signing = true
             }
         }
     }
