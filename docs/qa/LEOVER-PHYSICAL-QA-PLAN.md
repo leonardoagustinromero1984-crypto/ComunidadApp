@@ -19,16 +19,18 @@ Maestro execution: NOT RUN.
 
 The 16A binary `apk/LeoVer-M08-Staging-debug.apk` (`4dd3c43335dc87fd4a9cc6f2ce0f59084f22daf6752b3f78bf83739a75dc3073`) is not the install candidate. Its manifest used the placeholder `MAPS_API_KEY_MISSING`.
 
-The 16B binary `apk/LeoVer-M08-Staging-physical-qa.apk` (`7c5331a97f9342133c7eead50219f3872070ba6120e8b5180d330c54653741f1`) is not the install candidate. It was signed by the Cloud debug certificate (`SHA-1 0D:8E:4A:85:0B:6F:81:F5:AD:A1:21:E4:E9:5A:6C:4D:A5:BD:E6:3E`). Install the 16D file below.
+The 16B binary `apk/LeoVer-M08-Staging-physical-qa.apk` (`7c5331a97f9342133c7eead50219f3872070ba6120e8b5180d330c54653741f1`) is not the install candidate. It was signed by the Cloud debug certificate (`SHA-1 0D:8E:4A:85:0B:6F:81:F5:AD:A1:21:E4:E9:5A:6C:4D:A5:BD:E6:3E`).
+
+The 16D file `apk/LeoVer-M08-Staging-physical-qa-stable.apk` has the same SHA-256 as the 16E file below. Install the 16E filename.
 
 | Field | Value |
 | --- | --- |
-| Branch | `cursor/physical-qa-stable-signing-16d` |
-| APK source Git SHA | `74792960f04fb92cb890b43f1b9ca6e612c5e5f0` |
-| Gradle task | `:app:assembleStagingDebug` |
-| APK path | `apk/LeoVer-M08-Staging-physical-qa-stable.apk` |
+| Branch | `cursor/google-auth-finalization-16e` |
+| APK source Git SHA | `6d5fe73bb891dea0216f3f7a5b84f967d29e5cd6` |
+| Gradle task | `:app:assembleStagingDebug --no-configuration-cache` |
+| APK path | `apk/LeoVer-M08-Staging-physical-qa-final.apk` |
 | Gradle output | `app/build/outputs/apk/staging/debug/app-staging-debug.apk` |
-| Filename | `LeoVer-M08-Staging-physical-qa-stable.apk` |
+| Filename | `LeoVer-M08-Staging-physical-qa-final.apk` |
 | Size | 57,505,510 bytes |
 | SHA-256 | `c2ea8dd44f742a083e46c91baa23da5ab427331400dca3edb04585d1aa2cd3db` |
 | Package | `com.comunidapp.app.staging` |
@@ -38,19 +40,39 @@ The 16B binary `apk/LeoVer-M08-Staging-physical-qa.apk` (`7c5331a97f9342133c7eea
 | Signing SHA-1 | `92:D3:AF:F2:AC:CF:50:B8:68:15:95:26:4F:ED:C8:C2:DC:2B:E5:EF` |
 | Signing SHA-256 | `07:FF:08:A5:B9:46:B3:59:A8:6F:B4:47:B4:9F:51:A6:08:C2:67:58:FF:ED:5B:48:96:8E:E9:3D:63:5A:AD:09` |
 
-This SHA-256 is the APK compiled from `74792960f04fb92cb890b43f1b9ca6e612c5e5f0`. A later documentation commit on this branch does not change that binary.
+This SHA-256 is the APK compiled from `6d5fe73bb891dea0216f3f7a5b84f967d29e5cd6`. A later documentation commit on this branch does not change that binary. The bytes match the 16D stable APK because the auth code, Maps placeholder, and stable QA certificate did not change.
 Install this exact APK. A localDebug build is not a substitute.
 `apk/` is gitignored. The binary is not committed. The stable QA keystore is decoded outside the repository at build time and is not committed.
 
-`apksigner` verified APK Signature Scheme v2. `keytool -printcert -jarfile` printed the same SHA-1 and SHA-256. Both match the stable QA certificate.
+`apksigner verify -v --print-certs` reported APK Signature Scheme v2 true and v1 false. `keytool -printcert -jarfile` printed the same SHA-1 and SHA-256. Both match the stable QA certificate. A mismatch fails the build closed.
 
-JVM regression after this assemble, local flavor in mock mode (`SUPABASE_ENABLED=false`): APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail. Report `artifacts/qa/regression/20260928-134803/report.md`. Staging credentials were present only while assembling this APK, then removed before the regression.
+JVM regression after this assemble, local flavor in mock mode (`SUPABASE_ENABLED=false`): APP 3138 pass / 0 fail, SHARED 390 pass / 0 fail. Report `artifacts/qa/regression/20260928-180141/report.md`. Staging credentials and `MAPS_API_KEY` were present only while assembling this APK, then removed before the regression.
 
-Maps SDK key: `MAPS_API_KEY` was injected from the Cloud environment into gitignored `local.properties` for the assemble only. The packaged manifest meta-data `com.google.android.geo.API_KEY` is resolved, not blank, and is not `MAPS_API_KEY_MISSING`. The sentinel string remains in one dex as a comparison. The manifest value is not that sentinel. Do not paste any key into the evidence. The map case below must still record whether tiles render. The expected Google restriction is package `com.comunidapp.app.staging` plus the signing certificate above. This block did not change Google Cloud.
+Maps SDK key: `MAPS_API_KEY` was injected from the Cloud environment into gitignored `local.properties` for the assemble only. The packaged manifest meta-data `com.google.android.geo.API_KEY` is resolved, length 39, matches the injected value, and is not blank and not `MAPS_API_KEY_MISSING`. The sentinel string remains in `classes20.dex` as a comparison. The manifest value is the injected key. Do not paste any key into the evidence. The map case below must still record whether tiles render. The expected Google restriction is package `com.comunidapp.app.staging` plus the signing certificate above. This block did not change Google Cloud.
 
-Google OAuth: the app package is `com.comunidapp.app.staging` and the final APK presents the stable SHA-1 above, so `GOOGLE_OAUTH_CERT_READY_FOR_REGISTRATION` is YES. `google-services.json` still has no `client_type` 1 and no `certificate_hash`. This block did not register the certificate. Do not treat Continuar con Google as already working. Username login can start. Supabase still uses the web client and the custom scheme `com.comunidapp.app://login-callback`.
+## Google auth implementation (16E)
 
-Supabase: project `tobqbddfcyitwgbkthhy`, `SUPABASE_ENABLED` true, credential source `STAGING`. The configured URL is not the legacy ref. `service_role` was not packaged as a credential. The word `service_role` remains in source as a forbidden-token check.
+Continuar con Google is hosted Supabase Auth, PKCE, opened in the device browser. It is not Firebase Auth, not the legacy Google Sign-In SDK, and not Credential Manager.
+
+Runtime path:
+
+1. `LoginViewModel.signInWithGoogle` / signup `signInWithGoogle` call `createGoogleOAuthUrl()`.
+2. `SupabaseAuthRepository.createGoogleOAuthUrl()` calls `supabase.auth.getOAuthUrl(Google, redirectUrl = com.comunidapp.app://login-callback)` with `prompt=select_account`.
+3. `LeoVerGoogleSignIn.openAuthorizeUrl` opens that HTTPS URL in a Custom Tab or an explicit browser. Mail packages are excluded.
+4. `MainActivity.handleAuthDeepLink` accepts `com.comunidapp.app://login-callback` and calls `supabase.handleDeeplinks`.
+5. The Auth plugin is installed with `FlowType.PKCE`, scheme `com.comunidapp.app`, host `login-callback`.
+
+`signInWithGoogle()` returns a configuration error (`signInWith(Google) auto-open disconnected`). `signInWithGoogleIdToken()` returns a configuration error (`google id token path disconnected`). No source file reads `default_web_client_id`, `server_client_id`, or a certificate hash.
+
+Dependencies used for this flow are `auth-kt` and `androidx.browser`. Firebase on the app is `firebase-messaging` only. Maps uses `play-services-maps` plus the manifest `com.google.android.geo.API_KEY`. There is no `play-services-auth`, `firebase-auth`, or Google Identity / Credential Manager dependency.
+
+`app/google-services.json` has four Android package clients (`Comunidad.com`, `com.comunidapp.app`, `com.comunidapp.app.local`, `com.comunidapp.app.staging`). Every `oauth_client` entry is `client_type` 3. There is no `client_type` 1 and no `certificate_hash`, so the expected SHA-1 is absent. The Google Services plugin still generates `default_web_client_id` for the web client. Application code does not reference that resource. Firebase Cloud Messaging uses `google_app_id` and the sender id. That file was not edited.
+
+The Android OAuth client created in Google Cloud for `com.comunidapp.app.staging` plus SHA-1 `92:D3:AF:F2:AC:CF:50:B8:68:15:95:26:4F:ED:C8:C2:DC:2B:E5:EF` is not read by this runtime. Native Google Sign-In is the consumer of an Android OAuth client (package name + certificate). This app asks Supabase for an authorize URL. Supabase sends the user to Google with the Web OAuth client configured on the Supabase Auth Google provider. Google's redirect is the Supabase callback (`https://<auth-host>/auth/v1/callback`). The app then receives `com.comunidapp.app://login-callback`. An Android client has no client secret and is not part of that code exchange.
+
+`GOOGLE_SERVICES_REFRESH_REQUIRED` is NO. `USER_ACTION_REQUIRED` is NONE. `GOOGLE_OAUTH_RUNTIME_READY` is YES for this repository path. Physical QA can exercise Continuar con Google on the fingerprinted APK. This block did not change the Supabase Google provider, Google Cloud, or `google-services.json`.
+
+Supabase: project `tobqbddfcyitwgbkthhy`, `SUPABASE_ENABLED` true on the staging APK, credential source `STAGING`. The configured URL is `https://tobqbddfcyitwgbkthhy.supabase.co`. `service_role` was not packaged as a credential. The word `service_role` remains in dex as a forbidden-token check.
 
 ## Actor map
 
