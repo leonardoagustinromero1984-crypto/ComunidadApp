@@ -519,13 +519,6 @@ class ProfileOnboardingViewModel(
                     return@launch
                 }
 
-            if (!avatarPath.isNullOrBlank()) {
-                com.comunidapp.app.domain.user.ProfileAvatarMemory.remember(
-                    userId = state.userId,
-                    assetId = avatarPath,
-                    localDisplayUri = state.pendingImageUri?.toString()
-                )
-            }
             com.comunidapp.app.domain.onboarding.onb02.Onb02SessionFlags.justCompletedProfileSetup = true
             if (state.userId.isNotBlank()) {
                 com.comunidapp.app.data.local.Onb02StoreProvider.instance.markFullPending(state.userId)

@@ -144,7 +144,7 @@ class LeoVerCommunityCareResponderFanout11aContractTest {
     private fun migration(name: String): String {
         val file = File(UiRegressionGateTest.repoRoot(), "infra/supabase-canonical/supabase/migrations/$name")
         assertTrue(file.exists())
-        return file.readText()
+        return file.readText().replace("\r\n", "\n")
     }
 
     companion object {

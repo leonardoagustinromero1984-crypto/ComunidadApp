@@ -28,28 +28,31 @@ import com.comunidapp.app.ui.theme.LeoDimens
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.put
 
 @Composable
 fun AdoptionGeneralProfileScreen(onNavigateBack: () -> Unit) {
     var housing by remember { mutableStateOf("") }
     var motivation by remember { mutableStateOf("") }
     var notes by remember { mutableStateOf("") }
+    var existingRaw by remember { mutableStateOf("{}") }
+    var loaded by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
     LaunchedEffect(Unit) {
-        val fields = runCatching {
-            val raw = supabase.postgrest.rpc(
+        val raw = runCatching {
+            supabase.postgrest.rpc(
                 CanonicalBackend.RPC_LIST_ADOPTION_GENERAL_PROFILE,
                 buildJsonObject { }
             ).data
-            com.comunidapp.app.domain.adoption.AdoptionGeneralProfileCodec.decode(raw)
         }.getOrNull() ?: return@LaunchedEffect
+        existingRaw = raw
+        val fields = com.comunidapp.app.domain.adoption.AdoptionGeneralProfileCodec.decode(raw)
         if (housing.isBlank() && motivation.isBlank() && notes.isBlank()) {
             housing = fields.housing
             motivation = fields.motivation
             notes = fields.notes
         }
+        loaded = true
     }
     Scaffold(
         containerColor = BrandBackground,
@@ -77,15 +80,17 @@ fun AdoptionGeneralProfileScreen(onNavigateBack: () -> Unit) {
             LeoPrimaryButton(
                 text = "Guardar perfil",
                 onClick = {
+                    if (!loaded) return@LeoPrimaryButton
                     scope.launch {
                         runCatching {
                             supabase.postgrest.rpc(
                                 CanonicalBackend.RPC_UPSERT_ADOPTION_GENERAL_PROFILE,
-                                buildJsonObject {
-                                    put("p_housing_type", housing)
-                                    put("p_motivation", motivation)
-                                    put("p_notes", notes)
-                                }
+                                com.comunidapp.app.domain.adoption.AdoptionGeneralProfileCodec.upsertPreserving(
+                                    existingRaw,
+                                    housing,
+                                    motivation,
+                                    notes
+                                )
                             )
                         }.onSuccess { message = "Perfil guardado." }
                             .onFailure { message = "No se pudo guardar." }

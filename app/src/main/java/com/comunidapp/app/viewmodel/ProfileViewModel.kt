@@ -155,9 +155,7 @@ class ProfileViewModel(
         .flatMapLatest { state ->
             flow {
                 emit(state)
-                val signed = ProfileAvatarResolver.displayUrl(state.user)
-                val resolved = signed
-                    ?: com.comunidapp.app.domain.user.ProfileAvatarMemory.localDisplayFor(state.user)
+                val resolved = ProfileAvatarResolver.displayUrl(state.user)
                 if (resolved != null && resolved != state.avatarDisplayUrl) {
                     emit(state.copy(avatarDisplayUrl = resolved))
                 }

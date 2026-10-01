@@ -615,14 +615,10 @@ private suspend fun resolveOnboardingUserId(): String? {
     return null
 }
 
-private fun initialTutorialStillRequired(): Boolean {
-    if (com.comunidapp.app.domain.onboarding.onb02.Onb02SessionFlags.justCompletedProfileSetup) return true
-    val userId = com.comunidapp.app.domain.onboarding.onb02.OnboardingEntryIdentity.resolve(
-        com.comunidapp.app.domain.user.SessionResolvedPerson.current()?.id,
-        AuthProvider.repository.getCurrentUser()?.id
-    ) ?: return false
-    return com.comunidapp.app.data.local.Onb02StoreProvider.instance.completion(userId) ==
-        com.comunidapp.app.data.local.Onb02Completion.FULL_PENDING
+private fun publishOnboardingPhase(userId: String?, entryKind: com.comunidapp.app.domain.onboarding.onb02.Onb02FlowKind?) {
+    com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.apply(
+        com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.phaseAfterEntry(userId, entryKind)
+    )
 }
 
 @Composable
@@ -638,6 +634,7 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
+        com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.markResolving()
         val restored = com.comunidapp.app.domain.navigation.AppNavRestoreStore.read()
         val userId = resolveOnboardingUserId()
         var remoteTutorialFlowCompleted = false
@@ -656,6 +653,7 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
             restored != NavRoutes.HOME &&
             onb02Done
         if (shouldRestore) {
+            publishOnboardingPhase(userId, null)
             navController.navigate(restored) {
                 launchSingleTop = true
             }
@@ -675,6 +673,7 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
         } else {
             null
         }
+        publishOnboardingPhase(userId, onb02Kind)
         if (onb02Kind != null) {
             navController.navigate(NavRoutes.onb02(onb02Kind.name)) {
                 launchSingleTop = true
@@ -683,14 +682,14 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
-        if (initialTutorialStillRequired()) return@LaunchedEffect
+        com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.awaitReady()
         LeoVerDeepLinkStore.consume()?.let { route ->
             navController.navigate(route) { launchSingleTop = true }
         }
     }
 
     LaunchedEffect(Unit) {
-        if (initialTutorialStillRequired()) return@LaunchedEffect
+        com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.awaitReady()
         val pending = NotificationPendingNavigationStore.consume() ?: return@LaunchedEffect
         val userId = AuthProvider.repository.getCurrentUser()?.id
         var permissionLookupFailed = false
@@ -837,6 +836,7 @@ private fun NavGraphBuilder.mainAppRoutes(
         Onb02HostScreen(
             kind = kind,
             onFinished = { setupRoute ->
+                com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.markReady()
                 if (!setupRoute.isNullOrBlank()) {
                     navController.navigate(setupRoute) {
                         popUpTo(NavRoutes.HOME) { inclusive = false }

@@ -145,7 +145,7 @@ fun LocationPinPicker(
                             query = suggestion.label
                             suggestions = emptyList()
                             camera = LeoVerMapCameraState(suggestion.point, zoom = 16f)
-                            onSelected(suggestion.point)
+                            emitRealPoint(suggestion.point, onSelected)
                             onAddressChange(suggestion)
                             locateError = null
                         }
@@ -171,7 +171,7 @@ fun LocationPinPicker(
                 pinMode = true,
                 onMapClick = { point ->
                     locateError = null
-                    onSelected(point)
+                    if (!emitRealPoint(point, onSelected)) return@LeoVerMap
                     scope.launch {
                         val suggestion = AddressGeocoder.reverse(context, point)
                         if (suggestion != null) {
@@ -182,8 +182,7 @@ fun LocationPinPicker(
                     }
                 },
                 onCameraIdle = { idle ->
-                    if (SharedLocationCapture.isFallback(idle.center) && selected == null) return@LeoVerMap
-                    onSelected(idle.center)
+                    emitRealPoint(idle.center, onSelected)
                 }
             )
         }
@@ -227,6 +226,15 @@ fun LocationPinPicker(
     }
 }
 
+private fun emitRealPoint(
+    point: LeoVerGeoPoint,
+    onSelected: (LeoVerGeoPoint) -> Unit
+): Boolean {
+    val real = SharedLocationCapture.realFixOrNull(point) ?: return false
+    onSelected(real)
+    return true
+}
+
 private suspend fun fetchAndApply(
     context: android.content.Context,
     onSelected: (LeoVerGeoPoint) -> Unit,
@@ -238,7 +246,7 @@ private suspend fun fetchAndApply(
         return
     }
     val point = ForegroundLocation.current(context)
-    if (point != null) {
+    if (point != null && SharedLocationCapture.realFixOrNull(point) != null) {
         onSelected(point)
         val suggestion = AddressGeocoder.reverse(context, point)
         if (suggestion != null) onAddressChange(suggestion)

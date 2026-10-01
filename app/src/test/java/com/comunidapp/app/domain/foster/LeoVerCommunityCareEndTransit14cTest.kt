@@ -403,7 +403,8 @@ class LeoVerCommunityCareEndTransit14cTest {
         return sql.substring(start, end)
     }
 
-    private fun source(relativePath: String): String = sourceFile(relativePath).readText()
+    private fun source(relativePath: String): String =
+        sourceFile(relativePath).readText().replace("\r\n", "\n")
 
     private fun sourceFile(relativePath: String): File {
         val candidates = listOf(
