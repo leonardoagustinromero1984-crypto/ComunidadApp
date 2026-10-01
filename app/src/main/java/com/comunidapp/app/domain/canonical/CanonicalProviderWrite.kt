@@ -44,13 +44,14 @@ object CanonicalProviderWrite {
 
     fun fromStorageCategory(code: String): ServiceCategory? = when (code.trim().uppercase()) {
         "VETERINARY", "VET" -> ServiceCategory.VET
-        "WALKING", "WALKER" -> ServiceCategory.WALKER
+        "WALKING", "WALKER", "WALKING_CARE" -> ServiceCategory.WALKER
         "TRAINING", "TRAINER" -> ServiceCategory.TRAINER
         "CARE", "CAREGIVER", "CUIDADOR" -> ServiceCategory.CAREGIVER
         "DAYCARE", "BOARDING", "GUARDERIA", "GUARDERÍA" -> ServiceCategory.DAYCARE
         "GROOMING" -> ServiceCategory.GROOMING
-        "SHOP", "STORE", "RETAIL" -> ServiceCategory.SHOP
-        "PET_FRIENDLY" -> ServiceCategory.PET_FRIENDLY
+        "SHOP", "STORE", "RETAIL", "BRAND" -> ServiceCategory.SHOP
+        "VETERINARY_CLINIC" -> ServiceCategory.VET
+        "PET_FRIENDLY", "PET_FRIENDLY_VENUE" -> ServiceCategory.PET_FRIENDLY
         else -> null
     }
 

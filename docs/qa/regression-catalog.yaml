@@ -531,6 +531,19 @@ rules:
     maestro_required: false
     reason: Contract covers the read path. The live probe is read-only STAGING validation, not Maestro. Maestro 09 was not executed.
 
+  - id: REG-QA-17A
+    module: PHYSICAL_QA
+    rule: Google nuevo entra a Tutorial y Selector; foto, Lost/Found, ubicación, QR, adopción y publicación de servicio persisten o publican con el contrato actual.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/qa/PhysicalQa17AContractTest.kt, layer: contract }
+    suite: FAST
+    actors: []
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+    reason: GPS real remains physical QA. These contracts cover the app-side order, payload, and recovery.
+
   # ----- MANUAL HARDWARE -----
   - id: REG-HW-001
     module: MANUAL

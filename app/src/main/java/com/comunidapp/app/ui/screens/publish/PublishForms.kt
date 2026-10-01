@@ -515,7 +515,12 @@ fun PublishLostFoundScreen(
     var existingPhotoUrl by remember { mutableStateOf<String?>(null) }
     var existingAvatarAssetId by remember { mutableStateOf<String?>(null) }
     var pin by remember { mutableStateOf<com.comunidapp.app.domain.map.LeoVerGeoPoint?>(null) }
-    var showLocationIntro by remember { mutableStateOf(true) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var showLocationIntro by remember {
+        mutableStateOf(
+            !com.comunidapp.app.domain.location.ForegroundLocation.hasForegroundPermission(context)
+        )
+    }
     var foundSex by remember { mutableStateOf(PetSex.UNKNOWN) }
     var foundSize by remember { mutableStateOf<PetSize?>(null) }
     var estimatedAgeMonths by remember { mutableStateOf("") }
@@ -523,7 +528,6 @@ fun PublishLostFoundScreen(
     val lostPets = remember(myPets) {
         com.comunidapp.app.domain.pets.LostPetSelector.selectable(myPets)
     }
-    val context = androidx.compose.ui.platform.LocalContext.current
     val locationScope = rememberCoroutineScope()
     val formState by viewModel.formState.collectAsState()
     val pickPhoto = com.comunidapp.app.ui.media.rememberLeoVerPhotoSourcePicker(
@@ -537,33 +541,41 @@ fun PublishLostFoundScreen(
             onPublishSuccess()
         }
     }
+    fun applyLostSelection(pet: com.comunidapp.app.data.model.Pet) {
+        val prefill = com.comunidapp.app.domain.pets.LostPetCasePrefillMapper.from(pet)
+        boundPetId = prefill.petId
+        petName = prefill.name
+        species = prefill.species
+        existingAvatarAssetId = prefill.avatarAssetId
+        existingPhotoUrl = pet.photoUrl?.trim()?.takeIf { it.isNotEmpty() }
+        prefill.location?.let { home ->
+            if (location.isBlank()) location = home
+        }
+        if (description.isBlank()) description = prefill.description
+    }
+
     LaunchedEffect(prefillPetId) {
         val id = prefillPetId?.trim().orEmpty()
         if (id.isBlank()) return@LaunchedEffect
         val pet = DataProvider.petRepository.fetchPetById(id) ?: DataProvider.petRepository.getPetById(id)
         if (pet != null) {
-            boundPetId = pet.id
-            petName = pet.name
-            species = pet.species
-            existingPhotoUrl = com.comunidapp.app.domain.pets.PetPhotoResolver.displayUrl(
+            applyLostSelection(pet)
+            val url = com.comunidapp.app.domain.pets.PetPhotoResolver.displayUrl(
                 pet,
                 com.comunidapp.app.data.repository.AuthProvider.repository.getCurrentUser()?.id
             )
-            existingAvatarAssetId = pet.avatarFileAssetId?.trim()?.takeIf { it.isNotEmpty() }
-            val home = pet.locationText?.trim().orEmpty()
-            if (home.isNotBlank() && location.isBlank()) {
-                location = home
-            }
-            if (description.isBlank()) {
-                description = buildString {
-                    append("Se perdió ${pet.name}.")
-                    append(" Sexo: ${pet.sex.toDisplayName()}.")
-                    pet.breed?.takeIf { it.isNotBlank() }?.let { append(" Raza: $it.") }
-                    pet.color?.takeIf { it.isNotBlank() }?.let { append(" Color: $it.") }
-                    pet.description?.takeIf { it.isNotBlank() }?.let { append(" $it") }
-                }.trim()
-            }
+            if (!url.isNullOrBlank()) existingPhotoUrl = url
         }
+    }
+    LaunchedEffect(lostPets, type) {
+        if (type != LostFoundType.LOST || !boundPetId.isNullOrBlank()) return@LaunchedEffect
+        val only = lostPets.singleOrNull() ?: return@LaunchedEffect
+        applyLostSelection(only)
+        val url = com.comunidapp.app.domain.pets.PetPhotoResolver.displayUrl(
+            only,
+            com.comunidapp.app.data.repository.AuthProvider.repository.getCurrentUser()?.id
+        )
+        if (!url.isNullOrBlank()) existingPhotoUrl = url
     }
 
     PublishFormScaffold(
@@ -640,9 +652,14 @@ fun PublishLostFoundScreen(
                     label = pet.name,
                     selected = boundPetId == pet.id,
                     onClick = {
-                        boundPetId = pet.id
-                        petName = pet.name
-                        species = pet.species
+                        applyLostSelection(pet)
+                        locationScope.launch {
+                            val url = com.comunidapp.app.domain.pets.PetPhotoResolver.displayUrl(
+                                pet,
+                                com.comunidapp.app.data.repository.AuthProvider.repository.getCurrentUser()?.id
+                            )
+                            if (!url.isNullOrBlank()) existingPhotoUrl = url
+                        }
                     }
                 )
             }
@@ -682,6 +699,7 @@ fun PublishLostFoundScreen(
         com.comunidapp.app.ui.screens.location.LocationPinPicker(
             selected = pin,
             onSelected = { point ->
+                if (com.comunidapp.app.domain.location.SharedLocationCapture.isFallback(point)) return@LocationPinPicker
                 pin = point
                 locationScope.launch {
                     val suggestion = com.comunidapp.app.domain.location.AddressGeocoder.reverse(context, point)

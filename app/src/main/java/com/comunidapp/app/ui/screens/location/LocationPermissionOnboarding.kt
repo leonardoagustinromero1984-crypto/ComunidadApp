@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -45,6 +46,11 @@ fun LocationPermissionOnboarding(
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
+    val alreadyGranted = ForegroundLocation.hasForegroundPermission(context)
+    LaunchedEffect(alreadyGranted) {
+        if (alreadyGranted) onGranted()
+    }
+    if (alreadyGranted) return
     val scope = rememberCoroutineScope()
     val userId = remember { AuthProvider.repository.getCurrentUser()?.id.orEmpty() }
     val store = LocationConsentStoreProvider.instance

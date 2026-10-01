@@ -505,6 +505,9 @@ class PublishViewModel(
                         return@launch
                     }
                     val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                    val seedPhoto = existingMediaAssetId?.trim()?.takeIf {
+                        com.comunidapp.app.domain.lostfound.LostFoundCreatePayload.isMediaAssetId(it)
+                    }
                     val lostPost = LostFoundPost(
                         id = "",
                         authorId = author.id,
@@ -516,6 +519,7 @@ class PublishViewModel(
                         description = description.trim(),
                         contactInfo = contactInfo.trim(),
                         date = date,
+                        photoUrl = seedPhoto,
                         petId = if (type == LostFoundType.FOUND) null else petId,
                         latitude = latitude,
                         longitude = longitude,
@@ -525,6 +529,11 @@ class PublishViewModel(
                     )
                     lostFoundRepository.addLostFoundPost(lostPost)
                         .onSuccess { lostId ->
+                            if (imageUri == null && seedPhoto != null) {
+                                lostFoundRepository.updateLostFoundPost(
+                                    lostPost.copy(id = lostId, photoUrl = seedPhoto)
+                                )
+                            }
                             if (imageUri != null) {
                                 when (val upload = uploadMedia(
                                     imageUri,

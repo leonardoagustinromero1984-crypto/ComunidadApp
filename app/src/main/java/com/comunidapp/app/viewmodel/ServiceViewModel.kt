@@ -472,7 +472,11 @@ class MiNegocioViewModel(
         _uiState.update {
             it.copy(
                 profile = existing,
-                name = existing?.name.orEmpty(),
+                name = existing?.name?.trim()?.takeIf { it.isNotEmpty() }
+                    ?: OperationalContextProvider.active.value.displayName
+                        .trim()
+                        .takeIf { it.isNotEmpty() && it != "Perfil personal" }
+                        .orEmpty(),
                 location = existing?.location.orEmpty(),
                 description = existing?.description.orEmpty(),
                 contactInfo = existing?.contactInfo.orEmpty(),
@@ -566,11 +570,22 @@ class MiNegocioViewModel(
             return
         }
         val state = _uiState.value
+        val location = com.comunidapp.app.domain.validation.ProviderPublishRequirements.locationMatchingPin(
+            state.location,
+            state.pinLat,
+            state.pinLng
+        )
+        val hours = com.comunidapp.app.domain.validation.ProviderPublishRequirements.hoursMatchingVisibleDefault(
+            state.weeklyHours
+        )
+        if (location != state.location || hours != state.weeklyHours) {
+            _uiState.update { it.copy(location = location, weeklyHours = hours) }
+        }
         val missing = com.comunidapp.app.domain.validation.ProviderPublishRequirements.summary(
             name = state.name,
-            location = state.location,
+            location = location,
             phone = state.contactInfo,
-            hours = state.weeklyHours,
+            hours = hours,
             acceptsBookings = state.acceptsBookings,
             slotIntervalMinutes = state.slotIntervalMinutes
         )
@@ -585,13 +600,13 @@ class MiNegocioViewModel(
                 ownerId = user.id,
                 category = category,
                 name = state.name.trim(),
-                location = state.location.trim(),
+                location = location.trim(),
                 description = state.description.trim(),
                 contactInfo = state.contactInfo.trim().ifBlank { null },
                 photoUrl = user.profileImageUrl ?: state.profile?.photoUrl,
                 tags = state.profile?.tags.orEmpty(),
                 scheduleText = null,
-                weeklyHours = state.weeklyHours,
+                weeklyHours = hours,
                 latitude = state.pinLat,
                 longitude = state.pinLng,
                 geoIsPublicPremises = state.geoIsPublicPremises,
@@ -605,13 +620,12 @@ class MiNegocioViewModel(
                 formDirty = false
                 val canonical = serviceRepository as? CanonicalServiceRepository
                 if (canonical != null) {
-                    val hours = state.weeklyHours.ifEmpty { ProviderWeeklySchedule.emptyTemplate().days }
                     runCatching { canonical.saveWeeklyHours(id, hours) }
                     val lat = state.pinLat
                     val lng = state.pinLng
                     if (lat != null && lng != null) {
                         runCatching {
-                            canonical.savePublicGeo(id, lat, lng, state.geoIsPublicPremises, state.location)
+                            canonical.savePublicGeo(id, lat, lng, state.geoIsPublicPremises, location)
                         }
                     }
                     runCatching { canonical.refreshDirectory() }

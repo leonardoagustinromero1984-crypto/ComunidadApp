@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import com.comunidapp.app.domain.location.AddressGeocoder
 import com.comunidapp.app.domain.location.AddressSuggestion
 import com.comunidapp.app.domain.location.ForegroundLocation
+import com.comunidapp.app.domain.location.SharedLocationCapture
 import com.comunidapp.app.domain.map.LeoVerGeoPoint
 import com.comunidapp.app.domain.map.LeoVerMapCameraState
 import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
@@ -89,6 +90,26 @@ fun LocationPinPicker(
     LaunchedEffect(address) {
         if (!address.isNullOrBlank() && confirmed == null) {
             query = address
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (selected != null && !SharedLocationCapture.isFallback(selected)) return@LaunchedEffect
+        if (!ForegroundLocation.hasForegroundPermission(context)) {
+            locateError = "Sin permiso de ubicación. Marcá el punto en el mapa."
+            return@LaunchedEffect
+        }
+        locating = true
+        fetchAndApply(context, onSelected, onAddressChange) { point, suggestion, err ->
+            if (point != null && !SharedLocationCapture.isFallback(point)) {
+                camera = LeoVerMapCameraState(point, zoom = 16f)
+                confirmed = suggestion
+                if (suggestion != null) query = suggestion.label
+                locateError = null
+            } else {
+                locateError = err ?: "No pudimos leer tu ubicación. Marcá el punto en el mapa."
+            }
+            locating = false
         }
     }
 
@@ -161,6 +182,7 @@ fun LocationPinPicker(
                     }
                 },
                 onCameraIdle = { idle ->
+                    if (SharedLocationCapture.isFallback(idle.center) && selected == null) return@LeoVerMap
                     onSelected(idle.center)
                 }
             )

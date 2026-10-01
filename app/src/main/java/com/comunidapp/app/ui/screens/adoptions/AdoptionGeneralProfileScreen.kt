@@ -11,6 +11,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -36,6 +37,20 @@ fun AdoptionGeneralProfileScreen(onNavigateBack: () -> Unit) {
     var notes by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
     val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) {
+        val fields = runCatching {
+            val raw = supabase.postgrest.rpc(
+                CanonicalBackend.RPC_LIST_ADOPTION_GENERAL_PROFILE,
+                buildJsonObject { }
+            ).data
+            com.comunidapp.app.domain.adoption.AdoptionGeneralProfileCodec.decode(raw)
+        }.getOrNull() ?: return@LaunchedEffect
+        if (housing.isBlank() && motivation.isBlank() && notes.isBlank()) {
+            housing = fields.housing
+            motivation = fields.motivation
+            notes = fields.notes
+        }
+    }
     Scaffold(
         containerColor = BrandBackground,
         topBar = {

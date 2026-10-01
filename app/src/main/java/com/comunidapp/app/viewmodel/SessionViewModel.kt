@@ -622,6 +622,7 @@ class SessionViewModel(
             com.comunidapp.app.notifications.NotificationPendingNavigationStore.clear()
             com.comunidapp.app.domain.navigation.AppNavRestoreStore.clear()
             com.comunidapp.app.domain.onboarding.onb02.Onb02SessionFlags.justCompletedProfileSetup = false
+            com.comunidapp.app.domain.user.ProfileAvatarMemory.clear()
             com.comunidapp.app.domain.user.AccountIdentityCleanup.clear()
             emitAuth(AuthState.Unauthenticated)
             startObserving()

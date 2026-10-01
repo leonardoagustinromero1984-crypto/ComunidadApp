@@ -156,8 +156,10 @@ class ProfileViewModel(
             flow {
                 emit(state)
                 val signed = ProfileAvatarResolver.displayUrl(state.user)
-                if (signed != null && signed != state.avatarDisplayUrl) {
-                    emit(state.copy(avatarDisplayUrl = signed))
+                val resolved = signed
+                    ?: com.comunidapp.app.domain.user.ProfileAvatarMemory.localDisplayFor(state.user)
+                if (resolved != null && resolved != state.avatarDisplayUrl) {
+                    emit(state.copy(avatarDisplayUrl = resolved))
                 }
             }
         }

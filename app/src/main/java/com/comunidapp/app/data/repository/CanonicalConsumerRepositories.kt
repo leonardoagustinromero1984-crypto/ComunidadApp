@@ -251,12 +251,10 @@ class CanonicalLostFoundRepository : LostFoundRepository {
                 val humanLocation = com.comunidapp.app.domain.lostfound.LostFoundLocationDisplay.humanLabel(
                     locationLabel = post.location
                 )
-                if (humanLocation.isNotBlank()) {
-                    put("p_locality_id", humanLocation)
-                    put("p_location_label", humanLocation)
-                } else {
-                    put("p_locality_id", JsonNull)
-                }
+                val localityId = com.comunidapp.app.domain.lostfound.LostFoundCreatePayload
+                    .locationNodeIdOrNull(post.location)
+                if (localityId != null) put("p_locality_id", localityId) else put("p_locality_id", JsonNull)
+                if (humanLocation.isNotBlank()) put("p_location_label", humanLocation)
                 put("p_species", post.species.name)
                 put(
                     "p_note",
@@ -276,7 +274,11 @@ class CanonicalLostFoundRepository : LostFoundRepository {
                         put("p_estimated_age_months", JsonNull)
                     }
                     val photo = post.photoUrl?.trim().orEmpty()
-                    if (photo.isNotBlank()) put("p_photo_asset_id", photo) else put("p_photo_asset_id", JsonNull)
+                    if (com.comunidapp.app.domain.lostfound.LostFoundCreatePayload.isMediaAssetId(photo)) {
+                        put("p_photo_asset_id", photo)
+                    } else {
+                        put("p_photo_asset_id", JsonNull)
+                    }
                 }
             }
         )

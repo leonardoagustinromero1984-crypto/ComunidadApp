@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import androidx.navigation.NavGraphBuilder
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -602,6 +603,28 @@ private fun NavGraphBuilder.adminStaffAndCatalogRoutes(navController: NavHostCon
     }
 }
 
+private suspend fun resolveOnboardingUserId(): String? {
+    repeat(8) {
+        val id = com.comunidapp.app.domain.onboarding.onb02.OnboardingEntryIdentity.resolve(
+            com.comunidapp.app.domain.user.SessionResolvedPerson.current()?.id,
+            AuthProvider.repository.getCurrentUser()?.id
+        )
+        if (!id.isNullOrBlank()) return id
+        delay(150)
+    }
+    return null
+}
+
+private fun initialTutorialStillRequired(): Boolean {
+    if (com.comunidapp.app.domain.onboarding.onb02.Onb02SessionFlags.justCompletedProfileSetup) return true
+    val userId = com.comunidapp.app.domain.onboarding.onb02.OnboardingEntryIdentity.resolve(
+        com.comunidapp.app.domain.user.SessionResolvedPerson.current()?.id,
+        AuthProvider.repository.getCurrentUser()?.id
+    ) ?: return false
+    return com.comunidapp.app.data.local.Onb02StoreProvider.instance.completion(userId) ==
+        com.comunidapp.app.data.local.Onb02Completion.FULL_PENDING
+}
+
 @Composable
 private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
     val navController = rememberNavController()
@@ -616,7 +639,7 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
 
     LaunchedEffect(Unit) {
         val restored = com.comunidapp.app.domain.navigation.AppNavRestoreStore.read()
-        val userId = AuthProvider.repository.getCurrentUser()?.id
+        val userId = resolveOnboardingUserId()
         var remoteTutorialFlowCompleted = false
         if (!userId.isNullOrBlank()) {
             remoteTutorialFlowCompleted = runCatching {
@@ -660,12 +683,14 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
     }
 
     LaunchedEffect(Unit) {
+        if (initialTutorialStillRequired()) return@LaunchedEffect
         LeoVerDeepLinkStore.consume()?.let { route ->
             navController.navigate(route) { launchSingleTop = true }
         }
     }
 
     LaunchedEffect(Unit) {
+        if (initialTutorialStillRequired()) return@LaunchedEffect
         val pending = NotificationPendingNavigationStore.consume() ?: return@LaunchedEffect
         val userId = AuthProvider.repository.getCurrentUser()?.id
         var permissionLookupFailed = false

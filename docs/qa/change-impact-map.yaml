@@ -34,6 +34,7 @@ mappings:
     suites: [FAST]
     gradle_tests:
       - com.comunidapp.app.domain.user.*
+      - com.comunidapp.app.domain.qa.PhysicalQa17AContractTest
       - com.comunidapp.app.viewmodel.ProfileOnboardingViewModelTest
       - com.comunidapp.app.viewmodel.AccountSecurityViewModelTest
     maestro_required: false
@@ -93,6 +94,7 @@ mappings:
     gradle_tests:
       - com.comunidapp.app.domain.lostfound.*
       - com.comunidapp.app.domain.location.*
+      - com.comunidapp.app.domain.qa.PhysicalQa17AContractTest
     maestro_required: false
 
   - id: NOTIFICATIONS
@@ -143,6 +145,7 @@ mappings:
     gradle_tests:
       - com.comunidapp.app.viewmodel.AdoptionFormOpenSmokeTest
       - com.comunidapp.app.viewmodel.M09AdoptionCompletionTest
+      - com.comunidapp.app.domain.qa.PhysicalQa17AContractTest
     maestro_required: false
 
   - id: COMMUNITY
@@ -155,6 +158,7 @@ mappings:
     gradle_tests:
       - com.comunidapp.app.domain.location.ServiceLocationFilterTest
       - com.comunidapp.app.viewmodel.CommunityFormDirtyStateTest
+      - com.comunidapp.app.domain.qa.PhysicalQa17AContractTest
     maestro_required: false
 
   - id: PROFESSIONAL
