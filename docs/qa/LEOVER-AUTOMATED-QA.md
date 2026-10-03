@@ -77,7 +77,8 @@ From repo root, only when you explicitly want E2E. Daily default is `.\scripts\q
 # Same, plus reinstall APK on the emulator serial
 .\scripts\qa\run-maestro-e2e.ps1 -Smoke -UseEmulator -InstallApk
 
-# LOST / FOUND / MATCH then remaining Community Care (after smoke PASS)
+# Navigation smoke only. Does not publish Mora, claim the IN_CARE FOUND,
+# apply to Luna, or recreate Bruno. See docs/qa/LEOVER-MAESTRO-STATUS.md.
 .\scripts\qa\run-maestro-e2e.ps1 -CommunityCare
 
 # Everything
@@ -110,8 +111,10 @@ Device selection is fail-closed: list `adb devices`, keep only the emulator whos
 1. Environment / AVD
 2. Start LeoVer-QA
 3. Smoke QA01 → QA02 → QA03
-4. If smoke PASS: LOST → FOUND → match notification
-5. Only then remaining Community Care
+4. If smoke PASS: lost/found navigation, notification list, and the other runnable Community Care reads
+5. Do not run flows tagged `needs-fresh-fixture`, `manual`, or `physical-two-device`
+
+The runner skips those tags for `-CommunityCare` and `-Full`. Mora, the responder FOUND, Luna, and Bruno are completed fixtures. Publishing or claiming them is not part of this suite. Status: `docs/qa/LEOVER-MAESTRO-STATUS.md`.
 
 Stop the suite if a P0 smoke or P0 Community Care flow fails. Do not run `-Full` until those pass.
 

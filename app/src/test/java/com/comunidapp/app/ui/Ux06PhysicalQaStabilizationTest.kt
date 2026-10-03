@@ -179,10 +179,19 @@ class Ux06PhysicalQaStabilizationTest {
     @Test
     fun PROFILE_DONATIONS_ONLY_CURRENT_PERSON_DATA() {
         val profile = source("app/src/main/java/com/comunidapp/app/ui/screens/profile/ProfileScreen.kt")
-        assertTrue(profile.contains("Tus aportes y campañas"))
+        assertTrue(profile.contains("Mi ayuda"))
+        assertTrue(profile.contains("onNavigateToDonations"))
         val hub = source("app/src/main/java/com/comunidapp/app/ui/screens/m17/M17ExtendedScreens.kt")
-        assertTrue(hub.contains("tus aportes y campañas"))
+        assertTrue(hub.contains("CommunityHelpPresentation.ACTIVITY_TITLE"))
+        assertTrue(hub.contains("CommunityHelpPresentation.EMPTY_MONEY"))
+        assertFalse(hub.contains("tus aportes y campañas"))
         assertFalse(hub.contains("Los pagos reales todavía no están habilitados."))
+        val activity = source("app/src/main/java/com/comunidapp/app/viewmodel/M17ExtendedViewModels.kt")
+        assertTrue(activity.contains("listMyContributions"))
+        assertTrue(activity.contains("listMyPledges"))
+        assertTrue(activity.contains("listMyApplications"))
+        val graph = source("app/src/main/java/com/comunidapp/app/navigation/ComunidappNavGraph.kt")
+        assertTrue(graph.contains("onNavigateToDonations = { navController.navigate(NavRoutes.M17_MY_HELP) }"))
     }
 
     @Test

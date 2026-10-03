@@ -90,6 +90,19 @@ class M21ReputationMemoryStore {
         return "${prefix}_$seq"
     }
 
+    fun clearSessionResidue() {
+        reviews.value = emptyList()
+        responses.value = emptyList()
+        verifications.value = emptyList()
+        appeals.value = emptyList()
+        disputes.value = emptyList()
+        eligibilityRecords.value = emptyList()
+        riskSignals.value = emptyList()
+        scores.value = emptyMap()
+        seq = 0
+        seedDefaults()
+    }
+
     fun seedDefaults() {
         if (reviews.value.isNotEmpty()) return
         val now = System.currentTimeMillis()

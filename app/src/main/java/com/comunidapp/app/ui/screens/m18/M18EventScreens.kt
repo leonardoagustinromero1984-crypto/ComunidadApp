@@ -21,6 +21,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -28,14 +29,23 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.comunidapp.app.data.model.M18EventStatus
 import com.comunidapp.app.data.model.M18EventType
 import com.comunidapp.app.data.model.M18MockOrganizations
 import com.comunidapp.app.data.model.M18PublicEvent
 import com.comunidapp.app.data.model.M18RegistrationStatus
-import com.comunidapp.app.data.repository.M18EventValidators
+import com.comunidapp.app.domain.m18.EventPresentation
+import com.comunidapp.app.ui.components.leo.LeoActiveFilter
+import com.comunidapp.app.ui.components.leo.LeoFilterBar
+import com.comunidapp.app.ui.components.leo.LeoFilterSheet
+import com.comunidapp.app.ui.components.leo.LeoStatusBadge
+import com.comunidapp.app.domain.m18.MyEventRegistration
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.components.state.EmptyState
@@ -51,6 +61,8 @@ import com.comunidapp.app.viewmodel.M18EventOperationsViewModel
 import com.comunidapp.app.viewmodel.M18EventParticipationUiState
 import com.comunidapp.app.viewmodel.M18EventsListUiState
 import com.comunidapp.app.viewmodel.M18EventsListViewModel
+import com.comunidapp.app.viewmodel.M18MyEventsUiState
+import com.comunidapp.app.viewmodel.M18MyEventsViewModel
 import com.comunidapp.app.viewmodel.m18EventStatusLabel
 import com.comunidapp.app.viewmodel.m18EventTypeLabel
 import com.comunidapp.app.viewmodel.m18RegistrationStatusLabel
@@ -74,11 +86,20 @@ fun M18EventsListScreen(
     val state by viewModel.uiState.collectAsState()
     val filter by viewModel.filter.collectAsState()
     var query by remember(filter.query) { mutableStateOf(filter.query) }
+    var filtersOpen by remember { mutableStateOf(false) }
+    var draftSpots by remember { mutableStateOf(false) }
+    var draftCompleted by remember { mutableStateOf(false) }
+    var draftType by remember { mutableStateOf<M18EventType?>(null) }
+    val activeFilters = buildList {
+        if (filter.withOpenSpotsOnly) add(LeoActiveFilter("spots", "Con cupos"))
+        if (filter.completedOnly) add(LeoActiveFilter("completed", "Completados"))
+        filter.type?.let { add(LeoActiveFilter("type", EventPresentation.eventType(it))) }
+    }
 
     Scaffold(
         containerColor = BrandBackground,
         topBar = {
-            LeoTopAppBar(title = "Eventos comunitarios", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = EventPresentation.DISCOVER_TITLE, showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         Column(
@@ -86,41 +107,68 @@ fun M18EventsListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Directorio público de eventos — cupos e inscripciones sin PII.",
+                "Próximos encuentros de la comunidad.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
-            LeoTextField(
-                value = query,
-                onValueChange = { query = it; viewModel.setQuery(it) },
-                label = "Buscar evento"
+            LeoFilterBar(
+                onOpenFilters = {
+                    draftSpots = filter.withOpenSpotsOnly
+                    draftCompleted = filter.completedOnly
+                    draftType = filter.type
+                    filtersOpen = true
+                },
+                activeFilters = activeFilters,
+                onRemoveFilter = { id ->
+                    when (id) {
+                        "spots" -> viewModel.setWithOpenSpotsOnly(false)
+                        "completed" -> viewModel.setCompletedOnly(false)
+                        "type" -> viewModel.setType(null)
+                    }
+                },
+                onClearFilters = { viewModel.clearFilters() },
+                search = {
+                    LeoTextField(
+                        value = query,
+                        onValueChange = { query = it; viewModel.setQuery(it) },
+                        label = "Buscar evento"
+                    )
+                }
             )
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LeoFilterSheet(
+                visible = filtersOpen,
+                onDismiss = { filtersOpen = false },
+                onClearDraft = {
+                    draftSpots = false
+                    draftCompleted = false
+                    draftType = null
+                },
+                onApply = {
+                    viewModel.setWithOpenSpotsOnly(draftSpots)
+                    viewModel.setCompletedOnly(draftCompleted)
+                    viewModel.setType(draftType)
+                    filtersOpen = false
+                }
+            ) {
                 LeoFilterChip(
                     label = "Con cupos",
-                    selected = filter.withOpenSpotsOnly,
-                    onClick = { viewModel.setWithOpenSpotsOnly(!filter.withOpenSpotsOnly) }
+                    selected = draftSpots,
+                    onClick = { draftSpots = !draftSpots }
                 )
                 LeoFilterChip(
                     label = "Completados",
-                    selected = filter.completedOnly,
-                    onClick = { viewModel.setCompletedOnly(!filter.completedOnly) }
+                    selected = draftCompleted,
+                    onClick = { draftCompleted = !draftCompleted }
                 )
                 LeoFilterChip(
-                    label = "Adopciones",
-                    selected = filter.type == M18EventType.ADOPTION_FAIR,
+                    label = EventPresentation.eventType(M18EventType.ADOPTION_FAIR),
+                    selected = draftType == M18EventType.ADOPTION_FAIR,
                     onClick = {
-                        viewModel.setType(
-                            if (filter.type == M18EventType.ADOPTION_FAIR) null else M18EventType.ADOPTION_FAIR
-                        )
+                        draftType = if (draftType == M18EventType.ADOPTION_FAIR) null else M18EventType.ADOPTION_FAIR
                     }
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LeoOutlinedButton(
-                    text = "Limpiar filtros",
-                    onClick = { viewModel.clearFilters() }
-                )
                 if (canAdminister) {
                     LeoOutlinedButton(
                         text = "Administrar",
@@ -158,31 +206,24 @@ private fun M18EventCard(event: M18PublicEvent, onClick: () -> Unit) {
             .clickable(onClick = onClick)
     ) {
         Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(event.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(event.organizationDisplayName, style = MaterialTheme.typography.bodySmall)
-            Text(m18EventTypeLabel(event.eventType), style = MaterialTheme.typography.labelMedium)
-            Text(
-                M18EventValidators.formatEventDateRange(event.startsAt, event.endsAt),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                "Cupos: ${event.registeredCount}/${event.maxCapacity}" +
-                    if (event.waitlistCount > 0) " (+${event.waitlistCount} en espera)" else "",
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Text(event.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Text(EventPresentation.whenLine(event.startsAt, event.endsAt), style = MaterialTheme.typography.bodyMedium)
+            EventPresentation.placeLine(event.venueName, event.reference.publicLocationText)?.let {
+                Text(it, style = MaterialTheme.typography.bodySmall)
+            }
+            Text(EventPresentation.eventType(event.eventType), style = MaterialTheme.typography.labelMedium)
+            EventPresentation.availability(event.maxCapacity, event.availableSpots, event.isWaitlistOpen)?.let {
+                Text(it, style = MaterialTheme.typography.bodyMedium)
+            }
             if (event.maxCapacity > 0) {
+                val taken = (event.maxCapacity - event.availableSpots).coerceAtLeast(0)
                 LinearProgressIndicator(
-                    progress = { (event.registeredCount.toFloat() / event.maxCapacity).coerceIn(0f, 1f) },
+                    progress = { (taken.toFloat() / event.maxCapacity).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth()
                 )
             }
-            event.reference.publicLocationText?.let {
-                Text("📍 $it", style = MaterialTheme.typography.bodySmall)
-            }
-            if (event.isRegistrationOpen) {
-                Text("Inscripciones abiertas", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.primary)
-            }
+            LeoStatusBadge(EventPresentation.eventStatus(event.status))
         }
         LeoHairline()
     }
@@ -195,20 +236,14 @@ fun M18EventDetailScreen(
     viewModel: M18EventDetailViewModel = viewModel(factory = M18EventDetailViewModel.factory(eventId))
 ) {
     val event by viewModel.event.collectAsState()
-    val stats by viewModel.stats.collectAsState()
-    val myRegistration by viewModel.myRegistration.collectAsState()
     val participation by viewModel.participation.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val message by viewModel.message.collectAsState()
 
-    LaunchedEffect(message) {
-        if (message != null) viewModel.consumeMessage()
-    }
-
     Scaffold(
         containerColor = BrandBackground,
         topBar = {
-            LeoTopAppBar(title = "Detalle evento", showBackButton = true, onBackClick = onNavigateBack)
+            LeoTopAppBar(title = EventPresentation.DISCOVER_TITLE, showBackButton = true, onBackClick = onNavigateBack)
         }
     ) { padding ->
         when {
@@ -219,41 +254,28 @@ fun M18EventDetailScreen(
             )
             else -> {
                 val e = event!!
+                val place = EventPresentation.placeLine(e.venueName, e.reference.publicLocationText)
+                val availability = EventPresentation.availability(e.maxCapacity, e.availableSpots, e.isWaitlistOpen)
                 Column(
                     Modifier.padding(padding).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(e.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
                     Text(e.organizationDisplayName, style = MaterialTheme.typography.bodyMedium)
-                    Text(e.description)
-                    Text("Estado: ${m18EventStatusLabel(e.status)}")
-                    Text("Tipo: ${m18EventTypeLabel(e.eventType)}")
-                    Text(M18EventValidators.formatEventDateRange(e.startsAt, e.endsAt))
-                    e.venueName?.let { Text("Lugar: $it", style = MaterialTheme.typography.bodySmall) }
-                    Text(
-                        "Cupos: ${e.registeredCount}/${e.maxCapacity} · Disponibles: ${e.availableSpots}",
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    stats?.let { s ->
-                        Text(
-                            "Check-ins: ${s.checkedInCount} (solo agregados, sin PII)",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                    Text(e.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(EventPresentation.eventStatus(e.status), style = MaterialTheme.typography.labelMedium)
+                    Text(EventPresentation.whenLine(e.startsAt, e.endsAt))
+                    place?.let { Text(it) }
+                    if (e.description.isNotBlank()) Text(e.description)
+                    Text(EventPresentation.eventType(e.eventType), style = MaterialTheme.typography.labelMedium)
+                    e.reference.petPublicName?.takeIf { it.isNotBlank() }?.let {
+                        Text("Mascota: $it", style = MaterialTheme.typography.bodySmall)
                     }
-                    e.reference.petPublicName?.let { Text("Mascota: $it", style = MaterialTheme.typography.bodySmall) }
-                    e.reference.publicLocationText?.let { Text("📍 $it", style = MaterialTheme.typography.bodySmall) }
-                    Text(
-                        "Eventos gratuitos — sin venta de entradas ni pagos en Bloque 1.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                    Text(
-                        "La lista de participantes no es pública. Solo ves tu estado de inscripción.",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.tertiary
-                    )
-                    myRegistration?.let {
-                        Text("Tu inscripción: ${m18RegistrationStatusLabel(it)}")
+                    availability?.let { Text(it, style = MaterialTheme.typography.bodyMedium) }
+                    val ended = e.endsAt < System.currentTimeMillis()
+                    when (e.status) {
+                        M18EventStatus.CANCELLED -> Text(EventPresentation.CANCELLED_EVENT)
+                        M18EventStatus.COMPLETED -> Text(EventPresentation.PAST_EVENT)
+                        else -> if (ended) Text(EventPresentation.PAST_EVENT)
                     }
                     when (participation) {
                         M18EventParticipationUiState.Loading -> Unit
@@ -262,43 +284,76 @@ fun M18EventDetailScreen(
                         }
                         M18EventParticipationUiState.Available -> {
                             LeoPrimaryButton(
-                                text = "Inscribirme",
+                                text = EventPresentation.REGISTER_ACTION,
+                                onClick = { viewModel.register() }
+                            )
+                        }
+                        M18EventParticipationUiState.WaitlistAvailable -> {
+                            Text(EventPresentation.WAITLIST_BEFORE)
+                            Text(EventPresentation.WAITLIST_HOW, style = MaterialTheme.typography.bodySmall)
+                            LeoPrimaryButton(
+                                text = EventPresentation.WAITLIST_ACTION,
                                 onClick = { viewModel.register() }
                             )
                         }
                         M18EventParticipationUiState.Registered -> {
+                            Text(EventPresentation.REGISTERED_NOW)
                             LeoOutlinedButton(
-                                text = "Cancelar inscripción",
+                                text = EventPresentation.CANCEL_ACTION,
                                 onClick = { viewModel.cancelRegistration() }
-                            )
-                            LeoOutlinedButton(
-                                text = "Programar recordatorio",
-                                onClick = { viewModel.scheduleReminder() }
                             )
                         }
                         M18EventParticipationUiState.Waitlisted -> {
-                            Text("Estás en lista de espera.", color = MaterialTheme.colorScheme.primary)
-                            LeoOutlinedButton(
-                                text = "Salir de la lista de espera",
-                                onClick = { viewModel.cancelRegistration() }
-                            )
+                            Text(EventPresentation.WAITLIST_NOW)
+                            if (e.status == M18EventStatus.PUBLISHED && !ended) {
+                                Text(EventPresentation.WAITLIST_HOW, style = MaterialTheme.typography.bodySmall)
+                                LeoOutlinedButton(
+                                    text = EventPresentation.LEAVE_WAITLIST_ACTION,
+                                    onClick = { viewModel.cancelRegistration() }
+                                )
+                            }
+                        }
+                        M18EventParticipationUiState.CheckedIn -> {
+                            Text(EventPresentation.ownRegistration(M18RegistrationStatus.CHECKED_IN))
+                        }
+                        M18EventParticipationUiState.Attended -> {
+                            Text(EventPresentation.ownRegistration(M18RegistrationStatus.ATTENDED))
+                        }
+                        M18EventParticipationUiState.NoShow -> {
+                            Text(EventPresentation.ownRegistration(M18RegistrationStatus.NO_SHOW))
+                        }
+                        M18EventParticipationUiState.Rejected -> {
+                            Text(EventPresentation.ownRegistration(M18RegistrationStatus.REJECTED))
                         }
                         M18EventParticipationUiState.Cancelled -> {
-                            if (e.isRegistrationOpen) {
+                            Text(EventPresentation.ownRegistration(M18RegistrationStatus.CANCELLED))
+                            if (e.isFull && e.isWaitlistOpen) {
+                                Text(EventPresentation.WAITLIST_BEFORE)
                                 LeoPrimaryButton(
-                                    text = "Volver a inscribirme",
+                                    text = EventPresentation.WAITLIST_ACTION,
+                                    onClick = { viewModel.register() }
+                                )
+                            } else if (e.isRegistrationOpen) {
+                                LeoPrimaryButton(
+                                    text = EventPresentation.REGISTER_ACTION,
                                     onClick = { viewModel.register() }
                                 )
                             }
                         }
                         M18EventParticipationUiState.EventFull -> {
-                            Text("Evento completo — sin lista de espera disponible.")
+                            Text(EventPresentation.FULL_NO_WAITLIST)
                         }
                         M18EventParticipationUiState.EventClosed -> {
-                            Text("Inscripciones cerradas para este evento.")
+                            val alreadyExplained = e.status == M18EventStatus.CANCELLED ||
+                                e.status == M18EventStatus.COMPLETED ||
+                                ended
+                            if (!alreadyExplained) Text(EventPresentation.CLOSED)
                         }
                         is M18EventParticipationUiState.Error -> {
-                            Text((participation as M18EventParticipationUiState.Error).message, color = MaterialTheme.colorScheme.error)
+                            Text(
+                                (participation as M18EventParticipationUiState.Error).message,
+                                color = MaterialTheme.colorScheme.error
+                            )
                         }
                     }
                     message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
@@ -580,6 +635,84 @@ fun M18EventEditScreen(
                 text = if (state is M18EventEditUiState.Saving) "Guardando…" else "Guardar borrador",
                 onClick = { viewModel.save() },
                 enabled = state !is M18EventEditUiState.Saving
+            )
+        }
+    }
+}
+
+@Composable
+fun M18MyEventsScreen(
+    onNavigateBack: () -> Unit,
+    onEventClick: (String) -> Unit,
+    viewModel: M18MyEventsViewModel = viewModel(factory = M18MyEventsViewModel.factory())
+) {
+    val state by viewModel.uiState.collectAsState()
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, viewModel) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) viewModel.load()
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+    Scaffold(
+        containerColor = BrandBackground,
+        topBar = {
+            LeoTopAppBar(
+                title = EventPresentation.ACTIVITY_TITLE,
+                showBackButton = true,
+                onBackClick = onNavigateBack
+            )
+        }
+    ) { padding ->
+        when {
+            state.loading && state.upcoming.isEmpty() && state.waitlist.isEmpty() && state.past.isEmpty() ->
+                LoadingState(contentModifier = Modifier.padding(padding))
+            state.error != null && state.upcoming.isEmpty() && state.waitlist.isEmpty() && state.past.isEmpty() ->
+                ErrorState(message = state.error ?: "", contentModifier = Modifier.padding(padding), onRetry = { viewModel.load() })
+            state.upcoming.isEmpty() && state.waitlist.isEmpty() && state.past.isEmpty() ->
+                EmptyState(
+                    title = EventPresentation.ACTIVITY_TITLE,
+                    contentModifier = Modifier.padding(padding),
+                    message = EventPresentation.EMPTY_ACTIVITY
+                )
+            else -> Column(
+                Modifier.padding(padding).padding(16.dp).fillMaxSize().verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                EventActivitySection(EventPresentation.SECTION_UPCOMING, state.upcoming, onEventClick)
+                EventActivitySection(EventPresentation.SECTION_WAITLIST, state.waitlist, onEventClick)
+                EventActivitySection(EventPresentation.SECTION_PAST, state.past, onEventClick)
+            }
+        }
+    }
+}
+
+@Composable
+private fun EventActivitySection(
+    title: String,
+    rows: List<MyEventRegistration>,
+    onEventClick: (String) -> Unit
+) {
+    if (rows.isEmpty()) return
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(title, fontWeight = FontWeight.SemiBold)
+        rows.forEach { row ->
+            val place = EventPresentation.placeLine(row.venueName, row.locationText)
+            LeoListRow(
+                title = row.title,
+                subtitle = buildString {
+                    append(row.organizationName)
+                    append(" · ")
+                    append(EventPresentation.whenLine(row.startsAt, row.endsAt))
+                    if (place != null) {
+                        append(" · ")
+                        append(place)
+                    }
+                    append(" · ")
+                    append(EventPresentation.ownRegistration(row.registrationStatus))
+                },
+                onClick = { onEventClick(row.eventId) }
             )
         }
     }

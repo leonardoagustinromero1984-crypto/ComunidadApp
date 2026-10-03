@@ -56,6 +56,7 @@ fun PetDetailScreen(
     onNavigateToM28Grants: (String) -> Unit = {},
     onNavigateToM28Proposals: (String) -> Unit = {},
     onNavigateToReportLost: () -> Unit = {},
+    onNavigateToFosterTransit: (String) -> Unit = {},
     viewModel: PetDetailViewModel = viewModel()
 ) {
     val pet by viewModel.pet.collectAsState()
@@ -79,6 +80,7 @@ fun PetDetailScreen(
     val principalDisplayName by viewModel.principalDisplayName.collectAsState()
     val principalLoading by viewModel.principalLoading.collectAsState()
     val access by viewModel.access.collectAsState()
+    val fosterSignals by com.comunidapp.app.domain.foster.FosterTransitSignals.live.state.collectAsState()
     var showDeleteDialog by remember { mutableStateOf(false) }
     var showDeceasedDialog by remember { mutableStateOf(false) }
     var showRestoreDialog by remember { mutableStateOf(false) }
@@ -91,6 +93,7 @@ fun PetDetailScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 viewModel.loadPet()
+                viewModel.refreshFosterTransit()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -257,6 +260,10 @@ fun PetDetailScreen(
                 val isActive = data.status.equals("ACTIVE", ignoreCase = true)
                 val isArchived = data.status.equals("ARCHIVED", ignoreCase = true)
                 val isDeceased = data.status.equals("DECEASED", ignoreCase = true)
+                val displayName = com.comunidapp.app.domain.pets.PetDisplayName.of(
+                    data.originKind,
+                    data.name
+                )
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -267,12 +274,12 @@ fun PetDetailScreen(
                 ) {
                     PetHero(
                         imageUrl = photoDisplayUrl ?: data.photoUrl,
-                        petName = data.name
+                        petName = displayName
                     )
                     Spacer(modifier = Modifier.height(18.dp))
                     PetIdentityBlock(
                         name = com.comunidapp.app.domain.vitacora.import.VitacoraNumberQuery.petTitle(
-                            data.name,
+                            displayName,
                             data.publicVitacoraNumber
                         ),
                         subtitle = petIdentitySubtitle(data),
@@ -308,7 +315,7 @@ fun PetDetailScreen(
                     }
                     if (isDeceased) {
                         Spacer(modifier = Modifier.height(16.dp))
-                        PetDeceasedBanner(petName = data.name)
+                        PetDeceasedBanner(petName = displayName)
                     }
 
                     if (!isDeceased) {
@@ -336,7 +343,7 @@ fun PetDetailScreen(
 
                     Spacer(modifier = Modifier.height(12.dp))
                     PetPassportSummary(
-                        petName = data.name,
+                        petName = displayName,
                         onOpenPassport = { onNavigateToPassport(data.id) }
                     ) {
                         com.comunidapp.app.ui.components.leo.LeoListRow(
@@ -359,7 +366,10 @@ fun PetDetailScreen(
                     if (isActive) {
                         Spacer(modifier = Modifier.height(16.dp))
                         PetEmergencyAction(
-                            petName = data.name,
+                            label = com.comunidapp.app.domain.pets.PetDisplayName.lostActionLabel(
+                                data.originKind,
+                                data.name
+                            ),
                             onReportLost = onNavigateToReportLost
                         )
                     }
@@ -377,11 +387,19 @@ fun PetDetailScreen(
                     if (canViewGovernance && !isDeceased) {
                         Spacer(modifier = Modifier.height(12.dp))
                         PetResponsiblesSection(
-                            petName = data.name,
+                            petName = displayName,
                             mutationsEnabled = isActive,
                             showTransfer = access?.canInitiateTransfer == true,
+                            showFosterTransit = isActive &&
+                                com.comunidapp.app.domain.foster.FosterTransitVisibility.forOrigin(data.originKind),
+                            fosterTransitLabel = com.comunidapp.app.domain.foster.FosterTransitVisibility.primaryLabel(
+                                com.comunidapp.app.domain.foster.FosterTransitVisibility.isActiveRequest(
+                                    fosterSignals[data.id]?.status
+                                )
+                            ),
                             onOpenResponsibles = { onNavigateToResponsibilities(data.id) },
-                            onOpenTransfers = { onNavigateToTransfers(data.id) }
+                            onOpenTransfers = { onNavigateToTransfers(data.id) },
+                            onOpenFosterTransit = { onNavigateToFosterTransit(data.id) }
                         )
                     }
 
@@ -462,8 +480,11 @@ private fun PetResponsiblesSection(
     petName: String,
     mutationsEnabled: Boolean,
     showTransfer: Boolean,
+    showFosterTransit: Boolean,
+    fosterTransitLabel: String = "Buscar hogar de tránsito",
     onOpenResponsibles: () -> Unit,
-    onOpenTransfers: () -> Unit
+    onOpenTransfers: () -> Unit,
+    onOpenFosterTransit: () -> Unit
 ) {
     PetV2Card {
         Text(
@@ -498,6 +519,14 @@ private fun PetResponsiblesSection(
                 enabled = mutationsEnabled
             ) {
                 Text(com.comunidapp.app.domain.pets.PetCareTransferCopy.SCREEN_TITLE)
+            }
+        }
+        if (showFosterTransit) {
+            TextButton(
+                onClick = onOpenFosterTransit,
+                enabled = mutationsEnabled
+            ) {
+                Text(fosterTransitLabel)
             }
         }
     }

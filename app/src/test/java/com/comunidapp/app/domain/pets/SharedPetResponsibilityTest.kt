@@ -91,7 +91,8 @@ class SharedPetResponsibilityTest {
         size = PetSize.MEDIUM,
         description = "",
         managementContextKind = PetManagementContext.PERSON,
-        managementContextId = "A"
+        managementContextId = "A",
+        accessSubjectUserId = personId
     ).let { listOf(it) }.let { pets ->
         PetManagementContext.filter(pets, OperationalContext.Personal, personId).map { it.id }
     }

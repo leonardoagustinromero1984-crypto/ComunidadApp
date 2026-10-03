@@ -31,7 +31,7 @@ class Onb02TutorialRoutingTest {
     fun RESCUER_TUTORIAL_DOES_NOT_CREATE_ORG() {
         val result = runOnboarding(setOf(LeoverFunction.RESCUER))
         assertEquals(Onb02Phase.DONE, result.vm.ui.value.phase)
-        assertEquals(NavRoutes.HOME, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.USE_LEOVER_AS, result.vm.setupRouteAfterTutorials())
         assertFalse(result.sawOrgSetup)
         assertTrue(result.tutorials.contains(TutorialId.T02_RESCUER))
         assertFalse(result.tutorials.contains(TutorialId.T10_ORGANIZATION))
@@ -41,7 +41,7 @@ class Onb02TutorialRoutingTest {
     fun FOSTER_TUTORIAL_DOES_NOT_CREATE_ORG() {
         val result = runOnboarding(setOf(LeoverFunction.FOSTER))
         assertEquals(Onb02Phase.DONE, result.vm.ui.value.phase)
-        assertEquals(NavRoutes.FOSTER_PLACEMENTS, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.USE_LEOVER_AS, result.vm.setupRouteAfterTutorials())
         assertFalse(result.sawOrgSetup)
         assertFalse(result.tutorials.contains(TutorialId.T10_ORGANIZATION))
     }
@@ -49,7 +49,7 @@ class Onb02TutorialRoutingTest {
     @Test
     fun WALKER_TUTORIAL_DOES_NOT_CREATE_ORG() {
         val result = runOnboarding(setOf(LeoverFunction.WALKER))
-        assertEquals(NavRoutes.MY_BUSINESS, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.USE_LEOVER_AS, result.vm.setupRouteAfterTutorials())
         assertFalse(result.sawOrgSetup)
         assertTrue(result.tutorials.contains(TutorialId.T05_WALKER))
     }
@@ -57,7 +57,7 @@ class Onb02TutorialRoutingTest {
     @Test
     fun VET_PERSON_TUTORIAL_DOES_NOT_CREATE_ORG() {
         val result = runOnboarding(setOf(LeoverFunction.VETERINARY_PROFESSIONAL))
-        assertEquals(NavRoutes.MY_VETERINARY_CLINICS, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.USE_LEOVER_AS, result.vm.setupRouteAfterTutorials())
         assertFalse(result.sawOrgSetup)
         assertTrue(result.tutorials.contains(TutorialId.T04_VETERINARY_PROFESSIONAL))
     }
@@ -89,7 +89,7 @@ class Onb02TutorialRoutingTest {
             ),
             result.tutorials.filter { it != TutorialId.T00_MULTI_FUNCTION_INTRO }
         )
-        assertEquals(NavRoutes.HOME, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.USE_LEOVER_AS, result.vm.setupRouteAfterTutorials())
         assertFalse(
             FunctionSetupMapping.setupRoutesInOrder(extras, null)
                 .contains(NavRoutes.createOrganization())
@@ -112,7 +112,7 @@ class Onb02TutorialRoutingTest {
 
         val result = runOnboarding(extras)
         assertTrue(result.sawOrgSetup)
-        assertEquals(NavRoutes.HOME, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.USE_LEOVER_AS, result.vm.setupRouteAfterTutorials())
         assertEquals(
             listOf(NavRoutes.HOME, NavRoutes.FOSTER_PLACEMENTS, NavRoutes.createOrganization()),
             FunctionSetupMapping.setupRoutesInOrder(extras, OrganizationSetupAction.CREATE)
@@ -169,7 +169,7 @@ class Onb02TutorialRoutingTest {
     fun RESCUER_TUTORIAL_DOES_NOT_OPEN_ORGANIZATION() {
         val result = runOnboarding(setOf(LeoverFunction.RESCUER))
         assertEquals(Onb02Phase.DONE, result.vm.ui.value.phase)
-        assertEquals(NavRoutes.HOME, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.USE_LEOVER_AS, result.vm.setupRouteAfterTutorials())
         assertFalse(result.sawOrgSetup)
         assertTrue(result.tutorials.contains(TutorialId.T02_RESCUER))
         assertFalse(result.tutorials.contains(TutorialId.T10_ORGANIZATION))
@@ -179,7 +179,7 @@ class Onb02TutorialRoutingTest {
     fun FOSTER_TUTORIAL_DOES_NOT_OPEN_ORGANIZATION() {
         val result = runOnboarding(setOf(LeoverFunction.FOSTER))
         assertEquals(Onb02Phase.DONE, result.vm.ui.value.phase)
-        assertEquals(NavRoutes.FOSTER_PLACEMENTS, result.vm.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.USE_LEOVER_AS, result.vm.setupRouteAfterTutorials())
         assertFalse(result.sawOrgSetup)
         assertTrue(result.tutorials.contains(TutorialId.T03_FOSTER))
         assertFalse(result.tutorials.contains(TutorialId.T10_ORGANIZATION))
@@ -232,7 +232,7 @@ class Onb02TutorialRoutingTest {
         assertNull(
             resumed.setupRouteAfterTutorials()?.takeIf { it == NavRoutes.createOrganization() }
         )
-        assertEquals(NavRoutes.HOME, resumed.setupRouteAfterTutorials())
+        assertEquals(NavRoutes.USE_LEOVER_AS, resumed.setupRouteAfterTutorials())
     }
 
     private data class FlowResult(
@@ -284,6 +284,7 @@ class Onb02TutorialRoutingTest {
                 }
                 Onb02Phase.PROFESSIONAL_SETUP, Onb02Phase.BUSINESS_SETUP ->
                     error("legacy extras flow must not open second-level actor screens")
+                Onb02Phase.ADD_FUNCTION_GUIDE -> vm.acknowledgeAddFunctionGuide()
                 Onb02Phase.DONE -> return FlowResult(vm, tutorials, phases, sawOrg)
             }
         }
@@ -310,6 +311,7 @@ class Onb02TutorialRoutingTest {
                     vm.confirmOrganizationSetup()
                 }
                 Onb02Phase.PROFESSIONAL_SETUP, Onb02Phase.BUSINESS_SETUP -> return
+                Onb02Phase.ADD_FUNCTION_GUIDE -> vm.acknowledgeAddFunctionGuide()
                 Onb02Phase.DONE -> return
             }
         }

@@ -1,5 +1,6 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m08.M08PetErrorMapper
 import com.comunidapp.app.data.remote.supabase.m08.M08RpcDecoding
 import com.comunidapp.app.data.remote.supabase.supabase
@@ -108,8 +109,16 @@ class CanonicalCareTransferRepository : PetTransferRepository {
     override suspend fun getPending(petId: PetId): PetTransfer? =
         listHistory(petId).firstOrNull { it.status == PetTransferStatus.PENDING }
 
-    override suspend fun accept(transferId: PetTransferId, atEpochMs: Long): Result<Unit> =
-        mutate(CanonicalBackend.RPC_ACCEPT_CARE_TRANSFER, transferId)
+    override suspend fun accept(transferId: PetTransferId, atEpochMs: Long): Result<Unit> {
+        val result = mutate(CanonicalBackend.RPC_ACCEPT_CARE_TRANSFER, transferId)
+        if (result.isSuccess) {
+            val adoptions = runCatching { DataProvider.adoptionRepository }.getOrNull()
+            if (adoptions is CanonicalAdoptionRepository) {
+                runCatching { adoptions.refresh() }
+            }
+        }
+        return result
+    }
 
     override suspend fun reject(transferId: PetTransferId, atEpochMs: Long): Result<Unit> =
         mutate(CanonicalBackend.RPC_REJECT_CARE_TRANSFER, transferId)

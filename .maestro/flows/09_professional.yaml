@@ -1,9 +1,12 @@
 appId: ${APP_ID}
-name: "Professional hub QA10 QA11 QA16"
+name: "Professional hub QA10 QA16"
 tags:
   - community-care
   - professional
+  - updated-ready
 ---
+# UPDATED_READY. Consultorio and Pacientes are inside the veterinary context,
+# not the personal bottom bar.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -11,10 +14,18 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/switch-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: "Veterinaria · QA - Veterinaria Centro"
 - tapOn: "Consultorio"
+- extendedWaitUntil:
+    visible: "Pacientes"
+    timeout: 15000
 - takeScreenshot: professional_hub
 - tapOn: "Pacientes"
-- tapOn: "Buscar"
+- tapOn: "Buscar paciente"
 - inputText: "QA - Mora"
 - tapOn: "QA - Mora"
 - takeScreenshot: professional_mora_centro
@@ -29,8 +40,14 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/switch-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: "Veterinaria · QA - Veterinaria Norte"
+- tapOn: "Consultorio"
 - tapOn: "Pacientes"
-- tapOn: "Buscar"
+- tapOn: "Buscar paciente"
 - inputText: "QA - Mora"
 - assertNotVisible: "QA privado Centro"
 - takeScreenshot: professional_mora_norte

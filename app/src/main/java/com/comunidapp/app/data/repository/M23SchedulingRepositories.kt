@@ -59,6 +59,17 @@ class M23SchedulingMemoryStore {
         histories.value = histories.value + (bookingId to (histories.value[bookingId].orEmpty() + entry))
     }
 
+    fun clearSessionResidue() {
+        sequence = 0
+        rules.value = emptyList()
+        exceptions.value = emptyList()
+        bookings.value = emptyList()
+        policies.value = emptyList()
+        histories.value = emptyMap()
+        privateReasons.value = emptyMap()
+        seedDefaults()
+    }
+
     fun seedDefaults(clock: Clock = Clock.systemUTC()) {
         if (rules.value.isNotEmpty()) return
         val zone = ZoneId.of("America/Argentina/Buenos_Aires")

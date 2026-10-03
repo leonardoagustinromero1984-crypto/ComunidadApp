@@ -7,6 +7,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.comunidapp.app.domain.capability.CapabilityFacts
+import com.comunidapp.app.domain.capability.CapabilityGate
 import com.comunidapp.app.domain.context.OperationalContextProvider
 import com.comunidapp.app.ui.screens.m16.M16ShelterDetailScreen
 import com.comunidapp.app.ui.screens.m16.M16ShelterManageScreen
@@ -20,10 +22,12 @@ fun NavGraphBuilder.m16ShelterRoutes(navController: NavHostController) {
         M16SheltersListScreen(
             onNavigateBack = { navController.popBackStack() },
             onShelterClick = { id -> navController.navigate(NavRoutes.m16ShelterDetail(id)) },
-            onManage = if (context.isPersonal) {
-                null
-            } else {
+            onManage = if (
+                CapabilityGate.canManageOrganization(CapabilityFacts.forActiveContext(context))
+            ) {
                 { navController.navigate(NavRoutes.M16_SHELTERS_MANAGE) }
+            } else {
+                null
             }
         )
     }
@@ -38,8 +42,9 @@ fun NavGraphBuilder.m16ShelterRoutes(navController: NavHostController) {
         M16ShelterDetailScreen(
             shelterId = shelterId,
             onNavigateBack = { navController.popBackStack() },
-            onM17Hub = { navController.navigate(NavRoutes.M17_HUB) },
-            onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) }
+            onAdoptions = { navController.navigate(NavRoutes.ADOPTION_SEARCH) },
+            onVolunteer = { navController.navigate(NavRoutes.M17_HUB) },
+            onManage = { navController.navigate(NavRoutes.M16_SHELTERS_MANAGE) }
         )
     }
     composable(NavRoutes.M16_SHELTERS_MANAGE) {

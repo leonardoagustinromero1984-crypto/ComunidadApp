@@ -23,9 +23,13 @@ import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.pets.PetHealthMerge
 import com.comunidapp.app.domain.pets.PetInternalId
 import com.comunidapp.app.domain.pets.PetHealthPersist
+import com.comunidapp.app.domain.user.SessionEpoch
+import com.comunidapp.app.domain.user.SessionGeneration
 import io.github.jan.supabase.auth.auth
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -48,31 +52,56 @@ class LegacyPetRepositoryAdapter(
     private val authUidProvider: () -> String? = {
         supabase.auth.currentUserOrNull()?.id
     },
-    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val scope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
+    private val epoch: SessionEpoch = SessionGeneration,
+    private val startPolling: Boolean = true,
+    private val nowEpochMs: () -> Long = { System.currentTimeMillis() }
 ) : PetRepository {
 
     private val _pets = MutableStateFlow<List<Pet>>(emptyList())
     private val refreshMutex = Mutex()
     @Volatile private var lastRefreshAtMs: Long = 0L
+    private var pollJob: Job? = null
 
     init {
-        scope.launch {
-            while (isActive) {
-                try {
-                    // Light list only — no per-pet getPetById N+1 on background poll.
-                    mergeAccessibleLight()
-                } catch (_: Exception) {
-                    // transient poll errors ignored; keep last-good _pets
-                }
-                delay(12_000)
-            }
-        }
+        if (startPolling) startPoll()
     }
 
     override fun clearAccountCache() {
-        _pets.value = emptyList()
-        lastRefreshAtMs = 0L
-        scope.launch { refreshCache(force = true) }
+        pollJob?.cancel()
+        pollJob = null
+        epoch.rotate {
+            _pets.value = emptyList()
+            lastRefreshAtMs = 0L
+        }
+        if (startPolling) startPoll()
+    }
+
+    private fun startPoll() {
+        pollJob?.cancel()
+        pollJob = scope.launch {
+            while (isActive) {
+                val uidAtStart = authUidProvider()
+                if (!uidAtStart.isNullOrBlank()) {
+                    try {
+                        // Light list only — no per-pet getPetById N+1 on background poll.
+                        mergeAccessibleLight()
+                    } catch (error: Exception) {
+                        if (error is CancellationException) throw error
+                        // Transient poll errors must not republish another session.
+                    }
+                }
+                // Short slices so a login does not wait the full interval,
+                // and a logout stops the next fetch without a stale write.
+                var waited = 0L
+                while (waited < POLL_INTERVAL_MS && isActive) {
+                    delay(POLL_WAKE_MS)
+                    waited += POLL_WAKE_MS
+                    val uidNow = authUidProvider()
+                    if (uidNow != uidAtStart) break
+                }
+            }
+        }
     }
 
     override suspend fun refreshAccessiblePets() {
@@ -82,67 +111,62 @@ class LegacyPetRepositoryAdapter(
     override fun observePets(): StateFlow<List<Pet>> = _pets.asStateFlow()
 
     override fun observePetsForOwner(ownerId: String): Flow<List<Pet>> = flow {
-        val authUid = authUidProvider()
-        if (authUid == null || authUid != ownerId) {
-            emit(emptyList())
-            return@flow
-        }
-        // Last-good immediate emit; follow shared cache (no second poll loop).
-        emit(_pets.value)
-        _pets.collect { emit(it) }
+        emit(petsVisibleTo(ownerId))
+        _pets.collect { emit(petsVisibleTo(ownerId)) }
     }
 
     override fun observePet(petId: String): Flow<Pet?> = flow {
         while (coroutineContext.isActive) {
+            val uid = authUidProvider()
             try {
-                val cached = _pets.value.find { it.id == petId }
-                val fetched = fetchPetById(petId)
-                emit(
-                    when {
-                        fetched != null -> PetHealthMerge.preferRicherHealth(cached, fetched)
-                        else -> cached
-                    }
-                )
+                emit(fetchPetById(petId))
             } catch (_: Exception) {
-                // Transient network/decode errors must not cancel PetDetail collectors.
-                emit(_pets.value.find { it.id == petId })
+                // Transient network/decode errors must not emit another session's pet.
+                emit(cachedFor(petId, uid))
             }
-            delay(12_000)
+            delay(POLL_INTERVAL_MS)
         }
     }
 
-    override fun getPetsByOwner(ownerId: String): List<Pet> {
-        val authUid = authUidProvider()
-        return if (authUid != null && authUid == ownerId) {
-            _pets.value
-        } else {
-            emptyList()
-        }
-    }
+    override fun getPetsByOwner(ownerId: String): List<Pet> = petsVisibleTo(ownerId)
 
-    override fun getPetById(petId: String): Pet? = _pets.value.find { it.id == petId }
+    override fun getPetById(petId: String): Pet? = cachedFor(petId, authUidProvider())
 
     override suspend fun fetchPetById(petId: String): Pet? {
         val internalId = PetInternalId.parseUuid(petId) ?: return null
-        val cached = getPetById(internalId)
+        val uid = authUidProvider()?.takeIf { it.isNotBlank() } ?: return null
+        val token = epoch.current()
+        val cached = cachedFor(internalId, uid)
         return try {
-            val fetched = remote.getPetById(internalId)?.toPet()
+            val fetched = remote.getPetById(internalId)?.toPet()?.copy(accessSubjectUserId = uid)
             val merged = when {
-                fetched != null -> PetHealthMerge.preferRicherHealth(cached, fetched)
-                else -> cached
-            }
-            if (merged != null) {
+                fetched != null -> PetHealthMerge.preferRicherHealth(
+                    cached?.takeIf { it.accessSubjectUserId == uid },
+                    fetched
+                )
+                else -> null
+            } ?: return null
+            epoch.publishIfCurrent(token) {
+                if (authUidProvider() != uid) return@publishIfCurrent null
                 _pets.value = _pets.value.map { current ->
-                    if (current.id == merged.id) PetHealthMerge.preferRicherHealth(current, merged) else current
+                    if (current.id == merged.id && current.accessSubjectUserId == uid) {
+                        PetHealthMerge.preferRicherHealth(current, merged)
+                    } else {
+                        current
+                    }
                 }
+                merged
             }
-            merged
         } catch (_: Exception) {
-            cached
+            epoch.publishIfCurrent(token) {
+                if (authUidProvider() != uid) null else cached?.takeIf { it.accessSubjectUserId == uid }
+            }
         }
     }
 
     override suspend fun createPet(pet: Pet): Result<String> {
+        val token = epoch.current()
+        val uid = authUidProvider()
         return try {
             com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging("PET-STAGE=CREATE-BEGIN")
             val created = remote.createPetWithPrincipal(
@@ -171,8 +195,12 @@ class LegacyPetRepositoryAdapter(
                 "PET-STAGE=CREATE-RESULT CREATED petId=$petId"
             )
             refreshCache()
-            val mapped = created.toPet()
-            _pets.value = com.comunidapp.app.domain.pets.PetListMerge.withCreated(_pets.value, mapped)
+            val mapped = created.toPet().copy(accessSubjectUserId = uid)
+            epoch.publishIfCurrent(token) {
+                if (uid.isNullOrBlank() || authUidProvider() != uid) return@publishIfCurrent
+                val kept = _pets.value.filter { it.accessSubjectUserId == uid }
+                _pets.value = com.comunidapp.app.domain.pets.PetListMerge.withCreated(kept, mapped)
+            }
             com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
                 "PET-STAGE=LIST-REFRESH count=${_pets.value.size} hasCreated=${_pets.value.any { it.id == petId }}"
             )
@@ -308,24 +336,51 @@ class LegacyPetRepositoryAdapter(
     }
 
     private suspend fun mergeAccessibleLight() {
+        val uid = authUidProvider()?.takeIf { it.isNotBlank() } ?: return
+        val token = epoch.current()
         val rows = remote.listAccessiblePets(status = "ACTIVE")
-        val previous = _pets.value.associateBy { it.id }
-        _pets.value = rows.map { row ->
-            PetHealthMerge.preferRicherHealth(previous[row.id], row.toPet())
+        if (!coroutineContext.isActive) return
+        epoch.publishIfCurrent(token) {
+            if (authUidProvider() != uid) return@publishIfCurrent
+            val previous = _pets.value
+                .filter { it.accessSubjectUserId == uid }
+                .associateBy { it.id }
+            _pets.value = rows.map { row ->
+                val incoming = row.toPet().copy(accessSubjectUserId = uid)
+                PetHealthMerge.preferRicherHealth(previous[row.id], incoming)
+            }
+            lastRefreshAtMs = nowEpochMs()
+        }
+    }
+
+    private fun petsVisibleTo(ownerId: String): List<Pet> {
+        val authUid = authUidProvider()
+        if (authUid.isNullOrBlank() || authUid != ownerId) return emptyList()
+        return _pets.value.filter { pet ->
+            val subject = pet.accessSubjectUserId?.trim()?.takeIf { it.isNotEmpty() }
+            subject == null || subject == ownerId
+        }
+    }
+
+    private fun cachedFor(petId: String, uid: String?): Pet? {
+        if (uid.isNullOrBlank()) return null
+        return _pets.value.find { it.id == petId }?.takeIf { pet ->
+            val subject = pet.accessSubjectUserId?.trim()?.takeIf { it.isNotEmpty() }
+            subject == null || subject == uid
         }
     }
 
     private suspend fun refreshCache(force: Boolean = true) {
         refreshMutex.withLock {
-            val now = System.currentTimeMillis()
-            if (!force && now - lastRefreshAtMs < 1_500L) {
+            val now = nowEpochMs()
+            if (!force && lastRefreshAtMs != 0L && now - lastRefreshAtMs < 1_500L) {
                 return
             }
             try {
                 com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging("PET-STAGE=LIST-REFRESH")
                 // Prefer light merge for responsiveness; detail screen fetches full pet.
+                // Timestamp advances only inside a generation-matched commit.
                 mergeAccessibleLight()
-                lastRefreshAtMs = System.currentTimeMillis()
                 com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
                     "PET-STAGE=LIST-RESULT count=${_pets.value.size}"
                 )
@@ -335,5 +390,10 @@ class LegacyPetRepositoryAdapter(
                 )
             }
         }
+    }
+
+    private companion object {
+        const val POLL_INTERVAL_MS = 12_000L
+        const val POLL_WAKE_MS = 300L
     }
 }

@@ -17,7 +17,8 @@ object AppNavRestoreStore {
         NavRoutes.LOGIN,
         NavRoutes.REGISTER,
         NavRoutes.FORGOT_PASSWORD,
-        "email_verification"
+        "email_verification",
+        com.comunidapp.app.domain.capability.AppStartupResolver.RESOLVING_ROUTE
     )
 
     fun write(route: String?, loggedIn: Boolean) {

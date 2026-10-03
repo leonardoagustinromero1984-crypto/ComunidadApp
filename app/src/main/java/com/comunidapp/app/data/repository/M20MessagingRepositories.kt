@@ -136,6 +136,16 @@ class M20MessagingMemoryStore {
         }
     }
 
+    fun clearSessionResidue() {
+        seeded = false
+        idSeq.set(0)
+        _conversations.value = emptyList()
+        _messages.value = emptyList()
+        _userBlocks.value = emptySet()
+        clientMessageIndex.clear()
+        seedDefaults(com.comunidapp.app.domain.user.SessionGeneration.NEUTRAL_MOCK_ACTOR)
+    }
+
     fun seedDefaults(actorUserId: String = M20MockUsers.ADMIN) {
         if (seeded) return
         seeded = true

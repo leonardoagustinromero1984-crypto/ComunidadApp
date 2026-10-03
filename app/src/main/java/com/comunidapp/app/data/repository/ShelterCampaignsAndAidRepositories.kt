@@ -714,6 +714,7 @@ class MockShelterSupplyRepository(
             val request = store.supplyRequests.value.find { it.id == current.requestId }
                 ?: failM11("SHELTER_SUPPLY_REQUEST_NOT_FOUND")
             if (!canManageSupplyFor(actor, request)) failM11("SHELTER_CONTRIBUTION_FORBIDDEN")
+            if (current.contributorUserId == actor) failM11("SHELTER_CONTRIBUTION_FORBIDDEN")
             if (current.status == ShelterSupplyContributionStatus.CONFIRMED) return@runCatching current
             if (current.status != ShelterSupplyContributionStatus.PLEDGED) {
                 failM11("SHELTER_CONTRIBUTION_INVALID")

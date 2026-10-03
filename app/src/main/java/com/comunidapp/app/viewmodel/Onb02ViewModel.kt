@@ -45,6 +45,7 @@ enum class Onb02Phase {
     BUSINESS_SETUP,
     ORG_SETUP,
     TUTORIAL,
+    ADD_FUNCTION_GUIDE,
     DONE
 }
 
@@ -318,6 +319,11 @@ class Onb02ViewModel(
                 ensureDefaultPersonSelected()
                 true
             }
+            Onb02Phase.ADD_FUNCTION_GUIDE -> {
+                _ui.value = state.copy(phase = Onb02Phase.SELECT, stepIndex = 0)
+                ensureDefaultPersonSelected()
+                true
+            }
             Onb02Phase.DONE -> false
         }
     }
@@ -565,21 +571,23 @@ class Onb02ViewModel(
             organizationAction = action
         )
         val route = when {
-            mapped != null &&
-                mapped.startsWith("create_organization") &&
-                orgKind != null ->
-                com.comunidapp.app.navigation.NavRoutes.createOrganization(
-                    preselect = orgKind.name,
-                    welfare = orgKind == OrganizationKindOption.SHELTER
-                )
-            mapped != null -> mapped
-            extras.contains(LeoverFunction.FOSTER) -> com.comunidapp.app.navigation.NavRoutes.FOSTER_PLACEMENTS
-            extras.contains(LeoverFunction.RESCUER) -> com.comunidapp.app.navigation.NavRoutes.HOME
-            _ui.value.kind == Onb02FlowKind.ADD_FUNCTION_LATER ->
-                com.comunidapp.app.navigation.NavRoutes.HOME
+            mapped != null && mapped.startsWith("create_organization") ->
+                if (orgKind != null) {
+                    com.comunidapp.app.navigation.NavRoutes.createOrganization(
+                        preselect = orgKind.name,
+                        welfare = orgKind == OrganizationKindOption.SHELTER
+                    )
+                } else {
+                    mapped
+                }
+            extras.isNotEmpty() -> com.comunidapp.app.navigation.NavRoutes.USE_LEOVER_AS
             else -> null
         }
         return route
+    }
+
+    fun acknowledgeAddFunctionGuide() {
+        finish()
     }
 
     private suspend fun persistIndependentVeterinary(userId: String): Result<Boolean> {
@@ -690,10 +698,26 @@ class Onb02ViewModel(
             Onb02Planner.tutorialFinished(store.progress(userId, id))
         } ?: plan.size
         if (startIndex >= plan.size) {
-            finish()
+            if (needsAddFunctionGuide(selection)) {
+                _ui.value = _ui.value.copy(
+                    phase = Onb02Phase.ADD_FUNCTION_GUIDE,
+                    selection = selection,
+                    plan = plan
+                )
+            } else {
+                finish()
+            }
             return
         }
         applyPlanIndex(plan, startIndex, selection, queue)
+    }
+
+    private fun needsAddFunctionGuide(selection: FunctionSelection): Boolean {
+        val kind = _ui.value.kind
+        if (kind != Onb02FlowKind.FULL_ONBOARDING && kind != Onb02FlowKind.EXISTING_USER_T00) {
+            return false
+        }
+        return selection.extras.isEmpty()
     }
 
     private fun startEventQueue() {

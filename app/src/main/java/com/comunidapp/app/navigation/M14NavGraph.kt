@@ -263,7 +263,15 @@ fun NavGraphBuilder.m14PassportRoutes(navController: NavHostController) {
         )
         M14PassportHistoryScreen(
             passportId = passportId,
-            onNavigateBack = { navController.popBackStack() }
+            onNavigateBack = { navController.popBackStack() },
+            onOpenDestination = { destination ->
+                when (destination.kind) {
+                    com.comunidapp.app.domain.vitacora.VitaCoraHistoryDestinationKind.LOST_FOUND_CASE ->
+                        navController.navigate(NavRoutes.lostFoundDetail(destination.entityId))
+                    com.comunidapp.app.domain.vitacora.VitaCoraHistoryDestinationKind.SOCIAL_POST ->
+                        navController.navigate(NavRoutes.postDetail(destination.entityId))
+                }
+            }
         )
     }
 }

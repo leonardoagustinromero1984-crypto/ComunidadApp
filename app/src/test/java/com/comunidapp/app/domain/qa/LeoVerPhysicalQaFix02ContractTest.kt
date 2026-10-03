@@ -112,8 +112,8 @@ class LeoVerPhysicalQaFix02ContractTest {
         val saved = ActiveContextSelection(OperationalContextKind.VETERINARY, "org-vet")
         val last = OperationalContext.Veterinary("org-vet", "Veterinaria · Norte")
         val resolved = resolveActiveContext(listOf(OperationalContext.Personal), saved, last)
-        assertEquals(OperationalContextKind.VETERINARY, resolved.kind)
-        assertEquals("org-vet", resolved.entityId)
+        assertEquals(OperationalContextKind.PERSONAL, resolved.kind)
+        assertEquals(OperationalContext.Personal.entityId, resolved.entityId)
         assertTrue(PhysicalQaFix02Contracts.BACK_DOES_NOT_CHANGE_ACTIVE_CONTEXT)
     }
 

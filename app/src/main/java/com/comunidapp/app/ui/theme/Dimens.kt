@@ -2,7 +2,11 @@ package com.comunidapp.app.ui.theme
 
 import androidx.compose.ui.unit.dp
 
-/** Tokens de espaciado, radios y alturas — LeoVer UI-01 */
+/**
+ * Escala de espacio LeoVer: 4, 8, 12, 16, 24, 32.
+ * XS S M L XL XXL. No usar 7, 11, 13 ni 19 salvo un control nativo.
+ */
+
 object LeoDimens {
     val SpaceMicro = 4.dp
     val SpaceSm = 8.dp

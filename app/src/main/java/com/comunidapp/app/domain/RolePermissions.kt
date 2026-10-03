@@ -2,6 +2,8 @@ package com.comunidapp.app.domain
 
 import com.comunidapp.app.data.model.AccountType
 import com.comunidapp.app.data.model.User
+import com.comunidapp.app.domain.capability.CapabilityFacts
+import com.comunidapp.app.domain.capability.CapabilityGate
 import com.comunidapp.app.domain.context.OperationalContext
 
 /**
@@ -20,9 +22,7 @@ object RolePermissions {
         context is OperationalContext.Personal
 
     fun canPublishAdoption(context: OperationalContext): Boolean =
-        context is OperationalContext.Organization ||
-            context is OperationalContext.Rescuer ||
-            context is OperationalContext.Foster
+        CapabilityGate.canPublishAdoption(CapabilityFacts.forActiveContext(context))
 
     fun canPublishLostFound(context: OperationalContext): Boolean =
         context is OperationalContext.Personal ||
@@ -31,9 +31,7 @@ object RolePermissions {
             context is OperationalContext.Rescuer
 
     fun canPublishFosterHome(context: OperationalContext): Boolean =
-        context is OperationalContext.Personal ||
-            context is OperationalContext.Foster ||
-            context is OperationalContext.Rescuer
+        CapabilityGate.canOfferFosterHome(CapabilityFacts.forActiveContext(context))
 
     fun canPublishShelterNeeds(context: OperationalContext): Boolean =
         context is OperationalContext.Organization ||

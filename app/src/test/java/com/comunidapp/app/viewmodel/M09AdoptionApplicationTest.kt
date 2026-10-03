@@ -1,6 +1,7 @@
 package com.comunidapp.app.viewmodel
 
 import androidx.lifecycle.SavedStateHandle
+import com.comunidapp.app.data.local.AdoptionApplicantProfileStore
 import com.comunidapp.app.data.mock.InMemoryDataStore
 import com.comunidapp.app.data.mock.MockAuthDatabase
 import com.comunidapp.app.data.mock.MockData
@@ -21,6 +22,9 @@ import com.comunidapp.app.data.repository.AuthRepository
 import com.comunidapp.app.data.repository.MockAdoptionApplicationRepository
 import com.comunidapp.app.data.repository.MockAdoptionRepository
 import com.comunidapp.app.data.repository.MockAuthRepository
+import com.comunidapp.app.domain.adoption.AdopterProfile
+import com.comunidapp.app.domain.adoption.HoursAloneEstimate
+import com.comunidapp.app.domain.adoption.HousingKind
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -337,6 +341,17 @@ class M09AdoptionApplicationTest {
         val adoptionRepo = object : AdoptionRepository by MockAdoptionRepository() {
             override suspend fun getAdoptionById(id: String) = Result.success(samplePost())
         }
+        AdoptionApplicantProfileStore.saveStructured(
+            applicantUser().id,
+            AdopterProfile(
+                householdAgrees = true,
+                housingKind = HousingKind.APARTMENT,
+                hasDogs = false,
+                hasCats = false,
+                hasOtherAnimals = false,
+                hoursAlone = HoursAloneEstimate.UNDER_4
+            )
+        )
         val vm = AdoptionApplyViewModel(
             savedStateHandle = SavedStateHandle(mapOf("adoptionId" to "adopt-1")),
             adoptionRepository = adoptionRepo,
@@ -350,6 +365,7 @@ class M09AdoptionApplicationTest {
         vm.submit()
         advanceUntilIdle()
         assertEquals(1, repo.snapshot().size)
+        AdoptionApplicantProfileStore.clear()
     }
 
     // 21 / 22

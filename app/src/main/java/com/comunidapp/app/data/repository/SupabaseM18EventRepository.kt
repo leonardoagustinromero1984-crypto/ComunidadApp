@@ -20,6 +20,7 @@ import com.comunidapp.app.data.remote.supabase.m18.SupabaseM18RemoteDataSource
 import com.comunidapp.app.data.remote.supabase.m18.toM18CommunityEvent
 import com.comunidapp.app.data.remote.supabase.m18.toM18EventCapacitySummary
 import com.comunidapp.app.data.remote.supabase.m18.toM18EventRegistration
+import com.comunidapp.app.data.remote.supabase.m18.toMyEventRegistration
 import com.comunidapp.app.data.remote.supabase.m18.toM18PublicEvent
 import com.comunidapp.app.data.remote.supabase.m18.toM18PublicRegistrationStats
 import com.comunidapp.app.domain.m18.M18EventOperationsService
@@ -232,6 +233,12 @@ class SupabaseM18EventRepository(
         runCatching {
             remote.getMyRegistration(eventId)?.toM18EventRegistration()
         }.getOrNull()
+
+    override suspend fun listMyRegistrations(): Result<List<com.comunidapp.app.domain.m18.MyEventRegistration>> = try {
+        Result.success(remote.listMyEventActivity().map { it.toMyEventRegistration() })
+    } catch (t: Throwable) {
+        M18EventErrorMapper.failure(t)
+    }
 
     override suspend fun listRegistrationsForManage(
         eventId: String

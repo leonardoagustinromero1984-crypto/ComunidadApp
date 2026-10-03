@@ -3,3 +3,5 @@ name: LeoVer Automated QA
 excludeTags:
   - manual
   - reset-required
+  - needs-fresh-fixture
+  - physical-two-device

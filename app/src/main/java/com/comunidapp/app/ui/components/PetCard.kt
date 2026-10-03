@@ -68,7 +68,7 @@ fun PetCard(
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = com.comunidapp.app.domain.vitacora.import.VitacoraNumberQuery.petTitle(
-                            pet.name,
+                            com.comunidapp.app.domain.pets.PetDisplayName.of(pet.originKind, pet.name),
                             pet.publicVitacoraNumber
                         ),
                         style = LeoCardTitle,

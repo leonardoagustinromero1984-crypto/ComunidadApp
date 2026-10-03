@@ -72,5 +72,10 @@ data class Pet(
     /** Canonical public.species.code. Source of truth for persistence; enum is a display fallback. */
     val speciesCode: String? = null,
     val speciesName: String? = null,
-    val secondaryLabelSingular: String? = null
+    val secondaryLabelSingular: String? = null,
+    /**
+     * Client-only stamp: auth uid for whom [listAccessiblePets] returned this row.
+     * Not persisted. Null on pets that were not loaded through the accessible list.
+     */
+    val accessSubjectUserId: String? = null
 )

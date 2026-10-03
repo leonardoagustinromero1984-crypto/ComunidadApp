@@ -41,10 +41,12 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M17CampaignType
 import com.comunidapp.app.data.model.M17Contribution
-import com.comunidapp.app.data.model.M17ContributionStatus
+import com.comunidapp.app.domain.m17.M17ContributionModeration
 import com.comunidapp.app.data.model.M17MockOrganizations
 import com.comunidapp.app.data.model.M17PublicCampaign
 import com.comunidapp.app.data.repository.M17DonationValidators
+import com.comunidapp.app.domain.m17.CommunityHelpPresentation
+import com.comunidapp.app.domain.m17.MoneyPresentation
 import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoCardTitle
 import com.comunidapp.app.ui.theme.MutedText
@@ -65,6 +67,9 @@ import com.comunidapp.app.viewmodel.m17CampaignTypeLabel
 import com.comunidapp.app.ui.components.leo.LeoFilterChip
 import com.comunidapp.app.ui.components.leo.LeoHairline
 import com.comunidapp.app.ui.components.leo.LeoListRow
+import com.comunidapp.app.ui.components.leo.LeoActiveFilter
+import com.comunidapp.app.ui.components.leo.LeoFilterBar
+import com.comunidapp.app.ui.components.leo.LeoFilterSheet
 import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
 import com.comunidapp.app.ui.components.leo.LeoTextField
@@ -82,6 +87,17 @@ fun M17CampaignsListScreen(
     val state by viewModel.uiState.collectAsState()
     val filter by viewModel.filter.collectAsState()
     var query by remember(filter.query) { mutableStateOf(filter.query) }
+    var filtersOpen by remember { mutableStateOf(false) }
+    var draftPet by remember { mutableStateOf(false) }
+    var draftNear by remember { mutableStateOf(false) }
+    var draftCompleted by remember { mutableStateOf(false) }
+    var draftType by remember { mutableStateOf<M17CampaignType?>(null) }
+    val activeFilters = buildList {
+        if (filter.withPetOnly) add(LeoActiveFilter("pet", "Con mascota"))
+        if (filter.nearGoalOnly) add(LeoActiveFilter("near", "Cerca del objetivo"))
+        if (filter.completedOnly) add(LeoActiveFilter("completed", "Completadas"))
+        filter.type?.let { add(LeoActiveFilter("type", m17CampaignTypeLabel(it))) }
+    }
 
     Scaffold(
         containerColor = BrandBackground,
@@ -94,44 +110,77 @@ fun M17CampaignsListScreen(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                "Directorio público de campañas — sin datos financieros sensibles.",
+                CommunityHelpPresentation.MONEY_HINT,
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
-            LeoTextField(
-                value = query,
-                onValueChange = { query = it; viewModel.setQuery(it) },
-                label = "Buscar campaña"
+            LeoFilterBar(
+                onOpenFilters = {
+                    draftPet = filter.withPetOnly
+                    draftNear = filter.nearGoalOnly
+                    draftCompleted = filter.completedOnly
+                    draftType = filter.type
+                    filtersOpen = true
+                },
+                activeFilters = activeFilters,
+                onRemoveFilter = { id ->
+                    when (id) {
+                        "pet" -> viewModel.setWithPetOnly(false)
+                        "near" -> viewModel.setNearGoalOnly(false)
+                        "completed" -> viewModel.setCompletedOnly(false)
+                        "type" -> viewModel.setType(null)
+                    }
+                },
+                onClearFilters = { viewModel.clearFilters() },
+                search = {
+                    LeoTextField(
+                        value = query,
+                        onValueChange = { query = it; viewModel.setQuery(it) },
+                        label = "Buscar campaña"
+                    )
+                }
             )
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            LeoFilterSheet(
+                visible = filtersOpen,
+                onDismiss = { filtersOpen = false },
+                onClearDraft = {
+                    draftPet = false
+                    draftNear = false
+                    draftCompleted = false
+                    draftType = null
+                },
+                onApply = {
+                    viewModel.setWithPetOnly(draftPet)
+                    viewModel.setNearGoalOnly(draftNear)
+                    viewModel.setCompletedOnly(draftCompleted)
+                    viewModel.setType(draftType)
+                    filtersOpen = false
+                }
+            ) {
                 LeoFilterChip(
                     label = "Con mascota",
-                    selected = filter.withPetOnly,
-                    onClick = { viewModel.setWithPetOnly(!filter.withPetOnly) }
+                    selected = draftPet,
+                    onClick = { draftPet = !draftPet }
                 )
                 LeoFilterChip(
                     label = "Cerca del objetivo",
-                    selected = filter.nearGoalOnly,
-                    onClick = { viewModel.setNearGoalOnly(!filter.nearGoalOnly) }
+                    selected = draftNear,
+                    onClick = { draftNear = !draftNear }
                 )
                 LeoFilterChip(
                     label = "Completadas",
-                    selected = filter.completedOnly,
-                    onClick = { viewModel.setCompletedOnly(!filter.completedOnly) }
+                    selected = draftCompleted,
+                    onClick = { draftCompleted = !draftCompleted }
                 )
                 LeoFilterChip(
-                    label = "Médicas",
-                    selected = filter.type == M17CampaignType.MEDICAL,
+                    label = m17CampaignTypeLabel(M17CampaignType.MEDICAL),
+                    selected = draftType == M17CampaignType.MEDICAL,
                     onClick = {
-                    viewModel.setType(if (filter.type == M17CampaignType.MEDICAL) null else M17CampaignType.MEDICAL)
-                }
+                        draftType = if (draftType == M17CampaignType.MEDICAL) null else M17CampaignType.MEDICAL
+                    }
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                LeoOutlinedButton(
-                    text = "Limpiar filtros",
-                    onClick = { viewModel.clearFilters() }
-                )
                 if (canAdminister) {
                     LeoOutlinedButton(
                         text = "Administrar",
@@ -169,18 +218,28 @@ private fun M17CampaignCard(campaign: M17PublicCampaign, onClick: () -> Unit) {
             .clickable(onClick = onClick)
     ) {
         Column(Modifier.padding(LeoDimens.SpaceMd), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text(campaign.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
             Text(campaign.organizationDisplayName, style = MaterialTheme.typography.bodySmall)
-            Text(m17CampaignTypeLabel(campaign.campaignType), style = MaterialTheme.typography.labelMedium)
+            Text(campaign.title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (campaign.description.isNotBlank()) {
+                Text(
+                    campaign.description,
+                    style = MaterialTheme.typography.bodySmall,
+                    maxLines = 3
+                )
+            }
             Text(
-                M17DonationValidators.formatMoneyMinor(campaign.confirmedAmountMinor, campaign.currency) +
-                    " / " + M17DonationValidators.formatMoneyMinor(campaign.goalAmountMinor, campaign.currency),
+                MoneyPresentation.raisedOfGoal(
+                    campaign.confirmedAmountMinor,
+                    campaign.goalAmountMinor,
+                    campaign.currency
+                ),
                 style = MaterialTheme.typography.bodyMedium
             )
             LinearProgressIndicator(
-                progress = { (campaign.progressPercent.coerceIn(0, 100) / 100f) },
+                progress = { MoneyPresentation.barFraction(campaign.progressPercent) },
                 modifier = Modifier.fillMaxWidth()
             )
+            Text(m17CampaignStatusLabel(campaign.status), style = MaterialTheme.typography.labelMedium)
             campaign.reference.publicLocationText?.let {
                 Text("📍 $it", style = MaterialTheme.typography.bodySmall)
             }
@@ -198,7 +257,8 @@ fun M17CampaignDetailScreen(
 ) {
     val campaign by viewModel.campaign.collectAsState()
     val managed by viewModel.managedContributions.collectAsState()
-    val isCreator by viewModel.isCreator.collectAsState()
+    val canManage by viewModel.canManageOrganization.collectAsState()
+    val viewerId by viewModel.viewerUserId.collectAsState()
     val declaring by viewModel.declaring.collectAsState()
     val loading by viewModel.loading.collectAsState()
     val message by viewModel.message.collectAsState()
@@ -228,15 +288,21 @@ fun M17CampaignDetailScreen(
                     if (c.description.isNotBlank()) Text(c.description)
                     Text("Estado: ${m17CampaignStatusLabel(c.status)}")
                     Text(
-                        "Recaudado confirmado: " + M17DonationValidators.formatMoneyMinor(c.confirmedAmountMinor, c.currency) +
-                            " (${c.progressPercent}% del objetivo)"
+                        MoneyPresentation.raisedOfGoal(
+                            c.confirmedAmountMinor,
+                            c.goalAmountMinor,
+                            c.currency
+                        )
                     )
                     Text(
                         "${c.confirmedContributionCount} colaboraciones confirmadas",
                         style = LeoCaption,
                         color = MutedText
                     )
-                    LinearProgressIndicator(progress = { c.progressPercent.coerceIn(0, 100) / 100f }, modifier = Modifier.fillMaxWidth())
+                    LinearProgressIndicator(
+                        progress = { MoneyPresentation.barFraction(c.progressPercent) },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     c.reference.petPublicName?.let { Text("Mascota: $it", style = MaterialTheme.typography.bodySmall) }
                     c.reference.shelterPublicName?.let { Text("Refugio: $it", style = MaterialTheme.typography.bodySmall) }
                     LeoHairline()
@@ -275,7 +341,24 @@ fun M17CampaignDetailScreen(
                         Text("Actualizaciones", fontWeight = FontWeight.SemiBold)
                         c.publicUpdates.forEach { u -> Text("• ${u.message}", style = MaterialTheme.typography.bodySmall) }
                     }
-                    if (isCreator) {
+                    val own = managed.filter { row ->
+                        row.declaredByViewer ||
+                            (viewerId != null && row.contributorUserId == viewerId)
+                    }
+                    if (own.isNotEmpty()) {
+                        LeoHairline()
+                        Text("Tus colaboraciones", style = LeoCardTitle, fontWeight = FontWeight.SemiBold)
+                        own.forEach { item ->
+                            LeoListRow(
+                                title = M17DonationValidators.formatMoneyMinor(item.amountMinor, item.currency),
+                                subtitle = M17ContributionModeration.statusLabel(item.status)
+                            )
+                        }
+                    }
+                    val actionable = managed.filter { item ->
+                        M17ContributionModeration.canConfirmOrReject(canManage, item, viewerId)
+                    }
+                    if (canManage) {
                         LeoHairline()
                         Text("Colaboraciones declaradas", style = LeoCardTitle, fontWeight = FontWeight.SemiBold)
                         Text(
@@ -283,11 +366,10 @@ fun M17CampaignDetailScreen(
                             style = LeoCaption,
                             color = MutedText
                         )
-                        val pending = managed.filter { it.status == M17ContributionStatus.PENDING }
-                        if (pending.isEmpty()) {
+                        if (actionable.isEmpty()) {
                             Text("No hay declaraciones pendientes.", style = LeoCaption, color = MutedText)
                         } else {
-                            pending.forEach { item ->
+                            actionable.forEach { item ->
                                 CampaignContributionManageRow(
                                     contribution = item,
                                     onConfirm = { viewModel.confirmContribution(item.id) },
@@ -349,7 +431,7 @@ fun M17CampaignDetailScreen(
             ) {
                 Text("Declarar colaboración", style = LeoCardTitle, fontWeight = FontWeight.SemiBold)
                 Text(
-                    "Transferí por fuera de LeoVer y declará el monto. Queda pendiente hasta que el creador lo confirme.",
+                    "Transferí por fuera de LeoVer y declará el monto. Queda pendiente de confirmación.",
                     style = LeoCaption,
                     color = MutedText
                 )
@@ -443,8 +525,11 @@ fun M17CampaignManageScreen(
                                 Text("${m17CampaignStatusLabel(c.status)} · ${m17CampaignTypeLabel(c.campaignType)}")
                                 summary?.let {
                                     Text(
-                                        M17DonationValidators.formatMoneyMinor(it.confirmedAmountMinor, it.currency) +
-                                            " / " + M17DonationValidators.formatMoneyMinor(it.goalAmountMinor, it.currency)
+                                        MoneyPresentation.raisedOfGoal(
+                                            it.confirmedAmountMinor,
+                                            it.goalAmountMinor,
+                                            it.currency
+                                        )
                                     )
                                 }
                                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {

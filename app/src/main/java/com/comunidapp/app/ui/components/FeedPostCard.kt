@@ -98,7 +98,7 @@ fun FeedPostCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                PostTypeBadge(type = post.type)
+                PostTypeBadge(post = post)
                 if (showOverflow) {
                     Box {
                         IconButton(onClick = { menuExpanded = true }) {
@@ -246,11 +246,16 @@ fun FeedPostCard(
 }
 
 @Composable
-private fun PostTypeBadge(type: PostType) {
+private fun PostTypeBadge(post: FeedPost) {
+    val type = post.type
     val (label, color) = when (type) {
         PostType.URGENT -> "Urgente" to UrgentContainer
         PostType.ADOPTION -> "Adopción" to MaterialTheme.colorScheme.primaryContainer
-        PostType.LOST_FOUND -> "Perdido/Encontrado" to OrangeContainer
+        PostType.LOST_FOUND -> {
+            val kindLabel = com.comunidapp.app.domain.lostfound.LostFoundAlertLabel.forKind(post.alertKind)
+                ?: return
+            kindLabel to OrangeContainer
+        }
         PostType.QUESTION -> "Pregunta" to MaterialTheme.colorScheme.tertiaryContainer
         PostType.PROMO -> "Publicidad" to MaterialTheme.colorScheme.secondaryContainer
         PostType.GENERAL -> "General" to MaterialTheme.colorScheme.surfaceVariant

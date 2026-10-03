@@ -61,6 +61,19 @@ class M15MemoryStore {
     val temporaryCustody = MutableStateFlow<List<M15TemporaryCustodyGrant>>(emptyList())
     var forceRevokeFailure: Boolean = false
 
+    fun clearSessionResidue() {
+        _homes.value = emptyList()
+        _requests.value = emptyList()
+        _placements.value = emptyList()
+        _audit.value = emptyList()
+        _m06.value = emptyList()
+        petPrincipal.value = emptyMap()
+        evolution.value = emptyList()
+        expenses.value = emptyList()
+        helpRequests.value = emptyList()
+        temporaryCustody.value = emptyList()
+    }
+
     fun nextId(prefix: String): String = "${prefix}_${idSeq.incrementAndGet()}"
 
     suspend fun <T> withLock(block: suspend () -> T): T = mutex.withLock { block() }

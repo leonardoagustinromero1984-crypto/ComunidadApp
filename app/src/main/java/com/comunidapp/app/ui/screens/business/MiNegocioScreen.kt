@@ -177,16 +177,17 @@ fun MiNegocioScreen(
                         null
                     },
                     onSelected = { point ->
-                        viewModel.updateMapPin(point.latitude, point.longitude, publicPremises = true)
+                        val real = com.comunidapp.app.domain.location.SharedLocationCapture.realFixOrNull(point)
+                            ?: return@LocationPinPicker
+                        viewModel.updateMapPin(real.latitude, real.longitude, publicPremises = true)
                     },
                     address = uiState.location.takeIf { it.isNotBlank() },
                     onAddressChange = { suggestion ->
                         viewModel.updateLocation(suggestion.label)
-                        viewModel.updateMapPin(
-                            suggestion.point.latitude,
-                            suggestion.point.longitude,
-                            publicPremises = true
-                        )
+                        val real = com.comunidapp.app.domain.location.SharedLocationCapture.realFixOrNull(
+                            suggestion.point
+                        ) ?: return@LocationPinPicker
+                        viewModel.updateMapPin(real.latitude, real.longitude, publicPremises = true)
                     },
                     required = true
                 )

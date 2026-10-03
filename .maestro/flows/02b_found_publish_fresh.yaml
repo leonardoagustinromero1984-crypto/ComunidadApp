@@ -1,0 +1,35 @@
+appId: ${APP_ID}
+name: "FOUND publish NEEDS_FRESH_FIXTURE"
+tags:
+  - community-care
+  - found
+  - needs-fresh-fixture
+  - reset-required
+---
+# NEEDS_FRESH_FIXTURE. Do not publish another FOUND on the IN_CARE pin
+# 3e238403-174b-4ce8-82fd-58daa4faa636 or on Mora's archived provisional.
+- assertVisible: "FRESH_FIXTURE_REQUIRED"
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA02_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-lost-found.yaml
+    env:
+      APP_ID: ${APP_ID}
+- tapOn: "Encontré un animal"
+- extendedWaitUntil:
+    visible: "Foto *"
+    timeout: 10000
+- addMedia:
+    - "../fixtures/qa-pet.jpg"
+- tapOn: "Agregar foto"
+- scrollUntilVisible:
+    element: "Publicar"
+    direction: DOWN
+    timeout: 8000
+- tapOn: "Publicar"
+- takeScreenshot: found_published_fresh

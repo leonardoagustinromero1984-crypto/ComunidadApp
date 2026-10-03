@@ -100,14 +100,15 @@ fun resolveActiveContext(
     saved: ActiveContextSelection?,
     lastActive: OperationalContext? = null
 ): OperationalContext {
-    if (saved == null) return OperationalContext.Personal
-    available.firstOrNull { it.kind == saved.kind && it.entityId == saved.entityId }
+    val pool = available.ifEmpty { listOf(OperationalContext.Personal) }
+    val personal = pool.firstOrNull { it is OperationalContext.Personal } ?: OperationalContext.Personal
+    if (saved == null) return personal
+    pool.firstOrNull { it.kind == saved.kind && it.entityId == saved.entityId }
         ?.let { return it }
-    if (lastActive != null && lastActive.kind == saved.kind && lastActive.entityId == saved.entityId) {
-        return lastActive
-    }
-    val sameKind = available.filter { it.kind == saved.kind }
+    val sameKind = pool.filter { it.kind == saved.kind }
     if (sameKind.size == 1) return sameKind.first()
     sameKind.firstOrNull { !it.entityId.startsWith("onb02:") }?.let { return it }
-    return lastActive?.takeIf { it.kind == saved.kind } ?: OperationalContext.Personal
+    @Suppress("UNUSED_PARAMETER")
+    val ignoredLast = lastActive
+    return personal
 }

@@ -52,6 +52,14 @@ class M22ProviderMemoryStore {
     suspend fun <T> withLock(block: suspend () -> T): T = mutex.withLock { block() }
     fun nextId(prefix: String): String = "${prefix}_${++sequence}"
 
+    fun clearSessionResidue() {
+        sequence = 0
+        providers.value = emptyList()
+        branches.value = emptyList()
+        offerings.value = emptyList()
+        seedDefaults()
+    }
+
     fun seedDefaults() {
         if (providers.value.isNotEmpty()) return
         val stamp = 1_700_000_000_000L

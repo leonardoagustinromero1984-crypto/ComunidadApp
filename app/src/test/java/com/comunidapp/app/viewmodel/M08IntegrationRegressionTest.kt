@@ -12,6 +12,7 @@ import com.comunidapp.app.data.repository.MockAuthRepository
 import com.comunidapp.app.data.repository.MockPlatformRepository
 import com.comunidapp.app.domain.pets.PetPrincipalHolder
 import com.comunidapp.app.domain.pets.PetResponsibilityRole
+import com.comunidapp.app.domain.user.SessionResolvedPerson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -51,13 +52,17 @@ class M08IntegrationRegressionTest {
         petRepo = FakeStage5PetRepository(pet = null)
         respRepo = FakeStage5ResponsibilityRepository()
         transferRepo = FakeStage5TransferRepository()
-        userRepo = FakeStage5UserRepository()
+        SessionResolvedPerson.clear()
+        userRepo = FakeStage5UserRepository(
+            usersById = mapOf(MockData.currentUser.id to MockData.currentUser)
+        )
         platformRepo = MockPlatformRepository()
     }
 
     @After
     fun tearDown() {
         Dispatchers.resetMain()
+        SessionResolvedPerson.clear()
         MockAuthDatabase.resetToFixtures()
     }
 
@@ -79,6 +84,7 @@ class M08IntegrationRegressionTest {
         editPetId = editPetId,
         authRepository = authRepo,
         petRepository = petRepo,
+        userRepository = userRepo,
         duplicateDebounceMs = debounceMs
     )
 

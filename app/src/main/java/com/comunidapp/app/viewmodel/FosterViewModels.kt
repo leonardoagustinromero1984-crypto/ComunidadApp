@@ -26,6 +26,8 @@ import com.comunidapp.app.data.repository.PetRepository
 import com.comunidapp.app.data.repository.SubmitFosterRequestInput
 import com.comunidapp.app.data.repository.UpdateFosterHomeInput
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.put
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -150,6 +152,20 @@ data class FosterHomeFormState(
     val speciesPref: String = "",
     val agePref: String = "",
     val notes: String = "",
+    val acceptsDogs: Boolean? = null,
+    val acceptsCats: Boolean? = null,
+    val acceptsSmall: Boolean? = null,
+    val acceptsMedium: Boolean? = null,
+    val acceptsLarge: Boolean? = null,
+    val acceptsYoung: Boolean? = null,
+    val acceptsAdult: Boolean? = null,
+    val acceptsSenior: Boolean? = null,
+    val acceptsMedication: Boolean? = null,
+    val livesWithDogs: Boolean? = null,
+    val livesWithCats: Boolean? = null,
+    val livesWithChildren: Boolean? = null,
+    val acceptsReducedMobility: Boolean? = null,
+    val canIsolate: Boolean? = null,
     val activate: Boolean = true,
     val submitting: Boolean = false,
     val error: String? = null,
@@ -182,7 +198,23 @@ class FosterHomeFormViewModel(
                     sizeL = "LARGE" in home.acceptedSizes,
                     acceptsSpecialNeeds = home.acceptsSpecialNeeds,
                     acceptsEmergencies = home.acceptsEmergencies,
-                    editingHomeId = home.id
+                    editingHomeId = home.id,
+                    notes = home.observations.orEmpty(),
+                    acceptsDogs = home.capabilities.acceptsDogs,
+                    acceptsCats = home.capabilities.acceptsCats,
+                    acceptsSmall = home.capabilities.acceptsSmall,
+                    acceptsMedium = home.capabilities.acceptsMedium,
+                    acceptsLarge = home.capabilities.acceptsLarge,
+                    acceptsYoung = home.capabilities.acceptsYoung,
+                    acceptsAdult = home.capabilities.acceptsAdult,
+                    acceptsSenior = home.capabilities.acceptsSenior,
+                    acceptsMedication = home.capabilities.acceptsMedication,
+                    livesWithDogs = home.capabilities.livesWithDogs,
+                    livesWithCats = home.capabilities.livesWithCats,
+                    livesWithChildren = home.capabilities.livesWithChildren,
+                    acceptsReducedMobility = home.capabilities.acceptsReducedMobility,
+                    canIsolate = home.capabilities.canIsolate,
+                    localityId = home.capabilities.localityId
                 )
             }.onFailure {
                 _form.value = _form.value.copy(
@@ -254,9 +286,23 @@ class FosterHomeFormViewModel(
                             put("p_capacity", capacity.coerceIn(1, 3))
                             s.localityId?.let { put("p_locality_id", it) }
                             put("p_active", s.activate)
-                            put("p_species_pref", s.speciesPref)
-                            put("p_age_pref", s.agePref)
+                            put("p_species_pref", legacySpeciesPref(s.acceptsDogs, s.acceptsCats))
+                            put("p_age_pref", legacyAgePref(s.acceptsYoung, s.acceptsAdult, s.acceptsSenior))
                             put("p_notes", s.notes)
+                            putFosterTri("p_accepts_treatment", s.acceptsMedication)
+                            putFosterTri("p_accepts_dogs", s.acceptsDogs)
+                            putFosterTri("p_accepts_cats", s.acceptsCats)
+                            putFosterTri("p_accepts_small", s.acceptsSmall)
+                            putFosterTri("p_accepts_medium", s.acceptsMedium)
+                            putFosterTri("p_accepts_large", s.acceptsLarge)
+                            putFosterTri("p_accepts_young", s.acceptsYoung)
+                            putFosterTri("p_accepts_adult", s.acceptsAdult)
+                            putFosterTri("p_accepts_senior", s.acceptsSenior)
+                            putFosterTri("p_accepts_reduced_mobility", s.acceptsReducedMobility)
+                            putFosterTri("p_can_isolate", s.canIsolate)
+                            putFosterTri("p_lives_with_dogs", s.livesWithDogs)
+                            putFosterTri("p_lives_with_cats", s.livesWithCats)
+                            putFosterTri("p_lives_with_children", s.livesWithChildren)
                         }
                     )
                 }
@@ -609,4 +655,22 @@ class FosterPlacementDetailViewModel(
                     FosterPlacementDetailViewModel(placementId) as T
             }
     }
+}
+
+private fun JsonObjectBuilder.putFosterTri(key: String, value: Boolean?) {
+    if (value == null) put(key, JsonNull) else put(key, value)
+}
+
+private fun legacySpeciesPref(dogs: Boolean?, cats: Boolean?): String = when {
+    dogs == true && cats == true -> "BOTH"
+    dogs == true -> "DOG"
+    cats == true -> "CAT"
+    else -> ""
+}
+
+private fun legacyAgePref(young: Boolean?, adult: Boolean?, senior: Boolean?): String = when {
+    young == true && adult != true && senior != true -> "YOUNG"
+    adult == true && young != true && senior != true -> "ADULT"
+    senior == true && young != true && adult != true -> "SENIOR"
+    else -> ""
 }

@@ -37,11 +37,29 @@ object PetManagementContext {
             ?: pet.ownerId?.trim()?.takeIf { it.isNotEmpty() }
         if (kind != want.kind) return false
         return when (want.kind) {
-            // Accessible list is already holder-scoped. Shared PERSON pets keep
-            // the original managementContextId, so do not require it == viewer.
-            PERSON -> true
+            // Do not require managementContextId == viewer: a shared PERSON pet
+            // keeps the original context id. Visibility still requires the viewer
+            // to be the access subject, a holder, or an explicit co-owner.
+            PERSON -> viewerMaySeePersonPet(pet, userId)
             else -> !want.id.isNullOrBlank() && id == want.id
         }
+    }
+
+    /**
+     * PERSON list rule.
+     * A non-blank [Pet.accessSubjectUserId] means the row was returned by
+     * listAccessiblePets for that uid (including a legitimate share).
+     * Without that stamp, the viewer must be the current holder, creator,
+     * management context, or an explicit member of [Pet.ownerIds].
+     */
+    private fun viewerMaySeePersonPet(pet: Pet, userId: String): Boolean {
+        if (userId.isBlank()) return false
+        val subject = pet.accessSubjectUserId?.trim()?.takeIf { it.isNotEmpty() }
+        if (subject != null) return subject == userId
+        if (userId == pet.ownerId?.trim()) return true
+        if (userId == pet.createdByUserId?.trim()) return true
+        if (userId == pet.managementContextId?.trim()) return true
+        return pet.ownerIds.any { it.trim() == userId }
     }
 
     fun filter(

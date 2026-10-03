@@ -519,6 +519,10 @@ class ProfileOnboardingViewModel(
                     return@launch
                 }
 
+            com.comunidapp.app.domain.onboarding.onb02.Onb02SessionFlags.justCompletedProfileSetup = true
+            if (state.userId.isNotBlank()) {
+                com.comunidapp.app.data.local.Onb02StoreProvider.instance.markFullPending(state.userId)
+            }
             _uiState.update {
                 it.copy(
                     isSubmitting = false,

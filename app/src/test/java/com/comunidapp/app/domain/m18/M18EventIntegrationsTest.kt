@@ -27,6 +27,7 @@ class M18EventIntegrationsTest {
     @Before
     fun setup() {
         store = M18EventMemoryStore()
+        store.seedDefaults("mock_user_admin")
         repository = MockM18EventRepository(actorUserId = { "mock_user_admin" }, store = store)
     }
 

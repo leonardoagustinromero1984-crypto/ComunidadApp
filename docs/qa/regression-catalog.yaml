@@ -242,6 +242,30 @@ rules:
     manual_required: false
     maestro_required: true
 
+  - id: REG-LF-006
+    module: LOST_FOUND
+    rule: >
+      Permanent VitaCora reunification invariant. Confirming a provisional FOUND
+      pet as an existing LOST pet keeps one ACTIVE pet and one functional
+      VitaCora. Hallazgo moments move onto the survivor. The provisional pet
+      is ARCHIVED. Its VitaCora row stays only as historical identity: retired
+      onto the survivor, the old public number redirects, and writes against
+      it are rejected. The retained row is historical identity only: it is
+      not a second VitaCora. REG-LF-006 means one active canonical Pet and
+      one functional canonical VitaCora. Migrations 1099–1103 do not replace
+      confirm. Migration 1104 is the canonical retirement. The contract test
+      does not apply it.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/lostfound/ReunificationVitaCoraInvariantTest.kt, layer: contract }
+      - { file: app/src/test/java/com/comunidapp/app/domain/lostfound/VitaCoraReunificationRetirement1104Test.kt, layer: contract }
+      - { file: scripts/qa/probe-community-care-live-lost-found.py, layer: sql }
+    suite: CORE
+    actors: [QA01, QA02]
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+
   # ----- VERIFICATION -----
   - id: REG-VER-001
     module: VERIFICATION
@@ -506,6 +530,19 @@ rules:
     manual_required: false
     maestro_required: false
     reason: Contract covers the read path. The live probe is read-only STAGING validation, not Maestro. Maestro 09 was not executed.
+
+  - id: REG-QA-17A
+    module: PHYSICAL_QA
+    rule: Google nuevo entra a Tutorial y Selector; foto, Lost/Found, ubicación, QR, adopción y publicación de servicio persisten o publican con el contrato actual.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/qa/PhysicalQa17AContractTest.kt, layer: contract }
+    suite: FAST
+    actors: []
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+    reason: GPS real remains physical QA. These contracts cover the app-side order, payload, and recovery.
 
   # ----- MANUAL HARDWARE -----
   - id: REG-HW-001

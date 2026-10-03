@@ -21,6 +21,7 @@ import com.comunidapp.app.data.remote.supabase.m17.toM17ContributionInternal
 import com.comunidapp.app.data.remote.supabase.m17.toM17DonationCampaign
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicCampaign
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicContribution
+import com.comunidapp.app.data.remote.supabase.m17.toMyMoneyContribution
 import com.comunidapp.app.domain.organization.OrganizationId
 import com.comunidapp.app.domain.organization.authorization.OrganizationPermissionCode
 import com.comunidapp.app.domain.user.AccountStatus
@@ -233,6 +234,13 @@ class SupabaseM17DonationRepository(
     } catch (t: Throwable) {
         M17DonationErrorMapper.failure(t)
     }
+
+    override suspend fun listMyContributions(): Result<List<com.comunidapp.app.domain.m17.MyMoneyContribution>> =
+        try {
+            Result.success(remote.listMyContributions().map { it.toMyMoneyContribution() })
+        } catch (t: Throwable) {
+            M17DonationErrorMapper.failure(t)
+        }
 
     override suspend fun listManagedContributions(campaignId: String): Result<List<M17Contribution>> =
         try {

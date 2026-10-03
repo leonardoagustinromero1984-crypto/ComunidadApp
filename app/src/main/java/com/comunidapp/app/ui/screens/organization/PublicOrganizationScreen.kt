@@ -17,10 +17,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.comunidapp.app.domain.organization.OrganizationPresentation
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.viewmodel.PublicOrganizationViewModel
 
 @Composable
@@ -78,10 +78,16 @@ fun PublicOrganizationScreen(
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = "${org.type.name} · ${org.verificationStatus.name}",
+                        text = OrganizationPresentation.organizationType(org.type),
                         style = MaterialTheme.typography.labelLarge
                     )
+                    OrganizationPresentation.organizationVerifiedBadge(org.verificationStatus)?.let { badge ->
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(text = badge, fontWeight = FontWeight.SemiBold)
+                    }
                     listOfNotNull(org.city, org.province)
+                        .map { it.trim() }
+                        .filter { it.isNotEmpty() && !it.equals("null", ignoreCase = true) && it != "-" && !it.equals("N/A", ignoreCase = true) }
                         .takeIf { it.isNotEmpty() }
                         ?.let { parts ->
                             Spacer(modifier = Modifier.height(8.dp))
@@ -90,7 +96,7 @@ fun PublicOrganizationScreen(
                                 style = MaterialTheme.typography.bodyMedium
                             )
                         }
-                    org.description?.let { desc ->
+                    org.description?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }?.let { desc ->
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(
                             text = desc,
@@ -98,11 +104,11 @@ fun PublicOrganizationScreen(
                             modifier = Modifier.fillMaxWidth()
                         )
                     }
-                    org.publicEmail?.let { email ->
+                    org.publicEmail?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }?.let { email ->
                         Spacer(modifier = Modifier.height(16.dp))
                         Text(text = "Email: $email")
                     }
-                    org.publicPhone?.let { phone ->
+                    org.publicPhone?.trim()?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }?.let { phone ->
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(text = "Teléfono: $phone")
                     }

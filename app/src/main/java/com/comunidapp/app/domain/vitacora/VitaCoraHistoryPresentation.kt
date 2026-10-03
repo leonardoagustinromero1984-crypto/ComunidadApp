@@ -69,10 +69,8 @@ object VitaCoraHistoryPresentation {
                 return null
             }
 
-            val reason = item.reason?.trim().orEmpty()
-            if (reason in GENERIC_SOCIAL_TITLES) return null
-            reason.takeIf { it.isNotBlank() && !looksTechnical(it) }?.let { return it }
-            momentTitle(kind, item)
+            usefulText(item.reason, kind)?.let { return it }
+            usefulText(item.bodyPreview, kind)?.let { return it }
             return null
 
         }
@@ -165,12 +163,30 @@ object VitaCoraHistoryPresentation {
         "ARCHIVED" -> "Se archivó la VitaCora"
 
         "LOST" -> "Se reportó pérdida"
+        "FOUND", "FOUND_CASE" -> "Se reportó un hallazgo"
 
         else -> reason.replace('_', ' ').replaceFirstChar { it.titlecase(Locale("es", "AR")) }
 
     }
 
 
+
+    private fun usefulText(value: String?, kind: String?): String? {
+        val text = value?.trim().orEmpty()
+        if (text.isBlank()) return null
+        if (kind != null && text.equals(kind, ignoreCase = true)) return null
+        if (text.equals("PHOTO", ignoreCase = true) || text.equals("MEMORY", ignoreCase = true)) return null
+        if (text.equals("Se guardó un recuerdo", ignoreCase = true)) return null
+        if (text in GENERIC_SOCIAL_TITLES) return null
+        if (looksTechnical(text)) return null
+        return text
+    }
+
+    fun plainBodyPreview(body: String?): String? {
+        val raw = body?.trim().orEmpty()
+        if (raw.isEmpty() || raw.startsWith("{")) return null
+        return raw.take(180)
+    }
 
     private fun looksTechnical(value: String): Boolean {
 

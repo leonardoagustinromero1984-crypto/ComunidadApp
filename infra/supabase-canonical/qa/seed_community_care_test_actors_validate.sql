@@ -89,6 +89,16 @@ select 'QA07_VERIFIED', count(*)
   from public.organizations o
  where o.slug = 'qa-cc-shelter-verified' and o.verification_status = 'VERIFIED'
 union all
+select 'QA07_ORG_PETS_TRANSFER', count(*)
+  from public.persons p
+  join public.organization_memberships m
+    on m.person_id = p.user_id and m.status = 'ACTIVE'
+  join public.organizations o on o.id = m.organization_id
+  join public.organization_role_permissions rp on rp.role_id = m.role_id
+ where p.username = 'qa07shelter'
+   and o.slug = 'qa-cc-shelter-verified'
+   and rp.permission_code = 'org.pets.transfer'
+union all
 select 'QA08_PENDING', count(*)
   from public.organizations o
  where o.slug = 'qa-cc-shelter-pending' and o.verification_status = 'PENDING'

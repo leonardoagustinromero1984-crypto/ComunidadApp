@@ -1,6 +1,8 @@
 appId: ${APP_ID}
 ---
-- tapOn: "Perfil"
+# Canonical in-app list. Home bell, not Configuración → Notificaciones
+# (that row opens preferences). Do not tap "Marcar todas".
+- tapOn: "Inicio"
 - tapOn: "Notificaciones"
 - extendedWaitUntil:
     visible: "Notificaciones"

@@ -4,6 +4,7 @@ import com.comunidapp.app.data.remote.supabase.m08.M08RpcDecoding
 import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.canonical.CanonicalBackend
 import com.comunidapp.app.domain.context.OperationalContextProvider
+import com.comunidapp.app.domain.foster.FosterHomeCapabilities
 import com.comunidapp.app.domain.ux.CanonicalUiErrorMapper
 import com.comunidapp.app.data.model.FosterAvailabilityStatus
 import com.comunidapp.app.data.model.FosterHomeProfile
@@ -26,7 +27,24 @@ private data class CanonicalFosterProfileRow(
     @SerialName("user_id") val userId: String,
     val capacity: Int = 1,
     val active: Boolean = true,
-    @SerialName("locality_id") val localityId: String? = null
+    @SerialName("locality_id") val localityId: String? = null,
+    @SerialName("species_pref") val speciesPref: String? = null,
+    @SerialName("age_pref") val agePref: String? = null,
+    @SerialName("accepts_treatment") val acceptsTreatment: Boolean? = null,
+    @SerialName("notes") val notes: String? = null,
+    @SerialName("accepts_dogs") val acceptsDogs: Boolean? = null,
+    @SerialName("accepts_cats") val acceptsCats: Boolean? = null,
+    @SerialName("accepts_small") val acceptsSmall: Boolean? = null,
+    @SerialName("accepts_medium") val acceptsMedium: Boolean? = null,
+    @SerialName("accepts_large") val acceptsLarge: Boolean? = null,
+    @SerialName("accepts_young") val acceptsYoung: Boolean? = null,
+    @SerialName("accepts_adult") val acceptsAdult: Boolean? = null,
+    @SerialName("accepts_senior") val acceptsSenior: Boolean? = null,
+    @SerialName("accepts_reduced_mobility") val acceptsReducedMobility: Boolean? = null,
+    @SerialName("can_isolate") val canIsolate: Boolean? = null,
+    @SerialName("lives_with_dogs") val livesWithDogs: Boolean? = null,
+    @SerialName("lives_with_cats") val livesWithCats: Boolean? = null,
+    @SerialName("lives_with_children") val livesWithChildren: Boolean? = null
 )
 
 /**
@@ -119,7 +137,30 @@ class CanonicalFosterHomeRepository : FosterHomeRepository {
             publicLocationText = com.comunidapp.app.domain.ux.HumanLocationLabel.visible(localityId)
                 .ifBlank { null },
             createdAt = now,
-            updatedAt = now
+            updatedAt = now,
+            capabilities = FosterHomeCapabilities(
+                active = active,
+                hasBaseLocation = !localityId.isNullOrBlank(),
+                localityId = localityId,
+                capacity = capacity,
+                acceptsDogs = acceptsDogs,
+                acceptsCats = acceptsCats,
+                acceptsSmall = acceptsSmall,
+                acceptsMedium = acceptsMedium,
+                acceptsLarge = acceptsLarge,
+                acceptsYoung = acceptsYoung,
+                acceptsAdult = acceptsAdult,
+                acceptsSenior = acceptsSenior,
+                acceptsMedication = acceptsTreatment,
+                livesWithDogs = livesWithDogs,
+                livesWithCats = livesWithCats,
+                livesWithChildren = livesWithChildren,
+                acceptsReducedMobility = acceptsReducedMobility,
+                canIsolate = canIsolate,
+                speciesPref = speciesPref,
+                agePref = agePref
+            ),
+            observations = notes
         )
     }
 }

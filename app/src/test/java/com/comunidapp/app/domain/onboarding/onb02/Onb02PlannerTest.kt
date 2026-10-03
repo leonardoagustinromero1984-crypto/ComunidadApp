@@ -165,6 +165,8 @@ class Onb02PlannerTest {
         assertEquals(Onb02Phase.SELECT, vm.ui.value.phase)
         assertTrue(store.progress("user-1", TutorialId.T00_MULTI_FUNCTION_INTRO).skipped)
         vm.confirmSelection()
+        assertEquals(Onb02Phase.ADD_FUNCTION_GUIDE, vm.ui.value.phase)
+        vm.acknowledgeAddFunctionGuide()
         assertEquals(Onb02Phase.DONE, vm.ui.value.phase)
         assertTrue(Onb02Planner.skipIsNonBlocking())
     }

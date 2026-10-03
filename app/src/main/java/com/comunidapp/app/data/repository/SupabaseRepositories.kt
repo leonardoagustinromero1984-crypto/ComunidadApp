@@ -297,7 +297,8 @@ class SupabaseAdoptionRepository(
                 description = post.description,
                 requirements = post.requirements,
                 locationText = post.location,
-                publish = post.status == AdoptionStatus.PUBLISHED
+                publish = post.status == AdoptionStatus.PUBLISHED,
+                matchRequirements = post.matchRequirements
             )
         ).map { it.id }
     }
@@ -309,7 +310,8 @@ class SupabaseAdoptionRepository(
                 title = post.title.ifBlank { post.name },
                 description = post.description,
                 requirements = post.requirements,
-                locationText = post.location
+                locationText = post.location,
+                matchRequirements = post.matchRequirements
             )
         ).map { }
 

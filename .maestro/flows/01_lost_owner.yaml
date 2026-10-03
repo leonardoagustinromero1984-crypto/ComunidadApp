@@ -1,9 +1,12 @@
 appId: ${APP_ID}
-name: "LOST owner QA01 Mora"
+name: "LOST navigation smoke QA01"
 tags:
   - community-care
   - lost
+  - updated-ready
 ---
+# UPDATED_READY. Mora is already reunified. This flow does not publish.
+# A new LOST is 01b_lost_publish_fresh.yaml (NEEDS_FRESH_FIXTURE).
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -15,28 +18,24 @@ tags:
     file: ../subflows/open-lost-found.yaml
     env:
       APP_ID: ${APP_ID}
+- assertVisible: "Perdí a mi mascota"
+- assertVisible: "Encontré un animal"
+- assertVisible: "Ver mapa de alertas"
+- assertNotVisible: "Tomar caso"
 - tapOn: "Perdí a mi mascota"
 - extendedWaitUntil:
-    visible: "Perdí a mi mascota"
+    visible: "Foto *"
     timeout: 10000
-- assertVisible: "Foto *"
 - assertVisible: "Mascota LeoVer *"
-- assertNotVisible: "Sin nombre"
-- tapOn: "QA - Mora"
-- assertNotVisible: "LF-CREATE"
-- takeScreenshot: lost_form_mora
-- addMedia:
-    - "../fixtures/qa-pet.jpg"
-- tapOn: "Agregar foto"
-# Photo Picker is OS-owned. If Maestro cannot pick the fixture, the runner marks MANUAL.
-- takeScreenshot: lost_after_add_photo
+- assertVisible: "QA - Mora"
 - scrollUntilVisible:
     element: "Publicar"
     direction: DOWN
     timeout: 8000
-- tapOn: "Publicar"
+- assertVisible: "Publicar"
+- takeScreenshot: lost_form_mora_not_published
+- tapOn: "Volver"
 - extendedWaitUntil:
-    visible: "Perdí a mi mascota"
-    timeout: 20000
-- assertNotVisible: "LF-CREATE"
-- takeScreenshot: lost_published
+    visible: "Perdidos / Encontrados"
+    timeout: 10000
+- takeScreenshot: lost_navigation_smoke

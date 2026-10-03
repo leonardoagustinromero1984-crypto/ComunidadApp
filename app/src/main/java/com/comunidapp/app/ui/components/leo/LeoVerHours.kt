@@ -13,6 +13,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,6 +45,19 @@ fun LeoVerWeeklyHoursEditor(
     var pickingOpen by remember { mutableStateOf<Boolean?>(null) }
     var addingExtra by remember { mutableStateOf(false) }
     val remaining = WeeklyHoursBulkApply.daysWithoutRule(schedule)
+    LaunchedEffect(schedule.days.count { it.closed }) {
+        val hasOpenDay = schedule.days.any { day ->
+            !day.closed && (day.open24Hours || !day.opensAt.isNullOrBlank())
+        }
+        if (!hasOpenDay) {
+            onChange(
+                WeeklyHoursBulkApply.apply(
+                    schedule,
+                    WeeklyHoursBulkApply.Range(setOf(1, 2, 3, 4, 5), opensAt, closesAt)
+                )
+            )
+        }
+    }
 
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
         Text("Horarios", color = visual.textPrimary)

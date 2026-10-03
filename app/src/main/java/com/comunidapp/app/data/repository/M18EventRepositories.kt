@@ -91,6 +91,18 @@ class M18EventMemoryStore {
     fun registrationForUser(eventId: String, userId: String): M18EventRegistration? =
         _registrations.value.firstOrNull { it.eventId == eventId && it.userId == userId }
 
+    fun clearSessionResidue() {
+        seeded = false
+        idSeq.set(0)
+        _events.value = emptyList()
+        _registrations.value = emptyList()
+        _reminders.value = emptyList()
+        organizationTypes.value = emptyMap()
+        organizationManagers.value = emptyMap()
+        organizationDisplayNames.value = emptyMap()
+        seedDefaults(com.comunidapp.app.domain.user.SessionGeneration.NEUTRAL_MOCK_ACTOR)
+    }
+
     fun seedDefaults(actorUserId: String = "mock_user_admin") {
         if (seeded) return
         seeded = true
@@ -259,7 +271,7 @@ class M18EventMemoryStore {
             organizationId = org,
             organizationDisplayName = organizationDisplayNames.value[org] ?: org,
             title = title,
-            description = "Evento comunitario mock M18. Sin venta de entradas ni pagos en Bloque 1.",
+            description = "Encuentro abierto de la organización. La participación es gratuita.",
             eventType = type,
             status = status,
             venueName = venue,
@@ -349,6 +361,7 @@ interface M18EventRepository {
     suspend fun canManageOrganization(organizationId: String): Boolean
     suspend fun isOrganizationEligible(organizationId: String): Boolean
     suspend fun getMyRegistration(eventId: String): M18EventRegistration?
+    suspend fun listMyRegistrations(): Result<List<com.comunidapp.app.domain.m18.MyEventRegistration>>
     suspend fun listRegistrationsForManage(eventId: String): Result<List<M18EventRegistration>>
     suspend fun observeOperationsSummary(eventId: String): Result<M18EventOperationsSummary>
     suspend fun listParticipantItems(eventId: String): Result<List<M18EventParticipantItem>>
@@ -387,7 +400,7 @@ class MockM18EventRepository(
 ) : M18EventRepository {
 
     init {
-        store.seedDefaults(actorUserId() ?: "mock_user_admin")
+        store.seedDefaults(com.comunidapp.app.domain.user.SessionGeneration.NEUTRAL_MOCK_ACTOR)
     }
 
     private fun requireActor(): String =
@@ -625,8 +638,18 @@ class MockM18EventRepository(
                     store.recordIdempotentRetry()
                     return@runCatching registration
                 }
-                val cancelled = registration.copy(status = M18RegistrationStatus.CANCELLED)
+                val cancelled = registration.copy(
+                    status = M18RegistrationStatus.CANCELLED,
+                    reminderScheduled = false
+                )
                 store.upsertRegistration(cancelled)
+                store.reminders.value
+                    .filter { it.eventId == eventId && it.userId == actor }
+                    .forEach { reminder ->
+                        store.upsertReminder(
+                            reminder.copy(status = com.comunidapp.app.data.model.M18ReminderStatus.SKIPPED)
+                        )
+                    }
                 promoteWaitlist(eventId)
                 cancelled
             }.fold(
@@ -743,6 +766,29 @@ class MockM18EventRepository(
         val actor = actorUserId() ?: return null
         return store.registrationForUser(eventId, actor)
     }
+
+    override suspend fun listMyRegistrations(): Result<List<com.comunidapp.app.domain.m18.MyEventRegistration>> =
+        runCatching {
+            val actor = actorUserId() ?: return@runCatching emptyList()
+            store.registrations.value
+                .filter { it.userId == actor }
+                .mapNotNull { registration ->
+                    val event = store.events.value.firstOrNull { it.id == registration.eventId }
+                        ?: return@mapNotNull null
+                    com.comunidapp.app.domain.m18.MyEventRegistration(
+                        eventId = event.id,
+                        title = event.title,
+                        organizationName = event.organizationDisplayName,
+                        startsAt = event.startsAt,
+                        endsAt = event.endsAt,
+                        eventStatus = event.status,
+                        registrationStatus = registration.status,
+                        venueName = event.venueName,
+                        locationText = event.reference.publicLocationText
+                    )
+                }
+                .sortedByDescending { it.startsAt }
+        }
 
     override suspend fun listRegistrationsForManage(eventId: String): Result<List<M18EventRegistration>> =
         runCatching {

@@ -25,6 +25,7 @@ import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.stateIn
+import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
@@ -39,7 +40,9 @@ data class AdoptionApplyFormState(
     val submitting: Boolean = false,
     val submitted: Boolean = false,
     val fieldError: String? = null,
-    val submitError: String? = null
+    val submitError: String? = null,
+    val openProfile: Boolean = false,
+    val compatibilityNote: String? = null
 )
 
 sealed class AdoptionApplyUiState {
@@ -97,32 +100,36 @@ class AdoptionApplyViewModel(
                     _post.value = post
                     _loading.value = false
                     val userId = authRepository.getCurrentUser()?.id
-                    if (userId != null &&
-                        (post.publisherId == userId || post.shelterId == userId)
-                    ) {
-                        _form.update {
-                            it.copy(submitError = M09AdoptionErrorMapper.userMessage("CANNOT_APPLY_TO_OWN_ADOPTION"))
-                        }
-                    } else if (post.status != AdoptionStatus.PUBLISHED) {
+                    val profile = loadAdopterProfile(userId)
+                    val active = hasActiveApplication(userId)
+                    val decision = com.comunidapp.app.domain.adoption.AdoptionApplyPolicy.evaluate(
+                        authenticated = !userId.isNullOrBlank(),
+                        isOwnPublication = userId != null &&
+                            (post.publisherId == userId || post.shelterId == userId),
+                        publicationAccepting = post.status == AdoptionStatus.PUBLISHED,
+                        hasActiveApplication = active,
+                        profile = profile
+                    )
+                    val note = if (post.matchRequirements.hasStructuredRequirement) {
+                        com.comunidapp.app.domain.adoption.AdoptionMatchPresentation.summary(
+                            com.comunidapp.app.domain.adoption.AdoptionMatchingPolicy.evaluate(
+                                profile,
+                                post.matchRequirements
+                            )
+                        )
+                    } else {
+                        null
+                    }
+                    if (!decision.allowed) {
                         _form.update {
                             it.copy(
-                                submitError = M09AdoptionErrorMapper.userMessage(
-                                    "ADOPTION_NOT_ACCEPTING_APPLICATIONS"
-                                )
+                                submitError = decision.message,
+                                openProfile = decision.openProfile,
+                                compatibilityNote = note
                             )
                         }
                     } else {
-                        val saved = com.comunidapp.app.data.local.AdoptionApplicantProfileStore.get(userId.orEmpty())
-                        if (saved != null) {
-                            _form.update {
-                                it.copy(
-                                    housingType = saved.householdSummary,
-                                    hasOtherPets = saved.hasYard,
-                                    previousExperience = saved.experienceSummary,
-                                    contactPhone = saved.availabilitySummary
-                                )
-                            }
-                        }
+                        _form.update { it.copy(compatibilityNote = note, openProfile = false, submitError = null) }
                     }
                 }
                 .onFailure { e ->
@@ -158,6 +165,27 @@ class AdoptionApplyViewModel(
         _form.update { it.copy(contactPhone = value) }
     }
 
+    private suspend fun loadAdopterProfile(userId: String?): com.comunidapp.app.domain.adoption.AdopterProfile {
+        if (userId.isNullOrBlank()) return com.comunidapp.app.domain.adoption.AdopterProfile()
+        com.comunidapp.app.data.local.AdoptionApplicantProfileStore.structured(userId)?.let { return it }
+        val raw = runCatching {
+            com.comunidapp.app.data.remote.supabase.supabase.postgrest.rpc(
+                com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_LIST_ADOPTION_GENERAL_PROFILE,
+                kotlinx.serialization.json.buildJsonObject { }
+            ).data
+        }.getOrNull()
+        return com.comunidapp.app.domain.adoption.AdoptionGeneralProfileCodec.decodeProfile(raw)
+    }
+
+    private suspend fun hasActiveApplication(userId: String?): Boolean {
+        if (userId.isNullOrBlank() || adoptionId.isBlank()) return false
+        return runCatching {
+            applicationRepository.observeMyApplications(userId).first()
+        }.getOrDefault(emptyList()).any { app ->
+            app.adoptionId == adoptionId && AdoptionApplicationStatus.isActive(app.status)
+        }
+    }
+
     fun submit() {
         val current = _form.value
         if (current.submitting || current.submitted) return
@@ -173,15 +201,28 @@ class AdoptionApplyViewModel(
             return
         }
         val post = _post.value ?: return
-        if (post.status != AdoptionStatus.PUBLISHED) {
-            _form.update {
-                it.copy(
-                    submitError = M09AdoptionErrorMapper.userMessage("ADOPTION_NOT_ACCEPTING_APPLICATIONS")
-                )
-            }
-            return
-        }
         viewModelScope.launch {
+            val userId = authRepository.getCurrentUser()?.id
+            val profile = loadAdopterProfile(userId)
+            val decision = com.comunidapp.app.domain.adoption.AdoptionApplyPolicy.evaluate(
+                authenticated = !userId.isNullOrBlank(),
+                isOwnPublication = userId != null &&
+                    (post.publisherId == userId || post.shelterId == userId),
+                publicationAccepting = post.status == AdoptionStatus.PUBLISHED,
+                hasActiveApplication = hasActiveApplication(userId),
+                profile = profile
+            )
+            if (!decision.allowed) {
+                _form.update {
+                    it.copy(
+                        submitError = decision.message,
+                        openProfile = decision.openProfile,
+                        submitting = false
+                    )
+                }
+                return@launch
+            }
+            val token = com.comunidapp.app.domain.user.SessionGeneration.current()
             _form.update { it.copy(submitting = true, submitError = null, fieldError = null) }
             applicationRepository.submitApplication(
                 SubmitApplicationParams(
@@ -193,19 +234,17 @@ class AdoptionApplyViewModel(
                     contactPhone = current.contactPhone.ifBlank { null }
                 )
             ).onSuccess {
-                authRepository.getCurrentUser()?.id?.let { personId ->
-                    com.comunidapp.app.data.local.AdoptionApplicantProfileStore.save(
-                        com.comunidapp.app.domain.adoption.AdoptionApplicantProfile(
-                            personId = personId,
-                            householdSummary = current.housingType,
-                            hasYard = current.hasOtherPets,
-                            experienceSummary = current.previousExperience,
-                            availabilitySummary = current.contactPhone
-                        )
-                    )
+                val committed = com.comunidapp.app.domain.user.SessionGeneration.publishIfCurrent(token) {
+                    authRepository.getCurrentUser()?.id?.let { personId ->
+                        com.comunidapp.app.data.local.AdoptionApplicantProfileStore.saveStructured(personId, profile)
+                    }
+                    _form.update { it.copy(submitting = false, submitted = true) }
+                    _events.tryEmit("Postulación enviada")
+                    true
                 }
-                _form.update { it.copy(submitting = false, submitted = true) }
-                _events.tryEmit("Postulación enviada")
+                if (committed == null) {
+                    _form.update { it.copy(submitting = false) }
+                }
             }.onFailure { e ->
                 val msg = M09AdoptionErrorMapper.userMessage(M09AdoptionErrorMapper.codeOf(e))
                 _form.update { it.copy(submitting = false, submitError = msg) }

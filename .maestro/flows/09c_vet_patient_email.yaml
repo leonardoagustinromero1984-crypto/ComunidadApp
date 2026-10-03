@@ -4,7 +4,10 @@ tags:
   - community-care
   - professional
   - manual
+  - physical-only
 ---
+# PHYSICAL_ONLY. The form can show that email is required. Inbox delivery
+# is not a pass. This flow types no address and does not send an invite.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -12,10 +15,16 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/switch-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: "Veterinaria · QA - Veterinaria Centro"
 - tapOn: "Consultorio"
 - tapOn: "Nuevo paciente"
-- assertVisible: "Email *"
-- tapOn: "Crear"
-- assertVisible: "Email"
+- extendedWaitUntil:
+    visible: "Email del responsable *"
+    timeout: 10000
+- tapOn: "Crear e invitar"
+- assertVisible: "El email es obligatorio."
 - takeScreenshot: vet_patient_email_required
-# MANUAL/E2E EMAIL REQUIRED: do not send a fake mailbox.

@@ -1,0 +1,18 @@
+appId: ${APP_ID}
+---
+# Shelter verification lives on Editar organización, reached after the
+# refuge context. Personal Sumate → Refugios / ONG does not open this hub.
+- runFlow:
+    file: switch-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: ${CONTEXT_LABEL}
+- tapOn: "Sumate"
+- tapOn: "Refugios / ONG"
+- extendedWaitUntil:
+    visible: "Perfil del refugio"
+    timeout: 15000
+- tapOn: "Perfil del refugio"
+- extendedWaitUntil:
+    visible: "Editar organización"
+    timeout: 15000
