@@ -84,11 +84,8 @@ object M17DonationValidators {
     fun countsTowardConfirmed(status: M17ContributionStatus): Boolean =
         status == M17ContributionStatus.CONFIRMED
 
-    fun formatMoneyMinor(amountMinor: Long, currency: String): String {
-        val major = amountMinor / 100
-        val minor = (amountMinor % 100).toInt()
-        return "$currency ${major}.${minor.toString().padStart(2, '0')}"
-    }
+    fun formatMoneyMinor(amountMinor: Long, currency: String): String =
+        com.comunidapp.app.domain.m17.MoneyPresentation.formatMinor(amountMinor, currency)
 
     fun parseDeclaredAmountToMinor(raw: String): Long? {
         val normalized = raw.trim().replace(" ", "").replace(',', '.')

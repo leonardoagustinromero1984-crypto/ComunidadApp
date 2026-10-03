@@ -523,7 +523,7 @@ fun PublishLostFoundScreen(
     }
     var foundSex by remember { mutableStateOf(PetSex.UNKNOWN) }
     var foundSize by remember { mutableStateOf<PetSize?>(null) }
-    var estimatedAgeMonths by remember { mutableStateOf("") }
+    var estimatedAgeYears by remember { mutableStateOf("") }
     val myPets by DataProvider.petRepository.observePets().collectAsState()
     val lostPets = remember(myPets) {
         com.comunidapp.app.domain.pets.LostPetSelector.selectable(myPets)
@@ -601,7 +601,9 @@ fun PublishLostFoundScreen(
                 sex = if (type == LostFoundType.FOUND) foundSex else null,
                 size = if (type == LostFoundType.FOUND) foundSize else null,
                 estimatedAgeMonths = if (type == LostFoundType.FOUND) {
-                    estimatedAgeMonths.trim().toIntOrNull()?.takeIf { it >= 0 }
+                    com.comunidapp.app.domain.lostfound.EstimatedAgeYears.yearsToStoredMonths(
+                        estimatedAgeYears.trim().toIntOrNull()
+                    )
                 } else {
                     null
                 }
@@ -675,11 +677,11 @@ fun PublishLostFoundScreen(
             SexChipRow(selected = foundSex, onSelect = { foundSex = it })
             SizeChipRow(selected = foundSize, onSelect = { foundSize = it }, allowUnknown = true)
             V2FormTextField(
-                value = estimatedAgeMonths,
+                value = estimatedAgeYears,
                 onValueChange = { raw ->
-                    estimatedAgeMonths = raw.filter { it.isDigit() }.take(3)
+                    estimatedAgeYears = raw.filter { it.isDigit() }.take(2)
                 },
-                label = "Edad estimada (meses, opcional)",
+                label = "Edad estimada (años, opcional)",
                 imeAction = ImeAction.Next,
                 keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
             )

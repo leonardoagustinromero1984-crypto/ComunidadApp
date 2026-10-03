@@ -12,6 +12,7 @@ import com.comunidapp.app.data.model.M17DonationCampaign
 import com.comunidapp.app.data.model.M17DonorVisibility
 import com.comunidapp.app.data.model.M17PublicCampaign
 import com.comunidapp.app.data.model.M17PublicContribution
+import com.comunidapp.app.domain.m17.MyMoneyContribution
 import com.comunidapp.app.data.remote.supabase.supabase
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.json.Json
@@ -47,6 +48,19 @@ private fun JsonObject.string(key: String): String? = this[key].asStringOrNull()
 private fun JsonObject.long(key: String, default: Long = 0L): Long = this[key].asLongOrNull() ?: default
 
 private fun JsonObject.int(key: String, default: Int = 0): Int = this[key].asIntOrNull(default)
+
+private fun JsonElement?.asBooleanOrNull(default: Boolean = false): Boolean =
+    when (val p = this as? JsonPrimitive) {
+        null -> default
+        else -> when (p.contentOrNull?.lowercase()) {
+            "true", "t", "1" -> true
+            "false", "f", "0" -> false
+            else -> default
+        }
+    }
+
+private fun JsonObject.boolean(key: String, default: Boolean = false): Boolean =
+    this[key].asBooleanOrNull(default)
 
 private fun parseReference(obj: JsonObject?): M17CampaignReference {
     val ref = obj ?: return M17CampaignReference()
@@ -136,7 +150,8 @@ fun JsonObject.toM17PublicCampaign(): M17PublicCampaign {
         confirmedContributionCount = int("confirmed_contribution_count"),
         paymentAlias = string("payment_alias") ?: string("alias_cbu"),
         createdBy = string("created_by"),
-        organizationId = string("organization_id")
+        organizationId = string("organization_id"),
+        canManageContributions = boolean("can_manage")
     )
 }
 
@@ -162,6 +177,20 @@ fun JsonObject.toM17CampaignFinancialSummary(): M17CampaignFinancialSummary =
         progressPercent = int("progress_percent")
     )
 
+fun JsonObject.toMyMoneyContribution(): MyMoneyContribution {
+    val statusRaw = string("status") ?: "PENDING"
+    val status = runCatching { M17ContributionStatus.valueOf(statusRaw) }
+        .getOrDefault(M17ContributionStatus.PENDING)
+    return MyMoneyContribution(
+        campaignTitle = string("campaign_title").orEmpty(),
+        organizationName = string("organization_name").orEmpty(),
+        amountMinor = long("amount_minor"),
+        currency = string("currency") ?: "ARS",
+        status = status,
+        createdAt = parseTs(string("created_at"))
+    )
+}
+
 fun JsonObject.toM17ContributionInternal(): M17Contribution {
     val visibilityRaw = string("visibility") ?: "PUBLIC"
     val visibility = runCatching { M17DonorVisibility.valueOf(visibilityRaw) }
@@ -179,7 +208,11 @@ fun JsonObject.toM17ContributionInternal(): M17Contribution {
         donorDisplayName = string("donor_display_name"),
         message = string("public_message") ?: string("message") ?: string("note"),
         providerReference = string("provider_reference"),
-        createdAt = parseTs(string("created_at"))
+        createdAt = parseTs(string("created_at")),
+        contributorUserId = string("contributor_user_id"),
+        declaredByViewer = boolean("mine"),
+        confirmedAt = string("confirmed_at")?.let { parseTs(it) },
+        confirmedBy = string("confirmed_by")
     )
 }
 
@@ -300,6 +333,14 @@ class SupabaseM17RemoteDataSource {
         "canon_reject_campaign_contribution",
         buildJsonObject { put("p_contribution_id", contributionId) }
     )
+
+    suspend fun listMyContributions(): List<JsonObject> {
+        val raw = supabase.postgrest.rpc(
+            function = "canon_list_my_campaign_contributions",
+            parameters = buildJsonObject { }
+        ).data
+        return parseJsonObjectList(raw)
+    }
 
     suspend fun listManagedContributions(campaignId: String): List<JsonObject> {
         val raw = supabase.postgrest.rpc(

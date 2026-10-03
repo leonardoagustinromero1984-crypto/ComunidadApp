@@ -41,7 +41,10 @@ import com.comunidapp.app.data.model.LostFoundStatus
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.ui.components.PetImage
+import com.comunidapp.app.ui.components.leo.LeoActiveFilter
+import com.comunidapp.app.ui.components.leo.LeoFilterBar
 import com.comunidapp.app.ui.components.leo.LeoFilterChip
+import com.comunidapp.app.ui.components.leo.LeoFilterSheet
 import com.comunidapp.app.ui.components.leo.LeoHairline
 import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
@@ -129,6 +132,21 @@ fun LostFoundContent(
     var sightingPostId by remember { mutableStateOf<String?>(null) }
     var sightingNote by remember { mutableStateOf("") }
     var sightingLocation by remember { mutableStateOf("") }
+    var filtersOpen by remember { mutableStateOf(false) }
+    var draftLocation by remember { mutableStateOf("") }
+    var draftType by remember { mutableStateOf<LostFoundType?>(null) }
+    var draftStatus by remember { mutableStateOf<LostFoundStatus?>(LostFoundStatus.ACTIVE) }
+    var draftSpecies by remember { mutableStateOf<PetSpecies?>(null) }
+    val activeFilters = buildList {
+        filters.location.trim().takeIf { it.isNotEmpty() }?.let { add(LeoActiveFilter("location", it)) }
+        if (lockedType == null) {
+            filters.type?.let {
+                add(LeoActiveFilter("type", if (it == LostFoundType.LOST) "Perdidos" else "Encontrados"))
+            }
+        }
+        if (filters.status == LostFoundStatus.RESOLVED) add(LeoActiveFilter("status", "Resueltas"))
+        filters.species?.let { add(LeoActiveFilter("species", it.toDisplayName())) }
+    }
 
     LaunchedEffect(lockedType) {
         if (lockedType != null) {
@@ -199,55 +217,84 @@ fun LostFoundContent(
                 LeoOutlinedButton(text = "Encontré un animal", onClick = onCreateFound)
                 LeoOutlinedButton(text = "Ubicación base", onClick = onResponderBase)
             }
-            V2LocationStringPicker(
-                value = filters.location,
-                onValueChange = viewModel::onLocationChange
+            LeoFilterBar(
+                onOpenFilters = {
+                    draftLocation = filters.location
+                    draftType = filters.type
+                    draftStatus = filters.status
+                    draftSpecies = filters.species
+                    filtersOpen = true
+                },
+                activeFilters = activeFilters,
+                onRemoveFilter = { id ->
+                    when (id) {
+                        "location" -> viewModel.onLocationChange("")
+                        "type" -> viewModel.onTypeFilterChange(lockedType)
+                        "status" -> viewModel.onStatusFilterChange(LostFoundStatus.ACTIVE)
+                        "species" -> viewModel.onSpeciesFilterChange(null)
+                    }
+                },
+                onClearFilters = {
+                    viewModel.onLocationChange("")
+                    viewModel.onTypeFilterChange(lockedType)
+                    viewModel.onStatusFilterChange(LostFoundStatus.ACTIVE)
+                    viewModel.onSpeciesFilterChange(null)
+                }
             )
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(vertical = LeoDimens.SpaceSm),
-                horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
+            LeoFilterSheet(
+                visible = filtersOpen,
+                onDismiss = { filtersOpen = false },
+                onClearDraft = {
+                    draftLocation = ""
+                    draftType = lockedType
+                    draftStatus = LostFoundStatus.ACTIVE
+                    draftSpecies = null
+                },
+                onApply = {
+                    viewModel.onLocationChange(draftLocation)
+                    viewModel.onTypeFilterChange(if (lockedType != null) lockedType else draftType)
+                    viewModel.onStatusFilterChange(draftStatus)
+                    viewModel.onSpeciesFilterChange(draftSpecies)
+                    filtersOpen = false
+                }
             ) {
+                Text("Lugar", style = LeoCaption)
+                V2LocationStringPicker(
+                    value = draftLocation,
+                    onValueChange = { draftLocation = it }
+                )
                 if (lockedType == null) {
                     LeoFilterChip(
                         label = "Perdidos",
-                        selected = filters.type == LostFoundType.LOST,
+                        selected = draftType == LostFoundType.LOST,
                         onClick = {
-                            viewModel.onTypeFilterChange(
-                                if (filters.type == LostFoundType.LOST) null else LostFoundType.LOST
-                            )
+                            draftType = if (draftType == LostFoundType.LOST) null else LostFoundType.LOST
                         }
                     )
                     LeoFilterChip(
                         label = "Encontrados",
-                        selected = filters.type == LostFoundType.FOUND,
+                        selected = draftType == LostFoundType.FOUND,
                         onClick = {
-                            viewModel.onTypeFilterChange(
-                                if (filters.type == LostFoundType.FOUND) null else LostFoundType.FOUND
-                            )
+                            draftType = if (draftType == LostFoundType.FOUND) null else LostFoundType.FOUND
                         }
                     )
                 }
                 LeoFilterChip(
                     label = "Activas",
-                    selected = filters.status == LostFoundStatus.ACTIVE || filters.status == null,
-                    onClick = { viewModel.onStatusFilterChange(LostFoundStatus.ACTIVE) }
+                    selected = draftStatus == LostFoundStatus.ACTIVE || draftStatus == null,
+                    onClick = { draftStatus = LostFoundStatus.ACTIVE }
                 )
                 LeoFilterChip(
                     label = "Resueltas",
-                    selected = filters.status == LostFoundStatus.RESOLVED,
-                    onClick = { viewModel.onStatusFilterChange(LostFoundStatus.RESOLVED) }
+                    selected = draftStatus == LostFoundStatus.RESOLVED,
+                    onClick = { draftStatus = LostFoundStatus.RESOLVED }
                 )
                 PetSpecies.entries.take(4).forEach { species ->
                     LeoFilterChip(
                         label = species.toDisplayName(),
-                        selected = filters.species == species,
+                        selected = draftSpecies == species,
                         onClick = {
-                            viewModel.onSpeciesFilterChange(
-                                if (filters.species == species) null else species
-                            )
+                            draftSpecies = if (draftSpecies == species) null else species
                         }
                     )
                 }
@@ -315,7 +362,12 @@ fun LostFoundCard(
     onOpenM13Matches: (() -> Unit)? = null,
     onOpenM13StructuredSighting: (() -> Unit)? = null
 ) {
-    val badgeText = if (post.type == LostFoundType.LOST) "PERDIDO" else "ENCONTRADO"
+    val badgeText = com.comunidapp.app.domain.lostfound.LostFoundAlertLabel.forKind(post.type.name)
+        ?: if (post.type == LostFoundType.LOST) {
+            com.comunidapp.app.domain.lostfound.LostFoundAlertLabel.LOST
+        } else {
+            com.comunidapp.app.domain.lostfound.LostFoundAlertLabel.FOUND
+        }
     val badgeColor = if (post.type == LostFoundType.LOST) UrgentRed else BrandGreen
 
     Column(modifier = Modifier.fillMaxWidth()) {
@@ -338,11 +390,18 @@ fun LostFoundCard(
             androidx.compose.foundation.layout.Spacer(modifier = Modifier.height(LeoDimens.SpaceSm))
         }
         Text(
-            text = post.petName ?: "${post.species.toDisplayName()} sin nombre",
+            text = com.comunidapp.app.domain.pets.PetDisplayName.alertSubject(
+                post.type,
+                post.petName,
+                post.species.toDisplayName()
+            ),
             style = LeoCardTitle,
             color = BrandText,
             fontWeight = FontWeight.Bold
         )
+        com.comunidapp.app.domain.lostfound.EstimatedAgeYears.displayLabel(post.estimatedAgeMonths)?.let { age ->
+            Text(text = age, style = LeoCaption, color = BrandTextSecondary)
+        }
         Text(
             text = "Por: ${post.authorName} · ${post.date}",
             style = LeoCaption,

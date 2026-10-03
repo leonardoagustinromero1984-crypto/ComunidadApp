@@ -2,7 +2,10 @@ package com.comunidapp.app.data.remote.supabase.m09
 
 import com.comunidapp.app.data.remote.supabase.supabase
 import io.github.jan.supabase.postgrest.postgrest
+import com.comunidapp.app.domain.adoption.AdoptionRequirements
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 
@@ -33,6 +36,7 @@ class SupabaseAdoptionM09RemoteDataSource {
                 put("p_requirements", params.requirements)
                 put("p_location_text", params.locationText)
                 put("p_publish", params.publish)
+                putMatchRequirements(params.matchRequirements)
             }
         )
 
@@ -45,6 +49,7 @@ class SupabaseAdoptionM09RemoteDataSource {
                 put("p_description", params.description)
                 put("p_requirements", params.requirements)
                 put("p_location_text", params.locationText)
+                putMatchRequirements(params.matchRequirements)
             }
         )
 
@@ -121,6 +126,35 @@ class SupabaseAdoptionM09RemoteDataSource {
                 reason?.let { put("p_rejection_reason", it) }
             }
         )
+
+    private fun JsonObjectBuilder.putMatchRequirements(requirements: AdoptionRequirements) {
+        putTri("p_accepts_children", requirements.acceptsChildren)
+        putTri("p_accepts_other_dogs", requirements.acceptsOtherDogs)
+        putTri("p_accepts_cats", requirements.acceptsCats)
+        putTri("p_needs_outdoor_space", requirements.needsOutdoorSpace)
+        putTri("p_needs_secure_enclosure", requirements.needsSecureEnclosure)
+        putTri("p_requires_escape_protection", requirements.requiresEscapeProtection)
+        putTri("p_requires_landlord_pet_permission", requirements.requiresLandlordPetPermission)
+        putTri("p_accepts_other_animals", requirements.acceptsOtherAnimals)
+        putText("p_max_hours_alone", requirements.maxHoursAlone?.legacyBandToken())
+        putInt("p_max_hours_from", requirements.maxHoursAlone?.fromHours)
+        putInt("p_max_hours_to", requirements.maxHoursAlone?.toHours)
+        putText("p_experience_required", requirements.experienceRequired?.name)
+        putTri("p_accepts_no_experience", requirements.acceptsNoExperience)
+        putTri("p_requires_special_care_experience", requirements.requiresSpecialCareExperience)
+    }
+
+    private fun JsonObjectBuilder.putTri(key: String, value: Boolean?) {
+        if (value == null) put(key, JsonNull) else put(key, value)
+    }
+
+    private fun JsonObjectBuilder.putText(key: String, value: String?) {
+        if (value == null) put(key, JsonNull) else put(key, value)
+    }
+
+    private fun JsonObjectBuilder.putInt(key: String, value: Int?) {
+        if (value == null) put(key, JsonNull) else put(key, value)
+    }
 
     private suspend inline fun <reified T : Any> rpcOne(
         name: String,

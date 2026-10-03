@@ -28,6 +28,10 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.domain.capability.AppStartupResolver
+import com.comunidapp.app.domain.capability.CapabilityFacts
+import com.comunidapp.app.domain.capability.CapabilityGate
+import com.comunidapp.app.domain.capability.CapabilityNavigationGuard
 import com.comunidapp.app.domain.context.OperationalContext
 import com.comunidapp.app.domain.context.OperationalContextProvider
 import com.comunidapp.app.domain.organization.OrganizationId
@@ -83,6 +87,7 @@ import com.comunidapp.app.ui.screens.adoptions.AdoptionAgreementScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionApplicationDetailScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionApplyScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDetailScreen
+import com.comunidapp.app.ui.screens.adoptions.AdoptionSearchScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionsScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionDocumentsScreen
 import com.comunidapp.app.ui.screens.adoptions.AdoptionFinalizeScreen
@@ -630,7 +635,21 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
     val showBottomBar = currentRoute in bottomNavRoutes
 
     LaunchedEffect(currentRoute) {
+        if (currentRoute == NavRoutes.STARTUP_RESOLVING) return@LaunchedEffect
         com.comunidapp.app.domain.navigation.AppNavRestoreStore.write(currentRoute, loggedIn = true)
+    }
+
+    LaunchedEffect(currentRoute, context) {
+        if (currentRoute == null || currentRoute == NavRoutes.STARTUP_RESOLVING) return@LaunchedEffect
+        if (currentRoute.startsWith("onb02")) return@LaunchedEffect
+        val facts = CapabilityFacts.forActiveContext(context)
+        if (!CapabilityNavigationGuard.allows(currentRoute, facts)) {
+            if (!navController.popBackStack()) {
+                navController.navigate(NavRoutes.HOME) {
+                    launchSingleTop = true
+                }
+            }
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -645,19 +664,6 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
                     userId
                 ).getOrDefault(false)
             }.getOrDefault(false)
-        }
-        val onb02Done = !userId.isNullOrBlank() &&
-            Onb02StoreProvider.instance.completion(userId) ==
-            com.comunidapp.app.data.local.Onb02Completion.COMPLETED
-        val shouldRestore = !restored.isNullOrBlank() &&
-            restored != NavRoutes.HOME &&
-            onb02Done
-        if (shouldRestore) {
-            publishOnboardingPhase(userId, null)
-            navController.navigate(restored) {
-                launchSingleTop = true
-            }
-            return@LaunchedEffect
         }
         val onb02Kind = if (!userId.isNullOrBlank()) {
             val personComplete = runCatching {
@@ -674,10 +680,17 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
             null
         }
         publishOnboardingPhase(userId, onb02Kind)
-        if (onb02Kind != null) {
-            navController.navigate(NavRoutes.onb02(onb02Kind.name)) {
-                launchSingleTop = true
-            }
+        if (userId.isNullOrBlank()) return@LaunchedEffect
+        val destination = AppStartupResolver.decide(
+            userId = userId,
+            onboardingKind = onb02Kind,
+            restoredRoute = if (onb02Kind == null) restored else null,
+            facts = CapabilityFacts.forActiveContext(context)
+        )
+        if (destination == NavRoutes.STARTUP_RESOLVING) return@LaunchedEffect
+        navController.navigate(destination) {
+            popUpTo(NavRoutes.STARTUP_RESOLVING) { inclusive = true }
+            launchSingleTop = true
         }
     }
 
@@ -750,6 +763,7 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
         NavRoutes.PUBLISH_STORY
     )
     val hideBottomBarRoutes = setOf(
+        NavRoutes.STARTUP_RESOLVING,
         NavRoutes.ONB02,
         NavRoutes.ONB02_REOPEN,
         NavRoutes.USE_LEOVER_AS,
@@ -784,7 +798,7 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
             Box(Modifier.weight(1f)) {
                 NavHost(
                     navController = navController,
-                    startDestination = NavRoutes.HOME,
+                    startDestination = NavRoutes.STARTUP_RESOLVING,
                     modifier = Modifier
                 ) {
                     mainAppRoutes(navController, context, onLogout)
@@ -837,13 +851,18 @@ private fun NavGraphBuilder.mainAppRoutes(
             kind = kind,
             onFinished = { setupRoute ->
                 com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.markReady()
-                if (!setupRoute.isNullOrBlank()) {
-                    navController.navigate(setupRoute) {
-                        popUpTo(NavRoutes.HOME) { inclusive = false }
+                val target = setupRoute?.takeIf { it.isNotBlank() } ?: NavRoutes.HOME
+                if (target == NavRoutes.HOME || target == NavRoutes.USE_LEOVER_AS) {
+                    navController.navigate(target) {
+                        popUpTo(NavRoutes.ONB02) { inclusive = true }
                         launchSingleTop = true
                     }
                 } else {
-                    navController.popBackStack()
+                    navController.navigate(NavRoutes.HOME) {
+                        popUpTo(NavRoutes.ONB02) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                    navController.navigate(target) { launchSingleTop = true }
                 }
             }
         )
@@ -881,11 +900,21 @@ private fun NavGraphBuilder.mainAppRoutes(
                     launchSingleTop = true
                 }
             },
-            onNavigateBack = { navController.popBackStack() },
+            onNavigateBack = {
+                if (!navController.popBackStack()) {
+                    navController.navigate(NavRoutes.HOME) { launchSingleTop = true }
+                }
+            },
             onSelected = {
                 navController.navigate(NavRoutes.HOME) {
                     popUpTo(NavRoutes.HOME) { inclusive = false }
                     launchSingleTop = true
+                }
+                if (navController.currentDestination?.route != NavRoutes.HOME) {
+                    navController.navigate(NavRoutes.HOME) {
+                        popUpTo(NavRoutes.USE_LEOVER_AS) { inclusive = true }
+                        launchSingleTop = true
+                    }
                 }
             }
         )
@@ -899,6 +928,9 @@ private fun NavGraphBuilder.mainAppRoutes(
             },
             onNavigateBack = { navController.popBackStack() }
         )
+    }
+    composable(NavRoutes.STARTUP_RESOLVING) {
+        com.comunidapp.app.ui.screens.startup.StartupResolvingScreen()
     }
     composable(NavRoutes.HOME) {
         HomeScreen(
@@ -977,9 +1009,19 @@ private fun NavGraphBuilder.mainAppRoutes(
             onCreateAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
             onCreateLost = { navController.navigate(NavRoutes.PUBLISH_LOST_FOUND) },
             onCreateFound = { navController.navigate(NavRoutes.PUBLISH_FOUND_PET) },
-            onCreateFoster = { navController.navigate(NavRoutes.FOSTER_HOME_FORM) },
+            onCreateFoster = {
+                val facts = CapabilityFacts.forActiveContext(context)
+                if (CapabilityGate.canOfferFosterHome(facts)) {
+                    navController.navigate(NavRoutes.FOSTER_HOME_FORM)
+                }
+            },
             onCreateEvent = { navController.navigate(NavRoutes.PUBLISH_EVENT) },
-            onOpenFosterRequests = { navController.navigate(NavRoutes.FOSTER_OPEN_REQUESTS) },
+            onOpenFosterRequests = {
+                val facts = CapabilityFacts.forActiveContext(context)
+                if (CapabilityGate.canBrowseFosterRequests(facts)) {
+                    navController.navigate(NavRoutes.FOSTER_OPEN_REQUESTS)
+                }
+            },
             context = context
         )
     }
@@ -1117,7 +1159,8 @@ private fun NavGraphBuilder.mainAppRoutes(
                 }
             },
             onNavigateToAddPet = { navController.navigate(NavRoutes.ADD_PET) },
-            onNavigateToDonations = { navController.navigate(NavRoutes.M17_HUB) },
+            onNavigateToDonations = { navController.navigate(NavRoutes.M17_MY_HELP) },
+            onNavigateToMyEvents = { navController.navigate(NavRoutes.M18_MY_EVENTS) },
             onNavigateToPrivacy = { navController.navigate(NavRoutes.PROFILE_PRIVACY) },
             onNavigateToSettings = { navController.navigate(NavRoutes.SETTINGS) },
             onFriendClick = { userId -> navController.navigate(NavRoutes.userProfile(userId)) },
@@ -1572,14 +1615,30 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.ADOPTIONS) {
         AdoptionsScreen(
             onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
+            onSearchAdoptions = { navController.navigate(NavRoutes.ADOPTION_SEARCH) },
             onMyApplications = { navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS) },
             onReceivedApplications = {
                 navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
             },
             onAdoptionProfile = { navController.navigate(NavRoutes.ADOPTION_GENERAL_PROFILE) },
-            onCreateAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
-            showReceivedApplications = !context.isPersonal,
+            onCreateAdoption = {
+                if (CapabilityGate.canPublishAdoption(CapabilityFacts.forActiveContext(context))) {
+                    navController.navigate(NavRoutes.ADOPTION_FORM)
+                }
+            },
+            showReceivedApplications = CapabilityGate.adoptionSurface(
+                CapabilityFacts.forActiveContext(context)
+            ).showReceivedApplications,
+            showPublishAdoption = CapabilityGate.adoptionSurface(
+                CapabilityFacts.forActiveContext(context)
+            ).showPublish,
             showBackButton = true,
+            onNavigateBack = { navController.popBackStack() }
+        )
+    }
+    composable(NavRoutes.ADOPTION_SEARCH) {
+        AdoptionSearchScreen(
+            onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
             onNavigateBack = { navController.popBackStack() }
         )
     }
@@ -1587,12 +1646,21 @@ private fun NavGraphBuilder.mainAppRoutes(
         MyAdoptionsScreen(
             onNavigateBack = { navController.popBackStack() },
             onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
-            onCreateAdoption = { navController.navigate(NavRoutes.ADOPTION_FORM) },
+            onCreateAdoption = {
+                if (CapabilityGate.canPublishAdoption(CapabilityFacts.forActiveContext(context))) {
+                    navController.navigate(NavRoutes.ADOPTION_FORM)
+                }
+            },
             onEditAdoption = { id -> navController.navigate(NavRoutes.adoptionFormEdit(id)) },
             onReceivedApplications = {
                 navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
             },
-            showReceivedApplications = !context.isPersonal,
+            showReceivedApplications = CapabilityGate.adoptionSurface(
+                CapabilityFacts.forActiveContext(context)
+            ).showReceivedApplications,
+            showPublishAdoption = CapabilityGate.adoptionSurface(
+                CapabilityFacts.forActiveContext(context)
+            ).showPublish,
             onProcess = { id -> navController.navigate(NavRoutes.adoptionProcess(id)) }
         )
     }
@@ -1852,6 +1920,7 @@ private fun NavGraphBuilder.mainAppRoutes(
     ) {
         AdoptionApplyScreen(
             onNavigateBack = { navController.popBackStack() },
+            onCompleteProfile = { navController.navigate(NavRoutes.ADOPTION_GENERAL_PROFILE) },
             onSubmitted = {
                 navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS) {
                     popUpTo(NavRoutes.SUMATE) { inclusive = false }

@@ -114,7 +114,8 @@ data class M17PublicCampaign(
     val endsAt: Long? = null,
     val confirmedContributionCount: Int = 0,
     val paymentAlias: String? = null,
-    val createdBy: String? = null
+    val createdBy: String? = null,
+    val canManageContributions: Boolean = false
 )
 
 data class M17CampaignSummary(
@@ -143,7 +144,11 @@ data class M17Contribution(
     val donorDisplayName: String? = null,
     val message: String? = null,
     val providerReference: String? = null,
-    val createdAt: Long
+    val createdAt: Long,
+    val contributorUserId: String? = null,
+    val declaredByViewer: Boolean = false,
+    val confirmedAt: Long? = null,
+    val confirmedBy: String? = null
 )
 
 data class M17PublicContribution(

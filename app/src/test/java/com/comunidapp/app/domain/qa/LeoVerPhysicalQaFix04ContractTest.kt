@@ -118,7 +118,7 @@ class LeoVerPhysicalQaFix04ContractTest {
         val ctx = OperationalContext.Rescuer("u1", "Rescatista")
         assertTrue(RolePermissions.canPublishAdoption(ctx))
         assertTrue(RolePermissions.canPublishLostFound(ctx))
-        assertTrue(RolePermissions.canPublishFosterHome(ctx))
+        assertFalse(RolePermissions.canPublishFosterHome(ctx))
         assertTrue(RolePermissions.canCreateCampaigns(ctx))
         assertTrue(RolePermissions.canPublishEvent(ctx))
         assertTrue(RolePermissions.canPublishShelterNeeds(ctx))

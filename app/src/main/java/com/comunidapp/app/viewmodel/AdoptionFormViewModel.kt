@@ -9,6 +9,12 @@ import androidx.lifecycle.viewmodel.CreationExtras
 import com.comunidapp.app.data.model.AdoptionPost
 import com.comunidapp.app.data.model.AdoptionStatus
 import com.comunidapp.app.data.model.Pet
+import com.comunidapp.app.domain.adoption.AdoptionPublishEligibility
+import com.comunidapp.app.domain.adoption.AdoptionRequirements
+import com.comunidapp.app.domain.capability.CapabilityFacts
+import com.comunidapp.app.domain.capability.CapabilityGate
+import com.comunidapp.app.domain.context.OperationalContext
+import com.comunidapp.app.domain.context.OperationalContextProvider
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m09.CreateAdoptionParams
 import com.comunidapp.app.data.remote.supabase.m09.M09AdoptionErrorMapper
@@ -35,6 +41,8 @@ data class AdoptionFormState(
     val title: String = "",
     val description: String = "",
     val requirements: String = "",
+    val matchRequirements: AdoptionRequirements = AdoptionRequirements(),
+    val excludedFound: Boolean = false,
     val location: String = "",
     val status: AdoptionStatus? = null,
     val errorMessage: String? = null,
@@ -78,19 +86,24 @@ class AdoptionFormViewModel(
                 }
                 return@launch
             }
-            val pets = runCatching {
-                com.comunidapp.app.domain.pets.PetManagementContext.filter(
-                    petRepository.getPetsByOwner(userId)
-                        .filter { it.status.equals("ACTIVE", ignoreCase = true) },
-                    com.comunidapp.app.domain.context.OperationalContextProvider.active.value,
-                    userId
-                )
+            val context = OperationalContextProvider.active.value
+            val capability = CapabilityGate.canPublishAdoption(CapabilityFacts.forActiveContext(context))
+            val orgId = (context as? OperationalContext.Organization)?.entityId
+            val owned = runCatching {
+                petRepository.getPetsByOwner(userId)
+                    .filter { it.status.equals("ACTIVE", ignoreCase = true) }
             }.getOrElse { emptyList() }
+            val pets = AdoptionPublishEligibility.eligible(owned, capability, userId, orgId)
+            val excludedFound = owned.any {
+                AdoptionPublishEligibility.evaluate(it, capability, userId, orgId).block ==
+                    com.comunidapp.app.domain.adoption.AdoptionPublishBlock.FOUND_CASE
+            }
             if (editingId == null) {
                 _state.update {
                     it.copy(
                         loading = false,
                         selectablePets = pets,
+                        excludedFound = excludedFound,
                         // No auto-select: formulario abre aunque no haya mascota elegida.
                         selectedPetId = null,
                         editable = true,
@@ -112,6 +125,7 @@ class AdoptionFormViewModel(
                             title = post.title.ifBlank { post.name },
                             description = post.description,
                             requirements = post.requirements,
+                            matchRequirements = post.matchRequirements,
                             location = post.location,
                             status = post.status,
                             editable = editable,
@@ -146,6 +160,8 @@ class AdoptionFormViewModel(
     fun onDescriptionChange(value: String) =
         _state.update { it.copy(description = value, fieldError = null) }
     fun onRequirementsChange(value: String) = _state.update { it.copy(requirements = value) }
+    fun onMatchRequirementsChange(value: AdoptionRequirements) =
+        _state.update { it.copy(matchRequirements = value) }
     fun onLocationChange(value: String) = _state.update { it.copy(location = value) }
 
     fun saveDraft() = save(publish = false)
@@ -187,6 +203,7 @@ class AdoptionFormViewModel(
                     }
                     return@launch
                 }
+                val orgId = (OperationalContextProvider.active.value as? OperationalContext.Organization)?.entityId
                 adoptionRepository.createAdoption(
                     CreateAdoptionParams(
                         petId = petId,
@@ -194,7 +211,11 @@ class AdoptionFormViewModel(
                         description = current.description.trim(),
                         requirements = current.requirements.trim(),
                         locationText = current.location.trim(),
-                        publish = publish
+                        publish = publish,
+                        organizationId = orgId,
+                        matchRequirements = current.matchRequirements.copy(
+                            additionalNotes = current.requirements.trim().ifBlank { null }
+                        )
                     )
                 )
             } else {
@@ -204,7 +225,10 @@ class AdoptionFormViewModel(
                         title = current.title.trim(),
                         description = current.description.trim(),
                         requirements = current.requirements.trim(),
-                        locationText = current.location.trim()
+                        locationText = current.location.trim(),
+                        matchRequirements = current.matchRequirements.copy(
+                            additionalNotes = current.requirements.trim().ifBlank { null }
+                        )
                     )
                 )
                 if (publish && update.isSuccess) {

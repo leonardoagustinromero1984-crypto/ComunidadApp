@@ -89,6 +89,8 @@ object M09AdoptionErrorMapper {
         "ADOPTION_NOT_FOUND" -> "No encontramos esa publicación de adopción."
         "ADOPTION_ALREADY_EXISTS" -> "Ya hay una publicación abierta para esa mascota."
         "PET_NOT_ADOPTABLE" -> "Esa mascota no se puede publicar en adopción (fallecida, archivada o no activa)."
+        "FOUND_CASE_NOT_ADOPTABLE" -> "Una mascota encontrada no se publica en adopción desde la custodia temporal."
+        "ADOPTION_PUBLISH_FORBIDDEN" -> "No podés publicar adopciones en este contexto."
         "ADOPTION_NOT_EDITABLE" -> "Esta publicación no se puede editar en su estado actual."
         "ADOPTION_ALREADY_PAUSED" -> "La publicación ya está pausada."
         "ADOPTION_ALREADY_CLOSED" -> "La publicación ya está cerrada."

@@ -179,8 +179,26 @@ fun HomeScreen(
                                 onCommentClick = { onPostClick(post.id) },
                                 onShareClick = { sharePost = post },
                                 onSaveClick = { viewModel.toggleSave(post.id) },
-                                onReportClick = { viewModel.reportPost(post.id) },
-                                onBlockClick = { viewModel.blockAuthor(post.authorId) },
+                                onReportClick = if (
+                                    com.comunidapp.app.domain.social.OwnPostActions.showReport(
+                                        post.authorId,
+                                        currentUser?.id
+                                    )
+                                ) {
+                                    { viewModel.reportPost(post.id) }
+                                } else {
+                                    null
+                                },
+                                onBlockClick = if (
+                                    com.comunidapp.app.domain.social.OwnPostActions.showBlock(
+                                        post.authorId,
+                                        currentUser?.id
+                                    )
+                                ) {
+                                    { viewModel.blockAuthor(post.authorId) }
+                                } else {
+                                    null
+                                },
                                 onPostClick = { onPostClick(post.id) },
                                 onSpecialCta = when (post.type) {
                                     PostType.ADOPTION -> onNavigateToSumate

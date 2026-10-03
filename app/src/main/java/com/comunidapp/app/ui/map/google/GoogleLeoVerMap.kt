@@ -26,6 +26,7 @@ import com.comunidapp.app.ui.theme.leoVisual
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraMoveStartedReason
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapUiSettings
@@ -46,6 +47,7 @@ fun GoogleLeoVerMap(
     showUserLocation: Boolean = false,
     interactive: Boolean = true,
     pinMode: Boolean = false,
+    idleOnGestureOnly: Boolean = false,
     onMarkerClick: (LeoVerMapMarker) -> Unit = {},
     onMapClick: (LeoVerGeoPoint) -> Unit = {},
     onCameraIdle: (LeoVerMapCameraState) -> Unit = {}
@@ -86,6 +88,11 @@ fun GoogleLeoVerMap(
     }
     LaunchedEffect(cameraPositionState.isMoving) {
         if (!cameraPositionState.isMoving) {
+            if (idleOnGestureOnly &&
+                cameraPositionState.cameraMoveStartedReason != CameraMoveStartedReason.GESTURE
+            ) {
+                return@LaunchedEffect
+            }
             val target = cameraPositionState.position.target
             val point = LeoVerGeoPoint.parseOrNull(target.latitude, target.longitude)
                 ?: return@LaunchedEffect

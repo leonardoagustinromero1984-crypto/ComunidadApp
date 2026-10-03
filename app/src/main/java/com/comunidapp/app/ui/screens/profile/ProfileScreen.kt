@@ -27,6 +27,7 @@ import androidx.compose.material.icons.automirrored.filled.Chat
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.People
 import androidx.compose.material.icons.filled.Pets
@@ -129,6 +130,7 @@ fun ProfileScreen(
     onNavigateToPrivacy: () -> Unit = {},
     onNavigateToSettings: () -> Unit = {},
     onNavigateToDonations: () -> Unit = {},
+    onNavigateToMyEvents: () -> Unit = {},
     onNavigateToFirstRunTutorial: () -> Unit = {},
     onNavigateToUseLeoverAs: () -> Unit = {},
     onNavigateToHelpTutorials: () -> Unit = {},
@@ -337,10 +339,16 @@ fun ProfileScreen(
                                 onClick = onNavigateToChat
                             )
                             V2NavRow(
-                                title = "Donaciones",
-                                description = "Tus aportes y campañas",
+                                title = "Mi ayuda",
+                                description = "Aportes, bienes y voluntariado",
                                 icon = Icons.Default.Favorite,
                                 onClick = onNavigateToDonations
+                            )
+                            V2NavRow(
+                                title = "Mis eventos",
+                                description = "Inscripciones y lista de espera",
+                                icon = Icons.Default.DateRange,
+                                onClick = onNavigateToMyEvents
                             )
                             if (uiState.canEnterAdministration) {
                                 V2NavRow(

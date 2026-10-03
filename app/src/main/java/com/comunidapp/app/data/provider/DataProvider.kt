@@ -1169,7 +1169,11 @@ object DataProvider {
         } else {
             MockM17InKindRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
-                store = m17ExtendedStore
+                store = m17ExtendedStore,
+                canManage = { orgId ->
+                    val actor = AuthProvider.repository.getCurrentUser()?.id
+                    actor != null && m17Store.organizationManagers.value[orgId]?.contains(actor) == true
+                }
             )
         }
     }
@@ -1182,7 +1186,11 @@ object DataProvider {
         } else {
             MockM17VolunteerRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
-                store = m17ExtendedStore
+                store = m17ExtendedStore,
+                canManage = { orgId ->
+                    val actor = AuthProvider.repository.getCurrentUser()?.id
+                    actor != null && m17Store.organizationManagers.value[orgId]?.contains(actor) == true
+                }
             )
         }
     }
@@ -1230,13 +1238,7 @@ object DataProvider {
             )
         } else {
             MockM18EventRepository(
-                actorUserId = {
-                    if (useSupabase) {
-                        "mock_user_admin"
-                    } else {
-                        AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin"
-                    }
-                },
+                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
                 store = m18Store,
                 authority = m18Authority
             )
@@ -1308,6 +1310,25 @@ object DataProvider {
                 store = m22Store
             )
         }
+    }
+
+    /**
+     * Drops identity left in process-wide mock stores after logout or account switch.
+     * Demo rows are reseeded with [com.comunidapp.app.domain.user.SessionGeneration.NEUTRAL_MOCK_ACTOR],
+     * never with the next signed-in user.
+     */
+    fun clearUserScopedMockStores() {
+        m09ApplicationStore.value = emptyList()
+        m15Store.clearSessionResidue()
+        m16Store.clearSessionResidue()
+        m17Store.clearSessionResidue()
+        m17ExtendedStore.clearSessionResidue()
+        m18Store.clearSessionResidue()
+        m19Store.clearSessionResidue()
+        m20Store.clearSessionResidue()
+        m21Store.clearSessionResidue()
+        m22Store.clearSessionResidue()
+        m23Store.clearSessionResidue()
     }
 
     /** M23 Bloque 3 — operaciones completas; mock con M20/M06 best-effort. */

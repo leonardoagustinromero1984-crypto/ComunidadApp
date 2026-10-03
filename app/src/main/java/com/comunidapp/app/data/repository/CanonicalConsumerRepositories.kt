@@ -32,6 +32,9 @@ import com.comunidapp.app.domain.canonical.CanonicalMedia
 import com.comunidapp.app.domain.chat.ChatMessageMerge
 import com.comunidapp.app.domain.files.authorization.FileAuthContext
 import com.comunidapp.app.domain.user.ProfileAvatarResolver
+import com.comunidapp.app.domain.user.SessionBoundState
+import com.comunidapp.app.domain.user.SessionEpoch
+import com.comunidapp.app.domain.user.SessionGeneration
 import io.github.jan.supabase.postgrest.from
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.async
@@ -45,7 +48,6 @@ import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
-import kotlinx.coroutines.flow.update
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
@@ -99,6 +101,23 @@ private data class CanonicalAdoptionRow(
     @SerialName("public_code") val publicCode: String? = null,
     val status: String,
     val note: String? = null,
+    val title: String? = null,
+    val description: String? = null,
+    @SerialName("location_text") val locationText: String? = null,
+    @SerialName("accepts_children") val acceptsChildren: Boolean? = null,
+    @SerialName("accepts_other_dogs") val acceptsOtherDogs: Boolean? = null,
+    @SerialName("accepts_cats") val acceptsCats: Boolean? = null,
+    @SerialName("needs_outdoor_space") val needsOutdoorSpace: Boolean? = null,
+    @SerialName("needs_secure_enclosure") val needsSecureEnclosure: Boolean? = null,
+    @SerialName("requires_escape_protection") val requiresEscapeProtection: Boolean? = null,
+    @SerialName("requires_landlord_pet_permission") val requiresLandlordPetPermission: Boolean? = null,
+    @SerialName("accepts_other_animals") val acceptsOtherAnimals: Boolean? = null,
+    @SerialName("max_hours_alone") val maxHoursAlone: String? = null,
+    @SerialName("max_hours_from") val maxHoursFrom: Int? = null,
+    @SerialName("max_hours_to") val maxHoursTo: Int? = null,
+    @SerialName("experience_required") val experienceRequired: String? = null,
+    @SerialName("accepts_no_experience") val acceptsNoExperience: Boolean? = null,
+    @SerialName("requires_special_care_experience") val requiresSpecialCareExperience: Boolean? = null,
     @SerialName("published_by") val publishedBy: String? = null,
     @SerialName("organization_id") val organizationId: String? = null,
     val name: String? = null,
@@ -223,10 +242,16 @@ internal suspend inline fun <reified T : Any> rpcRows(function: String, params: 
 internal fun parseEpoch(value: String?): Long? =
     value?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
 
-class CanonicalLostFoundRepository : LostFoundRepository {
-    private val posts = MutableStateFlow<List<LostFoundPost>>(emptyList())
+class CanonicalLostFoundRepository(
+    private val epoch: SessionEpoch = SessionGeneration
+) : LostFoundRepository {
+    private val posts = SessionBoundState(emptyList<LostFoundPost>(), epoch)
 
-    override fun observeLostFoundPosts(): StateFlow<List<LostFoundPost>> = posts.asStateFlow()
+    override fun observeLostFoundPosts(): StateFlow<List<LostFoundPost>> = posts.state
+
+    override fun clearAccountCache() {
+        epoch.rotate { posts.reset(emptyList()) }
+    }
 
     override fun getFilteredLostFound(
         type: LostFoundType?,
@@ -389,8 +414,9 @@ class CanonicalLostFoundRepository : LostFoundRepository {
     }
 
     suspend fun refresh() {
+        val token = epoch.current()
         val rows = rpcRows<CanonicalLostFoundRow>(CanonicalBackend.RPC_LIST_LOST_FOUND)
-        posts.value = rows.map { row ->
+        val mapped = rows.map { row ->
             LostFoundPost(
                 id = row.id,
                 authorId = row.createdBy.orEmpty(),
@@ -417,6 +443,7 @@ class CanonicalLostFoundRepository : LostFoundRepository {
                 isCustodian = row.isCustodian == true
             )
         }
+        posts.tryWrite(token, mapped)
     }
 
     companion object {
@@ -505,16 +532,22 @@ class CanonicalLostFoundRepository : LostFoundRepository {
     }
 }
 
-class CanonicalAdoptionRepository : AdoptionRepository {
-    private val posts = MutableStateFlow<List<AdoptionPost>>(emptyList())
+class CanonicalAdoptionRepository(
+    private val epoch: SessionEpoch = SessionGeneration
+) : AdoptionRepository {
+    private val posts = SessionBoundState(emptyList<AdoptionPost>(), epoch)
 
-    override fun observeAdoptionPosts(): StateFlow<List<AdoptionPost>> = posts.asStateFlow()
+    override fun observeAdoptionPosts(): StateFlow<List<AdoptionPost>> = posts.state
+
+    override fun clearAccountCache() {
+        epoch.rotate { posts.reset(emptyList()) }
+    }
 
     override fun observePublishedAdoptions(): Flow<List<AdoptionPost>> =
-        posts.map { list -> list.filter { it.status == AdoptionStatus.PUBLISHED } }
+        posts.state.map { list -> list.filter { it.status == AdoptionStatus.PUBLISHED } }
 
     override fun observeMyAdoptions(publisherId: String): Flow<List<AdoptionPost>> =
-        posts.map { list ->
+        posts.state.map { list ->
             if (publisherId.isBlank()) list else list.filter { it.publisherId == publisherId }
         }
 
@@ -554,7 +587,8 @@ class CanonicalAdoptionRepository : AdoptionRepository {
                 description = post.description,
                 requirements = post.requirements,
                 locationText = post.location,
-                publish = true
+                publish = true,
+                matchRequirements = post.matchRequirements
             )
         ).map { it.id }
 
@@ -573,7 +607,25 @@ class CanonicalAdoptionRepository : AdoptionRepository {
             function = CanonicalBackend.RPC_CREATE_ADOPTION,
             parameters = buildJsonObject {
                 put("p_pet_id", params.petId)
-                put("p_note", params.description)
+                params.organizationId?.let { put("p_organization_id", it) }
+                put("p_note", params.requirements)
+                put("p_title", params.title)
+                put("p_description", params.description)
+                put("p_location_text", params.locationText)
+                put("p_accepts_children", params.matchRequirements.acceptsChildren)
+                put("p_accepts_other_dogs", params.matchRequirements.acceptsOtherDogs)
+                put("p_accepts_cats", params.matchRequirements.acceptsCats)
+                put("p_needs_outdoor_space", params.matchRequirements.needsOutdoorSpace)
+                put("p_needs_secure_enclosure", params.matchRequirements.needsSecureEnclosure)
+                put("p_requires_escape_protection", params.matchRequirements.requiresEscapeProtection)
+                put("p_requires_landlord_pet_permission", params.matchRequirements.requiresLandlordPetPermission)
+                put("p_accepts_other_animals", params.matchRequirements.acceptsOtherAnimals)
+                put("p_max_hours_alone", params.matchRequirements.maxHoursAlone?.legacyBandToken())
+                put("p_max_hours_from", params.matchRequirements.maxHoursAlone?.fromHours)
+                put("p_max_hours_to", params.matchRequirements.maxHoursAlone?.toHours)
+                put("p_experience_required", params.matchRequirements.experienceRequired?.name)
+                put("p_accepts_no_experience", params.matchRequirements.acceptsNoExperience)
+                put("p_requires_special_care_experience", params.matchRequirements.requiresSpecialCareExperience)
             }
         ).decodeAs()
         refresh()
@@ -616,8 +668,28 @@ class CanonicalAdoptionRepository : AdoptionRepository {
     }
 
     suspend fun refresh() {
+        val token = epoch.current()
         val rows = rpcRows<CanonicalAdoptionRow>(CanonicalBackend.RPC_LIST_ADOPTIONS)
-        posts.value = rows.map { row ->
+        val mapped = rows.map { row ->
+            val traits = com.comunidapp.app.domain.adoption.AdoptionGeneralProfileCodec.decodeRequirements(
+                acceptsChildren = row.acceptsChildren,
+                acceptsOtherDogs = row.acceptsOtherDogs,
+                acceptsCats = row.acceptsCats,
+                needsOutdoorSpace = row.needsOutdoorSpace,
+                needsSecureEnclosure = row.needsSecureEnclosure,
+                requiresEscapeProtection = row.requiresEscapeProtection,
+                requiresLandlordPetPermission = row.requiresLandlordPetPermission,
+                acceptsOtherAnimals = row.acceptsOtherAnimals,
+                maxHoursAlone = row.maxHoursAlone,
+                maxHoursFrom = row.maxHoursFrom,
+                maxHoursTo = row.maxHoursTo,
+                experienceRequired = row.experienceRequired,
+                acceptsNoExperience = row.acceptsNoExperience,
+                requiresSpecialCareExperience = row.requiresSpecialCareExperience,
+                additionalNotes = if (row.description.isNullOrBlank()) null else row.note
+            )
+            val description = row.description?.takeIf { it.isNotBlank() } ?: row.note.orEmpty()
+            val location = row.locationText?.takeIf { it.isNotBlank() } ?: row.localityId.orEmpty()
             AdoptionPost(
                 id = row.id,
                 petId = row.petId,
@@ -625,14 +697,16 @@ class CanonicalAdoptionRepository : AdoptionRepository {
                 publisherOrganizationId = row.organizationId,
                 shelterId = row.organizationId,
                 shelterName = "",
-                title = row.name.orEmpty(),
+                title = row.title?.takeIf { it.isNotBlank() } ?: row.name.orEmpty(),
                 name = row.name.orEmpty(),
                 species = PetSpecies.fromString(row.species),
                 sex = runCatching { PetSex.valueOf(row.sex ?: "UNKNOWN") }.getOrDefault(PetSex.UNKNOWN),
                 ageYears = 0,
                 size = runCatching { PetSize.valueOf(row.size ?: "MEDIUM") }.getOrDefault(PetSize.MEDIUM),
-                location = row.localityId.orEmpty(),
-                description = row.note.orEmpty(),
+                location = location,
+                description = description,
+                requirements = traits.additionalNotes.orEmpty(),
+                matchRequirements = traits,
                 status = when (row.status.uppercase()) {
                     "CLOSED" -> AdoptionStatus.CLOSED
                     "HIDDEN" -> AdoptionStatus.PAUSED
@@ -642,26 +716,31 @@ class CanonicalAdoptionRepository : AdoptionRepository {
                 createdAt = parseEpoch(row.createdAt)
             )
         }
+        posts.tryWrite(token, mapped)
     }
 }
 
-class CanonicalFeedRepository : FeedRepository {
-    private val posts = MutableStateFlow<List<FeedPost>>(emptyList())
-    private val stories = MutableStateFlow<List<FeedPost>>(emptyList())
-    private val liked = MutableStateFlow<Set<String>>(emptySet())
-    private val comments = MutableStateFlow<Map<String, List<PostComment>>>(emptyMap())
+class CanonicalFeedRepository(
+    private val epoch: SessionEpoch = SessionGeneration
+) : FeedRepository {
+    private val posts = SessionBoundState(emptyList<FeedPost>(), epoch)
+    private val stories = SessionBoundState(emptyList<FeedPost>(), epoch)
+    private val liked = SessionBoundState(emptySet<String>(), epoch)
+    private val comments = SessionBoundState(emptyMap<String, List<PostComment>>(), epoch)
     @Volatile private var feedHasMore = false
 
-    override fun observeFeedPosts(): StateFlow<List<FeedPost>> = posts.asStateFlow()
-    override fun observeActiveStories(): StateFlow<List<FeedPost>> = stories.asStateFlow()
+    override fun observeFeedPosts(): StateFlow<List<FeedPost>> = posts.state
+    override fun observeActiveStories(): StateFlow<List<FeedPost>> = stories.state
     override fun hasMorePosts(): Boolean = feedHasMore
 
     override fun clearAccountCache() {
-        posts.value = emptyList()
-        stories.value = emptyList()
-        liked.value = emptySet()
-        comments.value = emptyMap()
-        feedHasMore = false
+        epoch.rotate {
+            posts.reset(emptyList())
+            stories.reset(emptyList())
+            liked.reset(emptySet())
+            comments.reset(emptyMap())
+            feedHasMore = false
+        }
     }
 
     override suspend fun refreshPosts(): Result<Unit> = runCatching { refresh(reset = true) }
@@ -683,6 +762,7 @@ class CanonicalFeedRepository : FeedRepository {
     }
 
     override suspend fun ensureVisiblePost(postId: String): Result<FeedPost?> = runCatching {
+        val token = epoch.current()
         // Never trust cache for access control: revoked visibility must drop last-good.
         val row = try {
             rpcRows<CanonicalSocialPostRow>(
@@ -690,22 +770,31 @@ class CanonicalFeedRepository : FeedRepository {
                 buildJsonObject { put("p_post_id", postId) }
             ).firstOrNull()
         } catch (error: Throwable) {
-            posts.value = posts.value.filterNot { it.id == postId }
+            posts.tryUpdate(token) { current -> current.filterNot { it.id == postId } }
             throw error
         }
         if (row == null) {
-            posts.value = posts.value.filterNot { it.id == postId }
+            posts.tryUpdate(token) { current -> current.filterNot { it.id == postId } }
             return@runCatching null
         }
         val mapped = mapSocialPost(row)
-        posts.value = listOf(mapped) + posts.value.filterNot { it.id == mapped.id }
+        if (!posts.tryUpdate(token) { current -> listOf(mapped) + current.filterNot { it.id == mapped.id } }) {
+            return@runCatching null
+        }
         mapped
     }
 
     override suspend fun addFeedPost(post: FeedPost): Result<String> = runCatching {
+        val token = epoch.current()
         val mediaId = post.mediaAssetId
             ?: post.imageUrl?.takeIf { !it.startsWith("http", ignoreCase = true) }
-        createSocialPost(post, mediaAssetId = mediaId, kind = "POST")
+        val id = createSocialPost(post, mediaAssetId = mediaId, kind = "POST")
+        val optimistic = post.copy(id = id)
+        runCatching { refresh(reset = true) }
+        posts.tryUpdate(token) { current ->
+            com.comunidapp.app.domain.social.FeedAfterPublish.merge(current, optimistic)
+        }
+        id
     }
 
     override suspend fun addStory(post: FeedPost, mediaAssetId: String): Result<String> = runCatching {
@@ -747,26 +836,28 @@ class CanonicalFeedRepository : FeedRepository {
     override suspend fun updateFeedPost(post: FeedPost): Result<Unit> = Result.success(Unit)
 
     override suspend fun toggleLike(postId: String, userId: String): Result<Boolean> = runCatching {
+        val token = epoch.current()
         val likedNow: Boolean = supabase.postgrest.rpc(
             function = CanonicalBackend.RPC_REACT_SOCIAL_POST,
             parameters = buildJsonObject { put("p_post_id", postId) }
         ).decodeAs()
-        liked.update { current -> if (likedNow) current + postId else current - postId }
+        liked.tryUpdate(token) { current -> if (likedNow) current + postId else current - postId }
         refresh(reset = true)
         likedNow
     }
 
-    override fun observeLikedPostIds(userId: String): Flow<Set<String>> = liked
+    override fun observeLikedPostIds(userId: String): Flow<Set<String>> = liked.state
 
     override fun observeComments(postId: String): Flow<List<PostComment>> =
-        comments.map { it[postId].orEmpty() }
+        comments.state.map { it[postId].orEmpty() }
 
     override suspend fun refreshComments(postId: String): Result<Unit> = runCatching {
+        val token = epoch.current()
         val rows = rpcRows<CanonicalSocialCommentRow>(
             CanonicalBackend.RPC_LIST_SOCIAL_COMMENTS,
             buildJsonObject { put("p_post_id", postId) }
         )
-        comments.update { current ->
+        comments.tryUpdate(token) { current ->
             current + (postId to rows.map { row ->
                 PostComment(
                     id = row.id,
@@ -799,11 +890,12 @@ class CanonicalFeedRepository : FeedRepository {
     }
 
     override suspend fun deleteOwnComment(commentId: String): Result<Unit> = runCatching {
+        val token = epoch.current()
         supabase.postgrest.rpc(
             function = CanonicalBackend.RPC_DELETE_OWN_COMMENT,
             parameters = buildJsonObject { put("p_comment_id", commentId) }
         )
-        comments.update { current ->
+        comments.tryUpdate(token) { current ->
             current.mapValues { (_, list) -> list.filterNot { it.id == commentId } }
         }
         refresh(reset = true)
@@ -833,6 +925,7 @@ class CanonicalFeedRepository : FeedRepository {
     }
 
     private suspend fun refresh(reset: Boolean) {
+        val token = epoch.current()
         val cursor = if (reset) null else feedCursor()
         val rows = rpcRows<CanonicalSocialPostRow>(
             CanonicalBackend.RPC_LIST_SOCIAL_FEED,
@@ -848,12 +941,15 @@ class CanonicalFeedRepository : FeedRepository {
             }
         )
         val mapped = mapSocialPosts(rows)
-        feedHasMore = rows.size >= CanonicalBackend.FEED_PAGE_LIMIT
-        posts.value = if (reset) {
-            mapped
-        } else {
-            val seen = posts.value.map { it.id }.toHashSet()
-            posts.value + mapped.filter { it.id !in seen }
+        val hasMore = rows.size >= CanonicalBackend.FEED_PAGE_LIMIT
+        posts.tryUpdate(token) { current ->
+            feedHasMore = hasMore
+            if (reset) {
+                mapped
+            } else {
+                val seen = current.map { it.id }.toHashSet()
+                current + mapped.filter { it.id !in seen }
+            }
         }
     }
 
@@ -939,6 +1035,8 @@ class CanonicalFeedRepository : FeedRepository {
             petNames = jsonTextList(row.petNames),
             localityId = row.localityId,
             compositionJson = compositionJson,
+            alertKind = com.comunidapp.app.domain.social.SocialPostMedia.alertKind(compositionJson),
+            lostFoundCaseId = com.comunidapp.app.domain.social.SocialPostMedia.lostFoundCaseId(compositionJson),
             mediaMime = row.mediaMime,
             visibility = com.comunidapp.app.domain.social.CanonicalSocialPostVisibility.fromRaw(row.visibility)
         )
@@ -963,8 +1061,9 @@ class CanonicalFeedRepository : FeedRepository {
     }
 
     private suspend fun refreshStoriesInternal() {
+        val token = epoch.current()
         val rows = rpcRows<CanonicalStoryRow>(CanonicalBackend.RPC_LIST_ACTIVE_STORIES)
-        stories.value = rows.map { row ->
+        val mapped = rows.map { row ->
             FeedPost(
                 id = row.id,
                 authorId = row.authorUserId.orEmpty(),
@@ -981,6 +1080,7 @@ class CanonicalFeedRepository : FeedRepository {
                 mediaMime = row.mediaMime
             )
         }
+        stories.tryWrite(token, mapped)
     }
 
     private fun jsonTextList(element: JsonElement?): List<String> {

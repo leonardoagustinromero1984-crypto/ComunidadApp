@@ -476,6 +476,25 @@ class M11ShelterCampaignsAndAidTest {
     }
 
     @Test
+    fun managerCannotConfirmOwnPledge() = runTest {
+        val shelter = createActiveShelter()
+        val request = createOpenRequest(shelter.id)
+        actorId = "manager-1"
+        wire()
+        val contrib = supply.pledgeContribution(
+            PledgeSupplyContributionInput(requestId = request.id, quantityCommitted = 2)
+        ).getOrThrow()
+        assertEquals(
+            "SHELTER_CONTRIBUTION_FORBIDDEN",
+            codeOf(supply.confirmContribution(contrib.id))
+        )
+        assertEquals(
+            ShelterSupplyContributionStatus.PLEDGED,
+            store.supplyContributions.value.first { it.id == contrib.id }.status
+        )
+    }
+
+    @Test
     fun partialReceipt() = runTest {
         val shelter = createActiveShelter()
         val request = createOpenRequest(shelter.id, quantity = 8)

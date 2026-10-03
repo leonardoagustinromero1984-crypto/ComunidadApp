@@ -32,6 +32,8 @@ import com.comunidapp.app.ui.theme.BrandOrangeSoft
 import com.comunidapp.app.ui.theme.ComunidappTheme
 import com.comunidapp.app.ui.theme.LeoDimens
 import com.comunidapp.app.ui.theme.UrgentContainer
+import com.comunidapp.app.domain.capability.CapabilityFacts
+import com.comunidapp.app.domain.capability.CapabilityGate
 import com.comunidapp.app.domain.context.OperationalContext
 import com.comunidapp.app.ui.theme.UrgentRed
 import com.comunidapp.app.viewmodel.SumateViewModel
@@ -81,6 +83,7 @@ fun SumateScreen(
             viewModel
         )
     }
+    val visibility = CapabilityGate.sumate(CapabilityFacts.forActiveContext(context))
 
     Scaffold(
         containerColor = BrandBackground,
@@ -102,10 +105,10 @@ fun SumateScreen(
         ) {
             V2NavRow(
                 title = "Adopción",
-                description = if (context.isPersonal) {
-                    "Explorá mascotas, quiero adoptar, mi perfil y postulaciones"
-                } else {
+                description = if (visibility.adoptionDescribesPublish) {
                     "Publicar en adopción, postulaciones recibidas y seguimiento"
+                } else {
+                    "Explorá mascotas, quiero adoptar, mi perfil y postulaciones"
                 },
                 icon = Icons.Default.Pets,
                 onClick = onOpenAdoptions,
@@ -114,34 +117,17 @@ fun SumateScreen(
             )
             V2NavRow(
                 title = "Refugios / ONG",
-                description = if (context.isPersonal) {
+                description = if (visibility.shelterOpensDirectory) {
                     "Encontrá refugios y organizaciones cerca"
                 } else {
                     "Organizaciones que rescatan y cuidan"
                 },
                 icon = Icons.Default.Store,
-                onClick = if (context.isPersonal) onM16Shelters else onShelterOps,
+                onClick = if (visibility.shelterOpensDirectory) onM16Shelters else onShelterOps,
                 iconTint = BrandGreenDark,
                 iconContainer = BrandGreenContainer
             )
-            if (context.isPersonal) {
-                V2NavRow(
-                    title = "Ofrecer hogar de tránsito",
-                    description = "Quiero colaborar como tránsito",
-                    icon = Icons.Default.HomeWork,
-                    onClick = onCreateFoster,
-                    iconTint = BrandOrangeSoft,
-                    iconContainer = BrandOrangeContainer
-                )
-                V2NavRow(
-                    title = "Solicitudes de tránsito",
-                    description = "Mascotas que buscan un hogar temporal",
-                    icon = Icons.Default.HomeWork,
-                    onClick = onOpenFosterRequests,
-                    iconTint = BrandOrangeSoft,
-                    iconContainer = BrandOrangeContainer
-                )
-            } else if (context is OperationalContext.Foster) {
+            if (visibility.showFosterManagement) {
                 V2NavRow(
                     title = "Hogares de tránsito",
                     description = "Gestión de tránsitos y solicitudes",
@@ -150,6 +136,18 @@ fun SumateScreen(
                     iconTint = BrandOrangeSoft,
                     iconContainer = BrandOrangeContainer
                 )
+            }
+            if (visibility.showOfferFosterHome) {
+                V2NavRow(
+                    title = "Ofrecer hogar de tránsito",
+                    description = "Quiero colaborar como tránsito",
+                    icon = Icons.Default.HomeWork,
+                    onClick = onCreateFoster,
+                    iconTint = BrandOrangeSoft,
+                    iconContainer = BrandOrangeContainer
+                )
+            }
+            if (visibility.showBrowseFosterRequests) {
                 V2NavRow(
                     title = "Solicitudes de tránsito",
                     description = "Mascotas que buscan un hogar temporal",
@@ -168,8 +166,8 @@ fun SumateScreen(
                 iconContainer = UrgentContainer
             )
             V2NavRow(
-                title = "Donaciones",
-                description = "Campañas e insumos para causas reales",
+                title = "Ayudar",
+                description = "Dinero, cosas o tu tiempo",
                 icon = Icons.Default.VolunteerActivism,
                 onClick = onM17Campaigns,
                 iconTint = BrandGreen,

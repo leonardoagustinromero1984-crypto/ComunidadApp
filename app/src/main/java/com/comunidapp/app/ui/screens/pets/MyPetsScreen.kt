@@ -216,7 +216,7 @@ private fun PetHealthCard(pet: Pet) {
             .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceS)
     ) {
         Text(
-            text = "Salud de ${pet.name}",
+            text = "Salud de ${com.comunidapp.app.domain.pets.PetDisplayName.of(pet.originKind, pet.name)}",
             style = LeoCardTitle,
             color = BrandText
         )

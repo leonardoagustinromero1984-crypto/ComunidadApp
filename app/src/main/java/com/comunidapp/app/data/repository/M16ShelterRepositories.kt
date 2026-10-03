@@ -103,6 +103,16 @@ class M16MemoryStore {
         }
     }
 
+    fun clearSessionResidue() {
+        seeded = false
+        idSeq.set(0)
+        _profiles.value = emptyList()
+        _verificationRequests.value = emptyList()
+        organizationTypes.value = emptyMap()
+        organizationManagers.value = emptyMap()
+        seedDefaults(com.comunidapp.app.domain.user.SessionGeneration.NEUTRAL_MOCK_ACTOR)
+    }
+
     fun seedDefaults(actorUserId: String = "mock_user_admin") {
         if (seeded) return
         seeded = true
@@ -319,6 +329,7 @@ private fun applyPublicSearchFilters(
         .filter { profile ->
             if (q.isEmpty()) true
             else {
+                // OrganizationPublicSearch: name, public zone, description. Not email or ids.
                 profile.displayName.lowercase().contains(q) ||
                     profile.publicZoneText.lowercase().contains(q) ||
                     profile.description.orEmpty().lowercase().contains(q)
@@ -333,7 +344,7 @@ class MockM16ShelterRepository(
 ) : M16ShelterRepository {
 
     init {
-        store.seedDefaults(actorUserId().orEmpty().ifBlank { "mock_user_admin" })
+        store.seedDefaults(com.comunidapp.app.domain.user.SessionGeneration.NEUTRAL_MOCK_ACTOR)
     }
 
     override fun observePublicShelters(): Flow<List<M16PublicShelter>> =

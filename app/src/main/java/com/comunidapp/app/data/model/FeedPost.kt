@@ -41,6 +41,9 @@ data class FeedPost(
     val expiresAt: Long? = null,
     val localityId: String? = null,
     val compositionJson: String? = null,
+    /** Canonical lost/found kind: LOST or FOUND. Null on untyped historical posts. */
+    val alertKind: String? = null,
+    val lostFoundCaseId: String? = null,
     val mediaMime: String? = null,
     /** Canonical social_posts.visibility (PUBLIC / FOLLOWERS / PRIVATE). */
     val visibility: CanonicalSocialPostVisibility = CanonicalSocialPostVisibility.PUBLIC

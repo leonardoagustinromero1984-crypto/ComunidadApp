@@ -230,7 +230,8 @@ class LeoVerCommunityCareEndTransit14cTest {
         val screens = source("app/src/main/java/com/comunidapp/app/ui/screens/foster/FosterCareRequestScreens.kt")
         assertTrue(screens.contains("CanonicalFosterTransitRecovery.isHistoricalSelection"))
         assertTrue(screens.contains("tránsito finalizado"))
-        assertTrue(screens.contains("Antecedente SELECTED"))
+        assertTrue(screens.contains("Tránsito finalizado."))
+        assertFalse(screens.contains("Antecedente SELECTED"))
         val historical = application(
             status = "SELECTED",
             requestStatus = "COMPLETED",

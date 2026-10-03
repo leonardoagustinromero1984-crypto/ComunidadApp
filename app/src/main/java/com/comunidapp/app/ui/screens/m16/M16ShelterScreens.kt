@@ -5,11 +5,14 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
@@ -40,12 +43,13 @@ import com.comunidapp.app.data.model.M16PublicShelter
 import com.comunidapp.app.data.model.M16ShelterOperationalStatus
 import com.comunidapp.app.data.model.M16ShelterService
 import com.comunidapp.app.data.model.M16ShelterVerificationFilter
+import com.comunidapp.app.data.model.publicBadge
 import com.comunidapp.app.data.model.visibleLabel
-import com.comunidapp.app.domain.verification.VerificationDisplayPolicy
+import com.comunidapp.app.domain.organization.OrganizationPresentation
+import com.comunidapp.app.domain.organization.OrganizationPublicSearch
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.theme.BrandBackground
-import com.comunidapp.app.ui.theme.BrandCream
 import com.comunidapp.app.ui.components.state.EmptyState
 import com.comunidapp.app.ui.components.state.ErrorState
 import com.comunidapp.app.ui.components.state.LoadingState
@@ -63,7 +67,12 @@ import com.comunidapp.app.viewmodel.m16DayLabel
 import com.comunidapp.app.ui.components.leo.LeoFilterChip
 import com.comunidapp.app.ui.components.leo.LeoHairline
 import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoActiveFilter
+import com.comunidapp.app.ui.components.leo.LeoFilterBar
+import com.comunidapp.app.ui.components.leo.LeoFilterSheet
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.ui.components.leo.LeoStatusBadge
+import com.comunidapp.app.ui.components.leo.LeoTextField
 import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
@@ -76,12 +85,26 @@ fun M16SheltersListScreen(
     val state by viewModel.uiState.collectAsState()
     val filter by viewModel.filter.collectAsState()
     var query by remember(filter.query) { mutableStateOf(filter.query) }
+    var filtersOpen by remember { mutableStateOf(false) }
+    var draftSpecies by remember { mutableStateOf<String?>(null) }
+    var draftService by remember { mutableStateOf<com.comunidapp.app.data.model.M16ShelterService?>(null) }
+    var draftVerification by remember { mutableStateOf(M16ShelterVerificationFilter.ALL) }
+    val activeFilters = buildList {
+        filter.species?.let { code ->
+            val label = if (code == "DOG") "Perros" else if (code == "CAT") "Gatos" else return@let
+            add(LeoActiveFilter("species", label))
+        }
+        filter.service?.let { add(LeoActiveFilter("service", it.visibleLabel())) }
+        if (filter.verificationFilter == M16ShelterVerificationFilter.VERIFIED_ONLY) {
+            add(LeoActiveFilter("verified", "Organizaciones verificadas"))
+        }
+    }
 
     Scaffold(
         containerColor = BrandBackground,
         topBar = {
             LeoTopAppBar(
-                title = "Refugios",
+                title = "Organizaciones",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -96,28 +119,68 @@ fun M16SheltersListScreen(
                 message = com.comunidapp.app.ui.components.ContextualHelpMessages.SHELTERS
             )
             Text(
-                "Directorio público de refugios — sin datos personales.",
+                "Directorio de organizaciones. Busca por nombre, localidad o descripción.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
-            OutlinedTextField(
-                value = query,
-                onValueChange = {
-                    query = it
-                    viewModel.setQuery(it)
+            LeoFilterBar(
+                onOpenFilters = {
+                    draftSpecies = filter.species
+                    draftService = filter.service
+                    draftVerification = filter.verificationFilter
+                    filtersOpen = true
                 },
-                modifier = Modifier.fillMaxWidth(),
-                label = { Text("Buscar refugio") },
-                singleLine = true
+                activeFilters = activeFilters,
+                onRemoveFilter = { id ->
+                    when (id) {
+                        "species" -> viewModel.setSpecies(null)
+                        "service" -> viewModel.setService(null)
+                        "verified" -> viewModel.setVerificationFilter(M16ShelterVerificationFilter.ALL)
+                    }
+                },
+                onClearFilters = {
+                    val kept = query
+                    viewModel.clearFilters()
+                    query = kept
+                    if (kept.isNotBlank()) viewModel.setQuery(kept)
+                },
+                search = {
+                    LeoTextField(
+                        value = query,
+                        onValueChange = {
+                            query = it
+                            viewModel.setQuery(it)
+                        },
+                        label = OrganizationPublicSearch.PLACEHOLDER
+                    )
+                }
             )
-            M16ListFilterRow(
-                filter = filter,
-                onOperational = viewModel::setOperationalStatus,
-                onVerification = viewModel::setVerificationFilter,
-                onService = viewModel::setService,
-                onSpecies = viewModel::setSpecies,
-                onClear = viewModel::clearFilters
-            )
+            LeoFilterSheet(
+                visible = filtersOpen,
+                onDismiss = { filtersOpen = false },
+                onClearDraft = {
+                    draftSpecies = null
+                    draftService = null
+                    draftVerification = M16ShelterVerificationFilter.ALL
+                },
+                onApply = {
+                    viewModel.setSpecies(draftSpecies)
+                    viewModel.setService(draftService)
+                    viewModel.setVerificationFilter(draftVerification)
+                    filtersOpen = false
+                }
+            ) {
+                M16ListFilterRow(
+                    filter = filter.copy(
+                        species = draftSpecies,
+                        service = draftService,
+                        verificationFilter = draftVerification
+                    ),
+                    onVerification = { draftVerification = it },
+                    onService = { draftService = it },
+                    onSpecies = { draftSpecies = it }
+                )
+            }
             onManage?.let { manage ->
                 LeoPrimaryButton(
                     text = "Administrar refugio",
@@ -127,8 +190,8 @@ fun M16SheltersListScreen(
             when (val s = state) {
                 M16SheltersListUiState.Loading -> LoadingState()
                 M16SheltersListUiState.Empty -> EmptyState(
-                    title = "Sin refugios",
-                    message = "No hay refugios publicados que coincidan."
+                    title = "Sin organizaciones",
+                    message = "No hay organizaciones publicadas que coincidan."
                 )
                 is M16SheltersListUiState.Error -> ErrorState(message = s.message)
                 is M16SheltersListUiState.Content -> LazyColumn(
@@ -146,84 +209,28 @@ fun M16SheltersListScreen(
 @Composable
 private fun M16ListFilterRow(
     filter: com.comunidapp.app.data.model.M16ShelterSearchFilter,
-    onOperational: (M16ShelterOperationalStatus?) -> Unit,
     onVerification: (M16ShelterVerificationFilter) -> Unit,
     onService: (M16ShelterService?) -> Unit,
-    onSpecies: (String?) -> Unit,
-    onClear: () -> Unit
+    onSpecies: (String?) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Estado operativo", style = MaterialTheme.typography.labelMedium)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LeoFilterChip(
-                label = "Activos y pausados",
-                selected = filter.operationalStatus == null,
-                onClick = { onOperational(null) }
-            )
-            LeoFilterChip(
-                label = "Activos",
-                selected = filter.operationalStatus == M16ShelterOperationalStatus.ACTIVE,
-                onClick = {
-                    onOperational(
-                        if (filter.operationalStatus == M16ShelterOperationalStatus.ACTIVE) null
-                        else M16ShelterOperationalStatus.ACTIVE
-                    )
-                }
-            )
-            LeoFilterChip(
-                label = "Pausados",
-                selected = filter.operationalStatus == M16ShelterOperationalStatus.PAUSED,
-                onClick = {
-                    onOperational(
-                        if (filter.operationalStatus == M16ShelterOperationalStatus.PAUSED) null
-                        else M16ShelterOperationalStatus.PAUSED
-                    )
-                }
-            )
-            LeoFilterChip(
-                label = "Cerrados",
-                selected = filter.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED,
-                onClick = {
-                    onOperational(
-                        if (filter.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED) {
-                            null
-                        } else {
-                            M16ShelterOperationalStatus.PERMANENTLY_CLOSED
-                        }
-                    )
-                }
-            )
-        }
-        if (VerificationDisplayPolicy.FILTERS_VISIBLE) {
-        Text("Verificación", style = MaterialTheme.typography.labelMedium)
+        Text("Especie", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            LeoFilterChip(
-                label = "Todos",
-                selected = filter.verificationFilter == M16ShelterVerificationFilter.ALL,
-                onClick = { onVerification(M16ShelterVerificationFilter.ALL) }
-            )
-            LeoFilterChip(
-                label = "Verificados",
-                selected = filter.verificationFilter == M16ShelterVerificationFilter.VERIFIED_ONLY,
-                onClick = { onVerification(M16ShelterVerificationFilter.VERIFIED_ONLY) }
-            )
-            LeoFilterChip(
-                label = "No verificados",
-                selected = filter.verificationFilter == M16ShelterVerificationFilter.UNVERIFIED_OR_PENDING,
-                onClick = { onVerification(M16ShelterVerificationFilter.UNVERIFIED_OR_PENDING) }
-            )
+            listOf("DOG" to "Perros", "CAT" to "Gatos").forEach { (code, label) ->
+                LeoFilterChip(
+                    label = label,
+                    selected = filter.species == code,
+                    onClick = { onSpecies(if (filter.species == code) null else code) }
+                )
+            }
         }
-        }
-        Text("Servicio", style = MaterialTheme.typography.labelMedium)
+        Text("Actividad", style = MaterialTheme.typography.labelMedium)
         Row(
             modifier = Modifier.horizontalScroll(rememberScrollState()),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             LeoFilterChip(
-                label = "Todos",
+                label = "Todas",
                 selected = filter.service == null,
                 onClick = { onService(null) }
             )
@@ -235,16 +242,18 @@ private fun M16ListFilterRow(
                 )
             }
         }
-        OutlinedTextField(
-            value = filter.species.orEmpty(),
-            onValueChange = { onSpecies(it) },
-            modifier = Modifier.fillMaxWidth(),
-            label = { Text("Especie") },
-            singleLine = true
-        )
-        LeoOutlinedButton(
-            text = "Limpiar filtros",
-            onClick = onClear
+        LeoFilterChip(
+            label = "Organizaciones verificadas",
+            selected = filter.verificationFilter == M16ShelterVerificationFilter.VERIFIED_ONLY,
+            onClick = {
+                onVerification(
+                    if (filter.verificationFilter == M16ShelterVerificationFilter.VERIFIED_ONLY) {
+                        M16ShelterVerificationFilter.ALL
+                    } else {
+                        M16ShelterVerificationFilter.VERIFIED_ONLY
+                    }
+                )
+            }
         )
     }
 }
@@ -257,11 +266,21 @@ private fun M16PublicShelterCard(item: M16PublicShelter, onClick: () -> Unit) {
             .clickable(onClick = onClick)
     ) {
         Column(Modifier.padding(LeoDimens.SpaceCompact)) {
-            Text(item.displayName, fontWeight = FontWeight.Bold)
-            Text("${item.publicZoneText} · ${item.operationalStatus}")
-            Text("Servicios: ${item.services.joinToString { it.name }}")
-            Text("Disponibilidad: ${item.availability}")
-            Text("Verificación: ${item.verificationStatus}")
+            M16PublicLogo(item.publicImageRef, item.displayName)
+            Text(item.displayName, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            if (item.publicZoneText.isNotBlank()) Text(item.publicZoneText, style = MaterialTheme.typography.bodyMedium)
+            item.description?.trim()?.takeIf { it.isNotEmpty() }?.let { Text(it) }
+            item.verificationStatus.publicBadge()?.let { LeoStatusBadge(it) }
+            Text(item.operationalStatus.visibleLabel())
+            if (OrganizationPresentation.showAvailability(item.operationalStatus)) {
+                Text(item.availability.visibleLabel())
+            }
+            val activities = item.services.map { it.visibleLabel() }
+            if (activities.isNotEmpty()) {
+                Text(activities.joinToString(" · "))
+            }
+            val species = OrganizationPresentation.speciesList(item.acceptedSpecies)
+            if (species.isNotEmpty()) Text(species.joinToString(" · "))
         }
         LeoHairline()
     }
@@ -271,19 +290,22 @@ private fun M16PublicShelterCard(item: M16PublicShelter, onClick: () -> Unit) {
 fun M16ShelterDetailScreen(
     shelterId: String,
     onNavigateBack: () -> Unit,
-    onM17Hub: (() -> Unit)? = null,
-    onM18Events: (() -> Unit)? = null,
+    onAdoptions: (() -> Unit)? = null,
+    onVolunteer: (() -> Unit)? = null,
+    onManage: (() -> Unit)? = null,
     viewModel: M16ShelterDetailViewModel = viewModel(
         factory = M16ShelterDetailViewModel.factory(shelterId)
     )
 ) {
     val shelter by viewModel.shelter.collectAsState()
     val message by viewModel.message.collectAsState()
+    val canManage by viewModel.canManage.collectAsState()
+    val adoptionAccess by viewModel.adoptionAccess.collectAsState()
     Scaffold(
         containerColor = BrandBackground,
         topBar = {
             LeoTopAppBar(
-                title = "Detalle del refugio",
+                title = shelter?.displayName ?: "Organización",
                 showBackButton = true,
                 onBackClick = onNavigateBack
             )
@@ -294,15 +316,19 @@ fun M16ShelterDetailScreen(
                 .padding(padding)
                 .padding(16.dp)
                 .fillMaxSize()
-                .verticalScroll(rememberScrollState())
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             when {
                 message != null -> ErrorState(message = message!!)
                 shelter == null -> LoadingState()
                 else -> M16PublicShelterDetailContent(
-                    shelter!!,
-                    onM17Hub = onM17Hub,
-                    onM18Events = onM18Events
+                    shelter = shelter!!,
+                    adoptionAccess = adoptionAccess,
+                    canManage = canManage,
+                    onAdoptions = onAdoptions,
+                    onVolunteer = onVolunteer,
+                    onManage = onManage
                 )
             }
         }
@@ -311,101 +337,82 @@ fun M16ShelterDetailScreen(
 
 @Composable
 private fun M16PublicShelterDetailContent(
-    s: M16PublicShelter,
-    onM17Hub: (() -> Unit)? = null,
-    onM18Events: (() -> Unit)? = null
+    shelter: M16PublicShelter,
+    adoptionAccess: com.comunidapp.app.viewmodel.M16PublicAdoptionAccess,
+    canManage: Boolean,
+    onAdoptions: (() -> Unit)?,
+    onVolunteer: (() -> Unit)?,
+    onManage: (() -> Unit)?
 ) {
-    if (s.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED) {
-        Column(modifier = Modifier.fillMaxWidth()) {
-            Text(
-                "Este refugio cerró permanentemente.",
-                modifier = Modifier.padding(LeoDimens.SpaceCompact),
-                color = MaterialTheme.colorScheme.error,
-                fontWeight = FontWeight.Bold
-            )
-            LeoHairline()
-        }
-        Spacer(Modifier.height(12.dp))
-    }
-    if (s.operationalStatus == M16ShelterOperationalStatus.PAUSED) {
-        Text(
-            "Refugio pausado temporalmente.",
-            color = MaterialTheme.colorScheme.tertiary,
-            fontWeight = FontWeight.SemiBold
-        )
-        Spacer(Modifier.height(8.dp))
-    }
-    Text(s.displayName, style = MaterialTheme.typography.headlineSmall)
-    Text("Zona: ${s.publicZoneText}")
-    s.description?.let { Text(it) }
-    Spacer(Modifier.height(8.dp))
-    Text("Estado: ${s.operationalStatus} · Verificación: ${s.verificationStatus}")
-    Text("Capacidad agregada: ${s.freeSlotsApproximate} libres de ${s.totalCapacity}")
-    Text("Especies: ${s.acceptedSpecies.joinToString().ifBlank { "—" }}")
-    Text("Servicios: ${s.services.joinToString { it.name }.ifBlank { "—" }}")
-    if (s.needs.isNotEmpty()) {
-        Spacer(Modifier.height(8.dp))
-        Text("Necesidades", fontWeight = FontWeight.Bold)
-        s.needs.forEach { Text("· ${it.category}: ${it.description}") }
-    }
-    Spacer(Modifier.height(12.dp))
-    Text("Horarios de atención", fontWeight = FontWeight.Bold)
-    M16OpeningHoursReadOnly(s.openingHours)
-    if (s.publicContacts.isNotEmpty()) {
-        Spacer(Modifier.height(12.dp))
-        Text("Contacto público", fontWeight = FontWeight.Bold)
-        s.publicContacts.forEach { contact ->
-            Text("${m16ContactTypeLabel(contact.type)}: ${contact.value}")
+    M16PublicLogo(shelter.publicImageRef, shelter.displayName)
+    Text(shelter.displayName, style = MaterialTheme.typography.headlineSmall)
+    shelter.verificationStatus.publicBadge()?.let { Text(it, fontWeight = FontWeight.SemiBold) }
+    if (shelter.publicZoneText.isNotBlank()) Text(shelter.publicZoneText)
+    shelter.description?.trim()?.takeIf { it.isNotEmpty() }?.let { Text(it) }
+    Text(shelter.operationalStatus.visibleLabel())
+    if (OrganizationPresentation.showAvailability(shelter.operationalStatus)) {
+        Text(shelter.availability.visibleLabel())
+        if (shelter.totalCapacity > 0) {
+            Text("Cupos libres aproximados: ${shelter.freeSlotsApproximate} de ${shelter.totalCapacity}")
         }
     }
-    onM17Hub?.let { hub ->
-        Spacer(Modifier.height(16.dp))
-        LeoOutlinedButton(
-            text = "Campañas",
-            onClick = hub
-        )
-        Spacer(Modifier.height(8.dp))
-        LeoOutlinedButton(
-            text = "Voluntariado",
-            onClick = hub
-        )
-        Spacer(Modifier.height(8.dp))
-        LeoOutlinedButton(
-            text = "Donar / Ayudar",
-            onClick = hub
-        )
-        Text(
-            "LeoVer no procesa pagos. Si el refugio publicó un alias o CBU, la transferencia se hace por fuera. 0% de comisión.",
-            style = MaterialTheme.typography.bodySmall,
-            modifier = Modifier.padding(top = 8.dp)
-        )
+    val activities = shelter.services.map { it.visibleLabel() }
+    if (activities.isNotEmpty()) {
+        Text("Qué hacemos", fontWeight = FontWeight.Bold)
+        activities.forEach { Text("· $it") }
     }
-    onM18Events?.let { events ->
-        Spacer(Modifier.height(8.dp))
-        LeoOutlinedButton(
-            text = "Eventos",
-            onClick = events
-        )
+    val species = OrganizationPresentation.speciesList(shelter.acceptedSpecies)
+    if (species.isNotEmpty()) {
+        Text("Animales", fontWeight = FontWeight.Bold)
+        Text(species.joinToString(" · "))
+    }
+    val needs = shelter.needs.mapNotNull { OrganizationPresentation.needLine(it) }
+    val volunteerAction = onVolunteer?.takeIf { M16ShelterService.VOLUNTEERING in shelter.services }
+    val offersAdoption = M16ShelterService.ADOPTIONS in shelter.services
+    if (needs.isNotEmpty() || volunteerAction != null || offersAdoption) {
+        Text("Cómo ayudar", fontWeight = FontWeight.Bold)
+        needs.forEach { Text("· $it") }
+        if (volunteerAction != null) {
+            LeoOutlinedButton(text = "Voluntariado", onClick = volunteerAction)
+        }
+        if (offersAdoption) {
+            when (adoptionAccess) {
+                com.comunidapp.app.viewmodel.M16PublicAdoptionAccess.AVAILABLE -> {
+                    if (onAdoptions != null) {
+                        LeoOutlinedButton(text = "Ver mascotas en adopción", onClick = onAdoptions)
+                    }
+                }
+                com.comunidapp.app.viewmodel.M16PublicAdoptionAccess.NONE ->
+                    Text("Todavía no hay mascotas publicadas en adopción.")
+                com.comunidapp.app.viewmodel.M16PublicAdoptionAccess.UNKNOWN -> Unit
+            }
+        }
+    }
+    val hours = OrganizationPresentation.openingLines(shelter.openingHours)
+    if (hours.isNotEmpty()) {
+        Text("Horarios de atención", fontWeight = FontWeight.Bold)
+        hours.forEach { Text(it) }
+    }
+    val contacts = shelter.publicContacts.mapNotNull { OrganizationPresentation.contactLine(it) }
+    if (contacts.isNotEmpty()) {
+        Text("Contacto", fontWeight = FontWeight.Bold)
+        contacts.forEach { Text(it) }
+    }
+    if (canManage && onManage != null) {
+        LeoPrimaryButton(text = "Administrar", onClick = onManage)
     }
 }
 
 @Composable
-private fun M16OpeningHoursReadOnly(hours: M16OpeningHours) {
-    if (hours.periods.isEmpty()) {
-        Text("Sin horarios publicados.")
-        return
-    }
-    val grouped = hours.periods.groupBy { it.dayOfWeek }.toSortedMap()
-    grouped.forEach { (day, periods) ->
-        val label = periods.joinToString("; ") { period ->
-            if (period.closed) "Cerrado"
-            else "${period.openTime.orEmpty()} – ${period.closeTime.orEmpty()}"
-        }
-        Text("${m16DayLabel(day)}: $label")
-    }
-    Text(
-        "Zona horaria: ${hours.zoneIdName}",
-        style = MaterialTheme.typography.bodySmall
+private fun M16PublicLogo(imageRef: String?, name: String) {
+    val url = OrganizationPresentation.publicImageUrl(imageRef) ?: return
+    AsyncImage(
+        model = url,
+        contentDescription = name,
+        modifier = Modifier
+            .size(72.dp)
+            .clip(RoundedCornerShape(12.dp)),
+        contentScale = ContentScale.Crop
     )
 }
 
@@ -586,9 +593,8 @@ private fun M16ProfileManageContent(
 ) {
     val isTerminal = profile.operationalStatus == M16ShelterOperationalStatus.PERMANENTLY_CLOSED
     Text(profile.displayName, fontWeight = FontWeight.Bold)
-    Text("Operativo: ${profile.operationalStatus}")
-    Text("Publicación: ${profile.publicationStatus}")
-    Text("Verificación: ${profile.verificationStatus}")
+    Text(profile.operationalStatus.visibleLabel())
+    profile.verificationStatus.publicBadge()?.let { Text(it) }
     if (profile.verificationStatus == com.comunidapp.app.data.model.M16ShelterVerificationStatus.PENDING) {
         Text(
             "Verificación pendiente — aprobación final vía administración M04.",
@@ -856,7 +862,7 @@ private fun M16OperationsSection(
     Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         M16ShelterOperationsFilter.entries.forEach { filter ->
             LeoFilterChip(
-                label = filter.name.lowercase().replace('_', ' '),
+                label = OrganizationPresentation.operationsFilter(filter),
                 selected = operationsFilter == filter,
                 onClick = { onFilterChange(filter) }
             )
@@ -998,7 +1004,11 @@ private fun M16OperationalPetRow(
     ) {
         Column(Modifier.padding(LeoDimens.SpaceCompact)) {
             Text(item.displayName, fontWeight = FontWeight.SemiBold)
-            Text("${item.species} · ${item.status.name}")
+            val species = OrganizationPresentation.species(item.species)
+            Text(
+                listOfNotNull(species, OrganizationPresentation.petOperationalStatus(item.status))
+                    .joinToString(" · ")
+            )
             if (item.reservedSlot) {
                 Text("Cupo reservado (sin ingreso físico)", style = MaterialTheme.typography.bodySmall)
             }

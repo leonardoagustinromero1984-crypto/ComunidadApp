@@ -161,19 +161,28 @@ class M18EventDetailViewModel(
     private fun resolveParticipation(
         event: M18PublicEvent,
         registration: M18RegistrationStatus?
-    ): M18EventParticipationUiState = when {
-        registration == M18RegistrationStatus.REGISTERED -> M18EventParticipationUiState.Registered
-        registration == M18RegistrationStatus.WAITLISTED -> M18EventParticipationUiState.Waitlisted
-        registration == M18RegistrationStatus.CANCELLED -> M18EventParticipationUiState.Cancelled
-        registration == M18RegistrationStatus.CHECKED_IN ||
-            registration == M18RegistrationStatus.ATTENDED ->
-            M18EventParticipationUiState.Registered
-        registration == M18RegistrationStatus.REJECTED -> M18EventParticipationUiState.EventClosed
-        !event.isRegistrationOpen && event.isFull && !event.isWaitlistOpen ->
-            M18EventParticipationUiState.EventFull
-        event.status.isTerminal -> M18EventParticipationUiState.EventClosed
-        event.isRegistrationOpen -> M18EventParticipationUiState.Available
-        else -> M18EventParticipationUiState.EventClosed
+    ): M18EventParticipationUiState {
+        val ended = event.endsAt < System.currentTimeMillis()
+        val eventClosed = ended || event.status.isTerminal ||
+            event.status != com.comunidapp.app.data.model.M18EventStatus.PUBLISHED
+        return when (registration) {
+            M18RegistrationStatus.REGISTERED -> M18EventParticipationUiState.Registered
+            M18RegistrationStatus.WAITLISTED -> M18EventParticipationUiState.Waitlisted
+            M18RegistrationStatus.CHECKED_IN -> M18EventParticipationUiState.CheckedIn
+            M18RegistrationStatus.ATTENDED -> M18EventParticipationUiState.Attended
+            M18RegistrationStatus.NO_SHOW -> M18EventParticipationUiState.NoShow
+            M18RegistrationStatus.REJECTED -> M18EventParticipationUiState.Rejected
+            M18RegistrationStatus.CANCELLED ->
+                if (eventClosed) M18EventParticipationUiState.EventClosed
+                else M18EventParticipationUiState.Cancelled
+            null -> when {
+                eventClosed -> M18EventParticipationUiState.EventClosed
+                event.isFull && event.isWaitlistOpen -> M18EventParticipationUiState.WaitlistAvailable
+                event.isFull -> M18EventParticipationUiState.EventFull
+                event.isRegistrationOpen -> M18EventParticipationUiState.Available
+                else -> M18EventParticipationUiState.EventClosed
+            }
+        }
     }
 
     fun register() {
@@ -209,19 +218,6 @@ class M18EventDetailViewModel(
             repository.cancelRegistration(eventId)
                 .onSuccess {
                     _message.value = "Inscripción cancelada."
-                    refresh()
-                }
-                .onFailure {
-                    _message.value = M18EventErrorMapper.userMessage(M18EventErrorMapper.codeOf(it))
-                }
-        }
-    }
-
-    fun scheduleReminder() {
-        viewModelScope.launch {
-            repository.scheduleReminder(eventId)
-                .onSuccess {
-                    _message.value = "Recordatorio programado (mock — requiere infra M06)."
                     refresh()
                 }
                 .onFailure {
@@ -326,8 +322,13 @@ class M18EventManageViewModel(
 sealed class M18EventParticipationUiState {
     data object Loading : M18EventParticipationUiState()
     data object Available : M18EventParticipationUiState()
+    data object WaitlistAvailable : M18EventParticipationUiState()
     data object Registered : M18EventParticipationUiState()
     data object Waitlisted : M18EventParticipationUiState()
+    data object CheckedIn : M18EventParticipationUiState()
+    data object Attended : M18EventParticipationUiState()
+    data object NoShow : M18EventParticipationUiState()
+    data object Rejected : M18EventParticipationUiState()
     data object Cancelled : M18EventParticipationUiState()
     data object EventFull : M18EventParticipationUiState()
     data object EventClosed : M18EventParticipationUiState()
@@ -556,29 +557,67 @@ class M18EventEditViewModel(
     }
 }
 
-fun m18EventTypeLabel(type: M18EventType): String = when (type) {
-    M18EventType.ADOPTION_FAIR -> "Feria de adopciones"
-    M18EventType.VOLUNTEER_DAY -> "Jornada de voluntariado"
-    M18EventType.TRAINING_WORKSHOP -> "Taller / capacitación"
-    M18EventType.COMMUNITY_GATHERING -> "Encuentro comunitario"
-    M18EventType.FREE_FUNDRAISER -> "Recaudación gratuita"
-    M18EventType.AWARENESS_WALK -> "Caminata de concientización"
-}
+fun m18EventTypeLabel(type: M18EventType): String =
+    com.comunidapp.app.domain.m18.EventPresentation.eventType(type)
 
-fun m18EventStatusLabel(status: M18EventStatus): String = when (status) {
-    M18EventStatus.DRAFT -> "Borrador"
-    M18EventStatus.PUBLISHED -> "Publicado"
-    M18EventStatus.PAUSED -> "Pausado"
-    M18EventStatus.COMPLETED -> "Completado"
-    M18EventStatus.CANCELLED -> "Cancelado"
-}
+fun m18EventStatusLabel(status: M18EventStatus): String =
+    com.comunidapp.app.domain.m18.EventPresentation.eventStatus(status)
 
-fun m18RegistrationStatusLabel(status: M18RegistrationStatus): String = when (status) {
-    M18RegistrationStatus.REGISTERED -> "Inscripto"
-    M18RegistrationStatus.WAITLISTED -> "Lista de espera"
-    M18RegistrationStatus.CANCELLED -> "Cancelado"
-    M18RegistrationStatus.CHECKED_IN -> "Check-in realizado"
-    M18RegistrationStatus.ATTENDED -> "Asistió"
-    M18RegistrationStatus.NO_SHOW -> "No asistió"
-    M18RegistrationStatus.REJECTED -> "Rechazado"
+fun m18RegistrationStatusLabel(status: M18RegistrationStatus): String =
+    com.comunidapp.app.domain.m18.EventPresentation.registrationStatus(status)
+
+data class M18MyEventsUiState(
+    val loading: Boolean = true,
+    val upcoming: List<com.comunidapp.app.domain.m18.MyEventRegistration> = emptyList(),
+    val waitlist: List<com.comunidapp.app.domain.m18.MyEventRegistration> = emptyList(),
+    val past: List<com.comunidapp.app.domain.m18.MyEventRegistration> = emptyList(),
+    val error: String? = null
+)
+
+class M18MyEventsViewModel(
+    private val repository: M18EventRepository = DataProvider.m18EventRepository
+) : ViewModel() {
+    private val _uiState = MutableStateFlow(M18MyEventsUiState())
+    val uiState: StateFlow<M18MyEventsUiState> = _uiState.asStateFlow()
+
+    init { load() }
+
+    fun load() {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(loading = true)
+            repository.listMyRegistrations()
+                .onSuccess { rows ->
+                    val now = System.currentTimeMillis()
+                    _uiState.value = M18MyEventsUiState(
+                        loading = false,
+                        upcoming = rows.filter {
+                            com.comunidapp.app.domain.m18.EventPresentation.bucket(it, now) ==
+                                com.comunidapp.app.domain.m18.EventActivityBucket.UPCOMING
+                        },
+                        waitlist = rows.filter {
+                            com.comunidapp.app.domain.m18.EventPresentation.bucket(it, now) ==
+                                com.comunidapp.app.domain.m18.EventActivityBucket.WAITLIST
+                        },
+                        past = rows.filter {
+                            com.comunidapp.app.domain.m18.EventPresentation.bucket(it, now) ==
+                                com.comunidapp.app.domain.m18.EventActivityBucket.PAST
+                        }
+                    )
+                }
+                .onFailure {
+                    _uiState.value = M18MyEventsUiState(
+                        loading = false,
+                        error = M18EventErrorMapper.userMessage(M18EventErrorMapper.codeOf(it))
+                    )
+                }
+        }
+    }
+
+    companion object {
+        fun factory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T =
+                M18MyEventsViewModel() as T
+        }
+    }
 }

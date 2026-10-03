@@ -17,7 +17,7 @@ object CanonicalVitaCoraProjection {
                 ?: pet.id.take(8),
             publicCode = pet.publicCode,
             status = M14PassportStatus.ACTIVE,
-            displayName = pet.name.ifBlank { "Mascota" },
+            displayName = com.comunidapp.app.domain.pets.PetDisplayName.of(pet.originKind, pet.name),
             species = pet.species,
             breedText = pet.breed,
             sex = pet.sex,

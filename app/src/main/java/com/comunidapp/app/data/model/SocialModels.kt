@@ -16,6 +16,13 @@ enum class AdoptionRequestStatus {
     ACCEPTED,
     REJECTED;
 
+    val displayNameEs: String
+        get() = when (this) {
+            PENDING -> "Enviada"
+            ACCEPTED -> "Aceptada"
+            REJECTED -> "Rechazada"
+        }
+
     companion object {
         fun fromString(value: String?): AdoptionRequestStatus =
             entries.find { it.name == value } ?: PENDING

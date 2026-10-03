@@ -60,6 +60,7 @@ import java.util.Locale
 fun AdoptionApplyScreen(
     onNavigateBack: () -> Unit,
     onSubmitted: () -> Unit = onNavigateBack,
+    onCompleteProfile: () -> Unit = {},
     viewModel: AdoptionApplyViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -165,8 +166,18 @@ fun AdoptionApplyScreen(
                             singleLine = true,
                             enabled = !form.submitting
                         )
+                        form.compatibilityNote?.let {
+                            Text(it, style = MaterialTheme.typography.bodySmall)
+                        }
                         form.submitError?.let {
                             Text(it, color = MaterialTheme.colorScheme.error)
+                        }
+                        if (form.openProfile) {
+                            LeoPrimaryButton(
+                                text = "Completar perfil",
+                                onClick = onCompleteProfile,
+                                enabled = !form.submitting
+                            )
                         }
                         LeoPrimaryButton(
                             text = if (form.submitting) "Enviando…" else "Enviar postulación",
@@ -615,7 +626,7 @@ private fun ApplicationListItem(
         val subtitle = buildString {
             append("Mascota: ${app.petName.ifBlank { "—" }}")
             if (showApplicant) {
-                append(" · Postulante: ${app.applicantName.ifBlank { app.applicantUserId }}")
+                append(" · Postulante: ${app.applicantName.ifBlank { "Postulante" }}")
             }
             append(" · ${app.status.displayNameEs}")
             append(" · ${formatAppDate(app.submittedAt)}")

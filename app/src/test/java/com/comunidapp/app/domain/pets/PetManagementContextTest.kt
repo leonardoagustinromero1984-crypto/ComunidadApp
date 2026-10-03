@@ -82,7 +82,8 @@ class PetManagementContextTest {
     fun sharedPersonPetVisibleToSecondHolderNotInVeterinary() {
         val shared = pet("pet-x", PetManagementContext.PERSON, "user-a").copy(
             ownerId = "user-a",
-            createdByUserId = "user-a"
+            createdByUserId = "user-a",
+            accessSubjectUserId = "user-b"
         )
         val personB = PetManagementContext.filter(
             listOf(shared),
@@ -96,5 +97,34 @@ class PetManagementContextTest {
         )
         assertEquals(listOf("pet-x"), personB.map { it.id })
         assertTrue(vetB.isEmpty())
+    }
+
+    @Test
+    fun explicitOwnerLinkKeepsSharedPetVisibleWithoutReplacingContext() {
+        val shared = pet("pet-x", PetManagementContext.PERSON, "user-a").copy(
+            ownerId = "user-a",
+            createdByUserId = "user-a",
+            ownerIds = listOf("user-a", "user-b")
+        )
+        val personB = PetManagementContext.filter(
+            listOf(shared),
+            OperationalContext.Personal,
+            "user-b"
+        )
+        assertEquals(listOf("pet-x"), personB.map { it.id })
+    }
+
+    @Test
+    fun unsharedPersonPetOfAnotherAccountIsHidden() {
+        val foreign = pet("pet-a", PetManagementContext.PERSON, "user-a").copy(
+            ownerId = "user-a",
+            createdByUserId = "user-a"
+        )
+        val personB = PetManagementContext.filter(
+            listOf(foreign),
+            OperationalContext.Personal,
+            "user-b"
+        )
+        assertTrue(personB.isEmpty())
     }
 }

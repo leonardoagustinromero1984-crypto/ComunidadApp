@@ -354,7 +354,8 @@ class PetFormViewModel(
     fun onMedicationNameChange(value: String) = updateForm { copy(medicationName = value, errorMessage = null) }
     fun onConditionNameChange(value: String) = updateForm { copy(conditionName = value, errorMessage = null) }
     fun onImageSelected(uri: Uri?) {
-        if (!_uiState.value.canManageMedia) {
+        val state = _uiState.value
+        if (!state.canManageMedia && state.isEditMode) {
             _uiState.update {
                 it.copy(errorMessage = M08PetErrorMapper.userMessage("FORBIDDEN"))
             }
@@ -535,7 +536,13 @@ class PetFormViewModel(
                         "PET-STAGE=CREATED edit=${state.isEditMode} petId=$petId personId=${person.id}"
                     )
 
-                    if (state.pendingImageUri != null && !state.canManageMedia) {
+                    if (state.pendingImageUri != null && !state.canManageMedia &&
+                        !com.comunidapp.app.domain.pets.PetCreatePermissionFeedback
+                            .suppressPermissionErrorAfterAuthorizedCreate(
+                                createSucceeded = true,
+                                isEditMode = state.isEditMode
+                            )
+                    ) {
                         _uiState.update {
                             it.copy(
                                 isSaving = false,
@@ -579,6 +586,27 @@ class PetFormViewModel(
                                         loadedPet = updated
                                     }
                                     .onFailure { err ->
+                                        val mapped = M08PetErrorMapper.codeOf(err)
+                                        if (mapped == "FORBIDDEN" &&
+                                            com.comunidapp.app.domain.pets.PetCreatePermissionFeedback
+                                                .suppressPermissionErrorAfterAuthorizedCreate(
+                                                    createSucceeded = true,
+                                                    isEditMode = state.isEditMode
+                                                )
+                                        ) {
+                                            _uiState.update {
+                                                it.copy(
+                                                    isSaving = false,
+                                                    saveSuccess = true,
+                                                    isEditMode = true,
+                                                    petId = petId,
+                                                    errorMessage = null,
+                                                    pendingImageUri = null
+                                                )
+                                            }
+                                            com.comunidapp.app.data.local.PetFormDraftStore.clear()
+                                            return@launch
+                                        }
                                         com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(
                                             "PET-STAGE=SET-AVATAR-FAIL type=${err::class.java.simpleName}"
                                         )
@@ -614,6 +642,29 @@ class PetFormViewModel(
                                     }
                             }
                             is AppResult.Failure -> {
+                                if (com.comunidapp.app.domain.pets.PetCreatePermissionFeedback
+                                        .suppressPermissionErrorAfterAuthorizedCreate(
+                                            createSucceeded = true,
+                                            isEditMode = state.isEditMode
+                                        ) &&
+                                    (
+                                        upload.error.code?.contains("FORBIDDEN", ignoreCase = true) == true ||
+                                            upload.error.technicalMessage.contains("PERMISSION", ignoreCase = true)
+                                        )
+                                ) {
+                                    _uiState.update {
+                                        it.copy(
+                                            isSaving = false,
+                                            saveSuccess = true,
+                                            isEditMode = true,
+                                            petId = petId,
+                                            errorMessage = null,
+                                            pendingImageUri = null
+                                        )
+                                    }
+                                    com.comunidapp.app.data.local.PetFormDraftStore.clear()
+                                    return@launch
+                                }
                                 val step = upload.error.code
                                     ?: com.comunidapp.app.domain.canonical.CanonicalMedia.STEP_STORAGE_UPLOAD
                                 com.comunidapp.app.domain.pets.PetCreateDiagnostic.logStaging(

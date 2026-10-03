@@ -569,7 +569,9 @@ class PublishViewModel(
                                 locationText = location.trim(),
                                 imageUri = imageUri,
                                 existingMediaAssetId = existingMediaAssetId,
-                                petId = petId
+                                petId = petId,
+                                alertKind = type.name,
+                                lostFoundCaseId = lostId
                             )
                         }
                         .onFailure { error ->
@@ -642,7 +644,9 @@ class PublishViewModel(
         filename: String = "media.jpg",
         context: android.content.Context? = null,
         petIds: List<String> = emptyList(),
-        saveToVitaCora: Boolean = false
+        saveToVitaCora: Boolean = false,
+        alertKind: String? = null,
+        lostFoundCaseId: String? = null
     ) {
         val imageUris = (listOfNotNull(imageUri) + extraImageUris)
             .distinct()
@@ -749,7 +753,9 @@ class PublishViewModel(
                 PostType.URGENT -> "URGENT"
                 else -> null
             },
-            petIds = resolvedPetIds
+            petIds = resolvedPetIds,
+            alertKind = alertKind,
+            lostFoundCaseId = lostFoundCaseId
         )
         val post = FeedPost(
             id = "",
@@ -769,6 +775,8 @@ class PublishViewModel(
             petIds = resolvedPetIds,
             expiresAt = expiresAt,
             compositionJson = compositionJson,
+            alertKind = alertKind,
+            lostFoundCaseId = lostFoundCaseId,
             visibility = visibility
         )
 

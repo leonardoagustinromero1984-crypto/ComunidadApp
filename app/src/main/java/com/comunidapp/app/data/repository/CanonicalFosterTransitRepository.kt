@@ -3,6 +3,11 @@ package com.comunidapp.app.data.repository
 import com.comunidapp.app.data.model.FosterHomeRequest
 import com.comunidapp.app.data.remote.supabase.supabase
 import com.comunidapp.app.domain.canonical.CanonicalBackend
+import com.comunidapp.app.domain.foster.FoundPetFosterNeeds
+import com.comunidapp.app.domain.foster.FosterHomeCapabilities
+import com.comunidapp.app.domain.foster.fosterLifeStage
+import com.comunidapp.app.domain.foster.fosterSizeBand
+import com.comunidapp.app.domain.foster.fosterSpeciesKind
 import com.comunidapp.app.domain.ux.CanonicalUiErrorMapper
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.coroutines.flow.Flow
@@ -14,6 +19,7 @@ import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonObjectBuilder
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.decodeFromJsonElement
@@ -37,7 +43,16 @@ data class CanonicalFosterTransitRequest(
     @SerialName("placement_id") val placementId: String? = null,
     @SerialName("placement_status") val placementStatus: String? = null,
     @SerialName("created_at") val createdAt: String? = null,
-    @SerialName("updated_at") val updatedAt: String? = null
+    @SerialName("updated_at") val updatedAt: String? = null,
+    @SerialName("size_band") val sizeBand: String? = null,
+    @SerialName("life_stage") val lifeStage: String? = null,
+    @SerialName("needs_medication") val needsMedication: Boolean? = null,
+    @SerialName("cohabits_dogs") val cohabitsDogs: Boolean? = null,
+    @SerialName("cohabits_cats") val cohabitsCats: Boolean? = null,
+    @SerialName("cohabits_children") val cohabitsChildren: Boolean? = null,
+    @SerialName("reduced_mobility") val reducedMobility: Boolean? = null,
+    @SerialName("needs_isolation") val needsIsolation: Boolean? = null,
+    @SerialName("additional_info") val additionalInfo: String? = null
 )
 
 @Serializable
@@ -110,7 +125,16 @@ data class CanonicalOpenFosterRequest(
     val needs: String? = null,
     val notes: String? = null,
     val status: String,
-    @SerialName("created_at") val createdAt: String? = null
+    @SerialName("created_at") val createdAt: String? = null,
+    @SerialName("size_band") val sizeBand: String? = null,
+    @SerialName("life_stage") val lifeStage: String? = null,
+    @SerialName("needs_medication") val needsMedication: Boolean? = null,
+    @SerialName("cohabits_dogs") val cohabitsDogs: Boolean? = null,
+    @SerialName("cohabits_cats") val cohabitsCats: Boolean? = null,
+    @SerialName("cohabits_children") val cohabitsChildren: Boolean? = null,
+    @SerialName("reduced_mobility") val reducedMobility: Boolean? = null,
+    @SerialName("needs_isolation") val needsIsolation: Boolean? = null,
+    @SerialName("additional_info") val additionalInfo: String? = null
 )
 
 @Serializable
@@ -120,7 +144,35 @@ data class CanonicalFosterApplicantRow(
     @SerialName("foster_name") val fosterName: String? = null,
     val status: String,
     @SerialName("locality_id") val localityId: String? = null,
-    @SerialName("created_at") val createdAt: String? = null
+    @SerialName("created_at") val createdAt: String? = null,
+    val capacity: Int? = null,
+    @SerialName("profile_active") val profileActive: Boolean? = null,
+    @SerialName("has_base_location") val hasBaseLocation: Boolean? = null,
+    @SerialName("accepts_dogs") val acceptsDogs: Boolean? = null,
+    @SerialName("accepts_cats") val acceptsCats: Boolean? = null,
+    @SerialName("accepts_small") val acceptsSmall: Boolean? = null,
+    @SerialName("accepts_medium") val acceptsMedium: Boolean? = null,
+    @SerialName("accepts_large") val acceptsLarge: Boolean? = null,
+    @SerialName("accepts_young") val acceptsYoung: Boolean? = null,
+    @SerialName("accepts_adult") val acceptsAdult: Boolean? = null,
+    @SerialName("accepts_senior") val acceptsSenior: Boolean? = null,
+    @SerialName("accepts_treatment") val acceptsTreatment: Boolean? = null,
+    @SerialName("accepts_reduced_mobility") val acceptsReducedMobility: Boolean? = null,
+    @SerialName("can_isolate") val canIsolate: Boolean? = null,
+    @SerialName("lives_with_dogs") val livesWithDogs: Boolean? = null,
+    @SerialName("lives_with_cats") val livesWithCats: Boolean? = null,
+    @SerialName("lives_with_children") val livesWithChildren: Boolean? = null,
+    @SerialName("species_pref") val speciesPref: String? = null,
+    @SerialName("age_pref") val agePref: String? = null,
+    val species: String? = null,
+    @SerialName("size_band") val sizeBand: String? = null,
+    @SerialName("life_stage") val lifeStage: String? = null,
+    @SerialName("needs_medication") val needsMedication: Boolean? = null,
+    @SerialName("cohabits_dogs") val cohabitsDogs: Boolean? = null,
+    @SerialName("cohabits_cats") val cohabitsCats: Boolean? = null,
+    @SerialName("cohabits_children") val cohabitsChildren: Boolean? = null,
+    @SerialName("reduced_mobility") val reducedMobility: Boolean? = null,
+    @SerialName("needs_isolation") val needsIsolation: Boolean? = null
 )
 
 /**
@@ -196,10 +248,16 @@ interface CanonicalFosterTransitRepository {
     suspend fun getActiveFosterTransit(petId: String): Result<CanonicalActiveFosterTransit>
     suspend fun listOpenFosterRequests(): Result<List<CanonicalOpenFosterRequest>>
     suspend fun listFosterRequestApplications(requestId: String): Result<List<CanonicalFosterApplicantRow>>
-    suspend fun requestFosterForPet(petId: String, needs: String?, notes: String?): Result<String>
+    suspend fun requestFosterForPet(
+        petId: String,
+        needs: String?,
+        notes: String?,
+        traits: FoundPetFosterNeeds = FoundPetFosterNeeds()
+    ): Result<String>
     suspend fun applyToFosterRequest(requestId: String): Result<String>
     suspend fun selectFosterApplicant(applicationId: String): Result<String>
     suspend fun completeFosterTransit(requestId: String): Result<CanonicalFosterTransitCompletion>
+    suspend fun cancelFosterRequest(requestId: String): Result<String>
 }
 
 /**
@@ -286,13 +344,23 @@ class RpcCanonicalFosterTransitRepository : CanonicalFosterTransitRepository {
     override suspend fun requestFosterForPet(
         petId: String,
         needs: String?,
-        notes: String?
+        notes: String?,
+        traits: FoundPetFosterNeeds
     ): Result<String> = call(
         CanonicalBackend.RPC_REQUEST_FOSTER_FOR_PET,
         buildJsonObject {
             put("p_pet_id", petId)
             put("p_needs", needs.orEmpty())
             put("p_notes", notes.orEmpty())
+            putText("p_size_band", traits.size?.name)
+            putText("p_life_stage", traits.lifeStage?.name)
+            putTri("p_needs_medication", traits.needsMedication)
+            putTri("p_cohabits_dogs", traits.cohabitsDogs)
+            putTri("p_cohabits_cats", traits.cohabitsCats)
+            putTri("p_cohabits_children", traits.cohabitsChildren)
+            putTri("p_reduced_mobility", traits.reducedMobility)
+            putTri("p_needs_isolation", traits.needsIsolation)
+            putText("p_additional_info", traits.additionalInfo)
         }
     ) { CanonicalFosterTransitDecoding.id(it) }
 
@@ -313,6 +381,12 @@ class RpcCanonicalFosterTransitRepository : CanonicalFosterTransitRepository {
         buildJsonObject { put("p_request_id", requestId) },
         "No se pudo finalizar el tránsito."
     ) { CanonicalFosterTransitDecoding.completion(it) }
+
+    override suspend fun cancelFosterRequest(requestId: String): Result<String> = call(
+        CanonicalBackend.RPC_CANCEL_FOSTER_REQUEST,
+        buildJsonObject { put("p_request_id", requestId) },
+        "No se pudo cancelar la solicitud."
+    ) { CanonicalFosterTransitDecoding.id(it) }
 
     private suspend fun <T> call(
         function: String,
@@ -381,7 +455,8 @@ class UnavailableCanonicalFosterTransitRepository : CanonicalFosterTransitReposi
     override suspend fun requestFosterForPet(
         petId: String,
         needs: String?,
-        notes: String?
+        notes: String?,
+        traits: FoundPetFosterNeeds
     ): Result<String> = fail()
 
     override suspend fun applyToFosterRequest(requestId: String): Result<String> = fail()
@@ -391,4 +466,62 @@ class UnavailableCanonicalFosterTransitRepository : CanonicalFosterTransitReposi
     override suspend fun completeFosterTransit(
         requestId: String
     ): Result<CanonicalFosterTransitCompletion> = fail()
+
+    override suspend fun cancelFosterRequest(requestId: String): Result<String> = fail()
 }
+
+private fun JsonObjectBuilder.putTri(key: String, value: Boolean?) {
+    if (value == null) put(key, JsonNull) else put(key, value)
+}
+
+private fun JsonObjectBuilder.putText(key: String, value: String?) {
+    if (value.isNullOrBlank()) put(key, JsonNull) else put(key, value)
+}
+
+fun CanonicalOpenFosterRequest.toFosterNeeds(): FoundPetFosterNeeds = FoundPetFosterNeeds(
+    species = fosterSpeciesKind(species),
+    size = fosterSizeBand(sizeBand),
+    lifeStage = fosterLifeStage(lifeStage),
+    needsMedication = needsMedication,
+    cohabitsDogs = cohabitsDogs,
+    cohabitsCats = cohabitsCats,
+    cohabitsChildren = cohabitsChildren,
+    reducedMobility = reducedMobility,
+    needsIsolation = needsIsolation,
+    additionalInfo = additionalInfo ?: notes
+)
+
+fun CanonicalFosterApplicantRow.toFosterNeeds(): FoundPetFosterNeeds = FoundPetFosterNeeds(
+    species = fosterSpeciesKind(species),
+    size = fosterSizeBand(sizeBand),
+    lifeStage = fosterLifeStage(lifeStage),
+    needsMedication = needsMedication,
+    cohabitsDogs = cohabitsDogs,
+    cohabitsCats = cohabitsCats,
+    cohabitsChildren = cohabitsChildren,
+    reducedMobility = reducedMobility,
+    needsIsolation = needsIsolation
+)
+
+fun CanonicalFosterApplicantRow.toHomeCapabilities(): FosterHomeCapabilities = FosterHomeCapabilities(
+    active = profileActive == true,
+    hasBaseLocation = hasBaseLocation == true,
+    localityId = localityId,
+    capacity = capacity ?: 0,
+    acceptsDogs = acceptsDogs,
+    acceptsCats = acceptsCats,
+    acceptsSmall = acceptsSmall,
+    acceptsMedium = acceptsMedium,
+    acceptsLarge = acceptsLarge,
+    acceptsYoung = acceptsYoung,
+    acceptsAdult = acceptsAdult,
+    acceptsSenior = acceptsSenior,
+    acceptsMedication = acceptsTreatment,
+    livesWithDogs = livesWithDogs,
+    livesWithCats = livesWithCats,
+    livesWithChildren = livesWithChildren,
+    acceptsReducedMobility = acceptsReducedMobility,
+    canIsolate = canIsolate,
+    speciesPref = speciesPref,
+    agePref = agePref
+)

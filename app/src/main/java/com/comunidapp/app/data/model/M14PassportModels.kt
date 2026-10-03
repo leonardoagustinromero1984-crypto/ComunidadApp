@@ -210,7 +210,9 @@ data class M14PassportHistory(
     val mediaDisplayUrl: String? = null,
     val mediaMime: String? = null,
     val sourceContentKind: String? = null,
-    val mediaDisplayUrls: List<String> = emptyList()
+    val mediaDisplayUrls: List<String> = emptyList(),
+    val destination: com.comunidapp.app.domain.vitacora.VitaCoraHistoryDestination? = null,
+    val bodyPreview: String? = null
 )
 
 /** Vista pública redactada — sin petId, userId, docs, notas ni microchip completo. */

@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -21,6 +22,10 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import com.comunidapp.app.domain.location.MapCameraPolicy
 import androidx.compose.ui.unit.dp
 import com.comunidapp.app.domain.location.AddressGeocoder
 import com.comunidapp.app.domain.location.AddressSuggestion
@@ -52,6 +57,7 @@ fun LocationPinPicker(
     allowAddressSearch: Boolean = true
 ) {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     var camera by remember {
         mutableStateOf(
@@ -71,7 +77,7 @@ fun LocationPinPicker(
         if (granted) {
             scope.launch {
                 fetchAndApply(context, onSelected, onAddressChange) { point, suggestion, err ->
-                    if (point != null) {
+                    if (point != null && MapCameraPolicy.shouldMoveTo(point)) {
                         camera = LeoVerMapCameraState(point, zoom = 16f)
                         confirmed = suggestion
                         locateError = null
@@ -101,7 +107,7 @@ fun LocationPinPicker(
         }
         locating = true
         fetchAndApply(context, onSelected, onAddressChange) { point, suggestion, err ->
-            if (point != null && !SharedLocationCapture.isFallback(point)) {
+            if (point != null && MapCameraPolicy.shouldMoveTo(point)) {
                 camera = LeoVerMapCameraState(point, zoom = 16f)
                 confirmed = suggestion
                 if (suggestion != null) query = suggestion.label
@@ -112,6 +118,32 @@ fun LocationPinPicker(
             locating = false
         }
     }
+
+    DisposableEffect(lifecycleOwner, selected) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event != Lifecycle.Event.ON_RESUME) return@LifecycleEventObserver
+            if (selected != null && !SharedLocationCapture.isFallback(selected)) return@LifecycleEventObserver
+            if (!ForegroundLocation.hasForegroundPermission(context)) return@LifecycleEventObserver
+            locating = true
+            scope.launch {
+                fetchAndApply(context, onSelected, onAddressChange) { point, suggestion, err ->
+                    if (point != null && MapCameraPolicy.shouldMoveTo(point)) {
+                        camera = LeoVerMapCameraState(point, zoom = 16f)
+                        confirmed = suggestion
+                        if (suggestion != null) query = suggestion.label
+                        locateError = null
+                    } else if (selected == null) {
+                        locateError = err
+                    }
+                    locating = false
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
+    val confirmedSelection = selected?.takeUnless { SharedLocationCapture.isFallback(it) }
 
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)) {
         Text(
@@ -163,12 +195,16 @@ fun LocationPinPicker(
                 .fillMaxWidth()
                 .height(220.dp)
         ) {
+            if (locating && confirmedSelection == null) {
+                Text("Obteniendo ubicación…", style = LeoCaption, color = BrandTextSecondary)
+            }
             LeoVerMap(
                 markers = emptyList(),
                 camera = camera,
-                userLocation = selected,
-                showUserLocation = selected != null,
-                pinMode = true,
+                userLocation = confirmedSelection,
+                showUserLocation = confirmedSelection != null,
+                pinMode = confirmedSelection != null,
+                idleOnGestureOnly = true,
                 onMapClick = { point ->
                     locateError = null
                     if (!emitRealPoint(point, onSelected)) return@LeoVerMap
@@ -194,7 +230,7 @@ fun LocationPinPicker(
                 if (ForegroundLocation.hasForegroundPermission(context)) {
                     scope.launch {
                         fetchAndApply(context, onSelected, onAddressChange) { point, suggestion, err ->
-                            if (point != null) {
+                            if (point != null && MapCameraPolicy.shouldMoveTo(point)) {
                                 camera = LeoVerMapCameraState(point, zoom = 16f)
                                 confirmed = suggestion
                                 if (suggestion != null) query = suggestion.label
@@ -212,7 +248,7 @@ fun LocationPinPicker(
             enabled = !locating
         )
         val shown = confirmed
-        if (shown != null || selected != null) {
+        if (shown != null || confirmedSelection != null) {
             Text("Dirección seleccionada", style = LeoCaption, color = BrandText)
             Text(shown?.label ?: address ?: "Punto en el mapa", style = LeoCaption, color = BrandTextSecondary)
             shown?.locality?.let { Text("Localidad: $it", style = LeoCaption, color = BrandTextSecondary) }

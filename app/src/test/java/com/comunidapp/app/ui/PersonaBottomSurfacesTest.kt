@@ -70,9 +70,12 @@ class PersonaBottomSurfacesTest {
         assertTrue(screen.contains("Elegí cómo querés ayudar hoy"))
         assertTrue(screen.contains("title = \"Adopción\""))
         assertTrue(screen.contains("Refugios / ONG"))
-        assertTrue(screen.contains("Hogares de tránsito"))
+        assertTrue(screen.contains("CapabilityGate.sumate"))
+        assertTrue(screen.contains("visibility.showOfferFosterHome"))
+        assertTrue(screen.contains("visibility.showBrowseFosterRequests"))
+        assertFalse(screen.contains("if (context.isPersonal)"))
         assertTrue(screen.contains("Perdidos / Encontrados"))
-        assertTrue(screen.contains("Donaciones"))
+        assertTrue(screen.contains("Ayudar"))
         assertTrue(screen.contains("Eventos"))
         assertFalse(screen.contains("Voluntariado / ayuda"))
     }
@@ -133,24 +136,30 @@ class PersonaBottomSurfacesTest {
         ).readText()
         assertTrue(menu.contains("showReceivedApplications"))
         val adoptions = composableBlock("NavRoutes.ADOPTIONS")
-        assertTrue(adoptions.contains("showReceivedApplications = !context.isPersonal"))
+        assertTrue(adoptions.contains("showPublishAdoption = CapabilityGate.adoptionSurface"))
+        assertFalse(adoptions.contains("showReceivedApplications = !context.isPersonal"))
         val sumate = sourceFile(
             "app/src/main/java/com/comunidapp/app/ui/screens/sumate/SumateScreen.kt"
         ).readText()
-        assertTrue(sumate.contains("Ofrecer hogar de tránsito"))
+        assertTrue(sumate.contains("visibility.showOfferFosterHome"))
+        assertTrue(sumate.contains("visibility.showBrowseFosterRequests"))
+        assertFalse(sumate.contains("if (context.isPersonal)"))
         assertTrue(sumate.contains("onCreateFoster"))
         val graph = sourceFile(
             "app/src/main/java/com/comunidapp/app/navigation/ComunidappNavGraph.kt"
         ).readText()
-        assertTrue(graph.contains("onCreateFoster = { navController.navigate(NavRoutes.FOSTER_HOME_FORM) }"))
+        assertTrue(graph.contains("CapabilityGate.canOfferFosterHome"))
+        assertTrue(graph.contains("NavRoutes.FOSTER_HOME_FORM"))
+        assertTrue(graph.contains("startDestination = NavRoutes.STARTUP_RESOLVING"))
+        assertFalse(graph.contains("startDestination = NavRoutes.HOME"))
         assertTrue(graph.contains("MyPublicationsScreen("))
         assertTrue(graph.contains("ComunidadScreen("))
         assertTrue(graph.contains("ProfileScreen("))
         val m16 = sourceFile(
             "app/src/main/java/com/comunidapp/app/navigation/M16NavGraph.kt"
         ).readText()
-        assertTrue(m16.contains("if (context.isPersonal)"))
-        assertTrue(m16.contains("onManage = if (context.isPersonal)"))
+        assertTrue(m16.contains("CapabilityGate.canManageOrganization"))
+        assertFalse(m16.contains("onManage = if (context.isPersonal)"))
     }
 
     @Test
@@ -164,7 +173,7 @@ class PersonaBottomSurfacesTest {
         assertTrue(screen.contains("Mis mascotas"))
         assertTrue(screen.contains("Mensajes"))
         assertFalse(screen.contains("Seguidores y siguiendo"))
-        assertTrue(screen.contains("Donaciones"))
+        assertTrue(screen.contains("Mi ayuda"))
         assertTrue(screen.contains("Configuración"))
         assertTrue(screen.contains("Mis publicaciones"))
         assertTrue(screen.contains("Editar perfil"))

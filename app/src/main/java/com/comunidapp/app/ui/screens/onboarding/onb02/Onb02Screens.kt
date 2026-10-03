@@ -175,6 +175,9 @@ fun Onb02HostScreen(
             onContinue = viewModel::confirmBusinessKind,
             onBack = viewModel::backToActorSelector
         )
+        Onb02Phase.ADD_FUNCTION_GUIDE -> AddFunctionGuideScreen(
+            onContinue = viewModel::acknowledgeAddFunctionGuide
+        )
         Onb02Phase.ORG_SETUP -> OrganizationFunctionSetupScreen(
             action = ui.selection.organizationAction,
             kind = ui.selection.organizationKind,
@@ -525,6 +528,30 @@ fun OrganizationFunctionSetupScreen(
                 onClick = onContinue,
                 enabled = action != null
             )
+        }
+    }
+}
+
+@Composable
+private fun AddFunctionGuideScreen(onContinue: () -> Unit) {
+    Scaffold(
+        containerColor = leoVisual().background,
+        topBar = {
+            LeoTopAppBar(title = "Tu perfil personal")
+        }
+    ) { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+                .padding(LeoDimens.SpaceMd),
+            verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceMd)
+        ) {
+            Text(
+                text = "Vas a entrar con tu perfil personal. Si más adelante querés sumar una función, ${Onb02Copy.TUTORIAL_ADD_FUNCTION_PATH}.",
+                style = LeoSectionTitle
+            )
+            LeoPrimaryButton(text = "Continuar", onClick = onContinue)
         }
     }
 }

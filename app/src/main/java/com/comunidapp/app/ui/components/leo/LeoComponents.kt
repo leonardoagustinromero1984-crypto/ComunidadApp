@@ -70,6 +70,7 @@ import com.comunidapp.app.ui.theme.BrandOrangeSoft
 import com.comunidapp.app.ui.theme.BrandText
 import com.comunidapp.app.ui.theme.BrandWhite
 import com.comunidapp.app.ui.theme.LeoButton
+import com.comunidapp.app.ui.theme.LeoChip
 import com.comunidapp.app.ui.theme.LeoCardTitle
 import com.comunidapp.app.ui.theme.LeoCaption
 import com.comunidapp.app.ui.theme.LeoDimens
@@ -433,7 +434,7 @@ fun LeoFilterChip(
     FilterChip(
         selected = selected,
         onClick = onClick,
-        label = { Text(label) },
+        label = { Text(label, style = LeoChip) },
         modifier = modifier.heightIn(min = LeoDimens.ChipHeight),
         shape = RoundedCornerShape(LeoDimens.RadiusChip),
         colors = FilterChipDefaults.filterChipColors(

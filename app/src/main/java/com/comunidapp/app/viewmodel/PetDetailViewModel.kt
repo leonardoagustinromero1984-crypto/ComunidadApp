@@ -162,6 +162,29 @@ class PetDetailViewModel(
         viewModelScope.launch { loadPetInternal() }
     }
 
+    fun refreshFosterTransit() {
+        if (petId.isBlank()) return
+        viewModelScope.launch {
+            val token = com.comunidapp.app.domain.user.SessionGeneration.current()
+            val listed = runCatching {
+                DataProvider.canonicalFosterTransitRepository.listMyFosterRequests().getOrThrow()
+            }.getOrNull() ?: return@launch
+            val open = try {
+                com.comunidapp.app.data.repository.CanonicalFosterTransitRecovery.requestForPet(listed, petId)
+            } catch (_: IllegalStateException) {
+                return@launch
+            }
+            com.comunidapp.app.domain.foster.FosterTransitSignals.live.publish(
+                token,
+                com.comunidapp.app.domain.foster.FosterTransitSnapshot(
+                    petId = petId,
+                    requestId = open?.id,
+                    status = open?.status
+                )
+            )
+        }
+    }
+
     private suspend fun loadPetInternal() {
         _isPetLoading.value = _pet.value == null
         _isHealthLoading.value = true

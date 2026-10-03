@@ -272,22 +272,40 @@ fun FosterHomeFormScreen(
                 }
             }
             Text("Preferencias opcionales")
-            OutlinedTextField(
-                form.speciesPref,
-                { v -> viewModel.update { it.copy(speciesPref = v) } },
-                label = { Text("Perros / gatos / ambos") },
-                modifier = Modifier.fillMaxWidth()
-            )
-            OutlinedTextField(
-                form.agePref,
-                { v -> viewModel.update { it.copy(agePref = v) } },
-                label = { Text("Cachorros / adultos") },
-                modifier = Modifier.fillMaxWidth()
+            FosterHomeCapabilityForm(
+                acceptsDogs = form.acceptsDogs,
+                onDogs = { v -> viewModel.update { it.copy(acceptsDogs = v) } },
+                acceptsCats = form.acceptsCats,
+                onCats = { v -> viewModel.update { it.copy(acceptsCats = v) } },
+                acceptsSmall = form.acceptsSmall,
+                onSmall = { v -> viewModel.update { it.copy(acceptsSmall = v) } },
+                acceptsMedium = form.acceptsMedium,
+                onMedium = { v -> viewModel.update { it.copy(acceptsMedium = v) } },
+                acceptsLarge = form.acceptsLarge,
+                onLarge = { v -> viewModel.update { it.copy(acceptsLarge = v) } },
+                acceptsYoung = form.acceptsYoung,
+                onYoung = { v -> viewModel.update { it.copy(acceptsYoung = v) } },
+                acceptsAdult = form.acceptsAdult,
+                onAdult = { v -> viewModel.update { it.copy(acceptsAdult = v) } },
+                acceptsSenior = form.acceptsSenior,
+                onSenior = { v -> viewModel.update { it.copy(acceptsSenior = v) } },
+                acceptsMedication = form.acceptsMedication,
+                onMedication = { v -> viewModel.update { it.copy(acceptsMedication = v) } },
+                livesWithDogs = form.livesWithDogs,
+                onLivesDogs = { v -> viewModel.update { it.copy(livesWithDogs = v) } },
+                livesWithCats = form.livesWithCats,
+                onLivesCats = { v -> viewModel.update { it.copy(livesWithCats = v) } },
+                livesWithChildren = form.livesWithChildren,
+                onLivesChildren = { v -> viewModel.update { it.copy(livesWithChildren = v) } },
+                acceptsReducedMobility = form.acceptsReducedMobility,
+                onMobility = { v -> viewModel.update { it.copy(acceptsReducedMobility = v) } },
+                canIsolate = form.canIsolate,
+                onIsolate = { v -> viewModel.update { it.copy(canIsolate = v) } }
             )
             OutlinedTextField(
                 form.notes,
                 { v -> viewModel.update { it.copy(notes = v) } },
-                label = { Text("Tratamientos, convivencia, observaciones") },
+                label = { Text("Información adicional") },
                 modifier = Modifier.fillMaxWidth()
             )
             if (editHomeId == null) {

@@ -23,6 +23,20 @@ data class AdoptionPublicationRow(
     @SerialName("location_text") val locationText: String? = null,
     val description: String = "",
     val requirements: String? = null,
+    @SerialName("accepts_children") val acceptsChildren: Boolean? = null,
+    @SerialName("accepts_other_dogs") val acceptsOtherDogs: Boolean? = null,
+    @SerialName("accepts_cats") val acceptsCats: Boolean? = null,
+    @SerialName("needs_outdoor_space") val needsOutdoorSpace: Boolean? = null,
+    @SerialName("needs_secure_enclosure") val needsSecureEnclosure: Boolean? = null,
+    @SerialName("requires_escape_protection") val requiresEscapeProtection: Boolean? = null,
+    @SerialName("requires_landlord_pet_permission") val requiresLandlordPetPermission: Boolean? = null,
+    @SerialName("accepts_other_animals") val acceptsOtherAnimals: Boolean? = null,
+    @SerialName("max_hours_alone") val maxHoursAlone: String? = null,
+    @SerialName("max_hours_from") val maxHoursFrom: Int? = null,
+    @SerialName("max_hours_to") val maxHoursTo: Int? = null,
+    @SerialName("experience_required") val experienceRequired: String? = null,
+    @SerialName("accepts_no_experience") val acceptsNoExperience: Boolean? = null,
+    @SerialName("requires_special_care_experience") val requiresSpecialCareExperience: Boolean? = null,
     val status: String = "PUBLISHED",
     @SerialName("public_code") val publicCode: String? = null,
     @SerialName("published_at") val publishedAt: String? = null,
@@ -36,7 +50,10 @@ data class CreateAdoptionParams(
     val description: String,
     val requirements: String = "",
     val locationText: String = "",
-    val publish: Boolean = false
+    val publish: Boolean = false,
+    val organizationId: String? = null,
+    val matchRequirements: com.comunidapp.app.domain.adoption.AdoptionRequirements =
+        com.comunidapp.app.domain.adoption.AdoptionRequirements()
 )
 
 data class UpdateAdoptionParams(
@@ -44,5 +61,7 @@ data class UpdateAdoptionParams(
     val title: String,
     val description: String,
     val requirements: String = "",
-    val locationText: String = ""
+    val locationText: String = "",
+    val matchRequirements: com.comunidapp.app.domain.adoption.AdoptionRequirements =
+        com.comunidapp.app.domain.adoption.AdoptionRequirements()
 )

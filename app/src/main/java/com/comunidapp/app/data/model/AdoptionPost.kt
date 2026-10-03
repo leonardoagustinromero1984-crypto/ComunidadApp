@@ -18,6 +18,8 @@ data class AdoptionPost(
     val location: String,
     val description: String,
     val requirements: String = "",
+    val matchRequirements: com.comunidapp.app.domain.adoption.AdoptionRequirements =
+        com.comunidapp.app.domain.adoption.AdoptionRequirements(),
     val status: AdoptionStatus = AdoptionStatus.PUBLISHED,
     val publicCode: String? = null,
     val publishedAt: Long? = null,

@@ -9,6 +9,7 @@ import com.comunidapp.app.data.model.M16OpeningHours
 import com.comunidapp.app.data.model.M16OpeningPeriod
 import com.comunidapp.app.data.model.M16PublicContactChannel
 import com.comunidapp.app.data.model.M16PublicContactChannelType
+import com.comunidapp.app.data.model.AdoptionStatus
 import com.comunidapp.app.data.model.M16PublicShelter
 import com.comunidapp.app.data.model.M16ShelterCapacity
 import com.comunidapp.app.data.model.M16ShelterNeed
@@ -26,6 +27,9 @@ import com.comunidapp.app.data.model.M16ShelterOperationsSummary
 import com.comunidapp.app.data.model.filterOperationalPets
 import com.comunidapp.app.data.repository.M16ShelterOperationsRepository
 import com.comunidapp.app.data.repository.M16ShelterRepository
+import com.comunidapp.app.domain.capability.CapabilityFacts
+import com.comunidapp.app.domain.context.OperationalContextProvider
+import com.comunidapp.app.domain.organization.OrganizationManageAccess
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -112,14 +116,27 @@ class M16SheltersListViewModel(
     }
 }
 
+enum class M16PublicAdoptionAccess { UNKNOWN, NONE, AVAILABLE }
+
 class M16ShelterDetailViewModel(
     private val shelterId: String,
-    private val repository: M16ShelterRepository = DataProvider.m16ShelterRepository
+    private val repository: M16ShelterRepository = DataProvider.m16ShelterRepository,
+    private val publishedAdoptionsForOrganization: (String) -> Boolean = { organizationId ->
+        DataProvider.adoptionRepository.getAdoptionsByOrganization(organizationId)
+            .any { it.status == AdoptionStatus.PUBLISHED }
+    },
+    private val viewerFacts: () -> CapabilityFacts = {
+        CapabilityFacts.forActiveContext(OperationalContextProvider.active.value)
+    }
 ) : ViewModel() {
     private val _shelter = MutableStateFlow<M16PublicShelter?>(null)
     val shelter: StateFlow<M16PublicShelter?> = _shelter.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
+    private val _canManage = MutableStateFlow(false)
+    val canManage: StateFlow<Boolean> = _canManage.asStateFlow()
+    private val _adoptionAccess = MutableStateFlow(M16PublicAdoptionAccess.UNKNOWN)
+    val adoptionAccess: StateFlow<M16PublicAdoptionAccess> = _adoptionAccess.asStateFlow()
 
     init {
         if (shelterId.isBlank()) {
@@ -133,6 +150,15 @@ class M16ShelterDetailViewModel(
                             M16ShelterErrorMapper.codeOf(it)
                         )
                     }
+                repository.getProfileById(shelterId).onSuccess { profile ->
+                    val member = repository.canManageOrganization(profile.organizationId)
+                    _canManage.value = OrganizationManageAccess.allows(viewerFacts(), member)
+                    _adoptionAccess.value = if (publishedAdoptionsForOrganization(profile.organizationId)) {
+                        M16PublicAdoptionAccess.AVAILABLE
+                    } else {
+                        M16PublicAdoptionAccess.NONE
+                    }
+                }
             }
         }
     }
