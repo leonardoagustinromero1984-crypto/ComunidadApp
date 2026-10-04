@@ -28,10 +28,11 @@ import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.repository.AuthProvider
-import com.comunidapp.app.domain.capability.AppStartupResolver
 import com.comunidapp.app.domain.capability.CapabilityFacts
 import com.comunidapp.app.domain.capability.CapabilityGate
 import com.comunidapp.app.domain.capability.CapabilityNavigationGuard
+import com.comunidapp.app.domain.capability.StartupNavigationPolicy
+import com.comunidapp.app.domain.capability.StartupSessionLatchStore
 import com.comunidapp.app.domain.context.OperationalContext
 import com.comunidapp.app.domain.context.OperationalContextProvider
 import com.comunidapp.app.domain.organization.OrganizationId
@@ -626,13 +627,32 @@ private fun publishOnboardingPhase(userId: String?, entryKind: com.comunidapp.ap
     )
 }
 
+/**
+ * Home stays under any restored tab. The resolving route is removed so it
+ * cannot remain as a blank root.
+ */
+private fun applyStartupBackStack(navController: NavHostController, backStack: List<String>) {
+    val root = backStack.firstOrNull() ?: return
+    navController.navigate(root) {
+        popUpTo(NavRoutes.STARTUP_RESOLVING) { inclusive = true }
+        launchSingleTop = true
+    }
+    backStack.drop(1).forEach { route ->
+        navController.navigate(route) {
+            popUpTo(root) { inclusive = false }
+            launchSingleTop = true
+        }
+    }
+}
+
 @Composable
 private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
     val navController = rememberNavController()
     val navBackStackEntry by navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry?.destination?.route
     val bottomNavRoutes = bottomNavItemsFor(context).map { it.route }
-    val showBottomBar = currentRoute in bottomNavRoutes
+    val showBottomBar = currentRoute in bottomNavRoutes ||
+        StartupNavigationPolicy.keepsTopLevelNavigation(currentRoute)
 
     LaunchedEffect(currentRoute) {
         if (currentRoute == NavRoutes.STARTUP_RESOLVING) return@LaunchedEffect
@@ -654,8 +674,21 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
 
     LaunchedEffect(Unit) {
         com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.markResolving()
-        val restored = com.comunidapp.app.domain.navigation.AppNavRestoreStore.read()
         val userId = resolveOnboardingUserId()
+        val latch = StartupSessionLatchStore.current
+        if (!userId.isNullOrBlank()) {
+            val latched = latch.peek(userId)
+            if (latched != null) {
+                applyStartupBackStack(navController, latched)
+                val phase = if (latched.firstOrNull()?.startsWith("onb02") == true) {
+                    com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingPhase.TUTORIAL_REQUIRED
+                } else {
+                    com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingPhase.READY
+                }
+                com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.apply(phase)
+                return@LaunchedEffect
+            }
+        }
         var remoteTutorialFlowCompleted = false
         if (!userId.isNullOrBlank()) {
             remoteTutorialFlowCompleted = runCatching {
@@ -681,17 +714,18 @@ private fun MainScreen(context: OperationalContext, onLogout: () -> Unit) {
         }
         publishOnboardingPhase(userId, onb02Kind)
         if (userId.isNullOrBlank()) return@LaunchedEffect
-        val destination = AppStartupResolver.decide(
+        val plan = StartupNavigationPolicy.resolveSession(
             userId = userId,
             onboardingKind = onb02Kind,
-            restoredRoute = if (onb02Kind == null) restored else null,
-            facts = CapabilityFacts.forActiveContext(context)
+            facts = CapabilityFacts.forActiveContext(context),
+            latch = latch,
+            readRestore = { com.comunidapp.app.domain.navigation.AppNavRestoreStore.read() }
         )
-        if (destination == NavRoutes.STARTUP_RESOLVING) return@LaunchedEffect
-        navController.navigate(destination) {
-            popUpTo(NavRoutes.STARTUP_RESOLVING) { inclusive = true }
-            launchSingleTop = true
+        if (!plan.apply || plan.backStack.isEmpty()) return@LaunchedEffect
+        if (!plan.usedLatchedDecision) {
+            latch.latch(userId, plan.backStack)
         }
+        applyStartupBackStack(navController, plan.backStack)
     }
 
     LaunchedEffect(Unit) {
@@ -857,12 +891,14 @@ private fun NavGraphBuilder.mainAppRoutes(
                         popUpTo(NavRoutes.ONB02) { inclusive = true }
                         launchSingleTop = true
                     }
+                    StartupSessionLatchStore.current.replace(listOf(target))
                 } else {
                     navController.navigate(NavRoutes.HOME) {
                         popUpTo(NavRoutes.ONB02) { inclusive = true }
                         launchSingleTop = true
                     }
                     navController.navigate(target) { launchSingleTop = true }
+                    StartupSessionLatchStore.current.replace(listOf(NavRoutes.HOME, target))
                 }
             }
         )

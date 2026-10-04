@@ -90,6 +90,8 @@ fun ComunidappBottomBar(
     val currentRoute = navController.currentBackStackEntryAsState().value?.destination?.route
     val onProfileCreator = currentRoute == NavRoutes.PUBLISH_FROM_PROFILE
     val onHomeStoryCreator = currentRoute == NavRoutes.PUBLISH_STORY
+    val onMiManada = com.comunidapp.app.domain.capability.StartupNavigationPolicy
+        .keepsTopLevelNavigation(currentRoute)
 
     NavigationBar(
         containerColor = BrandWhite,
@@ -103,12 +105,13 @@ fun ComunidappBottomBar(
                 onProfileCreator && item.route == NavRoutes.PROFILE -> true
                 onHomeStoryCreator && item.route == NavRoutes.PUBLISH -> false
                 onHomeStoryCreator && item.route == NavRoutes.HOME -> true
+                onMiManada && item.route == NavRoutes.PROFILE -> true
                 else -> currentRoute == item.route
             }
             NavigationBarItem(
                 selected = selected,
                 onClick = {
-                    if (currentRoute == item.route && !onProfileCreator && !onHomeStoryCreator) {
+                    if (currentRoute == item.route && !onProfileCreator && !onHomeStoryCreator && !onMiManada) {
                         return@NavigationBarItem
                     }
                     val goingHome = item.route == NavRoutes.HOME
