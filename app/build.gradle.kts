@@ -11,6 +11,7 @@ import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.PosixFilePermission
 import java.util.Base64
 import java.util.Properties
+import org.gradle.api.tasks.compile.JavaCompile
 
 val localProperties = Properties()
 val localPropertiesFile = rootProject.file("local.properties")
@@ -412,6 +413,80 @@ tasks.configureEach {
     }
 }
 
+/**
+ * JVM unit tests of localDebug must not inherit SUPABASE_* from local.properties.
+ * The local/staging APKs keep the real BuildConfig. Only testLocalDebugUnitTest
+ * prepends this rewritten copy, so SettingsSessionManager never starts on the JVM.
+ */
+fun mockLocalDebugUnitTestBuildConfigLine(line: String): String {
+    val trimmed = line.trimStart()
+    return when {
+        trimmed.startsWith("public static final Boolean SUPABASE_ENABLED") ->
+            "  public static final Boolean SUPABASE_ENABLED = false;"
+        trimmed.startsWith("public static final String SUPABASE_URL ") ->
+            "  public static final String SUPABASE_URL = \"\";"
+        trimmed.startsWith("public static final String SUPABASE_ANON_KEY") ->
+            "  public static final String SUPABASE_ANON_KEY = \"\";"
+        trimmed.startsWith("public static final String SUPABASE_CREDENTIAL_SOURCE") ->
+            "  public static final String SUPABASE_CREDENTIAL_SOURCE = \"UNIT_TEST_MOCK\";"
+        else -> line
+    }
+}
+
+val mockLocalDebugUnitTestBuildConfigRoot = layout.buildDirectory.dir(
+    "generated/mock-unit-test-buildconfig/localDebug/src"
+)
+val mockLocalDebugUnitTestBuildConfigSrc = mockLocalDebugUnitTestBuildConfigRoot.map {
+    it.dir("com/comunidapp/app")
+}
+val mockLocalDebugUnitTestBuildConfigClasses = layout.buildDirectory.dir(
+    "generated/mock-unit-test-buildconfig/localDebug/classes"
+)
+
+val rewriteMockLocalDebugUnitTestBuildConfig = tasks.register("rewriteMockLocalDebugUnitTestBuildConfig") {
+    dependsOn("generateLocalDebugBuildConfig")
+    val input = layout.buildDirectory.file(
+        "generated/source/buildConfig/local/debug/com/comunidapp/app/BuildConfig.java"
+    )
+    inputs.file(input)
+    outputs.dir(mockLocalDebugUnitTestBuildConfigSrc)
+    doLast {
+        val source = input.get().asFile.readText()
+        val rewritten = source.lineSequence()
+            .map { mockLocalDebugUnitTestBuildConfigLine(it) }
+            .joinToString("\n")
+        val lines = rewritten.lines().map { it.trim() }
+        check(lines.any { it == "public static final Boolean SUPABASE_ENABLED = false;" }) {
+            "Unit-test BuildConfig did not force SUPABASE_ENABLED=false."
+        }
+        check(lines.any { it == "public static final String SUPABASE_URL = \"\";" }) {
+            "Unit-test BuildConfig did not blank SUPABASE_URL."
+        }
+        check(lines.any { it == "public static final String SUPABASE_ANON_KEY = \"\";" }) {
+            "Unit-test BuildConfig did not blank SUPABASE_ANON_KEY."
+        }
+        check(lines.any { it == "public static final String SUPABASE_CREDENTIAL_SOURCE = \"UNIT_TEST_MOCK\";" }) {
+            "Unit-test BuildConfig did not mark SUPABASE_CREDENTIAL_SOURCE."
+        }
+        check(lines.none { it.startsWith("public static final Boolean SUPABASE_ENABLED = true") }) {
+            "Unit-test BuildConfig still enables Supabase."
+        }
+        val out = mockLocalDebugUnitTestBuildConfigSrc.get().asFile
+        out.mkdirs()
+        File(out, "BuildConfig.java").writeText(rewritten)
+    }
+}
+
+tasks.register<JavaCompile>("compileMockLocalDebugUnitTestBuildConfig") {
+    dependsOn(rewriteMockLocalDebugUnitTestBuildConfig)
+    source(mockLocalDebugUnitTestBuildConfigRoot)
+    include("**/BuildConfig.java")
+    classpath = files()
+    destinationDirectory.set(mockLocalDebugUnitTestBuildConfigClasses)
+    sourceCompatibility = JavaVersion.VERSION_17.toString()
+    targetCompatibility = JavaVersion.VERSION_17.toString()
+}
+
 jacoco {
     toolVersion = "0.8.12"
 }
@@ -527,6 +602,13 @@ val copyStagingDebugApk = tasks.register<Copy>("copyStagingDebugApk") {
 }
 
 afterEvaluate {
+    tasks.named<Test>("testLocalDebugUnitTest").configure {
+        dependsOn("compileMockLocalDebugUnitTestBuildConfig")
+        val mockClasses = mockLocalDebugUnitTestBuildConfigClasses
+        doFirst {
+            classpath = files(mockClasses.get().asFile) + classpath
+        }
+    }
     tasks.findByName("assembleLocalDebug")?.finalizedBy(copyLocalDebugApk)
     tasks.findByName("assembleStagingDebug")?.finalizedBy(copyStagingDebugApk)
 
