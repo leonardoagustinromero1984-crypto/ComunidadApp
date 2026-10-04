@@ -15,12 +15,14 @@ import com.comunidapp.app.domain.ProfilePrivacy
 import com.comunidapp.app.domain.social.FriendshipErrorMapper
 import com.comunidapp.app.domain.user.toBridgeUser
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOf
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -53,43 +55,64 @@ class FriendsListViewModel(
 
     private val _actionInProgressId = MutableStateFlow<String?>(null)
     private val _actionMessage = MutableStateFlow<String?>(null)
+    private val latestVisible = MutableStateFlow(FriendsListUiState())
 
     val uiState: StateFlow<FriendsListUiState> = authRepository.observeAuthState()
+        .distinctUntilChanged { previous, next -> previous?.id == next?.id }
         .flatMapLatest { authUser ->
             if (authUser == null) {
+                latestVisible.value = FriendsListUiState(isLoading = false)
                 flowOf(FriendsListUiState(isLoading = false))
             } else {
-                friendRepository.observeConnections(authUser.id).flatMapLatest { connections ->
-                    flow {
-                        emit(FriendsListUiState(isLoading = true))
-                        val accepted = connections.filter { it.status == FriendConnectionStatus.ACCEPTED }
-                        val pendingOut = connections.filter {
-                            it.status == FriendConnectionStatus.PENDING &&
-                                it.requesterId == authUser.id
-                        }
-                        val pendingIn = connections.filter {
-                            it.status == FriendConnectionStatus.PENDING &&
-                                it.addresseeId == authUser.id
-                        }
-                        emit(FriendsListUiState(isLoading = true, incomingCount = pendingIn.size))
-                        val probe = com.comunidapp.app.domain.perf.ScreenPerfProbe.begin("mi_manada")
-                        val friends = probe.network { resolve(authUser.id, accepted) }
-                        val incoming = probe.network { resolve(authUser.id, pendingIn) }
-                        val outgoing = probe.network { resolve(authUser.id, pendingOut) }
-                        probe.markFirstContent()
-                        probe.finish(com.comunidapp.app.domain.perf.ScreenPerfProbe.Ledger.snapshot())
-                        emit(
-                            FriendsListUiState(
-                                isLoading = false,
+                latestVisible.value = FriendsListUiState(isLoading = true)
+                friendRepository.observeConnections(authUser.id)
+                    .onlyWhenFriendshipChanges()
+                    .flatMapLatest { connections ->
+                        flow {
+                            val held = FriendsListLoadPolicy.stateWhileResolving(latestVisible.value)
+                            if (!FriendsListLoadPolicy.hasResolvedContent(held)) {
+                                latestVisible.value = held
+                                emit(held)
+                            }
+                            val accepted = connections.filter { it.status == FriendConnectionStatus.ACCEPTED }
+                            val pendingOut = connections.filter {
+                                it.status == FriendConnectionStatus.PENDING &&
+                                    it.requesterId == authUser.id
+                            }
+                            val pendingIn = connections.filter {
+                                it.status == FriendConnectionStatus.PENDING &&
+                                    it.addresseeId == authUser.id
+                            }
+                            val probe = com.comunidapp.app.domain.perf.ScreenPerfProbe.begin("mi_manada")
+                            val friends = probe.network { resolve(authUser.id, accepted) }
+                            val incoming = probe.network { resolve(authUser.id, pendingIn) }
+                            val outgoing = probe.network { resolve(authUser.id, pendingOut) }
+                            probe.markFirstContent()
+                            probe.finish(com.comunidapp.app.domain.perf.ScreenPerfProbe.Ledger.snapshot())
+                            val committed = FriendsListLoadPolicy.commit(
                                 friends = friends,
                                 incoming = incoming,
-                                incomingCount = pendingIn.size,
                                 outgoing = outgoing,
+                                incomingCount = pendingIn.size,
                                 actionInProgressId = _actionInProgressId.value,
                                 actionMessage = _actionMessage.value
                             )
-                        )
+                            latestVisible.value = committed
+                            emit(committed)
+                        }
                     }
+            }
+        }
+        .flatMapLatest { snapshot ->
+            combine(_actionInProgressId, _actionMessage) { actionId, message ->
+                if (FriendsListLoadPolicy.hasResolvedContent(snapshot)) {
+                    snapshot.copy(
+                        isLoading = false,
+                        actionInProgressId = actionId,
+                        actionMessage = message
+                    )
+                } else {
+                    snapshot
                 }
             }
         }

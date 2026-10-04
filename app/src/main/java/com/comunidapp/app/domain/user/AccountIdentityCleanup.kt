@@ -3,6 +3,7 @@ package com.comunidapp.app.domain.user
 import com.comunidapp.app.data.files.SignedUrlMintCoordinator
 import com.comunidapp.app.data.mock.InMemoryDataStore
 import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.domain.capability.StartupSessionLatchStore
 import com.comunidapp.app.domain.context.OperationalContextProvider
 import com.comunidapp.app.domain.organization.OrganizationContextProvider
 
@@ -17,6 +18,7 @@ import com.comunidapp.app.domain.organization.OrganizationContextProvider
 object AccountIdentityCleanup {
     fun clear() {
         SessionGeneration.invalidate()
+        StartupSessionLatchStore.clear()
         com.comunidapp.app.data.local.AdoptionApplicantProfileStore.clear()
         com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.markResolving()
         runCatching { com.comunidapp.app.domain.social.ReelPublishController.get().onSessionEnded() }

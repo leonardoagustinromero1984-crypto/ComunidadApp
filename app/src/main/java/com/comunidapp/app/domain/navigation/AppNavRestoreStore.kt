@@ -7,6 +7,10 @@ import com.comunidapp.app.navigation.NavRoutes
 /**
  * Last in-app route across Activity recreation, lock screen, and process death.
  * Login is never restored; session validation happens before apply.
+ *
+ * Startup normalizes a secondary route such as Mi manada (`mi_manada`,
+ * `my_friends`) to Home. A preference restored by backup must not become
+ * the only back-stack entry.
  */
 object AppNavRestoreStore {
     private const val PREFS = "leover_nav_restore"

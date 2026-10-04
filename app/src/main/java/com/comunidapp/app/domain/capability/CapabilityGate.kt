@@ -189,19 +189,12 @@ object AppStartupResolver {
         onboardingKind: Onb02FlowKind?,
         restoredRoute: String?,
         facts: CapabilityFacts
-    ): String {
-        if (userId.isNullOrBlank()) return RESOLVING_ROUTE
-        if (onboardingKind != null) return NavRoutes.onb02(onboardingKind.name)
-        val restored = restoredRoute?.trim()?.takeIf { it.isNotEmpty() }
-        if (restored != null &&
-            restored != NavRoutes.HOME &&
-            restored != RESOLVING_ROUTE &&
-            CapabilityNavigationGuard.allows(restored, facts)
-        ) {
-            return restored
-        }
-        return NavRoutes.HOME
-    }
+    ): String = StartupNavigationPolicy.backStack(
+        userId = userId,
+        onboardingKind = onboardingKind,
+        restoredRoute = restoredRoute,
+        facts = facts
+    ).last()
 
     fun composesHomeBeforeDecision(): Boolean = false
 }
