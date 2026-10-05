@@ -129,6 +129,8 @@ object M14Validators {
         }
 
     fun publicCodeLooksLikePii(code: String): Boolean {
+        val stripped = code.trim().removePrefix("PUB-")
+        if (Regex("^[0-9A-Fa-f]{12}$").matches(stripped)) return false
         val lower = code.lowercase(Locale.ROOT)
         if (lower.contains("@")) return true
         if (lower.contains("dni") || lower.contains("cuit") || lower.contains("whatsapp")) return true

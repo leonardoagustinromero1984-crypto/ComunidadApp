@@ -3,7 +3,9 @@ name: "VitaCora proposals QA11 QA01"
 tags:
   - community-care
   - vitacora
+  - updated-ready
 ---
+# UPDATED_READY. Opens proposals and does not tap Aceptar or Rechazar.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -11,6 +13,12 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/switch-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: "Veterinaria · QA - Veterinaria Centro"
+- tapOn: "Consultorio"
 - tapOn: "Pacientes"
 - tapOn: "QA - Mora"
 - takeScreenshot: proposal_professional
@@ -24,9 +32,19 @@ tags:
       USERNAME: ${QA01_USERNAME}
       PASSWORD: ${QA_PASSWORD}
       APP_ID: ${APP_ID}
-- tapOn: "QA - Mora"
-- tapOn: "Propuestas"
+- runFlow:
+    file: ../subflows/open-my-pet.yaml
+    env:
+      APP_ID: ${APP_ID}
+      PET_NAME: "QA - Mora"
+- scrollUntilVisible:
+    element: "Propuestas VitaCora"
+    direction: DOWN
+    timeout: 12000
+- tapOn: "Propuestas VitaCora"
+- extendedWaitUntil:
+    visible: "Propuestas VitaCora"
+    timeout: 15000
 - assertVisible: "Aceptar"
 - assertVisible: "Rechazar"
 - takeScreenshot: proposal_owner
-# Does not consume ACCEPT/REJECT so the seed fixture stays rerunnable.

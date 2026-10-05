@@ -16,6 +16,8 @@ import com.comunidapp.app.data.remote.supabase.m17.toM17InKindPledgeFromRpc
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicInKindNeed
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicVolunteerOpportunity
 import com.comunidapp.app.data.remote.supabase.m17.toM17VolunteerApplicationFromRpc
+import com.comunidapp.app.data.remote.supabase.m17.toMyGoodsPledge
+import com.comunidapp.app.data.remote.supabase.m17.toMyVolunteerInterest
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
@@ -47,6 +49,14 @@ class SupabaseM17InKindRepository(
     override fun observeNeedsForOrganization(orgId: String): Flow<List<M17InKindDonationNeed>> = flow {
         emit(emptyList())
     }
+
+    override suspend fun listMyPledges(): Result<List<com.comunidapp.app.domain.m17.MyGoodsPledge>> = try {
+        Result.success(remote.listMyInKindPledges().map { it.toMyGoodsPledge() })
+    } catch (t: Throwable) {
+        M17DonationErrorMapper.failure(t)
+    }
+
+    override suspend fun canManageNeed(needId: String): Boolean = false
 
     override suspend fun createPledge(needId: String, quantity: Int, message: String?): Result<M17InKindPledge> =
         try {
@@ -95,6 +105,14 @@ class SupabaseM17VolunteerRepository(
 
     override fun observeOpportunitiesForOrganization(orgId: String): Flow<List<M17VolunteerOpportunity>> =
         flow { emit(emptyList()) }
+
+    override suspend fun listMyApplications(): Result<List<com.comunidapp.app.domain.m17.MyVolunteerInterest>> = try {
+        Result.success(remote.listMyVolunteerApplications().map { it.toMyVolunteerInterest() })
+    } catch (t: Throwable) {
+        M17DonationErrorMapper.failure(t)
+    }
+
+    override suspend fun canManageOpportunity(opportunityId: String): Boolean = false
 
     override suspend fun submitApplication(opportunityId: String, message: String?): Result<M17VolunteerApplication> =
         try {

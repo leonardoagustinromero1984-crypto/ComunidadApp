@@ -1,0 +1,20 @@
+appId: ${APP_ID}
+---
+# Vertical pet list. The profile strip is horizontal and easy to miss.
+- tapOn: "Perfil"
+- scrollUntilVisible:
+    element: "Ver todas"
+    direction: DOWN
+    timeout: 12000
+- tapOn: "Ver todas"
+- extendedWaitUntil:
+    visible: "Mis mascotas"
+    timeout: 15000
+- scrollUntilVisible:
+    element: ${PET_NAME}
+    direction: DOWN
+    timeout: 12000
+- tapOn: ${PET_NAME}
+- extendedWaitUntil:
+    visible: ${PET_NAME}
+    timeout: 15000

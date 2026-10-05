@@ -14,7 +14,11 @@ import com.comunidapp.app.data.model.M17VolunteerApplicationStatus
 import com.comunidapp.app.data.model.M17VolunteerOpportunityStatus
 import com.comunidapp.app.data.model.M17VolunteerOpportunityType
 import com.comunidapp.app.data.remote.supabase.supabase
+import com.comunidapp.app.domain.m17.MyGoodsPledge
+import com.comunidapp.app.domain.m17.MyVolunteerInterest
 import io.github.jan.supabase.postgrest.postgrest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
@@ -45,6 +49,22 @@ private fun JsonObject.long(key: String, default: Long = 0L): Long =
 
 private inline fun <reified T : Enum<T>> safeEnum(raw: String?, default: T): T =
     runCatching { enumValueOf<T>(raw.orEmpty()) }.getOrDefault(default)
+
+fun JsonObject.toMyGoodsPledge(): MyGoodsPledge = MyGoodsPledge(
+    needTitle = string("need_title").orEmpty(),
+    organizationName = string("organization_name").orEmpty(),
+    quantity = int("quantity"),
+    unit = string("unit").orEmpty(),
+    status = safeEnum(string("status"), M17InKindPledgeStatus.PLEDGED),
+    createdAt = parseTs(string("created_at"))
+)
+
+fun JsonObject.toMyVolunteerInterest(): MyVolunteerInterest = MyVolunteerInterest(
+    opportunityTitle = string("opportunity_title").orEmpty(),
+    organizationName = string("organization_name").orEmpty(),
+    status = safeEnum(string("status"), M17VolunteerApplicationStatus.SUBMITTED),
+    createdAt = parseTs(string("created_at"))
+)
 
 fun JsonObject.toM17PublicInKindNeed(): M17PublicInKindNeed = M17PublicInKindNeed(
     id = string("id").orEmpty(),
@@ -211,4 +231,25 @@ class SupabaseM17ExtendedRemoteDataSource {
         "m17_accept_volunteer_application",
         buildJsonObject { put("p_application_id", applicationId) }
     )
+
+    suspend fun listMyInKindPledges(): List<JsonObject> = parseJsonObjectList(
+        supabase.postgrest.rpc(
+            function = "m17_list_my_in_kind_pledges",
+            parameters = buildJsonObject { }
+        ).data
+    )
+
+    suspend fun listMyVolunteerApplications(): List<JsonObject> = parseJsonObjectList(
+        supabase.postgrest.rpc(
+            function = "m17_list_my_volunteer_applications",
+            parameters = buildJsonObject { }
+        ).data
+    )
+
+    private fun parseJsonObjectList(raw: String): List<JsonObject> =
+        when (val el = Json.parseToJsonElement(raw)) {
+            is JsonArray -> el.mapNotNull { it as? JsonObject }
+            is JsonObject -> listOf(el)
+            else -> emptyList()
+        }
 }

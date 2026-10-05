@@ -53,6 +53,8 @@ object M09AdoptionErrorMapper {
         "ADOPTION_ALREADY_FINALIZED",
         "ADOPTION_USE_CANONICAL_TRANSFER",
         "ADOPTION_TRANSFER_FAILED",
+        "PET_TRANSFER_PENDING_EXISTS",
+        "AGE_CAPABILITY_DENIED",
         "FOLLOWUP_NOT_FOUND",
         "FOLLOWUP_ALREADY_COMPLETED",
         "FOLLOWUP_FORBIDDEN",
@@ -78,6 +80,7 @@ object M09AdoptionErrorMapper {
             "NETWORK" in signal || "UNABLE TO RESOLVE" in signal -> "NETWORK"
             "TIMEOUT" in signal -> "TIMEOUT"
             "SERIALIZ" in signal || "JSON" in signal -> "SERIALIZATION"
+            Regex("""(^|\W)NOT_FOUND($|\W)""").containsMatchIn(signal) -> "NOT_FOUND"
             else -> "FORBIDDEN"
         }
     }
@@ -86,6 +89,8 @@ object M09AdoptionErrorMapper {
         "ADOPTION_NOT_FOUND" -> "No encontramos esa publicación de adopción."
         "ADOPTION_ALREADY_EXISTS" -> "Ya hay una publicación abierta para esa mascota."
         "PET_NOT_ADOPTABLE" -> "Esa mascota no se puede publicar en adopción (fallecida, archivada o no activa)."
+        "FOUND_CASE_NOT_ADOPTABLE" -> "Una mascota encontrada no se publica en adopción desde la custodia temporal."
+        "ADOPTION_PUBLISH_FORBIDDEN" -> "No podés publicar adopciones en este contexto."
         "ADOPTION_NOT_EDITABLE" -> "Esta publicación no se puede editar en su estado actual."
         "ADOPTION_ALREADY_PAUSED" -> "La publicación ya está pausada."
         "ADOPTION_ALREADY_CLOSED" -> "La publicación ya está cerrada."
@@ -122,12 +127,17 @@ object M09AdoptionErrorMapper {
         "ADOPTION_ALREADY_FINALIZED" -> "Esta adopción ya fue finalizada."
         "ADOPTION_USE_CANONICAL_TRANSFER" ->
             "Para cambiar la responsabilidad de la mascota usá la transferencia canónica."
+        "PET_TRANSFER_PENDING_EXISTS" ->
+            "Ya hay una transferencia pendiente para esta mascota."
+        "AGE_CAPABILITY_DENIED" ->
+            "Tu edad no permite transferir la responsabilidad."
         "ADOPTION_USE_FINALIZE" ->
             "Para completar la adopción usá el proceso post-aceptación (entrevista, docs, acuerdo y finalización)."
         "ADOPTION_TRANSFER_FAILED" -> "No se pudo transferir la responsabilidad de la mascota."
         "FOLLOWUP_NOT_FOUND" -> "No encontramos ese control de seguimiento."
         "FOLLOWUP_ALREADY_COMPLETED" -> "Ese control ya fue completado."
         "FOLLOWUP_FORBIDDEN" -> "No tenés permiso para el seguimiento."
+        "NOT_FOUND" -> "No encontramos ese registro."
         "NOT_AUTHENTICATED" -> "Tenés que iniciar sesión."
         "NETWORK" -> "Problema de conexión. Intentá de nuevo."
         "TIMEOUT" -> "La operación tardó demasiado. Intentá de nuevo."

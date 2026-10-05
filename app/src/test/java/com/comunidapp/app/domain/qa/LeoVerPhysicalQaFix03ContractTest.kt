@@ -123,8 +123,13 @@ class LeoVerPhysicalQaFix03ContractTest {
 
     @Test
     fun CREATE_RESCUER_ACTIVATES_DASHBOARD() {
+        com.comunidapp.app.domain.context.OperationalContextProvider.clear()
         val store = InMemoryOnb02Store()
-        val vm = Onb02ViewModel(store = store, userIdProvider = { "user-1" })
+        val vm = Onb02ViewModel(
+            store = store,
+            userIdProvider = { "user-1" },
+            capabilityOverride = com.comunidapp.app.data.repository.InMemoryPersonCapabilityRepository()
+        )
         vm.start(Onb02FlowKind.ADD_FUNCTION_LATER)
         vm.selectAddable(AddFunctionCatalog.catalog().first { it.id == "RESCUER" })
         repeat(24) {
@@ -134,7 +139,7 @@ class LeoVerPhysicalQaFix03ContractTest {
         }
         if (vm.ui.value.phase != Onb02Phase.DONE) vm.finish()
         val route = vm.setupRouteAfterTutorials()
-        assertEquals(NavRoutes.HOME, route)
+        assertEquals(NavRoutes.USE_LEOVER_AS, route)
         assertEquals(NavRoutes.HOME, FunctionSetupMapping.routeFor(LeoverFunction.RESCUER).route)
         assertFalse(PhysicalQaFix03Contracts.RESCUER_CREATE_DESTINATION_SETTINGS)
     }

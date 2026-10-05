@@ -29,7 +29,9 @@ object SocialPostMedia {
         locationLabel: String? = null,
         extraMediaAssetIds: List<String> = emptyList(),
         postType: String? = null,
-        petIds: List<String> = emptyList()
+        petIds: List<String> = emptyList(),
+        alertKind: String? = null,
+        lostFoundCaseId: String? = null
     ): String = buildJsonObject {
         locationLabel?.trim()?.takeIf { it.isNotEmpty() }?.let { put("location_label", it) }
         val extras = extraMediaAssetIds.map { it.trim() }.filter { it.isNotEmpty() }
@@ -41,6 +43,8 @@ object SocialPostMedia {
             put("pet_ids", JsonArray(pets.map { JsonPrimitive(it) }))
         }
         postType?.trim()?.takeIf { it.isNotEmpty() }?.let { put("post_type", it) }
+        alertKind?.trim()?.takeIf { it.isNotEmpty() }?.let { put("alert_kind", it) }
+        lostFoundCaseId?.trim()?.takeIf { it.isNotEmpty() }?.let { put("lost_found_case_id", it) }
     }.toString()
 
     fun withPetIds(compositionJson: String?, petIds: List<String>): String {
@@ -65,6 +69,12 @@ object SocialPostMedia {
 
     fun postType(compositionJson: String?): String? =
         stringField(compositionJson, "post_type")
+
+    fun alertKind(compositionJson: String?): String? =
+        stringField(compositionJson, "alert_kind")
+
+    fun lostFoundCaseId(compositionJson: String?): String? =
+        stringField(compositionJson, "lost_found_case_id")
 
     fun extraMediaAssetIds(compositionJson: String?): List<String> {
         val root = parseObject(compositionJson) ?: return emptyList()

@@ -739,4 +739,28 @@ object InMemoryDataStore {
         _clinicalRecords
             .map { list -> list.filter { it.petId == petId }.sortedByDescending { it.recordedAt ?: 0L } }
             .stateIn(storeScope, SharingStarted.Eagerly, emptyList())
+
+    /**
+     * Drops personalized mock state. Shared demo catalogs (feed, pets, shelters)
+     * stay in place.
+     */
+    fun clearUserScopedSession() {
+        _likes.value = emptySet()
+        _comments.value = emptyMap()
+        _savedPosts.value = emptySet()
+        _blockedUsers.value = emptySet()
+        _conversations.value = emptyList()
+        _messages.value = emptyMap()
+        _friendConnections.value = emptyList()
+        _notifications.value = emptyList()
+        _adoptionRequests.value = emptyList()
+        _fosterRequests.value = emptyList()
+        _serviceBookings.value = emptyList()
+        _deviceTokens.value = emptySet()
+        _reports.value = emptyList()
+        _sightings.value = emptyList()
+        _reviews.value = emptyList()
+        _payments.value = emptyList()
+        _clinicalRecords.value = emptyList()
+    }
 }

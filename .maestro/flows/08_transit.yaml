@@ -1,9 +1,13 @@
 appId: ${APP_ID}
-name: "Transit QA07 Bruno QA06"
+name: "Transit read Bruno completed"
 tags:
   - community-care
   - transit
+  - updated-ready
 ---
+# UPDATED_READY. Bruno request is COMPLETED and the placement is CLOSED.
+# QA07 reads responsible management. QA06 reads the historical application.
+# Does not publish, apply, choose, or tap Finalizar tránsito.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -11,33 +15,47 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
-- tapOn: "QA - Bruno Transito"
-- tapOn: "Necesito hogar de tránsito"
-- tapOn: "Publicar solicitud"
-- takeScreenshot: transit_request
+- runFlow:
+    file: ../subflows/open-my-pet.yaml
+    env:
+      APP_ID: ${APP_ID}
+      PET_NAME: "QA - Bruno Transito"
+- scrollUntilVisible:
+    element: "Buscar hogar de tránsito"
+    direction: DOWN
+    timeout: 15000
+- tapOn: "Buscar hogar de tránsito"
+- extendedWaitUntil:
+    visible: "Necesito hogar de tránsito"
+    timeout: 15000
+- assertVisible: "Solicitud COMPLETED"
+- assertVisible: "Tránsito finalizado."
+- assertVisible: "El hogar temporal ya no figura como cuidador activo."
+- assertNotVisible: "Finalizar tránsito"
+- assertNotVisible: "Publicar solicitud"
+- assertNotVisible: "Elegir este hogar"
+- takeScreenshot: transit_bruno_completed
 - runFlow:
     file: ../subflows/logout-person.yaml
     env:
       APP_ID: ${APP_ID}
 - runFlow:
-    file: ../subflows/login-person-keep.yaml
+    file: ../subflows/login-person.yaml
     env:
       USERNAME: ${QA06_USERNAME}
       PASSWORD: ${QA_PASSWORD}
-      APP_ID: ${APP_ID}
-- tapOn: "Tránsitos"
-- tapOn: "Postularme"
-- takeScreenshot: transit_apply
-- runFlow:
-    file: ../subflows/logout-person.yaml
-    env:
+      CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
 - runFlow:
-    file: ../subflows/login-person-keep.yaml
+    file: ../subflows/open-sumate.yaml
     env:
-      USERNAME: ${QA07_USERNAME}
-      PASSWORD: ${QA_PASSWORD}
       APP_ID: ${APP_ID}
-- tapOn: "QA - Bruno Transito"
-- tapOn: "Elegir"
-- takeScreenshot: transit_chosen
+- tapOn: "Solicitudes de tránsito"
+- extendedWaitUntil:
+    visible: "Solicitudes de tránsito"
+    timeout: 15000
+- assertVisible: "QA - Bruno Transito · tránsito finalizado"
+- assertVisible: "Antecedente SELECTED. Solicitud COMPLETED. Alojamiento CLOSED."
+- assertNotVisible: "Postularme"
+- assertNotVisible: "Elegir este hogar"
+- takeScreenshot: transit_qa06_historical

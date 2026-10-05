@@ -230,6 +230,14 @@ class HomeViewModel(
 
     fun reportPost(postId: String) {
         val userId = authRepository.getCurrentUser()?.id ?: return
+        val authorId = feedRepository.observeFeedPosts().value
+            .firstOrNull { it.id == postId }
+            ?.authorId
+        if (authorId != null &&
+            !com.comunidapp.app.domain.social.OwnPostActions.showReport(authorId, userId)
+        ) {
+            return
+        }
         viewModelScope.launch {
             platformRepository.reportContent(
                 reporterId = userId,
@@ -246,6 +254,7 @@ class HomeViewModel(
 
     fun blockAuthor(authorId: String) {
         val userId = authRepository.getCurrentUser()?.id ?: return
+        if (!com.comunidapp.app.domain.social.OwnPostActions.showBlock(authorId, userId)) return
         viewModelScope.launch {
             platformRepository.blockUser(userId, authorId)
                 .onSuccess { _actionMessage.value = "Autor bloqueado" }

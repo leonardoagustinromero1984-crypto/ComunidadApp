@@ -180,18 +180,29 @@ function Push-PhotoFixture([string]$Serial) {
     & $Adb -s $Serial shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Pictures/LeoVerQA/pet-dog.jpg | Out-Null
 }
 
+function Test-ExcludedMaestroFlow([string]$Path) {
+    $text = Get-Content -Raw -Path $Path
+    return $text -match '(?m)^\s+-\s+(manual|reset-required|needs-fresh-fixture|physical-two-device|physical-only)\s*$'
+}
+
+function Get-RunnableFlows {
+    return @(Get-ChildItem (Join-Path $FlowsDir "*.yaml") |
+        Where-Object { -not (Test-ExcludedMaestroFlow $_.FullName) } |
+        Sort-Object Name)
+}
+
 function Get-FlowList {
     if ($Full) {
-        return @(Get-ChildItem (Join-Path $FlowsDir "*.yaml") | Sort-Object Name | ForEach-Object { $_.FullName })
+        return @(Get-RunnableFlows | ForEach-Object { $_.FullName })
     }
     if ($CommunityCare) {
+        $rest = @(Get-RunnableFlows |
+            Where-Object { $_.Name -notlike "00_smoke*" -and $_.Name -notlike "01_lost_owner.yaml" -and $_.Name -notlike "02_found_finder.yaml" -and $_.Name -notlike "03_match_owner_notification.yaml" })
         return @(
             (Join-Path $FlowsDir "01_lost_owner.yaml"),
             (Join-Path $FlowsDir "02_found_finder.yaml"),
             (Join-Path $FlowsDir "03_match_owner_notification.yaml")
-        ) + @(Get-ChildItem (Join-Path $FlowsDir "*.yaml") |
-            Where-Object { $_.Name -notlike "00_smoke*" -and $_.Name -notlike "01_lost*" -and $_.Name -notlike "02_found*" -and $_.Name -notlike "03_match*" } |
-            Sort-Object Name | ForEach-Object { $_.FullName })
+        ) + @($rest | ForEach-Object { $_.FullName })
     }
     return @(
         (Join-Path $FlowsDir "00_smoke_login.yaml"),

@@ -264,6 +264,13 @@ object MockData {
             size = PetSize.LARGE,
             location = "CABA",
             description = "Labrador sociable y enérgico. Ideal para familias activas.",
+            requirements = "Se prioriza un hogar que pueda acompañar la adaptación.",
+            matchRequirements = com.comunidapp.app.domain.adoption.AdoptionRequirements(
+                acceptsChildren = true,
+                needsOutdoorSpace = true,
+                acceptsNoExperience = true,
+                additionalNotes = "Se prioriza un hogar que pueda acompañar la adaptación."
+            ),
             status = AdoptionStatus.PUBLISHED
         ),
         AdoptionPost(

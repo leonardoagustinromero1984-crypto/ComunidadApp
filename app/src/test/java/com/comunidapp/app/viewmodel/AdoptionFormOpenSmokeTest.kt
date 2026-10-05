@@ -11,6 +11,8 @@ import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.repository.MockAdoptionRepository
 import com.comunidapp.app.data.repository.MockAuthRepository
 import com.comunidapp.app.data.repository.MockPetRepository
+import com.comunidapp.app.domain.context.OperationalContext
+import com.comunidapp.app.domain.context.OperationalContextProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
@@ -45,6 +47,7 @@ class AdoptionFormOpenSmokeTest {
     fun tearDown() {
         Dispatchers.resetMain()
         MockAuthDatabase.resetToFixtures()
+        OperationalContextProvider.clear()
     }
 
     @Test
@@ -64,6 +67,7 @@ class AdoptionFormOpenSmokeTest {
     @Test
     fun openForm_withExplicitPet_keepsSelectionAvailable() = runTest {
         authRepo.login(MockData.currentUser.email, MockAuthDatabase.DEMO_PASSWORD)
+        OperationalContextProvider.select(OperationalContext.Rescuer(MockData.currentUser.id))
         InMemoryDataStore.addPet(
             Pet(
                 id = "pet-form-smoke",
@@ -88,6 +92,7 @@ class AdoptionFormOpenSmokeTest {
         assertTrue(vm.state.value.selectablePets.any { it.id == "pet-form-smoke" })
         // RC1.2: no auto-select — el usuario elige mascota explícitamente.
         assertTrue(vm.state.value.selectedPetId == null)
+        OperationalContextProvider.clear()
         vm.onPetSelected("pet-form-smoke")
         assertNotNull(vm.state.value.selectedPetId)
     }

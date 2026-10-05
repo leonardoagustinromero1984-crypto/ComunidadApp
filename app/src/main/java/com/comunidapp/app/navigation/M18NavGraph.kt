@@ -10,6 +10,7 @@ import com.comunidapp.app.ui.screens.m18.M18EventEditScreen
 import com.comunidapp.app.ui.screens.m18.M18EventManageScreen
 import com.comunidapp.app.ui.screens.m18.M18EventOperationsScreen
 import com.comunidapp.app.ui.screens.m18.M18EventsListScreen
+import com.comunidapp.app.ui.screens.m18.M18MyEventsScreen
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.comunidapp.app.domain.RolePermissions
@@ -26,6 +27,12 @@ fun NavGraphBuilder.m18EventRoutes(navController: NavHostController) {
             onManage = { navController.navigate(NavRoutes.M18_EVENTS_MANAGE) },
             onCreate = { navController.navigate(NavRoutes.M18_EVENTS_CREATE) },
             canAdminister = RolePermissions.canPublishEvent(context)
+        )
+    }
+    composable(NavRoutes.M18_MY_EVENTS) {
+        M18MyEventsScreen(
+            onNavigateBack = { navController.popBackStack() },
+            onEventClick = { id -> navController.navigate(NavRoutes.m18EventDetail(id)) }
         )
     }
     composable(

@@ -39,6 +39,9 @@ interface AdoptionRepository {
     suspend fun resumeAdoption(id: String): Result<AdoptionPost>
     suspend fun closeAdoption(id: String): Result<AdoptionPost>
     suspend fun markAsAdopted(id: String): Result<AdoptionPost>
+
+    /** Drops user-scoped adoption state. Does not refetch. */
+    fun clearAccountCache() {}
 }
 
 /**
@@ -115,7 +118,8 @@ class MockAdoptionRepository(
                     description = post.description,
                     requirements = post.requirements,
                     locationText = post.location,
-                    publish = post.status == AdoptionStatus.PUBLISHED
+                    publish = post.status == AdoptionStatus.PUBLISHED,
+                    matchRequirements = post.matchRequirements
                 )
             ).map { it.id }
         }
@@ -133,7 +137,8 @@ class MockAdoptionRepository(
                 title = post.title.ifBlank { post.name },
                 description = post.description,
                 requirements = post.requirements,
-                locationText = post.location
+                locationText = post.location,
+                matchRequirements = post.matchRequirements
             )
         ).map { }
 
@@ -155,6 +160,9 @@ class MockAdoptionRepository(
             "DECEASED", "ARCHIVED" -> return fail("PET_NOT_ADOPTABLE")
             "ACTIVE" -> Unit
             else -> return fail("PET_NOT_ADOPTABLE")
+        }
+        if (pet.originKind.equals("FOUND_CASE", ignoreCase = true)) {
+            return fail("FOUND_CASE_NOT_ADOPTABLE")
         }
         if (!canManagePet(params.petId, actor)) return fail("FORBIDDEN")
         val open = InMemoryDataStore.adoptionPosts.value.any {
@@ -182,6 +190,9 @@ class MockAdoptionRepository(
             location = params.locationText.ifBlank { pet.locationText.orEmpty() },
             description = params.description.trim(),
             requirements = params.requirements,
+            matchRequirements = params.matchRequirements.copy(
+                additionalNotes = params.requirements.ifBlank { null }
+            ),
             status = status,
             publishedAt = if (params.publish) now else null,
             createdAt = now,
@@ -207,6 +218,9 @@ class MockAdoptionRepository(
             title = params.title.trim(),
             description = params.description.trim(),
             requirements = params.requirements,
+            matchRequirements = params.matchRequirements.copy(
+                additionalNotes = params.requirements.ifBlank { null }
+            ),
             location = params.locationText.ifBlank { existing.location },
             updatedAt = System.currentTimeMillis()
         )

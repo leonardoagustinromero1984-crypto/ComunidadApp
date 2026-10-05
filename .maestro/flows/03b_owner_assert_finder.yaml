@@ -1,9 +1,14 @@
 appId: ${APP_ID}
-name: "Owner assert then finder review"
+name: "Owner assert then finder review NEEDS_FRESH_FIXTURE"
 tags:
   - community-care
   - match
+  - needs-fresh-fixture
+  - reset-required
 ---
+# NEEDS_FRESH_FIXTURE. Custodian confirm on Mora already happened and is one-way.
+# Do not tap "Podría ser mi mascota" or "Sí, corresponde" on that pair.
+- assertVisible: "FRESH_FIXTURE_REQUIRED"
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -34,4 +39,4 @@ tags:
 - tapOn: ".*mascota.*"
 - assertVisible: "Sí, corresponde"
 - assertVisible: "No corresponde"
-- takeScreenshot: finder_ownership_actions
+- takeScreenshot: finder_ownership_actions_fresh

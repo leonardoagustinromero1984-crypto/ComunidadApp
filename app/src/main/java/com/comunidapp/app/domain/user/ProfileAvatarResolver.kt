@@ -14,6 +14,23 @@ import java.util.UUID
  * Misma fuente de foto para Perfil e Inicio.
  * avatarPath canonical = media_assets.id (UUID). Resolve URL at read time.
  */
+/**
+ * Read-time display for a persisted media asset id.
+ * A new instance resolves only from the canonical media URL of that id.
+ * Local content/file URIs are not a source.
+ */
+class ProfileAvatarCanonical(
+    private val mediaUrlForAsset: (String) -> String?
+) {
+    fun displayUrl(avatarAssetId: String?): String? {
+        val id = avatarAssetId?.trim().orEmpty()
+        if (!ProfileAvatarResolver.isUuid(id)) return null
+        val url = mediaUrlForAsset(id)?.trim().orEmpty()
+        if (!url.startsWith("https://") && !url.startsWith("http://")) return null
+        return url
+    }
+}
+
 object ProfileAvatarResolver {
 
     private val uuidRegex =

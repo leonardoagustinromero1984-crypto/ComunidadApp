@@ -57,6 +57,9 @@ class LostFoundViewModel(
 
     init {
         viewModelScope.launch {
+            lostFoundRepository.refreshAlerts()
+        }
+        viewModelScope.launch {
             posts.collect { list ->
                 list.forEach { post ->
                     launch {

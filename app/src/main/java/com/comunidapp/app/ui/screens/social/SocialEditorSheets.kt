@@ -156,7 +156,7 @@ fun StickerBadge(sticker: LeoVerSticker) {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(sticker.glyph, fontSize = 28.sp)
-        Text(sticker.label, fontSize = 11.sp, color = Color(LeoVerStickerCatalog.BRAND_GREEN))
+        Text(sticker.label, fontSize = 14.sp, color = Color(LeoVerStickerCatalog.BRAND_GREEN))
     }
 }
 

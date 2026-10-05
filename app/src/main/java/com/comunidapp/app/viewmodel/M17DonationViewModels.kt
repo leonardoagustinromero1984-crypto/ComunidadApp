@@ -117,8 +117,10 @@ class M17CampaignDetailViewModel(
     val contributions: StateFlow<List<M17PublicContribution>> = _contributions.asStateFlow()
     private val _managedContributions = MutableStateFlow<List<M17Contribution>>(emptyList())
     val managedContributions: StateFlow<List<M17Contribution>> = _managedContributions.asStateFlow()
-    private val _isCreator = MutableStateFlow(false)
-    val isCreator: StateFlow<Boolean> = _isCreator.asStateFlow()
+    private val _canManageOrganization = MutableStateFlow(false)
+    val canManageOrganization: StateFlow<Boolean> = _canManageOrganization.asStateFlow()
+    private val _viewerUserId = MutableStateFlow<String?>(null)
+    val viewerUserId: StateFlow<String?> = _viewerUserId.asStateFlow()
     private val _declaring = MutableStateFlow(false)
     val declaring: StateFlow<Boolean> = _declaring.asStateFlow()
     private val _message = MutableStateFlow<String?>(null)
@@ -133,11 +135,11 @@ class M17CampaignDetailViewModel(
     fun refresh() {
         viewModelScope.launch {
             _loading.value = true
+            _viewerUserId.value = sessionUserId()
             repository.getPublicCampaignById(campaignId)
                 .onSuccess { campaign ->
                     _campaign.value = campaign
-                    _isCreator.value = campaign.createdBy != null &&
-                        campaign.createdBy == sessionUserId()
+                    _canManageOrganization.value = campaign.canManageContributions
                 }
                 .onFailure {
                     _message.value = M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
@@ -166,7 +168,7 @@ class M17CampaignDetailViewModel(
                 note = note?.trim()?.takeIf { it.isNotEmpty() },
                 currency = currency
             ).onSuccess {
-                _message.value = "Declaramos tu colaboración. El creador la confirmará cuando reciba la transferencia."
+                _message.value = "Declaramos tu colaboración. Quedó pendiente de confirmación."
                 refresh()
             }.onFailure {
                 _message.value = M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
@@ -414,20 +416,8 @@ class M17CampaignEditViewModel(
     }
 }
 
-fun m17CampaignTypeLabel(type: M17CampaignType): String = when (type) {
-    M17CampaignType.MEDICAL -> "Médica"
-    M17CampaignType.FOOD_AND_SUPPLIES -> "Alimentos e insumos"
-    M17CampaignType.RESCUE -> "Rescate"
-    M17CampaignType.SHELTER_INFRASTRUCTURE -> "Infraestructura"
-    M17CampaignType.TRANSPORT -> "Traslado"
-    M17CampaignType.EMERGENCY -> "Emergencia"
-    M17CampaignType.GENERAL_SUPPORT -> "Apoyo general"
-}
+fun m17CampaignTypeLabel(type: M17CampaignType): String =
+    com.comunidapp.app.domain.m17.CommunityHelpPresentation.campaignType(type)
 
-fun m17CampaignStatusLabel(status: M17CampaignStatus): String = when (status) {
-    M17CampaignStatus.DRAFT -> "Borrador"
-    M17CampaignStatus.PUBLISHED -> "Publicada"
-    M17CampaignStatus.PAUSED -> "Pausada"
-    M17CampaignStatus.COMPLETED -> "Completada"
-    M17CampaignStatus.CANCELLED -> "Cancelada"
-}
+fun m17CampaignStatusLabel(status: M17CampaignStatus): String =
+    com.comunidapp.app.domain.m17.CommunityHelpPresentation.campaignStatus(status)

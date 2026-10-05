@@ -1,6 +1,9 @@
 package com.comunidapp.app.data.repository
 
+import com.comunidapp.app.core.result.AppResult
 import com.comunidapp.app.data.model.CreateM14PassportInput
+import com.comunidapp.app.data.repository.AuthProvider
+import com.comunidapp.app.domain.files.authorization.FileAuthContext
 import com.comunidapp.app.data.model.M14PassportHistory
 import com.comunidapp.app.data.model.M14PassportStatus
 import com.comunidapp.app.data.model.M14PetPassport
@@ -28,6 +31,8 @@ private data class CanonicalMomentRow(
     val kind: String,
     val title: String? = null,
     val body: String? = null,
+    @SerialName("asset_id") val assetId: String? = null,
+    @SerialName("lost_found_case_id") val lostFoundCaseId: String? = null,
     @SerialName("created_by") val createdBy: String? = null,
     @SerialName("created_at") val createdAt: String? = null
 )
@@ -94,7 +99,14 @@ class CanonicalVitaCoraProjectionRepository(
                     createdAt = row.createdAt?.let {
                         runCatching { Instant.parse(it).toEpochMilli() }.getOrDefault(0L)
                     } ?: 0L,
-                    metadataEvent = row.reasonCode
+                    metadataEvent = row.reasonCode,
+                    destination = com.comunidapp.app.domain.vitacora.VitaCoraHistoryNavigation.destination(
+                        metadataEvent = row.reasonCode,
+                        reason = row.reasonCode,
+                        compositionJson = null,
+                        socialContentId = null,
+                        lostFoundCaseId = null
+                    )
                 )
             }
         val moments = runCatching { listUserMoments(passportId) }.getOrDefault(emptyList())
@@ -168,13 +180,19 @@ class CanonicalVitaCoraProjectionRepository(
                 )
             }
             .map { row ->
-                val social = if (row.kind.equals("SOCIAL", ignoreCase = true)) {
+                val payload = com.comunidapp.app.domain.vitacora.VitaCoraSocialMomentCodec.decode(row.body)
+                val social = if (
+                    row.kind.equals("SOCIAL", ignoreCase = true) ||
+                    row.kind.equals("PHOTO", ignoreCase = true) ||
+                    row.kind.equals("MEMORY", ignoreCase = true)
+                ) {
                     com.comunidapp.app.domain.vitacora.VitaCoraSocialMedia.resolve(row.body)
                 } else {
                     null
                 }
-                val contentId = com.comunidapp.app.domain.vitacora.VitaCoraSocialMomentCodec
-                    .decode(row.body)?.contentId?.trim()?.takeIf { it.isNotEmpty() }
+                val assetUrl = resolveMomentAssetUrl(row.assetId)
+                val mediaUrls = (listOfNotNull(assetUrl) + social?.allUrls.orEmpty()).distinct()
+                val contentId = payload?.contentId?.trim()?.takeIf { it.isNotEmpty() }
                 M14PassportHistory(
                     id = row.id,
                     passportId = petId,
@@ -186,10 +204,19 @@ class CanonicalVitaCoraProjectionRepository(
                         runCatching { Instant.parse(it).toEpochMilli() }.getOrDefault(0L)
                     } ?: 0L,
                     metadataEvent = row.kind,
-                    mediaDisplayUrl = social?.displayUrl,
+                    mediaDisplayUrl = mediaUrls.firstOrNull(),
                     mediaMime = social?.mime,
                     sourceContentKind = social?.contentKind,
-                    mediaDisplayUrls = social?.allUrls.orEmpty()
+                    mediaDisplayUrls = mediaUrls,
+                    bodyPreview = com.comunidapp.app.domain.vitacora.VitaCoraHistoryPresentation
+                        .plainBodyPreview(row.body),
+                    destination = com.comunidapp.app.domain.vitacora.VitaCoraHistoryNavigation.destination(
+                        metadataEvent = row.kind,
+                        reason = row.title,
+                        compositionJson = payload?.compositionJson,
+                        socialContentId = contentId,
+                        lostFoundCaseId = row.lostFoundCaseId
+                    )
                 ) to contentId
             }
             .let { rows ->
@@ -218,5 +245,20 @@ class CanonicalVitaCoraProjectionRepository(
                 }
                 (socialGrouped.values + others).sortedByDescending { it.createdAt }
             }
+    }
+
+    private suspend fun resolveMomentAssetUrl(assetId: String?): String? {
+        val id = assetId?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        val actor = runCatching { AuthProvider.repository.getCurrentUser()?.id }.getOrNull()
+        return when (
+            val resolved = DataProvider.fileDisplayResolver.resolve(
+                assetId = id,
+                legacyReference = null,
+                context = FileAuthContext(actorUserId = actor)
+            )
+        ) {
+            is AppResult.Success -> resolved.data.displayValue.trim().takeIf { it.isNotEmpty() }
+            is AppResult.Failure -> null
+        }
     }
 }

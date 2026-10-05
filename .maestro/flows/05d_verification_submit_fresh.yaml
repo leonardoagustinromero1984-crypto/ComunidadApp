@@ -1,0 +1,28 @@
+appId: ${APP_ID}
+name: "Verification submit NEEDS_FRESH_FIXTURE"
+tags:
+  - community-care
+  - verification
+  - needs-fresh-fixture
+  - reset-required
+---
+# NEEDS_FRESH_FIXTURE. QA07 is VERIFIED. QA08 and QA09 are PENDING.
+# No current actor is NOT_REQUESTED. Do not submit on QA09.
+# Replace FRESH_CONTEXT_LABEL with a new shelter that is still NOT_REQUESTED.
+- assertVisible: "FRESH_FIXTURE_REQUIRED"
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${FRESH_VERIFICATION_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-refuge-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: ${FRESH_CONTEXT_LABEL}
+- assertVisible: "Aún no solicitaste la verificación"
+- tapOn: "Solicitar verificación"
+- tapOn: "Enviar solicitud"
+- takeScreenshot: verification_submit_fresh

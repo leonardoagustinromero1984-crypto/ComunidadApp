@@ -277,6 +277,7 @@ fun MyAdoptionsScreen(
     onEditAdoption: (String) -> Unit = {},
     onReceivedApplications: () -> Unit = {},
     showReceivedApplications: Boolean = true,
+    showPublishAdoption: Boolean = false,
     onProcess: (String) -> Unit = {},
     viewModel: MyAdoptionsViewModel = viewModel()
 ) {
@@ -389,8 +390,10 @@ fun MyAdoptionsScreen(
                     message = com.comunidapp.app.ui.components.ContextualHelpMessages.ADOPTIONS
                 )
             }
-            item {
-                LeoPrimaryButton(text = "Nueva publicación", onClick = onCreateAdoption)
+            if (showPublishAdoption) {
+                item {
+                    LeoPrimaryButton(text = "Nueva publicación", onClick = onCreateAdoption)
+                }
             }
             if (showReceivedApplications) {
                 item {
@@ -483,7 +486,7 @@ fun MyAdoptionsScreen(
                     )
                 }
                 items(matches, key = { it.id }) { match ->
-                    Text("Candidato ${match.userId} — score ${"%.0f".format(match.score)}")
+                    Text("Hay una sugerencia para revisar. La decisión sigue siendo humana.")
                     if (match.reasons.isNotEmpty()) {
                         Text(
                             match.reasons.joinToString(" · "),
@@ -517,7 +520,7 @@ fun MyAdoptionsScreen(
                                     onClick = { interviewRequestId = req.id }
                                 ) { Text("Entrevista") }
                             } else {
-                                Text(req.status.name)
+                                Text(req.status.displayNameEs)
                                 if (req.interviewStatus == InterviewStatus.SCHEDULED) {
                                     Text("Entrevista agendada")
                                 }

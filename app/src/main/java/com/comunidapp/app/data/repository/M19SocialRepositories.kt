@@ -100,6 +100,18 @@ class M19SocialMemoryStore {
     fun engagementFor(postId: String): M19EngagementSummary =
         M19EngagementCalculator.summarize(postId, _reactions.value, _comments.value)
 
+    fun clearSessionResidue() {
+        seeded = false
+        idSeq.set(0)
+        _posts.value = emptyList()
+        _comments.value = emptyList()
+        _reactions.value = emptyList()
+        organizationTypes.value = emptyMap()
+        organizationManagers.value = emptyMap()
+        organizationDisplayNames.value = emptyMap()
+        seedDefaults(com.comunidapp.app.domain.user.SessionGeneration.NEUTRAL_MOCK_ACTOR)
+    }
+
     fun seedDefaults(actorUserId: String = "mock_user_admin") {
         if (seeded) return
         seeded = true

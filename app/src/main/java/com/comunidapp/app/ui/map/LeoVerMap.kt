@@ -29,6 +29,7 @@ fun LeoVerMap(
     showUserLocation: Boolean = false,
     interactive: Boolean = true,
     pinMode: Boolean = false,
+    idleOnGestureOnly: Boolean = false,
     onMarkerClick: (LeoVerMapMarker) -> Unit = {},
     onMapClick: (LeoVerGeoPoint) -> Unit = {},
     onCameraIdle: (LeoVerMapCameraState) -> Unit = {}
@@ -58,6 +59,7 @@ fun LeoVerMap(
         showUserLocation = showUserLocation,
         interactive = interactive,
         pinMode = pinMode,
+        idleOnGestureOnly = idleOnGestureOnly,
         onMarkerClick = onMarkerClick,
         onMapClick = onMapClick,
         onCameraIdle = onCameraIdle

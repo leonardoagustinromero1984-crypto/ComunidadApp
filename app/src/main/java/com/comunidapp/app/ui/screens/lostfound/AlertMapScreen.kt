@@ -68,6 +68,7 @@ import com.comunidapp.app.data.model.LostFoundStatus
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.domain.alerts.AlertDateFilter
+import com.comunidapp.app.domain.lostfound.LostFoundMatchCandidatePolicy
 import com.comunidapp.app.domain.alerts.AlertMapTypeFilter
 import com.comunidapp.app.domain.alerts.AlertMapViewMode
 import com.comunidapp.app.ui.components.PetImage
@@ -600,10 +601,19 @@ fun LostFoundDetailScreen(
     }
     val scope = rememberCoroutineScope()
     val repo = com.comunidapp.app.data.provider.DataProvider.lostFoundRepository
-    LaunchedEffect(post?.id, post?.isCustodian, post?.status) {
+    LaunchedEffect(post?.id, post?.type, post?.isCustodian, post?.authorId, post?.claimedBy, currentUserId) {
         val found = post
-        if (found != null && found.type == LostFoundType.FOUND && found.isCustodian) {
+        if (found != null && LostFoundMatchCandidatePolicy.canLoad(
+                isFound = found.type == LostFoundType.FOUND,
+                viewerId = currentUserId,
+                authorId = found.authorId,
+                claimedBy = found.claimedBy,
+                isCustodian = found.isCustodian
+            )
+        ) {
             matchCandidates = repo.listFoundMatchCandidates(found.id).getOrDefault(emptyList())
+        } else {
+            matchCandidates = emptyList()
         }
     }
     Scaffold(
@@ -744,40 +754,52 @@ fun LostFoundDetailScreen(
                         }
                     )
                 }
-                if (post.isCustodian) {
-                    matchCandidates.filter { it.status.equals("PENDING", true) && it.assertedBy != null }
-                        .forEach { candidate ->
-                            LeoPrimaryButton(
-                                text = "Sí, corresponde",
-                                onClick = {
-                                    scope.launch {
-                                        val result = repo.confirmFoundOwnerMatch(candidate.id)
-                                        claimMessage = if (result.isSuccess) {
-                                            "Match confirmado. Se unificó con la mascota perdida."
-                                        } else {
-                                            "No se pudo confirmar el match."
-                                        }
-                                        matchCandidates = repo.listFoundMatchCandidates(post.id)
-                                            .getOrDefault(emptyList())
+                val presented = LostFoundMatchCandidatePolicy.present(
+                    candidates = matchCandidates,
+                    viewerIsCustodian = post.isCustodian
+                )
+                presented.forEach { card ->
+                    Text(text = card.headline, style = LeoCaption, color = BrandText)
+                    if (card.automatic) {
+                        Text(
+                            text = "El sistema la sugirió. Ninguna persona la reclamó todavía.",
+                            style = LeoCaption,
+                            color = MutedText
+                        )
+                    }
+                    if (card.showCustodianActions) {
+                        val candidate = card.candidate
+                        LeoPrimaryButton(
+                            text = "Sí, corresponde",
+                            onClick = {
+                                scope.launch {
+                                    val result = repo.confirmFoundOwnerMatch(candidate.id)
+                                    claimMessage = if (result.isSuccess) {
+                                        "Match confirmado. Se unificó con la mascota perdida."
+                                    } else {
+                                        "No se pudo confirmar el match."
                                     }
+                                    matchCandidates = repo.listFoundMatchCandidates(post.id)
+                                        .getOrDefault(emptyList())
                                 }
-                            )
-                            LeoPrimaryButton(
-                                text = "No corresponde",
-                                onClick = {
-                                    scope.launch {
-                                        val result = repo.rejectFoundOwnerMatch(candidate.id)
-                                        claimMessage = if (result.isSuccess) {
-                                            "Candidato rechazado. El caso y los demás avisos siguen."
-                                        } else {
-                                            "No se pudo rechazar."
-                                        }
-                                        matchCandidates = repo.listFoundMatchCandidates(post.id)
-                                            .getOrDefault(emptyList())
+                            }
+                        )
+                        LeoPrimaryButton(
+                            text = "No corresponde",
+                            onClick = {
+                                scope.launch {
+                                    val result = repo.rejectFoundOwnerMatch(candidate.id)
+                                    claimMessage = if (result.isSuccess) {
+                                        "Candidato rechazado. El caso y los demás avisos siguen."
+                                    } else {
+                                        "No se pudo rechazar."
                                     }
+                                    matchCandidates = repo.listFoundMatchCandidates(post.id)
+                                        .getOrDefault(emptyList())
                                 }
-                            )
-                        }
+                            }
+                        )
+                    }
                 }
             }
         }

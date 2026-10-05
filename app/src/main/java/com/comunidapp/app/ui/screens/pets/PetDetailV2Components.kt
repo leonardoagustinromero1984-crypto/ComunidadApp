@@ -452,7 +452,7 @@ internal fun PetHealthSummary(
                     color = BrandText
                 )
                 Text(
-                    text = "Registrá vacunas, cuidados y recordatorios de ${pet.name}.",
+                    text = "Registrá vacunas, cuidados y recordatorios de ${com.comunidapp.app.domain.pets.PetDisplayName.of(pet.originKind, pet.name)}.",
                     style = MaterialTheme.typography.bodySmall,
                     color = BrandTextSecondary,
                     modifier = Modifier.padding(top = 4.dp)
@@ -524,7 +524,7 @@ internal fun PetPassportSummary(
 
 @Composable
 internal fun PetEmergencyAction(
-    petName: String,
+    label: String,
     onReportLost: () -> Unit
 ) {
     Button(
@@ -532,7 +532,7 @@ internal fun PetEmergencyAction(
         modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = 52.dp)
-            .semantics { contentDescription = "Perdí a $petName" },
+            .semantics { contentDescription = label },
         shape = RoundedCornerShape(18.dp),
         colors = ButtonDefaults.buttonColors(
             containerColor = BrandOrangeDeep,
@@ -543,7 +543,7 @@ internal fun PetEmergencyAction(
         Icon(Icons.Default.Pets, contentDescription = null, modifier = Modifier.size(20.dp))
         Spacer(modifier = Modifier.width(10.dp))
         Text(
-            text = "Perdí a $petName",
+            text = label,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,

@@ -1,9 +1,13 @@
 appId: ${APP_ID}
-name: "Verification states QA07 QA08 QA09"
+name: "Verification status read QA07 QA08 QA09"
 tags:
   - community-care
   - verification
+  - updated-ready
 ---
+# UPDATED_READY. Status read only. QA09 is PENDING, same as QA08.
+# Do not expect "Solicitar verificación" or "Aún no solicitaste la verificación".
+# A new submission is 05d_verification_submit_fresh.yaml.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -11,9 +15,24 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
-- tapOn: "Perfil"
+- runFlow:
+    file: ../subflows/open-refuge-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: "Refugio · QA - Refugio Verificado"
 - assertVisible: "Verificado por LeoVer"
-- takeScreenshot: verification_qa07
+- scrollUntilVisible:
+    element: "Ver verificación"
+    direction: DOWN
+    timeout: 8000
+- assertVisible: "Ver verificación"
+- assertNotVisible: "Solicitar verificación"
+- tapOn: "Ver verificación"
+- extendedWaitUntil:
+    visible: "Verificado por LeoVer"
+    timeout: 15000
+- assertNotVisible: "Enviar solicitud"
+- takeScreenshot: verification_qa07_verified
 - runFlow:
     file: ../subflows/logout-person.yaml
     env:
@@ -25,10 +44,23 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
-- tapOn: "Perfil"
+- runFlow:
+    file: ../subflows/open-refuge-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: "Refugio · QA - Refugio Pending"
 - assertVisible: "Verificación pendiente"
-- assertNotVisible: "Solicitar verificación"
-- takeScreenshot: verification_qa08
+- scrollUntilVisible:
+    element: "Ver verificación"
+    direction: DOWN
+    timeout: 8000
+- tapOn: "Ver verificación"
+- extendedWaitUntil:
+    visible: "Verificación pendiente"
+    timeout: 15000
+- assertNotVisible: "Enviar solicitud"
+- assertNotVisible: "Aún no solicitaste la verificación"
+- takeScreenshot: verification_qa08_pending
 - runFlow:
     file: ../subflows/logout-person.yaml
     env:
@@ -40,9 +72,21 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
-- tapOn: "Perfil"
-- assertVisible: "Solicitar verificación"
-- tapOn: "Solicitar verificación"
-- assertVisible: "Solicitar verificación"
-- takeScreenshot: verification_qa09
-# Does not submit. Preserves seed NOT_REQUESTED.
+- runFlow:
+    file: ../subflows/open-refuge-profile.yaml
+    env:
+      APP_ID: ${APP_ID}
+      CONTEXT_LABEL: "Refugio · QA - Refugio Sin Solicitud"
+- assertVisible: "Verificación pendiente"
+- assertNotVisible: "Aún no solicitaste la verificación"
+- scrollUntilVisible:
+    element: "Ver verificación"
+    direction: DOWN
+    timeout: 8000
+- assertNotVisible: "Solicitar verificación"
+- tapOn: "Ver verificación"
+- extendedWaitUntil:
+    visible: "Verificación pendiente"
+    timeout: 15000
+- assertNotVisible: "Enviar solicitud"
+- takeScreenshot: verification_qa09_pending

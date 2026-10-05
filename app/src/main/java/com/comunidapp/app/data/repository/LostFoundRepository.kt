@@ -41,6 +41,15 @@ interface LostFoundRepository {
 
     suspend fun markLostFoundInCare(alertId: String): Result<Unit> =
         Result.success(Unit)
+
+    /**
+     * Reloads alerts when the implementation has a remote list.
+     * Local and legacy repositories keep the stream they already observe.
+     */
+    suspend fun refreshAlerts(): Result<Unit> = Result.success(Unit)
+
+    /** Drops user-scoped alert state. Does not refetch. */
+    fun clearAccountCache() {}
 }
 
 data class LostFoundMatchCandidate(

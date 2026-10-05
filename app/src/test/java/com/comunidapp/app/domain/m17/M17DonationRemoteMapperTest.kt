@@ -10,7 +10,9 @@ import com.comunidapp.app.data.model.M17PrivacySanitizer
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicCampaign
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicContribution
 import com.comunidapp.app.data.repository.M17DonationValidators
+import com.comunidapp.app.data.repository.M17MemoryStore
 import com.comunidapp.app.data.repository.MockM17DonationRepository
+import com.comunidapp.app.domain.user.SessionGeneration
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.Assert.assertEquals
@@ -103,7 +105,11 @@ class M17DonationRemoteMapperTest {
 
     @Test
     fun declaredContributionStaysPendingUntilConfirmedOnce() {
-        val repo = MockM17DonationRepository(actorUserId = { "mock_user_admin" })
+        var actor = "person-visitor"
+        val repo = MockM17DonationRepository(
+            actorUserId = { actor },
+            store = M17MemoryStore()
+        )
         kotlinx.coroutines.runBlocking {
             val campaign = repo.searchPublicCampaigns(
                 com.comunidapp.app.data.model.M17CampaignSearchFilter()
@@ -112,6 +118,8 @@ class M17DonationRemoteMapperTest {
             val declared = repo.declareContribution(campaign.id, 2500, "nota", "ARS").getOrThrow()
             assertEquals(M17ContributionStatus.PENDING, declared.status)
             assertEquals(before, repo.getPublicCampaignById(campaign.id).getOrThrow().confirmedAmountMinor)
+            assertTrue(repo.confirmContribution(declared.id).isFailure)
+            actor = SessionGeneration.NEUTRAL_MOCK_ACTOR
             val confirmed = repo.confirmContribution(declared.id).getOrThrow()
             assertEquals(M17ContributionStatus.CONFIRMED, confirmed.status)
             val after = repo.getPublicCampaignById(campaign.id).getOrThrow()
@@ -126,13 +134,18 @@ class M17DonationRemoteMapperTest {
 
     @Test
     fun rejectedContributionDoesNotEnterTotal() {
-        val repo = MockM17DonationRepository(actorUserId = { "mock_user_admin" })
+        var actor = "person-visitor"
+        val repo = MockM17DonationRepository(
+            actorUserId = { actor },
+            store = M17MemoryStore()
+        )
         kotlinx.coroutines.runBlocking {
             val campaign = repo.searchPublicCampaigns(
                 com.comunidapp.app.data.model.M17CampaignSearchFilter()
             ).getOrThrow().first { it.status == M17CampaignStatus.PUBLISHED }
             val before = campaign.confirmedAmountMinor
             val declared = repo.declareContribution(campaign.id, 1800, null, "ARS").getOrThrow()
+            actor = SessionGeneration.NEUTRAL_MOCK_ACTOR
             repo.rejectContribution(declared.id).getOrThrow()
             assertEquals(before, repo.getPublicCampaignById(campaign.id).getOrThrow().confirmedAmountMinor)
         }

@@ -31,6 +31,7 @@ object NavRoutes {
     fun onb02(kind: String) = "onb02/flow/$kind"
     fun onb02Reopen(tutorialId: String) = "onb02/reopen/$tutorialId"
 
+    const val STARTUP_RESOLVING = "startup_resolving"
     const val HOME = "home"
     const val POST_DETAIL = "posts/{postId}"
     const val ARG_POST_ID = "postId"
@@ -45,6 +46,7 @@ object NavRoutes {
     const val PROFILE = "profile"
     const val MY_PUBLICATIONS = "profile/my_publications"
     const val ADOPTIONS = "adoptions"
+    const val ADOPTION_SEARCH = "adoption_search"
     const val SHELTERS = "shelters"
     const val MY_PETS = "my_pets"
     const val MY_MEMORIES = "my_memories"
@@ -159,6 +161,13 @@ object NavRoutes {
 
     // M17 — Donaciones y campañas solidarias (Bloque 1 local)
     const val M17_HUB = "m17/hub"
+    const val M17_MY_HELP = "m17/my-help"
+    const val M17_GOODS = "m17/goods"
+    const val M17_GOOD_DETAIL = "m17/goods/{needId}"
+    const val M17_VOLUNTEER = "m17/volunteer"
+    const val M17_VOLUNTEER_DETAIL = "m17/volunteer/{opportunityId}"
+    const val ARG_M17_NEED_ID = "needId"
+    const val ARG_M17_OPPORTUNITY_ID = "opportunityId"
     const val M17_CAMPAIGNS = "m17/campaigns"
     const val M17_CAMPAIGN_DETAIL = "m17/campaigns/{campaignId}"
     const val M17_CAMPAIGNS_MANAGE = "m17/campaigns/manage"
@@ -168,6 +177,7 @@ object NavRoutes {
 
     // M18 — Eventos comunitarios (Bloque 1 local)
     const val M18_EVENTS = "m18/events"
+    const val M18_MY_EVENTS = "m18/my-events"
     const val M18_EVENT_DETAIL = "m18/events/{eventId}"
     const val M18_EVENTS_MANAGE = "m18/events/manage"
     const val M18_EVENTS_CREATE = "m18/events/create"
@@ -792,6 +802,12 @@ object NavRoutes {
 
     fun m17CampaignDetail(campaignId: String) =
         "m17/campaigns/${java.net.URLEncoder.encode(campaignId, Charsets.UTF_8.name())}"
+
+    fun m17GoodDetail(needId: String) =
+        "m17/goods/${java.net.URLEncoder.encode(needId, Charsets.UTF_8.name())}"
+
+    fun m17VolunteerDetail(opportunityId: String) =
+        "m17/volunteer/${java.net.URLEncoder.encode(opportunityId, Charsets.UTF_8.name())}"
 
     fun m17CampaignEdit(campaignId: String) =
         "m17/campaigns/${java.net.URLEncoder.encode(campaignId, Charsets.UTF_8.name())}/edit"

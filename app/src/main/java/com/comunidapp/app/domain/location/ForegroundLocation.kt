@@ -78,14 +78,12 @@ object ForegroundLocation {
             val token = CancellationTokenSource()
             suspendCancellableCoroutine { cont ->
                 client.getCurrentLocation(priority, token.token)
-                    .addOnSuccessListener { loc ->
-                        cont.resume(loc.toPoint())
-                    }
+                    .addOnSuccessListener { loc -> cont.resume(loc) }
                     .addOnFailureListener { cont.resume(null) }
                 cont.invokeOnCancellation { token.cancel() }
             }
         }
-        if (fresh != null) return fresh
+        fresh.toConfirmed(fromLastKnown = false)?.let { return it }
         val last = withTimeoutOrNull(3_000) {
             suspendCancellableCoroutine<Location?> { cont ->
                 client.lastLocation
@@ -93,9 +91,23 @@ object ForegroundLocation {
                     .addOnFailureListener { cont.resume(null) }
             }
         }
-        return last.toPoint()
+        return last.toConfirmed(fromLastKnown = true)
     }
 
-    private fun Location?.toPoint(): LeoVerGeoPoint? =
-        this?.let { LeoVerGeoPoint.parseOrNull(it.latitude, it.longitude) }
+    private fun Location?.toConfirmed(fromLastKnown: Boolean): LeoVerGeoPoint? {
+        val reading = this ?: return null
+        val ageMs = if (reading.time > 0L) {
+            System.currentTimeMillis() - reading.time
+        } else {
+            null
+        }
+        val accuracy = if (reading.hasAccuracy()) reading.accuracy else null
+        return LocationFixAcceptance.confirmedOrNull(
+            latitude = reading.latitude,
+            longitude = reading.longitude,
+            ageMs = ageMs,
+            accuracyMeters = accuracy,
+            fromLastKnown = fromLastKnown
+        )
+    }
 }

@@ -1,9 +1,12 @@
 appId: ${APP_ID}
-name: "QR direct Mora QA01"
+name: "QR display Mora survivor QA01"
 tags:
   - community-care
   - qr
+  - updated-ready
 ---
+# UPDATED_READY for the on-screen QR of the survivor VitaCora.
+# A camera scan that opens leover://passport/ is physical QA, not this flow.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -11,10 +14,26 @@ tags:
       PASSWORD: ${QA_PASSWORD}
       CLEAR_STATE: "true"
       APP_ID: ${APP_ID}
-- tapOn: "Perfil"
-- tapOn: "QA - Mora"
-- tapOn: "Info"
+- runFlow:
+    file: ../subflows/open-my-pet.yaml
+    env:
+      APP_ID: ${APP_ID}
+      PET_NAME: "QA - Mora"
+- scrollUntilVisible:
+    element: "Ver VitaCora"
+    direction: DOWN
+    timeout: 12000
+- tapOn: "Ver VitaCora"
+- extendedWaitUntil:
+    visible: "VitaCora de QA - Mora"
+    timeout: 20000
+- scrollUntilVisible:
+    element: "Compartir QR"
+    direction: DOWN
+    timeout: 12000
 - tapOn: "Compartir QR"
-- assertVisible: "Compartir QR"
-- assertNotVisible: "VitaCora"
-- takeScreenshot: qr_mora
+- extendedWaitUntil:
+    visible: "Compartir VitaCora"
+    timeout: 15000
+- assertVisible: "Código QR VitaCora"
+- takeScreenshot: qr_mora_survivor

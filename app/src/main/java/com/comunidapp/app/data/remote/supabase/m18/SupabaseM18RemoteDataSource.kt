@@ -11,6 +11,7 @@ import com.comunidapp.app.data.model.M18PublicEvent
 import com.comunidapp.app.data.model.M18PublicRegistrationStats
 import com.comunidapp.app.data.model.M18RegistrationStatus
 import com.comunidapp.app.data.model.M18ReminderStatus
+import com.comunidapp.app.domain.m18.MyEventRegistration
 import com.comunidapp.app.data.remote.supabase.supabase
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.json.JsonElement
@@ -164,6 +165,18 @@ fun JsonObject.toM18EventRegistration(): M18EventRegistration =
         reminderScheduled = boolean("reminder_scheduled")
     )
 
+fun JsonObject.toMyEventRegistration(): MyEventRegistration = MyEventRegistration(
+    eventId = string("event_id").orEmpty(),
+    title = string("title").orEmpty(),
+    organizationName = string("organization_name").orEmpty(),
+    startsAt = parseTs(string("starts_at")),
+    endsAt = parseTs(string("ends_at")),
+    eventStatus = safeEnumEventStatus(string("event_status")),
+    registrationStatus = safeEnumRegistrationStatus(string("registration_status")),
+    venueName = string("venue_name"),
+    locationText = string("location_text")
+)
+
 fun JsonObject.toM18EventReminder(): M18EventReminder =
     M18EventReminder(
         id = string("id").orEmpty(),
@@ -261,6 +274,11 @@ class SupabaseM18RemoteDataSource {
     suspend fun listRegistrationsForManage(eventId: String): List<JsonObject> = decodeList(
         "m18_list_registrations_for_manage",
         buildJsonObject { put("p_event_id", eventId) }
+    )
+
+    suspend fun listMyEventActivity(): List<JsonObject> = decodeList(
+        "m18_list_my_event_activity",
+        buildJsonObject { }
     )
 
     suspend fun promoteNextWaitlisted(eventId: String): JsonObject? = runCatching {

@@ -437,6 +437,7 @@ fun M14PassportShareScreen(
 fun M14PassportHistoryScreen(
     passportId: String,
     onNavigateBack: () -> Unit,
+    onOpenDestination: (com.comunidapp.app.domain.vitacora.VitaCoraHistoryDestination) -> Unit = {},
     viewModel: M14PassportHistoryViewModel = viewModel(
         factory = M14PassportHistoryViewModel.factory(passportId)
     )
@@ -476,10 +477,18 @@ fun M14PassportHistoryScreen(
                 )
                 else -> LazyColumn {
                     items(items, key = { it.id }) { h ->
+                        val destination = h.destination
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(vertical = LeoDimens.SpaceCompact)
+                                .then(
+                                    if (destination != null) {
+                                        Modifier.clickable { onOpenDestination(destination) }
+                                    } else {
+                                        Modifier
+                                    }
+                                )
                         ) {
                             val date = VitaCoraHistoryPresentation.formatDate(h.createdAt)
                             if (date.isNotBlank()) {

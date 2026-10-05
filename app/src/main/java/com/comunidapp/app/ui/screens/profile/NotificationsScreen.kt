@@ -46,6 +46,7 @@ fun NotificationsScreen(
     onNavigateToPreferences: () -> Unit = {},
     onOpenInvitation: (String) -> Unit = {},
     onOpenCareTransfer: (String) -> Unit = {},
+    onOpenLostFound: (String) -> Unit = {},
     viewModel: NotificationsViewModel = viewModel()
 ) {
     val notifications by viewModel.notifications.collectAsState()
@@ -132,8 +133,12 @@ fun NotificationsScreen(
                         notification = notification,
                         onClick = {
                             viewModel.markRead(notification.id)
-                            if (notification.type == com.comunidapp.app.data.model.NotificationType.ORG_INVITE) {
-                                notification.relatedId?.let(onOpenInvitation)
+                            val relatedId = notification.relatedId
+                            when {
+                                notification.type == com.comunidapp.app.data.model.NotificationType.ORG_INVITE ->
+                                    relatedId?.let(onOpenInvitation)
+                                notification.relatedType == "LOST_FOUND_CASE" && !relatedId.isNullOrBlank() ->
+                                    onOpenLostFound(relatedId)
                             }
                         },
                         onArchive = { viewModel.archive(notification.id) },

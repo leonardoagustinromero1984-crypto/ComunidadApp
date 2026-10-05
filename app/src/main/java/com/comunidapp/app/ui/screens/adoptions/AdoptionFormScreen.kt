@@ -30,6 +30,8 @@ import com.comunidapp.app.ui.components.LoadingState
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.theme.BrandBackground
 import com.comunidapp.app.ui.theme.ComunidappTheme
+import com.comunidapp.app.domain.adoption.AdoptionPublishEligibility
+import com.comunidapp.app.domain.adoption.AdoptionRequirements
 import com.comunidapp.app.viewmodel.AdoptionFormState
 import com.comunidapp.app.viewmodel.AdoptionFormViewModel
 
@@ -108,6 +110,7 @@ fun AdoptionFormScreen(
             onTitleChange = viewModel::onTitleChange,
             onDescriptionChange = viewModel::onDescriptionChange,
             onRequirementsChange = viewModel::onRequirementsChange,
+            onMatchRequirementsChange = viewModel::onMatchRequirementsChange,
             onLocationChange = viewModel::onLocationChange,
             onSaveDraft = viewModel::saveDraft,
             onPublish = viewModel::publish
@@ -125,6 +128,7 @@ private fun AdoptionFormBody(
     onTitleChange: (String) -> Unit,
     onDescriptionChange: (String) -> Unit,
     onRequirementsChange: (String) -> Unit,
+    onMatchRequirementsChange: (AdoptionRequirements) -> Unit,
     onLocationChange: (String) -> Unit,
     onSaveDraft: () -> Unit,
     onPublish: () -> Unit
@@ -145,7 +149,11 @@ private fun AdoptionFormBody(
                     fontWeight = androidx.compose.ui.text.font.FontWeight.Bold
                 )
                 Text(
-                    text = "Necesitás un perfil de mascota para publicar la adopción.",
+                    text = if (state.excludedFound) {
+                        AdoptionPublishEligibility.FOUND_NOT_ELIGIBLE
+                    } else {
+                        "Necesitás un perfil de mascota para publicar la adopción."
+                    },
                     style = MaterialTheme.typography.bodyMedium
                 )
                 LeoPrimaryButton(text = "Crear mascota", onClick = onNavigateToCreatePet)
@@ -172,6 +180,10 @@ private fun AdoptionFormBody(
                 onClick = onNavigateToCreatePet,
                 modifier = Modifier.fillMaxWidth()
             ) { Text("Crear nueva mascota") }
+            Text(
+                AdoptionPublishEligibility.FOUND_NOT_ELIGIBLE,
+                style = MaterialTheme.typography.bodySmall
+            )
         } else {
             Text(
                 text = "Mascota vinculada: ${state.selectedPetId ?: "—"}",
@@ -195,10 +207,15 @@ private fun AdoptionFormBody(
             enabled = state.editable && !state.saving,
             minLines = 3
         )
+        AdoptionRequirementFields(
+            value = state.matchRequirements,
+            species = state.selectablePets.firstOrNull { it.id == state.selectedPetId }?.species,
+            onChange = onMatchRequirementsChange
+        )
         OutlinedTextField(
             value = state.requirements,
             onValueChange = onRequirementsChange,
-            label = { Text("Requisitos de adopción") },
+            label = { Text("Información adicional") },
             modifier = Modifier.fillMaxWidth(),
             enabled = state.editable && !state.saving,
             minLines = 2
@@ -252,6 +269,7 @@ private fun AdoptionFormNoPetPreview() {
             onTitleChange = {},
             onDescriptionChange = {},
             onRequirementsChange = {},
+            onMatchRequirementsChange = {},
             onLocationChange = {},
             onSaveDraft = {},
             onPublish = {}

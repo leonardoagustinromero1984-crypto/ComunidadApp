@@ -74,7 +74,8 @@ data class FosterHomeProfile(
     /** Never exposed in public listings; owner-only. */
     val privateAddressText: String? = null,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val capabilities: com.comunidapp.app.domain.foster.FosterHomeCapabilities = com.comunidapp.app.domain.foster.FosterHomeCapabilities()
 ) {
     val freeSlots: Int
         get() = (totalCapacity - currentOccupancy - reservedCount).coerceAtLeast(0)

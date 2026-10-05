@@ -1,0 +1,54 @@
+appId: ${APP_ID}
+name: "Transit mutation NEEDS_FRESH_FIXTURE"
+tags:
+  - community-care
+  - transit
+  - needs-fresh-fixture
+  - reset-required
+---
+# NEEDS_FRESH_FIXTURE. Do not recreate Bruno 9d9a6e5b-8cc8-4bc8-aa0c-740a1725c830.
+# A later active pet can publish, apply, choose, then end transit.
+- assertVisible: "FRESH_FIXTURE_REQUIRED"
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA07_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-my-pet.yaml
+    env:
+      APP_ID: ${APP_ID}
+      PET_NAME: "FRESH_TRANSIT_PET"
+- tapOn: "Buscar hogar de tránsito"
+- tapOn: "Publicar solicitud"
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person-keep.yaml
+    env:
+      USERNAME: ${QA06_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      APP_ID: ${APP_ID}
+- tapOn: "Sumate"
+- tapOn: "Solicitudes de tránsito"
+- tapOn: "Postularme"
+- runFlow:
+    file: ../subflows/logout-person.yaml
+    env:
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/login-person-keep.yaml
+    env:
+      USERNAME: ${QA07_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      APP_ID: ${APP_ID}
+- tapOn: "Ver postulantes"
+- tapOn: "Elegir este hogar"
+- tapOn: "Finalizar tránsito"
+- tapOn: "Finalizar"
+- assertVisible: "Tránsito finalizado."
+- takeScreenshot: transit_fresh_completed

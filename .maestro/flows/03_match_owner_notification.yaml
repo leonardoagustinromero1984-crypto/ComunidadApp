@@ -1,9 +1,13 @@
 appId: ${APP_ID}
-name: "Match notification QA01"
+name: "Notification list smoke QA01"
 tags:
   - community-care
   - match
+  - updated-ready
 ---
+# UPDATED_READY. Opens the canonical in-app list. Mora is already confirmed,
+# so this does not tap "Podría ser mi mascota". Mark-read stays unasserted (P1).
+# The OS shade is physical QA, not this flow.
 - runFlow:
     file: ../subflows/login-person.yaml
     env:
@@ -15,11 +19,6 @@ tags:
     file: ../subflows/open-notifications.yaml
     env:
       APP_ID: ${APP_ID}
-- assertVisible: ".*podría coincidir.*"
-- takeScreenshot: match_notification
-- tapOn: ".*podría coincidir.*"
-- extendedWaitUntil:
-    visible: "Podría ser mi mascota"
-    timeout: 15000
-- assertVisible: "No es mi mascota"
-- takeScreenshot: match_candidate
+- assertVisible: "Notificaciones"
+- assertNotVisible: "Podría ser mi mascota"
+- takeScreenshot: notification_list_smoke

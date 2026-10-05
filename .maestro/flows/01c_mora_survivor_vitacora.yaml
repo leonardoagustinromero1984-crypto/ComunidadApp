@@ -1,0 +1,38 @@
+appId: ${APP_ID}
+name: "Mora survivor VitaCora after reunification"
+tags:
+  - community-care
+  - vitacora
+  - updated-ready
+---
+# UPDATED_READY. Reads the survivor only. Does not open a provisional profile
+# and does not assert a retired VitaCora timeline.
+- runFlow:
+    file: ../subflows/login-person.yaml
+    env:
+      USERNAME: ${QA01_USERNAME}
+      PASSWORD: ${QA_PASSWORD}
+      CLEAR_STATE: "true"
+      APP_ID: ${APP_ID}
+- runFlow:
+    file: ../subflows/open-my-pet.yaml
+    env:
+      APP_ID: ${APP_ID}
+      PET_NAME: "QA - Mora"
+- scrollUntilVisible:
+    element: "Ver VitaCora"
+    direction: DOWN
+    timeout: 12000
+- tapOn: "Ver VitaCora"
+- extendedWaitUntil:
+    visible: "VitaCora de QA - Mora"
+    timeout: 20000
+- assertNotVisible: "Se archivó la VitaCora"
+- assertNotVisible: "successor_pet_id"
+- assertNotVisible: "retired_at"
+- scrollUntilVisible:
+    element: "Momentos"
+    direction: DOWN
+    timeout: 12000
+- assertVisible: "Se guardó un recuerdo"
+- takeScreenshot: mora_survivor_vitacora

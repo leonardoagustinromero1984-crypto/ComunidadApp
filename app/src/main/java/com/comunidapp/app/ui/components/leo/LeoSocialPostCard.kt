@@ -91,7 +91,7 @@ fun LeoSocialPostCard(
     onPostClick: (() -> Unit)? = null
 ) {
     var menuExpanded by remember { mutableStateOf(false) }
-    val special = specialBadgeFor(post.type)
+    val special = specialBadgeFor(post)
 
     Column(modifier = modifier.fillMaxWidth()) {
             Row(
@@ -387,9 +387,13 @@ fun LeoSocialPostCard(
 
 private data class SpecialBadge(val label: String, val cta: String, val container: Color, val content: Color)
 
-private fun specialBadgeFor(type: PostType): SpecialBadge? = when (type) {
+private fun specialBadgeFor(post: FeedPost): SpecialBadge? = when (post.type) {
     PostType.ADOPTION -> SpecialBadge("ADOPCIÓN", "Ver adopción", BrandGreenContainer, BrandGreen)
-    PostType.LOST_FOUND -> SpecialBadge("PERDIDO / ENCONTRADO", "Ver aviso", UrgentContainer, UrgentRed)
+    PostType.LOST_FOUND -> {
+        val label = com.comunidapp.app.domain.lostfound.LostFoundAlertLabel.forKind(post.alertKind)
+            ?: return null
+        SpecialBadge(label, "Ver aviso", UrgentContainer, UrgentRed)
+    }
     PostType.URGENT -> SpecialBadge("URGENTE", "Ver detalle", UrgentContainer, UrgentRed)
     PostType.PROMO -> SpecialBadge("PROMO", "Ver más", BrandOrangeContainer, BrandOrange)
     PostType.REEL -> SpecialBadge("CLIP", "Ver clip", BrandOrangeContainer, BrandOrange)

@@ -62,6 +62,17 @@ class M17ExtendedMemoryStore {
         _opportunities.update { list -> list.filterNot { it.id == opportunity.id } + opportunity }
     }
 
+    fun clearSessionResidue() {
+        seeded = false
+        idSeq.set(0)
+        _needs.value = emptyList()
+        _pledges.value = emptyList()
+        _opportunities.value = emptyList()
+        _applications.value = emptyList()
+        _transparency.value = emptyMap()
+        seedDefaults()
+    }
+
     fun seedDefaults() {
         if (seeded) return
         seeded = true
@@ -101,7 +112,7 @@ class M17ExtendedMemoryStore {
         _transparency.value = mapOf(
             "m17_campaign_1" to M17CampaignTransparencyReport(
                 campaignId = "m17_campaign_1",
-                summaryText = "Uso de fondos mock — sin PII.",
+                summaryText = "Resumen del uso de los fondos confirmados.",
                 usageItems = listOf(
                     M17FundUsageItem("u1", "Medicamentos", 30_000_00, "ARS", "mock://receipt/1"),
                     M17FundUsageItem("u2", "Alimento", 15_000_00, "ARS", "mock://receipt/2")
@@ -127,7 +138,7 @@ class M17ExtendedMemoryStore {
         organizationId = M17MockOrganizations.ORG_NORTE,
         organizationDisplayName = "Refugio Comunitario Norte",
         title = title,
-        description = "Necesidad de bienes mock M17 Bloque 3.",
+        description = "La organización publicó esta necesidad y sigue recibiendo ayuda.",
         category = cat,
         status = status,
         quantityRequested = qty,
@@ -167,7 +178,7 @@ class M17ExtendedMemoryStore {
         organizationId = M17MockOrganizations.ORG_NORTE,
         organizationDisplayName = "Refugio Comunitario Norte",
         title = title,
-        description = "Oportunidad de voluntariado mock — no crea membresía M03 ni tránsito M15.",
+        description = "Podés ofrecer tu tiempo. Anotarte no te convierte en integrante de la organización.",
         type = type,
         status = status,
         slotsNeeded = needed,
@@ -198,6 +209,8 @@ interface M17InKindRepository {
     suspend fun getPublicNeed(id: String): Result<M17PublicInKindNeed>
     fun observeNeedsForOrganization(orgId: String): Flow<List<M17InKindDonationNeed>>
     suspend fun createPledge(needId: String, quantity: Int, message: String?): Result<M17InKindPledge>
+    suspend fun listMyPledges(): Result<List<com.comunidapp.app.domain.m17.MyGoodsPledge>>
+    suspend fun canManageNeed(needId: String): Boolean
     suspend fun markDelivered(pledgeId: String): Result<M17InKindPledge>
 }
 
@@ -206,6 +219,8 @@ interface M17VolunteerRepository {
     suspend fun getPublicOpportunity(id: String): Result<M17PublicVolunteerOpportunity>
     fun observeOpportunitiesForOrganization(orgId: String): Flow<List<M17VolunteerOpportunity>>
     suspend fun submitApplication(opportunityId: String, message: String?): Result<M17VolunteerApplication>
+    suspend fun listMyApplications(): Result<List<com.comunidapp.app.domain.m17.MyVolunteerInterest>>
+    suspend fun canManageOpportunity(opportunityId: String): Boolean
     suspend fun acceptApplication(applicationId: String): Result<M17VolunteerApplication>
 }
 
@@ -216,7 +231,7 @@ interface M17TransparencyRepository {
 class MockM17InKindRepository(
     private val actorUserId: () -> String?,
     private val store: M17ExtendedMemoryStore = M17ExtendedMemoryStore(),
-    private val canManage: (String) -> Boolean = { true }
+    private val canManage: (String) -> Boolean = { false }
 ) : M17InKindRepository {
 
     init { store.seedDefaults() }
@@ -253,6 +268,30 @@ class MockM17InKindRepository(
 
     override fun observeNeedsForOrganization(orgId: String): Flow<List<M17InKindDonationNeed>> =
         store.needs.map { it.filter { n -> n.organizationId == orgId } }
+
+    override suspend fun listMyPledges(): Result<List<com.comunidapp.app.domain.m17.MyGoodsPledge>> = runCatching {
+        val user = actorUserId() ?: return@runCatching emptyList()
+        store.pledges.value
+            .filter { it.userId == user }
+            .sortedByDescending { it.createdAt }
+            .mapNotNull { pledge ->
+                val need = store.needs.value.firstOrNull { it.id == pledge.needId } ?: return@mapNotNull null
+                com.comunidapp.app.domain.m17.MyGoodsPledge(
+                    needTitle = need.title,
+                    organizationName = need.organizationDisplayName,
+                    quantity = pledge.quantity,
+                    unit = need.quantityUnit,
+                    status = pledge.status,
+                    createdAt = pledge.createdAt
+                )
+            }
+    }
+
+    override suspend fun canManageNeed(needId: String): Boolean {
+        val actor = actorUserId() ?: return false
+        val need = store.needs.value.firstOrNull { it.id == needId } ?: return false
+        return canManage(need.organizationId) && actor.isNotBlank()
+    }
 
     override suspend fun createPledge(needId: String, quantity: Int, message: String?): Result<M17InKindPledge> =
         store.withLock {
@@ -293,7 +332,7 @@ class MockM17InKindRepository(
 class MockM17VolunteerRepository(
     private val actorUserId: () -> String?,
     private val store: M17ExtendedMemoryStore = M17ExtendedMemoryStore(),
-    private val canManage: (String) -> Boolean = { true }
+    private val canManage: (String) -> Boolean = { false }
 ) : M17VolunteerRepository {
 
     init { store.seedDefaults() }
@@ -321,6 +360,30 @@ class MockM17VolunteerRepository(
 
     override fun observeOpportunitiesForOrganization(orgId: String): Flow<List<M17VolunteerOpportunity>> =
         store.opportunities.map { it.filter { o -> o.organizationId == orgId } }
+
+    override suspend fun listMyApplications(): Result<List<com.comunidapp.app.domain.m17.MyVolunteerInterest>> =
+        runCatching {
+            val user = actorUserId() ?: return@runCatching emptyList()
+            store.applications.value
+                .filter { it.userId == user }
+                .sortedByDescending { it.createdAt }
+                .mapNotNull { app ->
+                    val opp = store.opportunities.value.firstOrNull { it.id == app.opportunityId }
+                        ?: return@mapNotNull null
+                    com.comunidapp.app.domain.m17.MyVolunteerInterest(
+                        opportunityTitle = opp.title,
+                        organizationName = opp.organizationDisplayName,
+                        status = app.status,
+                        createdAt = app.createdAt
+                    )
+                }
+        }
+
+    override suspend fun canManageOpportunity(opportunityId: String): Boolean {
+        val actor = actorUserId() ?: return false
+        val opp = store.opportunities.value.firstOrNull { it.id == opportunityId } ?: return false
+        return canManage(opp.organizationId) && actor.isNotBlank()
+    }
 
     override suspend fun submitApplication(opportunityId: String, message: String?): Result<M17VolunteerApplication> =
         store.withLock {

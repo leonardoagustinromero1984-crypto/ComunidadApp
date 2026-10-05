@@ -57,6 +57,10 @@ class PublishSessionIsolationTest {
         val cleanup = File("src/main/java/com/comunidapp/app/domain/user/AccountIdentityCleanup.kt").readText()
         val session = File("src/main/java/com/comunidapp/app/viewmodel/SessionViewModel.kt").readText()
         assertTrue(cleanup.contains("ReelPublishController.get().onSessionEnded()"))
+        assertTrue(cleanup.contains("SessionGeneration.invalidate()"))
+        assertTrue(cleanup.contains("DataProvider.clearUserScopedMockStores()"))
+        assertTrue(cleanup.contains("SignedUrlMintCoordinator.clear()"))
+        assertTrue(cleanup.contains("InMemoryDataStore.clearUserScopedSession()"))
         assertTrue(session.contains("bindVisibleJob(user?.id)"))
     }
 
