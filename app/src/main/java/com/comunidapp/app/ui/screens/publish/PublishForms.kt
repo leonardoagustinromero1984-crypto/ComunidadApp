@@ -515,15 +515,31 @@ fun PublishLostFoundScreen(
     var location by remember { mutableStateOf(restoredDraft?.location.orEmpty()) }
     var description by remember { mutableStateOf(restoredDraft?.description.orEmpty()) }
     var contactInfo by remember { mutableStateOf(restoredDraft?.contactInfo.orEmpty()) }
-    var imageUri by remember { mutableStateOf<android.net.Uri?>(null) }
+    var imageUri by remember {
+        mutableStateOf(restoredDraft?.imageUri?.let { android.net.Uri.parse(it) })
+    }
     var boundPetId by remember { mutableStateOf(prefillPetId) }
     var existingPhotoUrl by remember { mutableStateOf<String?>(null) }
     var existingAvatarAssetId by remember { mutableStateOf<String?>(null) }
-    var pin by remember { mutableStateOf<com.comunidapp.app.domain.map.LeoVerGeoPoint?>(null) }
+    var pin by remember {
+        mutableStateOf(
+            if (restoredDraft?.latitude != null && restoredDraft.longitude != null) {
+                com.comunidapp.app.domain.map.LeoVerGeoPoint(restoredDraft.latitude, restoredDraft.longitude)
+            } else {
+                null
+            }
+        )
+    }
     val context = androidx.compose.ui.platform.LocalContext.current
-    var foundSex by remember { mutableStateOf(PetSex.UNKNOWN) }
-    var foundSize by remember { mutableStateOf<PetSize?>(null) }
-    var estimatedAgeYears by remember { mutableStateOf("") }
+    var foundSex by remember {
+        mutableStateOf(
+            restoredDraft?.foundSexName?.let { runCatching { PetSex.valueOf(it) }.getOrNull() } ?: PetSex.UNKNOWN
+        )
+    }
+    var foundSize by remember {
+        mutableStateOf(restoredDraft?.foundSizeName?.let { runCatching { PetSize.valueOf(it) }.getOrNull() })
+    }
+    var estimatedAgeYears by remember { mutableStateOf(restoredDraft?.estimatedAgeYears.orEmpty()) }
     val myPets by DataProvider.petRepository.observePets().collectAsState()
     val lostPets = remember(myPets) {
         com.comunidapp.app.domain.pets.LostPetSelector.selectable(myPets)
@@ -684,7 +700,13 @@ fun PublishLostFoundScreen(
                             location = location,
                             description = description,
                             contactInfo = contactInfo,
-                            knownPetIds = lostPets.map { it.id }.toSet()
+                            knownPetIds = lostPets.map { it.id }.toSet(),
+                            imageUri = imageUri?.toString(),
+                            latitude = pin?.latitude,
+                            longitude = pin?.longitude,
+                            foundSexName = foundSex.name,
+                            foundSizeName = foundSize?.name,
+                            estimatedAgeYears = estimatedAgeYears
                         )
                     )
                     onCreateMinimalPet()

@@ -11,7 +11,13 @@ data class LostReportDraft(
     val location: String,
     val description: String,
     val contactInfo: String,
-    val knownPetIds: Set<String>
+    val knownPetIds: Set<String>,
+    val imageUri: String? = null,
+    val latitude: Double? = null,
+    val longitude: Double? = null,
+    val foundSexName: String? = null,
+    val foundSizeName: String? = null,
+    val estimatedAgeYears: String = ""
 )
 
 object LostReportDraftStore {

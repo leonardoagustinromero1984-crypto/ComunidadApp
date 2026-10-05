@@ -177,10 +177,15 @@ class PhysicalQa17B12Test {
             location = "Belgrano",
             description = "Collar rojo",
             contactInfo = "+5411",
-            knownPetIds = setOf("old")
+            knownPetIds = setOf("old"),
+            imageUri = "content://photo",
+            latitude = -34.6,
+            longitude = -58.4
         )
         LostReportDraftStore.capture(draft)
         assertEquals("+5411", LostReportDraftStore.peek()?.contactInfo)
+        assertEquals("content://photo", LostReportDraftStore.peek()?.imageUri)
+        assertEquals(-34.6, LostReportDraftStore.peek()?.latitude)
         assertEquals(setOf("old"), LostReportDraftStore.peek()?.knownPetIds)
         val form = source("app/src/main/java/com/comunidapp/app/ui/screens/publish/PublishForms.kt")
         assertTrue(form.contains("LostReportDraftStore.capture"))
