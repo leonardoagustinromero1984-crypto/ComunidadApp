@@ -87,14 +87,14 @@ fun M16SheltersListScreen(
     var query by remember(filter.query) { mutableStateOf(filter.query) }
     var filtersOpen by remember { mutableStateOf(false) }
     var draftSpecies by remember { mutableStateOf<String?>(null) }
-    var draftService by remember { mutableStateOf<com.comunidapp.app.data.model.M16ShelterService?>(null) }
+    var draftZone by remember { mutableStateOf("") }
     var draftVerification by remember { mutableStateOf(M16ShelterVerificationFilter.ALL) }
     val activeFilters = buildList {
         filter.species?.let { code ->
             val label = if (code == "DOG") "Perros" else if (code == "CAT") "Gatos" else return@let
             add(LeoActiveFilter("species", label))
         }
-        filter.service?.let { add(LeoActiveFilter("service", it.visibleLabel())) }
+        filter.zoneQuery?.takeIf { it.isNotBlank() }?.let { add(LeoActiveFilter("zone", it)) }
         if (filter.verificationFilter == M16ShelterVerificationFilter.VERIFIED_ONLY) {
             add(LeoActiveFilter("verified", "Organizaciones verificadas"))
         }
@@ -119,14 +119,14 @@ fun M16SheltersListScreen(
                 message = com.comunidapp.app.ui.components.ContextualHelpMessages.SHELTERS
             )
             Text(
-                "Directorio de organizaciones. Busca por nombre, localidad o descripción.",
+                "Directorio de organizaciones. Buscá por nombre y, si querés, por zona.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.primary
             )
             LeoFilterBar(
                 onOpenFilters = {
                     draftSpecies = filter.species
-                    draftService = filter.service
+                    draftZone = filter.zoneQuery.orEmpty()
                     draftVerification = filter.verificationFilter
                     filtersOpen = true
                 },
@@ -134,7 +134,7 @@ fun M16SheltersListScreen(
                 onRemoveFilter = { id ->
                     when (id) {
                         "species" -> viewModel.setSpecies(null)
-                        "service" -> viewModel.setService(null)
+                        "zone" -> viewModel.setZone(null)
                         "verified" -> viewModel.setVerificationFilter(M16ShelterVerificationFilter.ALL)
                     }
                 },
@@ -160,12 +160,13 @@ fun M16SheltersListScreen(
                 onDismiss = { filtersOpen = false },
                 onClearDraft = {
                     draftSpecies = null
-                    draftService = null
+                    draftZone = ""
                     draftVerification = M16ShelterVerificationFilter.ALL
                 },
                 onApply = {
                     viewModel.setSpecies(draftSpecies)
-                    viewModel.setService(draftService)
+                    viewModel.setZone(draftZone)
+                    viewModel.setService(null)
                     viewModel.setVerificationFilter(draftVerification)
                     filtersOpen = false
                 }
@@ -173,11 +174,12 @@ fun M16SheltersListScreen(
                 M16ListFilterRow(
                     filter = filter.copy(
                         species = draftSpecies,
-                        service = draftService,
+                        zoneQuery = draftZone,
+                        service = null,
                         verificationFilter = draftVerification
                     ),
                     onVerification = { draftVerification = it },
-                    onService = { draftService = it },
+                    onZone = { draftZone = it },
                     onSpecies = { draftSpecies = it }
                 )
             }
@@ -210,10 +212,16 @@ fun M16SheltersListScreen(
 private fun M16ListFilterRow(
     filter: com.comunidapp.app.data.model.M16ShelterSearchFilter,
     onVerification: (M16ShelterVerificationFilter) -> Unit,
-    onService: (M16ShelterService?) -> Unit,
+    onZone: (String) -> Unit,
     onSpecies: (String?) -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text("Ubicación", style = MaterialTheme.typography.labelMedium)
+        LeoTextField(
+            value = filter.zoneQuery.orEmpty(),
+            onValueChange = onZone,
+            label = "Localidad o zona"
+        )
         Text("Especie", style = MaterialTheme.typography.labelMedium)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("DOG" to "Perros", "CAT" to "Gatos").forEach { (code, label) ->
@@ -224,26 +232,8 @@ private fun M16ListFilterRow(
                 )
             }
         }
-        Text("Actividad", style = MaterialTheme.typography.labelMedium)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            LeoFilterChip(
-                label = "Todas",
-                selected = filter.service == null,
-                onClick = { onService(null) }
-            )
-            M16ShelterService.entries.forEach { service ->
-                LeoFilterChip(
-                    label = service.visibleLabel(),
-                    selected = filter.service == service,
-                    onClick = { onService(if (filter.service == service) null else service) }
-                )
-            }
-        }
         LeoFilterChip(
-            label = "Organizaciones verificadas",
+            label = "Solo organizaciones verificadas",
             selected = filter.verificationFilter == M16ShelterVerificationFilter.VERIFIED_ONLY,
             onClick = {
                 onVerification(
@@ -292,6 +282,8 @@ fun M16ShelterDetailScreen(
     onNavigateBack: () -> Unit,
     onAdoptions: (() -> Unit)? = null,
     onVolunteer: (() -> Unit)? = null,
+    onDonateGoods: (() -> Unit)? = null,
+    onDonateMoney: (() -> Unit)? = null,
     onManage: (() -> Unit)? = null,
     viewModel: M16ShelterDetailViewModel = viewModel(
         factory = M16ShelterDetailViewModel.factory(shelterId)
@@ -328,6 +320,8 @@ fun M16ShelterDetailScreen(
                     canManage = canManage,
                     onAdoptions = onAdoptions,
                     onVolunteer = onVolunteer,
+                    onDonateGoods = onDonateGoods,
+                    onDonateMoney = onDonateMoney,
                     onManage = onManage
                 )
             }
@@ -342,6 +336,8 @@ private fun M16PublicShelterDetailContent(
     canManage: Boolean,
     onAdoptions: (() -> Unit)?,
     onVolunteer: (() -> Unit)?,
+    onDonateGoods: (() -> Unit)?,
+    onDonateMoney: (() -> Unit)?,
     onManage: (() -> Unit)?
 ) {
     M16PublicLogo(shelter.publicImageRef, shelter.displayName)
@@ -349,13 +345,6 @@ private fun M16PublicShelterDetailContent(
     shelter.verificationStatus.publicBadge()?.let { Text(it, fontWeight = FontWeight.SemiBold) }
     if (shelter.publicZoneText.isNotBlank()) Text(shelter.publicZoneText)
     shelter.description?.trim()?.takeIf { it.isNotEmpty() }?.let { Text(it) }
-    Text(shelter.operationalStatus.visibleLabel())
-    if (OrganizationPresentation.showAvailability(shelter.operationalStatus)) {
-        Text(shelter.availability.visibleLabel())
-        if (shelter.totalCapacity > 0) {
-            Text("Cupos libres aproximados: ${shelter.freeSlotsApproximate} de ${shelter.totalCapacity}")
-        }
-    }
     val activities = shelter.services.map { it.visibleLabel() }
     if (activities.isNotEmpty()) {
         Text("Qué hacemos", fontWeight = FontWeight.Bold)
@@ -375,23 +364,24 @@ private fun M16PublicShelterDetailContent(
         if (volunteerAction != null) {
             LeoOutlinedButton(text = "Voluntariado", onClick = volunteerAction)
         }
+        onDonateGoods?.let { donate ->
+            LeoOutlinedButton(text = "Donar cosas", onClick = donate)
+        }
+        onDonateMoney?.let { donate ->
+            LeoOutlinedButton(text = "Aportar dinero", onClick = donate)
+        }
         if (offersAdoption) {
             when (adoptionAccess) {
-                com.comunidapp.app.viewmodel.M16PublicAdoptionAccess.AVAILABLE -> {
+                com.comunidapp.app.viewmodel.M16PublicAdoptionAccess.AVAILABLE,
+                com.comunidapp.app.viewmodel.M16PublicAdoptionAccess.UNKNOWN -> {
                     if (onAdoptions != null) {
                         LeoOutlinedButton(text = "Ver mascotas en adopción", onClick = onAdoptions)
                     }
                 }
                 com.comunidapp.app.viewmodel.M16PublicAdoptionAccess.NONE ->
                     Text("Todavía no hay mascotas publicadas en adopción.")
-                com.comunidapp.app.viewmodel.M16PublicAdoptionAccess.UNKNOWN -> Unit
             }
         }
-    }
-    val hours = OrganizationPresentation.openingLines(shelter.openingHours)
-    if (hours.isNotEmpty()) {
-        Text("Horarios de atención", fontWeight = FontWeight.Bold)
-        hours.forEach { Text(it) }
     }
     val contacts = shelter.publicContacts.mapNotNull { OrganizationPresentation.contactLine(it) }
     if (contacts.isNotEmpty()) {

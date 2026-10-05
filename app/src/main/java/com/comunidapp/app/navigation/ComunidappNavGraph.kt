@@ -884,7 +884,30 @@ private fun NavGraphBuilder.mainAppRoutes(
         Onb02HostScreen(
             kind = kind,
             onFinished = { setupRoute ->
+                if (kind == Onb02FlowKind.ADD_FUNCTION_LATER &&
+                    com.comunidapp.app.domain.onboarding.onb02.ContextualNavigation.exitFromAddFunction() ==
+                    com.comunidapp.app.domain.onboarding.onb02.SecondaryScreenExit.POP_TO_ORIGIN
+                ) {
+                    if (!navController.popBackStack()) {
+                        navController.navigate(NavRoutes.SETTINGS) { launchSingleTop = true }
+                    }
+                    return@Onb02HostScreen
+                }
+                val showAddFunctionGuide = kind == Onb02FlowKind.FULL_ONBOARDING &&
+                    com.comunidapp.app.domain.onboarding.onb02.InteractiveOnboardingGuide.shouldStart(
+                        com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.current() ==
+                            com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingPhase.READY
+                    )
                 com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.markReady()
+                if (showAddFunctionGuide) {
+                    com.comunidapp.app.ui.onboarding.AddFunctionSpotlight.request()
+                    navController.navigate(NavRoutes.SETTINGS) {
+                        popUpTo(NavRoutes.ONB02) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                    StartupSessionLatchStore.current.replace(listOf(NavRoutes.SETTINGS))
+                    return@Onb02HostScreen
+                }
                 val target = setupRoute?.takeIf { it.isNotBlank() } ?: NavRoutes.HOME
                 if (target == NavRoutes.HOME || target == NavRoutes.USE_LEOVER_AS) {
                     navController.navigate(target) {
@@ -1037,7 +1060,10 @@ private fun NavGraphBuilder.mainAppRoutes(
             onShelterOps = { navController.navigate(NavRoutes.SHELTERS) },
             onVeterinaryDirectory = { navController.navigate(NavRoutes.VETERINARY_DIRECTORY) },
             onM16Shelters = { navController.navigate(NavRoutes.M16_SHELTERS) },
-            onM17Campaigns = { navController.navigate(NavRoutes.M17_HUB) },
+            onM17Campaigns = {
+                com.comunidapp.app.domain.organization.OrganizationListContext.clear()
+                navController.navigate(NavRoutes.M17_HUB)
+            },
             onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) },
             onOpenAdoptions = { navController.navigate(NavRoutes.ADOPTIONS) },
             onOpenLostFound = { navController.navigate(NavRoutes.LOST_FOUND) },
@@ -1231,9 +1257,18 @@ private fun NavGraphBuilder.mainAppRoutes(
             onPrivacy = { navController.navigate(NavRoutes.PROFILE_PRIVACY) },
             onLegalPrivacy = { navController.navigate(NavRoutes.LEGAL_PRIVACY) },
             onAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
+            spotlightAddFunction = com.comunidapp.app.ui.onboarding.AddFunctionSpotlight.pending,
             onAddFunction = {
-                navController.navigate(NavRoutes.onb02(Onb02FlowKind.ADD_FUNCTION_LATER.name)) {
-                    launchSingleTop = true
+                if (com.comunidapp.app.ui.onboarding.AddFunctionSpotlight.pending) {
+                    com.comunidapp.app.ui.onboarding.AddFunctionSpotlight.clear()
+                    navController.navigate(NavRoutes.HOME) {
+                        popUpTo(NavRoutes.SETTINGS) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                } else {
+                    navController.navigate(NavRoutes.onb02(Onb02FlowKind.ADD_FUNCTION_LATER.name)) {
+                        launchSingleTop = true
+                    }
                 }
             },
             onNotificationPreferences = { navController.navigate(NavRoutes.NOTIFICATION_PREFERENCES) },
@@ -1651,7 +1686,10 @@ private fun NavGraphBuilder.mainAppRoutes(
     composable(NavRoutes.ADOPTIONS) {
         AdoptionsScreen(
             onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
-            onSearchAdoptions = { navController.navigate(NavRoutes.ADOPTION_SEARCH) },
+            onSearchAdoptions = {
+                com.comunidapp.app.domain.organization.OrganizationListContext.clear()
+                navController.navigate(NavRoutes.ADOPTION_SEARCH)
+            },
             onMyApplications = { navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS) },
             onReceivedApplications = {
                 navController.navigate(NavRoutes.RECEIVED_ADOPTION_APPLICATIONS)
@@ -2387,7 +2425,15 @@ private fun NavGraphBuilder.mainAppRoutes(
                     }
                 },
                 onAdoptions = { navController.navigate(NavRoutes.ADOPTIONS) },
-                onCampaigns = { navController.navigate(NavRoutes.M17_HUB) },
+                onCampaigns = {
+                    val org = context as? com.comunidapp.app.domain.context.OperationalContext.Organization
+                    if (org != null) {
+                        com.comunidapp.app.domain.organization.OrganizationListContext.open(org.entityId)
+                    } else {
+                        com.comunidapp.app.domain.organization.OrganizationListContext.clear()
+                    }
+                    navController.navigate(NavRoutes.M17_HUB)
+                },
                 onEvents = { navController.navigate(NavRoutes.M18_EVENTS) },
                 onManagement = { navController.navigate(NavRoutes.SHELTERS) },
                 onTeam = {
@@ -2401,7 +2447,15 @@ private fun NavGraphBuilder.mainAppRoutes(
                 onFoster = { navController.navigate(NavRoutes.FOSTER_HOMES) },
                 onLostFound = { navController.navigate(NavRoutes.LOST_FOUND) },
                 onRescuerProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
-                onVolunteer = { navController.navigate(NavRoutes.M17_HUB) }
+                onVolunteer = {
+                    val org = context as? com.comunidapp.app.domain.context.OperationalContext.Organization
+                    if (org != null) {
+                        com.comunidapp.app.domain.organization.OrganizationListContext.open(org.entityId)
+                    } else {
+                        com.comunidapp.app.domain.organization.OrganizationListContext.clear()
+                    }
+                    navController.navigate(NavRoutes.M17_HUB)
+                }
             )
         )
     }

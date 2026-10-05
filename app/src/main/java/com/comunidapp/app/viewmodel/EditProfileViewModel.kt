@@ -39,6 +39,8 @@ data class EditProfileUiState(
     val locationText: String = "",
     val homeLocalityId: String? = null,
     val phone: String = "",
+    val showLocation: Boolean = true,
+    val showPhone: Boolean = false,
     val profilePrivate: Boolean = true,
     val profileImageUrl: String? = null,
     val avatarPath: String? = null,
@@ -73,6 +75,7 @@ class EditProfileViewModel(
             loadedUser = profile
             val displayUrl = ProfileAvatarResolver.displayUrl(profile)
                 ?: ProfileAvatarResolver.httpOrLocalUrl(profile)
+            val privacy = userRepository.getPrivacySettings(profile.id).getOrNull()
             _uiState.update {
                 EditProfileUiState(
                     isLoading = false,
@@ -85,7 +88,9 @@ class EditProfileViewModel(
                     locationText = profile.locationText.orEmpty(),
                     homeLocalityId = profile.homeLocalityId,
                     phone = profile.phone.orEmpty(),
-                    profilePrivate = profile.profilePrivate,
+                    showLocation = privacy?.showLocation ?: true,
+                    showPhone = privacy?.showPhone ?: profile.phonePublic,
+                    profilePrivate = privacy?.profilePrivate ?: profile.profilePrivate,
                     profileImageUrl = displayUrl,
                     avatarPath = profile.avatarPath
                 )
@@ -133,6 +138,14 @@ class EditProfileViewModel(
 
     fun onCountryCodeChange(value: String) {
         _uiState.update { it.copy(countryCode = value.uppercase(), errorMessage = null) }
+    }
+
+    fun onShowLocationChange(value: Boolean) {
+        _uiState.update { it.copy(showLocation = value, errorMessage = null) }
+    }
+
+    fun onShowPhoneChange(value: Boolean) {
+        _uiState.update { it.copy(showPhone = value, errorMessage = null) }
     }
 
     fun onPhoneChange(value: String) {
@@ -357,7 +370,8 @@ class EditProfileViewModel(
                     province = state.province.trim().ifBlank { null },
                     countryCode = state.countryCode.trim().ifBlank { null },
                     homeLocalityId = state.homeLocalityId,
-                    avatarPath = avatarPath
+                    avatarPath = avatarPath,
+                    phone = state.phone
                 )
             ).onSuccess { updated ->
                 val latest = userRepository.getUser(state.userId) ?: baseUser.copy(
@@ -376,19 +390,21 @@ class EditProfileViewModel(
                 if (remoteUrl == null && !latest.avatarPath.isNullOrBlank()) {
                     MediaDiagnostic.logRenderFailure()
                 }
-                if (state.profilePrivate != baseUser.profilePrivate) {
-                    val privacy = userRepository.getPrivacySettings(state.userId).getOrNull()
-                        ?: com.comunidapp.app.domain.user.UserPrivacySettings()
-                    userRepository.updatePrivacySettings(
-                        state.userId,
-                        privacy.copy(
-                            profileVisibility = if (state.profilePrivate) {
-                                com.comunidapp.app.domain.user.ProfileVisibility.PRIVATE
-                            } else {
-                                com.comunidapp.app.domain.user.ProfileVisibility.PUBLIC
-                            }
-                        )
+                val privacy = userRepository.getPrivacySettings(state.userId).getOrNull()
+                    ?: com.comunidapp.app.domain.user.UserPrivacySettings()
+                userRepository.updatePrivacySettings(
+                    state.userId,
+                    privacy.copy(
+                        profileVisibility = if (state.profilePrivate) {
+                            com.comunidapp.app.domain.user.ProfileVisibility.PRIVATE
+                        } else {
+                            com.comunidapp.app.domain.user.ProfileVisibility.PUBLIC
+                        },
+                        showLocation = state.showLocation,
+                        showPhone = state.showPhone
                     )
+                )
+                if (state.profilePrivate != baseUser.profilePrivate) {
                     // Re-evaluate social surfaces; authorization is dynamic on read.
                     runCatching { DataProvider.feedRepository.refreshPosts() }
                     runCatching { DataProvider.feedRepository.refreshStories() }

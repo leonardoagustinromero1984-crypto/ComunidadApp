@@ -341,7 +341,7 @@ fun V2PetsStrip(
                     contentDescription = pet.name
                 )
                 Text(
-                    text = pet.name,
+                    text = com.comunidapp.app.domain.pets.PetDisplayName.of(pet.originKind, pet.name),
                     style = LeoCaption,
                     fontWeight = FontWeight.SemiBold,
                     color = BrandText,

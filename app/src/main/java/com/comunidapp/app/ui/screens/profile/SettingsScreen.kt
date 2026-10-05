@@ -52,6 +52,7 @@ fun SettingsScreen(
     onSupport: () -> Unit,
     onTerms: () -> Unit,
     onLogout: () -> Unit,
+    spotlightAddFunction: Boolean = false,
     onAdministration: (() -> Unit)? = null,
     onModeration: (() -> Unit)? = null,
     onCases: (() -> Unit)? = null,
@@ -64,6 +65,8 @@ fun SettingsScreen(
     viewModel: ProfileViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val guide = spotlightAddFunction
+    val blocked: () -> Unit = {}
     var linkedMethods by remember { mutableStateOf(emptyList<AuthMethodKind>()) }
     LaunchedEffect(Unit) {
         linkedMethods = AuthProvider.repository.linkedAuthMethods()
@@ -77,7 +80,7 @@ fun SettingsScreen(
                 LeoTopAppBar(
                     title = "Configuración",
                     showBackButton = true,
-                    onBackClick = onNavigateBack
+                    onBackClick = if (guide) blocked else onNavigateBack
                 )
             }
         ) { padding ->
@@ -89,18 +92,24 @@ fun SettingsScreen(
                     .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceSm),
                 verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceMd)
             ) {
+                if (guide) {
+                    androidx.compose.material3.Text(
+                        text = "Desde acá agregás funciones. Tocá solo «Agregar función o perfil».",
+                        color = androidx.compose.material3.MaterialTheme.colorScheme.onSurface
+                    )
+                }
                 LeoVerSettingsSection(title = "Cuenta") {
                     LeoVerSettingsRow(
                         title = "Datos personales",
                         subtitle = "Nombre, foto y ubicación",
                         icon = Icons.Default.Person,
-                        onClick = onEditProfile
+                        onClick = if (guide) blocked else onEditProfile
                     )
                     LeoVerSettingsRow(
                         title = "Privacidad",
                         subtitle = "Quién puede ver tu perfil",
                         icon = Icons.Default.Lock,
-                        onClick = onPrivacy
+                        onClick = if (guide) blocked else onPrivacy
                     )
                 }
                 LeoVerSettingsSection(title = "LeoVer") {
@@ -116,7 +125,7 @@ fun SettingsScreen(
                         title = "Notificaciones",
                         subtitle = "Avisos y permisos",
                         icon = Icons.Default.Notifications,
-                        onClick = onNotificationPreferences
+                        onClick = if (guide) blocked else onNotificationPreferences
                     )
                 }
                 LeoVerSettingsSection(title = "Ayuda") {
@@ -124,13 +133,13 @@ fun SettingsScreen(
                         title = "Tutoriales",
                         subtitle = "Volvé a ver las guías",
                         icon = Icons.AutoMirrored.Filled.HelpOutline,
-                        onClick = onHelpTutorials
+                        onClick = if (guide) blocked else onHelpTutorials
                     )
                     LeoVerSettingsRow(
                         title = "Ayuda / soporte",
                         subtitle = "Tickets y consultas",
                         icon = Icons.Default.SupportAgent,
-                        onClick = onSupport
+                        onClick = if (guide) blocked else onSupport
                     )
                 }
                 if (linkedMethods.isNotEmpty()) {
@@ -156,19 +165,19 @@ fun SettingsScreen(
                         title = "Contraseña y cuenta",
                         subtitle = "Cambiar contraseña o eliminar cuenta",
                         icon = Icons.Default.Shield,
-                        onClick = onAccountSecurity
+                        onClick = if (guide) blocked else onAccountSecurity
                     )
                 }
                 LeoVerSettingsSection(title = "Legal") {
                     LeoVerSettingsRow(
                         title = "Términos",
                         icon = Icons.Default.Gavel,
-                        onClick = onTerms
+                        onClick = if (guide) blocked else onTerms
                     )
                     LeoVerSettingsRow(
                         title = "Privacidad",
                         icon = Icons.Default.Policy,
-                        onClick = onLegalPrivacy
+                        onClick = if (guide) blocked else onLegalPrivacy
                     )
                 }
                 if (uiState.canEnterAdministration) {
@@ -177,7 +186,7 @@ fun SettingsScreen(
                             LeoVerSettingsRow(
                                 title = "Administración",
                                 icon = Icons.Default.Shield,
-                                onClick = openAdmin
+                                onClick = if (guide) blocked else openAdmin
                             )
                         }
                     }
@@ -186,7 +195,7 @@ fun SettingsScreen(
                     LeoVerSettingsRow(
                         title = "Cerrar sesión",
                         icon = Icons.AutoMirrored.Filled.Logout,
-                        onClick = { onLogout() }
+                        onClick = if (guide) blocked else onLogout
                     )
                 }
             }

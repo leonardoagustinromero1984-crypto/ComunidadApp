@@ -42,8 +42,22 @@ fun NavGraphBuilder.m16ShelterRoutes(navController: NavHostController) {
         M16ShelterDetailScreen(
             shelterId = shelterId,
             onNavigateBack = { navController.popBackStack() },
-            onAdoptions = { navController.navigate(NavRoutes.ADOPTION_SEARCH) },
-            onVolunteer = { navController.navigate(NavRoutes.M17_HUB) },
+            onAdoptions = {
+                com.comunidapp.app.domain.organization.OrganizationListContext.open(shelterId)
+                navController.navigate(NavRoutes.ADOPTION_SEARCH)
+            },
+            onVolunteer = {
+                com.comunidapp.app.domain.organization.OrganizationListContext.open(shelterId)
+                navController.navigate(NavRoutes.M17_HUB)
+            },
+            onDonateGoods = {
+                com.comunidapp.app.domain.organization.OrganizationListContext.open(shelterId)
+                navController.navigate(NavRoutes.M17_GOODS)
+            },
+            onDonateMoney = {
+                com.comunidapp.app.domain.organization.OrganizationListContext.open(shelterId)
+                navController.navigate(NavRoutes.M17_CAMPAIGNS)
+            },
             onManage = { navController.navigate(NavRoutes.M16_SHELTERS_MANAGE) }
         )
     }

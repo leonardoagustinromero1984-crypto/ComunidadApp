@@ -145,8 +145,21 @@ object CommunityHelpPresentation {
         return if (clean.isEmpty()) quantity.toString() else "$quantity $clean"
     }
 
-    fun slotsLine(filled: Int, needed: Int): String? =
-        if (needed <= 0) null else "$filled de $needed lugares"
+    fun slotsLine(filled: Int, needed: Int): String? {
+        if (needed <= 0) return null
+        val open = needed - filled
+        return when {
+            open <= 0 -> "Cupo completo"
+            open == 1 -> "1 lugar disponible"
+            else -> "$open lugares disponibles"
+        }
+    }
+
+    fun volunteerTitle(raw: String): String {
+        val title = raw.trim()
+        if (title.equals("Sin postulantes", ignoreCase = true)) return "Convocatoria"
+        return title
+    }
 
     fun date(epochMs: Long): String {
         val date = Instant.ofEpochMilli(epochMs).atZone(ZoneId.systemDefault()).toLocalDate()

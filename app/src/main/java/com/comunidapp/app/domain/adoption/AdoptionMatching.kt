@@ -152,10 +152,9 @@ object AdopterProfileCompleteness {
         "hours_alone"
     )
 
-    fun saveFeedback(profile: AdopterProfile): String = when {
-        profile.isComplete -> "Perfil completo guardado."
-        profile.isStructurallyEmpty -> "Perfil guardado como incompleto."
-        else -> "Perfil guardado. Completaste ${profile.answeredCount} de ${profile.trackedCount}."
+    fun saveFeedback(profile: AdopterProfile): String {
+        val ignored = profile
+        return "Perfil de adopción guardado."
     }
 }
 

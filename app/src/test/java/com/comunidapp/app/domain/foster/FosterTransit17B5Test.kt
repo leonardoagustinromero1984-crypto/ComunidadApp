@@ -82,7 +82,7 @@ class FosterTransit17B5Test {
         assertFalse(screens.contains("label = { Text(\"Notas\") }"))
         assertTrue(screens.contains("Información adicional"))
         assertTrue(screens.contains("Solicitud enviada."))
-        assertEquals("Todavía no hay hogares de tránsito disponibles.", FOSTER_APPLICANTS_EMPTY)
+        assertEquals("Todavía no hay postulantes", FOSTER_APPLICANTS_EMPTY)
         assertEquals("Elegí un hogar de tránsito", FOSTER_CHOOSE_HOME)
         assertEquals("Elegir hogar de tránsito", FOSTER_CHOOSE_ACTION)
         assertTrue(screens.contains("FOSTER_APPLICANTS_EMPTY"))

@@ -336,7 +336,7 @@ fun presentFosterApplicant(
     )
 }
 
-const val FOSTER_APPLICANTS_EMPTY = "Todavía no hay hogares de tránsito disponibles."
+const val FOSTER_APPLICANTS_EMPTY = "Todavía no hay postulantes"
 const val FOSTER_APPLICANTS_EMPTY_HINT = "Cuando un hogar se postule, vas a poder elegirlo."
 const val FOSTER_CHOOSE_HOME = "Elegí un hogar de tránsito"
 const val FOSTER_CHOOSE_ACTION = "Elegir hogar de tránsito"

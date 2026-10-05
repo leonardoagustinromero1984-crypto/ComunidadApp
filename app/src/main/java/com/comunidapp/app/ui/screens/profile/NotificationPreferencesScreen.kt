@@ -52,9 +52,18 @@ import java.time.DayOfWeek
 @Composable
 fun NotificationPreferencesScreen(
     onNavigateBack: () -> Unit,
-    viewModel: NotificationPreferencesViewModel = viewModel()
+    viewModel: NotificationPreferencesViewModel = viewModel(),
+    activeModuleNames: Set<String>? = null
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val preferenceModules = activeModuleNames ?: run {
+        val user = com.comunidapp.app.data.repository.AuthProvider.repository.getCurrentUser()
+        if (user == null) {
+            setOf("PERSONAL")
+        } else {
+            com.comunidapp.app.domain.ModulePermissions.activeModules(user).map { it.name }.toSet()
+        }
+    }
     val context = LocalContext.current
     val activity = context as? ComponentActivity
     var showPermissionRationale by remember { mutableStateOf(false) }
@@ -135,16 +144,41 @@ fun NotificationPreferencesScreen(
             )
 
             Spacer(modifier = Modifier.height(20.dp))
-            Text("Categorías", style = MaterialTheme.typography.titleMedium)
-            uiState.preferences.sortedBy { it.category.ordinal }.forEach { preference ->
-                PreferenceCategoryRow(
-                    label = viewModel.categoryLabel(preference.category),
-                    category = preference.category,
-                    pushEnabled = preference.pushEnabled,
-                    inAppMandatory = viewModel.isInAppMandatory(preference.category),
-                    onPushChange = { viewModel.setPushEnabled(preference.category, it) }
-                )
-            }
+            Text("Avisos esenciales", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "Cuenta, seguridad y los avisos de un caso abierto llegan siempre a la bandeja. No se apagan.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            uiState.preferences
+                .filter { com.comunidapp.app.domain.notifications.NotificationPreferenceVisibility.isEssential(it.category) }
+                .sortedBy { it.category.ordinal }
+                .forEach { preference ->
+                    Text(
+                        viewModel.categoryLabel(preference.category),
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(top = 8.dp)
+                    )
+                }
+            Spacer(modifier = Modifier.height(16.dp))
+            Text("Avisos de tus funciones", style = MaterialTheme.typography.titleMedium)
+            uiState.preferences
+                .filter {
+                    com.comunidapp.app.domain.notifications.NotificationPreferenceVisibility.configurable(
+                        it.category,
+                        preferenceModules
+                    )
+                }
+                .sortedBy { it.category.ordinal }
+                .forEach { preference ->
+                    PreferenceCategoryRow(
+                        label = viewModel.categoryLabel(preference.category),
+                        category = preference.category,
+                        pushEnabled = preference.pushEnabled,
+                        inAppMandatory = viewModel.isInAppMandatory(preference.category),
+                        onPushChange = { viewModel.setPushEnabled(preference.category, it) }
+                    )
+                }
 
             Spacer(modifier = Modifier.height(20.dp))
             QuietHoursSection(uiState, viewModel)
@@ -154,7 +188,9 @@ fun NotificationPreferencesScreen(
                 onEnabledChange = viewModel::setMarketingConsent
             )
             Spacer(modifier = Modifier.height(16.dp))
-            EmailComingSoonSection()
+            if (com.comunidapp.app.domain.notifications.NotificationPreferenceVisibility.EMAIL_CHANNEL_VISIBLE) {
+                EmailComingSoonSection()
+            }
 
             Spacer(modifier = Modifier.height(20.dp))
             LeoPrimaryButton(

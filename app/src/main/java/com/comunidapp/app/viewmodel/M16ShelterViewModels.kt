@@ -77,6 +77,11 @@ class M16SheltersListViewModel(
         load()
     }
 
+    fun setZone(zone: String?) {
+        _filter.value = _filter.value.copy(zoneQuery = zone?.trim()?.takeIf { it.isNotEmpty() })
+        load()
+    }
+
     fun setSpecies(species: String?) {
         _filter.value = _filter.value.copy(
             species = species?.trim()?.takeIf { it.isNotEmpty() }

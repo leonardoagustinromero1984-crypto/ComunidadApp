@@ -48,6 +48,11 @@ class LostFoundViewModel(
         _filters
     ) { allPosts, filters ->
         allPosts.filter { post ->
+            com.comunidapp.app.domain.lostfound.PublicAlertVisibility.visible(
+                active = true,
+                caseCreatedAtEpochMs = post.createdAt,
+                viewerAccountCreatedAtEpochMs = Long.MAX_VALUE
+            ) &&
             (filters.type == null || post.type == filters.type) &&
                 (filters.species == null || post.species == filters.species) &&
                 (filters.location.isBlank() || post.location.contains(filters.location, ignoreCase = true)) &&

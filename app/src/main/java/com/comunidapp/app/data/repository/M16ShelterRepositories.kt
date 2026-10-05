@@ -327,13 +327,11 @@ private fun applyPublicSearchFilters(
             filter.service?.let { profile.services.contains(it) } ?: true
         }
         .filter { profile ->
-            if (q.isEmpty()) true
-            else {
-                // OrganizationPublicSearch: name, public zone, description. Not email or ids.
-                profile.displayName.lowercase().contains(q) ||
-                    profile.publicZoneText.lowercase().contains(q) ||
-                    profile.description.orEmpty().lowercase().contains(q)
-            }
+            com.comunidapp.app.domain.organization.OrganizationPublicSearch.matchesName(profile.displayName, q) &&
+                com.comunidapp.app.domain.organization.OrganizationPublicSearch.matchesZone(
+                    profile.publicZoneText,
+                    filter.zoneQuery
+                )
         }
 }
 
@@ -779,6 +777,15 @@ class SupabaseM16ShelterRepository(
                 verifiedOnly = verifiedOnly,
                 unverifiedOrPending = unverifiedOrPending
             ).map { it.toM16PublicShelter() }
+                .filter { shelter ->
+                    com.comunidapp.app.domain.organization.OrganizationPublicSearch.matchesName(
+                        shelter.displayName,
+                        filter.query
+                    ) && com.comunidapp.app.domain.organization.OrganizationPublicSearch.matchesZone(
+                        shelter.publicZoneText,
+                        filter.zoneQuery
+                    )
+                }
         )
     } catch (t: Throwable) {
         M16ShelterErrorMapper.failure(t)

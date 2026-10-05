@@ -24,7 +24,8 @@ data class AdoptionFilters(
     val location: String = "",
     val sex: PetSex? = null,
     val size: PetSize? = null,
-    val status: AdoptionStatus? = AdoptionStatus.PUBLISHED
+    val status: AdoptionStatus? = AdoptionStatus.PUBLISHED,
+    val organizationId: String? = null
 )
 
 sealed class AdoptionListUiState {
@@ -56,7 +57,11 @@ class AdoptionsViewModel(
             loading && posts.isEmpty() && error == null -> AdoptionListUiState.Loading
             error != null && posts.isEmpty() -> AdoptionListUiState.Error(error)
             else -> {
-                val filtered = posts.filter { post ->
+                val scoped = com.comunidapp.app.domain.organization.OrganizationScope.keep(
+                    filters.organizationId,
+                    posts
+                ) { post -> post.publisherOrganizationId ?: post.shelterId }
+                val filtered = scoped.filter { post ->
                     post.status == AdoptionStatus.PUBLISHED &&
                         (filters.location.isBlank() ||
                             post.location.contains(filters.location, ignoreCase = true)) &&
@@ -110,6 +115,10 @@ class AdoptionsViewModel(
 
     fun onSexFilterChange(sex: PetSex?) {
         _filters.update { it.copy(sex = sex) }
+    }
+
+    fun setOrganization(organizationId: String?) {
+        _filters.update { it.copy(organizationId = organizationId?.trim()?.takeIf { id -> id.isNotEmpty() }) }
     }
 
     fun onSizeFilterChange(size: PetSize?) {

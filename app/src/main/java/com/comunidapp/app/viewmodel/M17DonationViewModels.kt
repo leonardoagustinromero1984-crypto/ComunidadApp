@@ -36,11 +36,14 @@ sealed class M17CampaignsListUiState {
 }
 
 class M17CampaignsListViewModel(
-    private val repository: M17DonationRepository = DataProvider.m17DonationRepository
+    private val repository: M17DonationRepository = DataProvider.m17DonationRepository,
+    organizationId: String? = null
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<M17CampaignsListUiState>(M17CampaignsListUiState.Loading)
     val uiState: StateFlow<M17CampaignsListUiState> = _uiState.asStateFlow()
-    private val _filter = MutableStateFlow(M17CampaignSearchFilter())
+    private val _filter = MutableStateFlow(
+        M17CampaignSearchFilter(organizationId = organizationId?.trim()?.takeIf { it.isNotEmpty() })
+    )
     val filter: StateFlow<M17CampaignSearchFilter> = _filter.asStateFlow()
     private var loadJob: Job? = null
 
@@ -77,7 +80,8 @@ class M17CampaignsListViewModel(
     }
 
     fun clearFilters() {
-        _filter.value = M17CampaignSearchFilter()
+        val org = _filter.value.organizationId
+        _filter.value = M17CampaignSearchFilter(organizationId = org)
         load()
     }
 
@@ -102,7 +106,9 @@ class M17CampaignsListViewModel(
         fun factory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                M17CampaignsListViewModel() as T
+                M17CampaignsListViewModel(
+                    organizationId = com.comunidapp.app.domain.organization.OrganizationListContext.organizationId
+                ) as T
         }
     }
 }

@@ -205,6 +205,39 @@ fun EditProfileScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !uiState.isSaving
                 )
+                Spacer(modifier = Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Mostrar ubicación/zona en mi perfil",
+                        style = LeoCardTitle,
+                        color = BrandText,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = uiState.showLocation,
+                        onCheckedChange = viewModel::onShowLocationChange,
+                        enabled = !uiState.isSaving
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Mostrar mi teléfono en mi perfil",
+                        style = LeoCardTitle,
+                        color = BrandText,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Switch(
+                        checked = uiState.showPhone,
+                        onCheckedChange = viewModel::onShowPhoneChange,
+                        enabled = !uiState.isSaving
+                    )
+                }
                 Spacer(modifier = Modifier.height(16.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),

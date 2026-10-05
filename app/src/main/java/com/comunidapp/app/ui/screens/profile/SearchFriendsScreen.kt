@@ -95,7 +95,7 @@ fun SearchFriendsScreen(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = LeoDimens.SpaceMd, vertical = LeoDimens.SpaceS),
-                placeholder = "Nombre, email o ciudad..."
+                placeholder = com.comunidapp.app.domain.user.PersonSearchMatcher.PLACEHOLDER
             )
 
             if (uiState.query.trim().length < 2) {
@@ -154,7 +154,7 @@ private fun SearchHintCard(modifier: Modifier = Modifier) {
                 color = BrandText
             )
             Text(
-                text = "Escribí al menos 2 letras para buscar por nombre, email o ubicación.",
+                text = com.comunidapp.app.domain.user.PersonSearchMatcher.HINT,
                 style = LeoCaption,
                 color = BrandTextSecondary,
                 modifier = Modifier.padding(top = LeoDimens.SpaceS)

@@ -181,12 +181,24 @@ object OrganizationPresentation {
  * It does not search email, member data, or ids.
  */
 object OrganizationPublicSearch {
-    const val PLACEHOLDER = "Nombre, localidad o descripción"
-    val fields: List<String> = listOf("displayName", "publicZoneText", "description")
-    val notSearched: List<String> = listOf("email", "publicContacts", "ids", "internalNotes", "members")
+    const val PLACEHOLDER = "Buscar por nombre"
+    val fields: List<String> = listOf("displayName")
+    val notSearched: List<String> = listOf("email", "publicContacts", "ids", "internalNotes", "members", "description")
 
-    /** Visitor filters that describe a real choice. Operational status stays off this list. */
-    val visitorFilters: List<String> = listOf("localidad en la búsqueda", "especie", "actividad", "organizaciones verificadas")
+    /** Visitor filters that describe a real choice. Activity and operational status stay off this list. */
+    val visitorFilters: List<String> = listOf("ubicación", "especie", "organizaciones verificadas")
+
+    fun matchesName(name: String, query: String): Boolean {
+        val needle = query.trim().lowercase()
+        if (needle.isEmpty()) return true
+        return name.lowercase().contains(needle)
+    }
+
+    fun matchesZone(zone: String, zoneQuery: String?): Boolean {
+        val needle = zoneQuery?.trim()?.lowercase().orEmpty()
+        if (needle.isEmpty()) return true
+        return zone.lowercase().contains(needle)
+    }
 }
 
 /**

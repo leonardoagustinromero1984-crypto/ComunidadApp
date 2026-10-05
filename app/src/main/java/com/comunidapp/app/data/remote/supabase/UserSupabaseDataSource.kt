@@ -45,7 +45,8 @@ data class PublicProfileRpcRow(
     @SerialName("location_text") val locationText: String? = null,
     val city: String? = null,
     val province: String? = null,
-    @SerialName("country_code") val countryCode: String? = null
+    @SerialName("country_code") val countryCode: String? = null,
+    val phone: String? = null
 )
 
 @Serializable
@@ -64,6 +65,12 @@ data class PrivacySettingsUpdateRow(
     @SerialName("show_phone") val showPhone: Boolean,
     @SerialName("allow_friend_requests") val allowFriendRequests: Boolean,
     @SerialName("updated_at") val updatedAt: String
+)
+
+@Serializable
+private data class PersonPrivacyFlagRow(
+    @SerialName("show_location") val showLocation: Boolean = true,
+    @SerialName("phone_public") val phonePublic: Boolean = false
 )
 
 @Serializable
@@ -216,15 +223,31 @@ class UserSupabaseDataSource {
 
     suspend fun updateMyProfile(command: UpdateMyProfileCommand): Result<UserProfile> {
         return try {
-            supabase.postgrest.rpc(
-                function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_UPDATE_MY_PERSON,
-                parameters = buildJsonObject {
-                    command.displayName?.let { put("p_display_name", it) }
-                    command.homeLocalityId?.trim()?.takeIf { it.isNotEmpty() }?.let {
-                        put("p_home_locality_id", it)
-                    }
+            val base = buildJsonObject {
+                command.displayName?.let { put("p_display_name", it) }
+                command.homeLocalityId?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                    put("p_home_locality_id", it)
                 }
-            )
+            }
+            val extended = buildJsonObject {
+                command.displayName?.let { put("p_display_name", it) }
+                command.homeLocalityId?.trim()?.takeIf { it.isNotEmpty() }?.let {
+                    put("p_home_locality_id", it)
+                }
+                command.phone?.let { put("p_e164_phone", it) }
+            }
+            try {
+                supabase.postgrest.rpc(
+                    function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_UPDATE_MY_PERSON,
+                    parameters = extended
+                )
+            } catch (rpc: Exception) {
+                if (!isMissingExtendedPersonRpc(rpc)) throw rpc
+                supabase.postgrest.rpc(
+                    function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_UPDATE_MY_PERSON,
+                    parameters = base
+                )
+            }
             val uid = supabase.auth.currentUserOrNull()?.id
                 ?: return Result.failure(IllegalStateException("NOT_AUTHENTICATED"))
             getOwnProfile(uid)
@@ -293,7 +316,8 @@ class UserSupabaseDataSource {
                     locationText = row.locationText,
                     city = row.city,
                     province = row.province,
-                    countryCode = row.countryCode
+                    countryCode = row.countryCode,
+                    phone = row.phone
                 )
             )
         } catch (e: Exception) {
@@ -345,7 +369,18 @@ class UserSupabaseDataSource {
         val visibility = com.comunidapp.app.domain.user.SocialProfileVisibility.fromRaw(
             if (person?.profilePrivate == false) "PUBLIC_LIMITED" else "PRIVATE"
         )
-        return Result.success(UserPrivacySettings(profileVisibility = visibility))
+        val columns = runCatching {
+            supabase.from(SupabaseTables.PERSONS).select {
+                filter { eq("user_id", userId) }
+            }.decodeSingleOrNull<PersonPrivacyFlagRow>()
+        }.getOrNull()
+        return Result.success(
+            UserPrivacySettings(
+                profileVisibility = visibility,
+                showLocation = columns?.showLocation ?: true,
+                showPhone = columns?.phonePublic ?: false
+            )
+        )
     }
 
     suspend fun updatePrivacySettings(userId: String, settings: UserPrivacySettings): Result<Unit> {
@@ -357,6 +392,17 @@ class UserSupabaseDataSource {
         return try {
             val state = com.comunidapp.app.domain.user.SocialProfileVisibility
                 .toCanonicalPrivacyState(settings.profileVisibility)
+            try {
+                supabase.postgrest.rpc(
+                    function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_UPDATE_MY_PERSON,
+                    parameters = buildJsonObject {
+                        put("p_show_location", settings.showLocation)
+                        put("p_phone_public", settings.showPhone)
+                    }
+                )
+            } catch (rpc: Exception) {
+                if (!isMissingExtendedPersonRpc(rpc)) throw rpc
+            }
             supabase.from(SupabaseTables.PERSONS).update(
                 PrivacyStatePatch(privacyState = state)
             ) {
@@ -366,6 +412,11 @@ class UserSupabaseDataSource {
         } catch (e: Exception) {
             Result.failure(e)
         }
+    }
+
+    private fun isMissingExtendedPersonRpc(error: Exception): Boolean {
+        val signal = error.message.orEmpty()
+        return "PGRST202" in signal || "Could not find the function" in signal || "404" in signal
     }
 
     private fun <T> pollingFlow(fetch: suspend () -> T): Flow<T> = flow {

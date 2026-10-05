@@ -192,6 +192,7 @@ enum class M16ShelterVerificationFilter {
 
 data class M16ShelterSearchFilter(
     val query: String = "",
+    val zoneQuery: String? = null,
     val species: String? = null,
     val service: M16ShelterService? = null,
     @Deprecated("Use verificationFilter", ReplaceWith("verificationFilter"))

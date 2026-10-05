@@ -164,7 +164,7 @@ fun AdoptionGeneralProfileScreen(onNavigateBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
         ) {
             Text(
-                "Podés guardar el perfil aunque falten datos. Un dato vacío no significa que la respuesta sea no. Para postularte se piden el acuerdo del hogar, el tipo de vivienda, la convivencia con otros animales y las horas aproximadas. Si alquilás, también el permiso para mascotas. El resto es opcional.",
+                "Contanos un poco sobre tu hogar y tus preferencias para ayudarte a encontrar mascotas que puedan adaptarse a vos. Podés modificarlo cuando quieras.",
                 style = LeoCaption
             )
             Text("Vivienda", style = LeoCaption)

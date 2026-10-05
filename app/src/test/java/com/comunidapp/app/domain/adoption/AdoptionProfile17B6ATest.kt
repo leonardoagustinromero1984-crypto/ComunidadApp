@@ -17,7 +17,7 @@ class AdoptionProfile17B6ATest {
         val empty = AdopterProfile()
         assertTrue(empty.isStructurallyEmpty)
         assertFalse(empty.isComplete)
-        assertTrue(AdopterProfileCompleteness.saveFeedback(empty).contains("incompleto"))
+        assertEquals("Perfil de adopción guardado.", AdopterProfileCompleteness.saveFeedback(empty))
         val partial = AdopterProfile(housingKind = HousingKind.HOUSE, notes = null)
         assertFalse(partial.isComplete)
         assertFalse(partial.isStructurallyEmpty)

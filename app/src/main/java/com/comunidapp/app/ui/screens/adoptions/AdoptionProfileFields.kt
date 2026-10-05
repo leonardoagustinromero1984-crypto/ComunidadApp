@@ -2,6 +2,8 @@ package com.comunidapp.app.ui.screens.adoptions
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -35,11 +37,12 @@ internal fun AdoptionTriChips(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun HousingKindChips(value: HousingKind?, onChange: (HousingKind?) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Tipo de vivienda", style = LeoCaption)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LeoFilterChip("Casa", value == HousingKind.HOUSE, onClick = { onChange(HousingKind.HOUSE) })
             LeoFilterChip("Departamento", value == HousingKind.APARTMENT, onClick = { onChange(HousingKind.APARTMENT) })
             LeoFilterChip("Otra", value == HousingKind.OTHER, onClick = { onChange(HousingKind.OTHER) })
@@ -48,11 +51,12 @@ internal fun HousingKindChips(value: HousingKind?, onChange: (HousingKind?) -> U
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun HousingTenureChips(value: HousingTenure?, onChange: (HousingTenure?) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Tenencia", style = LeoCaption)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LeoFilterChip("Propia", value == HousingTenure.OWN, onClick = { onChange(HousingTenure.OWN) })
             LeoFilterChip("Alquilada", value == HousingTenure.RENT, onClick = { onChange(HousingTenure.RENT) })
             LeoFilterChip("No sé", value == null, onClick = { onChange(null) })
@@ -60,6 +64,7 @@ internal fun HousingTenureChips(value: HousingTenure?, onChange: (HousingTenure?
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun ExperienceBandChips(
     value: ExperienceBand?,
@@ -68,7 +73,7 @@ internal fun ExperienceBandChips(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(title, style = LeoCaption)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LeoFilterChip("Sin experiencia", value == ExperienceBand.NONE, onClick = { onChange(ExperienceBand.NONE) })
             LeoFilterChip("Con experiencia", value == ExperienceBand.SOME, onClick = { onChange(ExperienceBand.SOME) })
             LeoFilterChip("Cuidados especiales", value == ExperienceBand.SPECIAL_CARE, onClick = { onChange(ExperienceBand.SPECIAL_CARE) })
@@ -77,6 +82,7 @@ internal fun ExperienceBandChips(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun HoursAloneChips(
     title: String,
@@ -86,7 +92,7 @@ internal fun HoursAloneChips(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(title, style = LeoCaption)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LeoFilterChip("Menos de 4 h", value == HoursAloneEstimate.UNDER_4, onClick = { onChange(HoursAloneEstimate.UNDER_4) })
             LeoFilterChip("4 a 8 h", value == HoursAloneEstimate.FROM_4_TO_8, onClick = { onChange(HoursAloneEstimate.FROM_4_TO_8) })
             LeoFilterChip("Más de 8 h", value == HoursAloneEstimate.OVER_8, onClick = { onChange(HoursAloneEstimate.OVER_8) })
@@ -99,24 +105,29 @@ internal fun HoursAloneChips(
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun SpeciesPrefChips(value: AdopterSpeciesPref?, onChange: (AdopterSpeciesPref?) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Especie", style = LeoCaption)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LeoFilterChip("Perro", value == AdopterSpeciesPref.DOG, onClick = { onChange(AdopterSpeciesPref.DOG) })
             LeoFilterChip("Gato", value == AdopterSpeciesPref.CAT, onClick = { onChange(AdopterSpeciesPref.CAT) })
-            LeoFilterChip("Cualquiera", value == AdopterSpeciesPref.ANY, onClick = { onChange(AdopterSpeciesPref.ANY) })
-            LeoFilterChip("Sin preferencia", value == null, onClick = { onChange(null) })
+            LeoFilterChip(
+                "Sin preferencia",
+                value == null || value == AdopterSpeciesPref.ANY,
+                onClick = { onChange(null) }
+            )
         }
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun SizePrefChips(value: AdopterSizePref?, onChange: (AdopterSizePref?) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Tamaño", style = LeoCaption)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LeoFilterChip("Pequeño", value == AdopterSizePref.SMALL, onClick = { onChange(AdopterSizePref.SMALL) })
             LeoFilterChip("Mediano", value == AdopterSizePref.MEDIUM, onClick = { onChange(AdopterSizePref.MEDIUM) })
             LeoFilterChip("Grande", value == AdopterSizePref.LARGE, onClick = { onChange(AdopterSizePref.LARGE) })
@@ -204,11 +215,12 @@ internal fun AdoptionRequirementFields(
     )
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun LifeStagePrefChips(value: AdopterLifeStagePref?, onChange: (AdopterLifeStagePref?) -> Unit) {
     Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text("Etapa de vida", style = LeoCaption)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             LeoFilterChip("Cachorro", value == AdopterLifeStagePref.YOUNG, onClick = { onChange(AdopterLifeStagePref.YOUNG) })
             LeoFilterChip("Adulto", value == AdopterLifeStagePref.ADULT, onClick = { onChange(AdopterLifeStagePref.ADULT) })
             LeoFilterChip("Mayor", value == AdopterLifeStagePref.SENIOR, onClick = { onChange(AdopterLifeStagePref.SENIOR) })

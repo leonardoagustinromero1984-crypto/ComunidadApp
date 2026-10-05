@@ -72,7 +72,15 @@ object UserProfileMapper {
             locationText = if (showLocation) profile.locationText else null,
             city = if (showLocation) profile.city else null,
             province = if (showLocation) profile.province else null,
-            countryCode = if (showLocation) profile.countryCode else null
+            countryCode = if (showLocation) profile.countryCode else null,
+            phone = if (
+                profile.privacy.showPhone &&
+                profile.privacy.profileVisibility != ProfileVisibility.PRIVATE
+            ) {
+                profile.phone
+            } else {
+                null
+            }
         )
     }
 

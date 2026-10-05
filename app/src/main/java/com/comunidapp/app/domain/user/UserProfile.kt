@@ -45,7 +45,8 @@ data class PublicUserProfile(
     val locationText: String? = null,
     val city: String? = null,
     val province: String? = null,
-    val countryCode: String? = null
+    val countryCode: String? = null,
+    val phone: String? = null
 )
 
 enum class ProfileSetupStatus {
@@ -109,5 +110,6 @@ data class UpdateMyProfileCommand(
     val homeLocalityId: String? = null,
     val locale: String? = null,
     val timezone: String? = null,
-    val avatarPath: String? = null
+    val avatarPath: String? = null,
+    val phone: String? = null
 )

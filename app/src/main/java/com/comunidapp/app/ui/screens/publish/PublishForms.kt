@@ -504,23 +504,23 @@ fun PublishLostFoundScreen(
     onCreateMinimalPet: () -> Unit = {},
     viewModel: PublishViewModel = viewModel()
 ) {
+    val restoredDraft = remember { com.comunidapp.app.domain.pets.LostReportDraftStore.peek() }
     var type by remember { mutableStateOf(initialType) }
-    var petName by remember { mutableStateOf("") }
-    var species by remember { mutableStateOf(PetSpecies.DOG) }
-    var location by remember { mutableStateOf("") }
-    var description by remember { mutableStateOf("") }
-    var contactInfo by remember { mutableStateOf("") }
+    var petName by remember { mutableStateOf(restoredDraft?.petName.orEmpty()) }
+    var species by remember {
+        mutableStateOf(
+            restoredDraft?.speciesName?.let { runCatching { PetSpecies.valueOf(it) }.getOrNull() } ?: PetSpecies.DOG
+        )
+    }
+    var location by remember { mutableStateOf(restoredDraft?.location.orEmpty()) }
+    var description by remember { mutableStateOf(restoredDraft?.description.orEmpty()) }
+    var contactInfo by remember { mutableStateOf(restoredDraft?.contactInfo.orEmpty()) }
     var imageUri by remember { mutableStateOf<android.net.Uri?>(null) }
     var boundPetId by remember { mutableStateOf(prefillPetId) }
     var existingPhotoUrl by remember { mutableStateOf<String?>(null) }
     var existingAvatarAssetId by remember { mutableStateOf<String?>(null) }
     var pin by remember { mutableStateOf<com.comunidapp.app.domain.map.LeoVerGeoPoint?>(null) }
     val context = androidx.compose.ui.platform.LocalContext.current
-    var showLocationIntro by remember {
-        mutableStateOf(
-            !com.comunidapp.app.domain.location.ForegroundLocation.hasForegroundPermission(context)
-        )
-    }
     var foundSex by remember { mutableStateOf(PetSex.UNKNOWN) }
     var foundSize by remember { mutableStateOf<PetSize?>(null) }
     var estimatedAgeYears by remember { mutableStateOf("") }
@@ -568,6 +568,14 @@ fun PublishLostFoundScreen(
         }
     }
     LaunchedEffect(lostPets, type) {
+        val known = com.comunidapp.app.domain.pets.LostReportDraftStore.current?.knownPetIds
+        if (type == LostFoundType.LOST && known != null) {
+            val created = lostPets.firstOrNull { it.id !in known }
+            if (created != null) {
+                applyLostSelection(created)
+                return@LaunchedEffect
+            }
+        }
         if (type != LostFoundType.LOST || !boundPetId.isNullOrBlank()) return@LaunchedEffect
         val only = lostPets.singleOrNull() ?: return@LaunchedEffect
         applyLostSelection(only)
@@ -667,7 +675,20 @@ fun PublishLostFoundScreen(
             }
             LeoOutlinedButton(
                 text = "Cargar mascota perdida",
-                onClick = onCreateMinimalPet
+                onClick = {
+                    com.comunidapp.app.domain.pets.LostReportDraftStore.capture(
+                        com.comunidapp.app.domain.pets.LostReportDraft(
+                            typeName = type.name,
+                            petName = petName,
+                            speciesName = species.name,
+                            location = location,
+                            description = description,
+                            contactInfo = contactInfo,
+                            knownPetIds = lostPets.map { it.id }.toSet()
+                        )
+                    )
+                    onCreateMinimalPet()
+                }
             )
         } else {
             Text(
@@ -692,12 +713,6 @@ fun PublishLostFoundScreen(
             label = if (type == LostFoundType.LOST) "Nombre" else "Nombre (si se conoce)",
             imeAction = ImeAction.Next
         )
-        if (showLocationIntro && pin == null) {
-            com.comunidapp.app.ui.screens.location.LocationPermissionOnboarding(
-                onGranted = { showLocationIntro = false },
-                onContinueWithout = { showLocationIntro = false }
-            )
-        }
         com.comunidapp.app.ui.screens.location.LocationPinPicker(
             selected = pin,
             onSelected = { point ->

@@ -12,6 +12,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -109,6 +110,9 @@ fun AdoptionSearchScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val filters by viewModel.filters.collectAsState()
+    LaunchedEffect(Unit) {
+        viewModel.setOrganization(com.comunidapp.app.domain.organization.OrganizationListContext.organizationId)
+    }
     var filtersOpen by remember { mutableStateOf(false) }
     var draftLocation by remember { mutableStateOf("") }
     var draftSex by remember { mutableStateOf<PetSex?>(null) }
@@ -178,7 +182,7 @@ fun AdoptionSearchScreen(
                 )
                 Text("Sexo", style = LeoCaption)
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(LeoDimens.SpaceS)) {
-                    PetSex.entries.forEach { sex ->
+                    listOf(PetSex.MALE, PetSex.FEMALE).forEach { sex ->
                         LeoFilterChip(
                             label = sex.toDisplayName(),
                             selected = draftSex == sex,

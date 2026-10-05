@@ -306,7 +306,7 @@ fun M17VolunteerListScreen(
 private fun VolunteerOpportunityRow(opp: M17PublicVolunteerOpportunity, onClick: () -> Unit) {
     val slots = CommunityHelpPresentation.slotsLine(opp.slotsFilled, opp.slotsNeeded)
     LeoListRow(
-        title = opp.title,
+        title = CommunityHelpPresentation.volunteerTitle(opp.title),
         subtitle = buildString {
             append(opp.organizationDisplayName)
             append(" · ")

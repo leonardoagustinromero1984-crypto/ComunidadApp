@@ -32,10 +32,9 @@ object MockUserStore {
         return allUsers()
             .filter { it.id != excludeUserId }
             .filter {
-                it.name.lowercase().contains(normalized) ||
-                    it.displayName?.lowercase()?.contains(normalized) == true ||
-                    it.username?.lowercase()?.contains(normalized) == true ||
-                    it.locationText?.lowercase()?.contains(normalized) == true
+                val matcher = com.comunidapp.app.domain.user.PersonSearchMatcher
+                matcher.matches(normalized, it.name, it.username, it.email, it.city ?: it.locationText) ||
+                    matcher.matches(normalized, it.displayName, it.username, it.email, it.city ?: it.locationText)
             }
             .sortedBy { it.resolvedDisplayName }
     }

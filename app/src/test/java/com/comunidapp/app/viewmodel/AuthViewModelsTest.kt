@@ -111,16 +111,30 @@ class AuthViewModelsTest {
         vm.register()
         advanceUntilIdle()
         assertNull(vm.uiState.value.registeredEmail)
-        assertTrue(vm.uiState.value.fieldErrors.containsKey("password") || vm.uiState.value.errorMessage != null)
+        assertFalse(vm.uiState.value.canSubmit)
     }
 
     @Test
     fun register_password_mismatch() = runTest(dispatcher) {
         val vm = RegisterViewModel(repo, userRepo)
         fillValidForm(vm, "ana4@email.com", "ana_lopez4", password = "password1", confirm = "password2")
+        assertFalse(vm.uiState.value.canSubmit)
         vm.register()
         advanceUntilIdle()
         assertNull(vm.uiState.value.registeredEmail)
+    }
+
+    @Test
+    fun register_reenables_submit_as_soon_as_confirmation_matches() = runTest(dispatcher) {
+        val vm = RegisterViewModel(repo, userRepo)
+        fillValidForm(vm, "ana4b@email.com", "ana_lopez4b", password = "password1", confirm = "password2")
+        assertFalse(vm.uiState.value.canSubmit)
+        vm.register()
+        advanceUntilIdle()
+        assertFalse(vm.uiState.value.canSubmit)
+        vm.onConfirmPasswordChange("password1")
+        assertTrue(vm.uiState.value.fieldErrors.isEmpty())
+        assertTrue(vm.uiState.value.canSubmit)
     }
 
     @Test

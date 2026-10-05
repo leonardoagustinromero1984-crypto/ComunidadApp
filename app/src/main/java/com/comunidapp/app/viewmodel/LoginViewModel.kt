@@ -341,6 +341,7 @@ data class RegisterUiState(
             email.isNotBlank() &&
             password.isNotBlank() &&
             confirmPassword.isNotBlank() &&
+            AuthValidators.validatePasswordConfirmation(password, confirmPassword).isSuccess &&
             acceptedTerms &&
             acceptedPrivacy &&
             fieldErrors.isEmpty()
@@ -416,20 +417,18 @@ class RegisterViewModel(
     }
 
     fun onPasswordChange(password: String) {
-        _uiState.update {
-            it.copy(password = password, errorMessage = null, fieldErrors = it.fieldErrors - "password")
-        }
+        _uiState.update { clearPasswordMismatch(it.copy(password = password)) }
     }
 
     fun onConfirmPasswordChange(confirmPassword: String) {
-        _uiState.update {
-            it.copy(
-                confirmPassword = confirmPassword,
-                errorMessage = null,
-                fieldErrors = it.fieldErrors - "confirmPassword"
-            )
-        }
+        _uiState.update { clearPasswordMismatch(it.copy(confirmPassword = confirmPassword)) }
     }
+
+    private fun clearPasswordMismatch(state: RegisterUiState): RegisterUiState =
+        state.copy(
+            errorMessage = null,
+            fieldErrors = state.fieldErrors - "password" - "confirmPassword"
+        )
 
     fun onAcceptedTermsChange(accepted: Boolean) {
         _uiState.update {

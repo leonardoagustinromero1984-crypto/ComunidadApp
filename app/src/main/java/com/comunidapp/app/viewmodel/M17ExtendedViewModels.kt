@@ -25,7 +25,8 @@ sealed class M17InKindListUiState {
 }
 
 class M17InKindListViewModel(
-    private val repository: M17InKindRepository = DataProvider.m17InKindRepository
+    private val repository: M17InKindRepository = DataProvider.m17InKindRepository,
+    private val organizationId: String? = null
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<M17InKindListUiState>(M17InKindListUiState.Loading)
     val uiState: StateFlow<M17InKindListUiState> = _uiState.asStateFlow()
@@ -35,7 +36,7 @@ class M17InKindListViewModel(
     fun load() {
         viewModelScope.launch {
             _uiState.value = M17InKindListUiState.Loading
-            repository.searchPublicNeeds(M17InKindSearchFilter())
+            repository.searchPublicNeeds(M17InKindSearchFilter(organizationId = organizationId))
                 .onSuccess { list ->
                     _uiState.value = if (list.isEmpty()) M17InKindListUiState.Empty
                     else M17InKindListUiState.Content(list)
@@ -52,7 +53,9 @@ class M17InKindListViewModel(
         fun factory() = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                M17InKindListViewModel() as T
+                M17InKindListViewModel(
+                    organizationId = com.comunidapp.app.domain.organization.OrganizationListContext.organizationId
+                ) as T
         }
     }
 }
@@ -65,7 +68,8 @@ sealed class M17VolunteerListUiState {
 }
 
 class M17VolunteerListViewModel(
-    private val repository: M17VolunteerRepository = DataProvider.m17VolunteerRepository
+    private val repository: M17VolunteerRepository = DataProvider.m17VolunteerRepository,
+    private val organizationId: String? = null
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<M17VolunteerListUiState>(M17VolunteerListUiState.Loading)
     val uiState: StateFlow<M17VolunteerListUiState> = _uiState.asStateFlow()
@@ -75,7 +79,9 @@ class M17VolunteerListViewModel(
     fun load() {
         viewModelScope.launch {
             _uiState.value = M17VolunteerListUiState.Loading
-            repository.searchPublicOpportunities(M17VolunteerSearchFilter())
+            repository.searchPublicOpportunities(
+                M17VolunteerSearchFilter(organizationId = organizationId)
+            )
                 .onSuccess { list ->
                     _uiState.value = if (list.isEmpty()) M17VolunteerListUiState.Empty
                     else M17VolunteerListUiState.Content(list)
@@ -92,7 +98,9 @@ class M17VolunteerListViewModel(
         fun factory() = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                M17VolunteerListViewModel() as T
+                M17VolunteerListViewModel(
+                    organizationId = com.comunidapp.app.domain.organization.OrganizationListContext.organizationId
+                ) as T
         }
     }
 }

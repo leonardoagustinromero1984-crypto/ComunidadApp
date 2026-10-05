@@ -443,6 +443,7 @@ fun M14PassportHistoryScreen(
     )
 ) {
     val items by viewModel.items.collectAsState()
+    val shown = com.comunidapp.app.domain.vitacora.VitaCoraHistoryDuplicates.collapse(items)
     val message by viewModel.message.collectAsState()
     val remotePending by viewModel.remotePending.collectAsState()
     Scaffold(
@@ -470,13 +471,13 @@ fun M14PassportHistoryScreen(
             )
             Spacer(Modifier.height(12.dp))
             when {
-                items.isEmpty() && message != null -> ErrorState(message = message!!)
-                items.isEmpty() -> EmptyState(
+                shown.isEmpty() && message != null -> ErrorState(message = message!!)
+                shown.isEmpty() -> EmptyState(
                     title = "Sin historial",
                     message = "Todavía no hay eventos registrados para esta VitaCora."
                 )
                 else -> LazyColumn {
-                    items(items, key = { it.id }) { h ->
+                    items(shown, key = { it.id }) { h ->
                         val destination = h.destination
                         Column(
                             modifier = Modifier

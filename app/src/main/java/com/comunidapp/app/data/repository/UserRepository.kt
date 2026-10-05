@@ -285,7 +285,8 @@ class MockUserRepository : UserRepository {
             locationText = listOfNotNull(
                 command.city?.trim()?.ifBlank { null } ?: existing.city,
                 command.province?.trim()?.ifBlank { null } ?: existing.province
-            ).joinToString(", ").ifBlank { existing.locationText }
+            ).joinToString(", ").ifBlank { existing.locationText },
+            phone = if (command.phone == null) existing.phone else command.phone.trim().ifBlank { null }
         )
         MockUserStore.upsert(updated)
         return getOwnProfile(userId)

@@ -403,7 +403,7 @@ fun LostFoundCard(
             Text(text = age, style = LeoCaption, color = BrandTextSecondary)
         }
         Text(
-            text = "Por: ${post.authorName} · ${post.date}",
+            text = "Por: ${post.authorName} · ${com.comunidapp.app.domain.lostfound.LostFoundWhenLabel.of(post.date)}",
             style = LeoCaption,
             color = BrandTextSecondary
         )
@@ -439,16 +439,11 @@ fun LostFoundCard(
                 verticalArrangement = Arrangement.spacedBy(LeoDimens.SpaceSm)
             ) {
                 onOpenMap?.let { open ->
-                    LeoOutlinedButton(text = "Abrir en mapa", onClick = open)
+                    LeoOutlinedButton(text = "Ver en mapa", onClick = open)
                 }
-                onReportSighting?.let { report ->
-                    LeoOutlinedButton(text = "Avistamiento rápido", onClick = report)
-                }
-                onOpenM13StructuredSighting?.let { open ->
-                    LeoOutlinedButton(text = "Registrar avistamiento", onClick = open)
-                }
-                onOpenM13Matches?.let { open ->
-                    LeoOutlinedButton(text = "Coincidencias", onClick = open)
+                val contribute = onOpenM13StructuredSighting ?: onReportSighting
+                contribute?.let { open ->
+                    LeoOutlinedButton(text = "Aportar información", onClick = open)
                 }
                 onMarkResolved?.let { resolve ->
                     LeoPrimaryButton(text = "Marcar resuelta", onClick = resolve)

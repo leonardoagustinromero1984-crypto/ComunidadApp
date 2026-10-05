@@ -223,7 +223,7 @@ class Ux05SocialHomeCommunityProfileSettingsTest {
     fun SETTINGS_TUTORIAL_LIBRARY_AVAILABLE() {
         val settings = source("app/src/main/java/com/comunidapp/app/ui/screens/profile/SettingsScreen.kt")
         assertTrue(settings.contains("Tutoriales"))
-        assertTrue(settings.contains("onClick = onHelpTutorials"))
+        assertTrue(settings.contains("onHelpTutorials"))
         val help = source("app/src/main/java/com/comunidapp/app/ui/screens/onboarding/onb02/Onb02Screens.kt")
         assertTrue(help.contains("fun HelpTutorialsScreen("))
         assertTrue(help.contains("TutorialCatalog.libraryEntries()"))

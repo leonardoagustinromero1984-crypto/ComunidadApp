@@ -65,8 +65,9 @@ class UiVisualSystem17B10Test {
         val shelters = source("app/src/main/java/com/comunidapp/app/ui/screens/m16/M16ShelterScreens.kt")
         val shelterFilters = shelters.substringAfter("fun M16ListFilterRow").substringBefore("fun M16PublicShelterCard")
         assertTrue(shelterFilters.contains("Perros"))
-        assertTrue(shelterFilters.contains("visibleLabel()"))
-        assertTrue(shelterFilters.contains("Organizaciones verificadas"))
+        assertTrue(shelterFilters.contains("Localidad o zona"))
+        assertTrue(shelterFilters.contains("Solo organizaciones verificadas"))
+        assertFalse(shelterFilters.contains("Actividad"))
         assertFalse(shelterFilters.contains("Estado operativo"))
         assertFalse(shelterFilters.contains("UNVERIFIED_OR_PENDING"))
     }

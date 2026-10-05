@@ -78,7 +78,7 @@ class AdoptionMatching17B6Test {
         val empty = AdopterProfile()
         assertFalse(empty.isComplete)
         assertTrue(empty.isStructurallyEmpty)
-        assertTrue(AdopterProfileCompleteness.saveFeedback(empty).contains("incompleto"))
+        assertEquals("Perfil de adopción guardado.", AdopterProfileCompleteness.saveFeedback(empty))
         assertFalse(AdopterProfileCompleteness.saveFeedback(empty).contains("Perfil completo guardado"))
         val partial = AdopterProfile(householdAgrees = true, hasDogs = null, landlordAllowsPets = null)
         assertFalse(partial.isComplete)
@@ -98,7 +98,7 @@ class AdoptionMatching17B6Test {
         assertEquals("true", body["p_household_agrees"]?.toString())
         val complete = filledProfile()
         assertTrue(complete.isComplete)
-        assertTrue(AdopterProfileCompleteness.saveFeedback(complete).startsWith("Perfil completo"))
+        assertEquals("Perfil de adopción guardado.", AdopterProfileCompleteness.saveFeedback(complete))
         val notesOnly = AdopterProfile(notes = "Nada más")
         assertFalse(notesOnly.isComplete)
     }

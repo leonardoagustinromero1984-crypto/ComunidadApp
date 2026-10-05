@@ -256,7 +256,7 @@ fun M14PetPassportScreen(
                     description = if (historyPreview.isEmpty()) {
                         "Todavía no hay eventos recientes."
                     } else {
-                        historyPreview.joinToString("\n") { item ->
+                        com.comunidapp.app.domain.vitacora.VitaCoraHistoryDuplicates.collapse(historyPreview).joinToString("\n") { item ->
                             "• ${VitaCoraHistoryPresentation.titleFor(item)}"
                         }
                     },
