@@ -107,7 +107,13 @@ fun Onb02HostScreen(
 
     LaunchedEffect(ui.phase) {
         if (ui.phase == Onb02Phase.DONE) {
-            onFinished(viewModel.setupRouteAfterTutorials())
+            val route = viewModel.setupRouteAfterTutorials()
+            val finished = if (kind == Onb02FlowKind.ADD_FUNCTION_LATER && route.isNullOrBlank()) {
+                com.comunidapp.app.navigation.NavRoutes.HOME
+            } else {
+                route
+            }
+            onFinished(finished)
         }
     }
 

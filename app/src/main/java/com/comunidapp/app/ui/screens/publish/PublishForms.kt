@@ -521,7 +521,7 @@ fun PublishLostFoundScreen(
     var imageUri by remember {
         mutableStateOf(restoredDraft?.imageUri?.let { android.net.Uri.parse(it) })
     }
-    var boundPetId by remember { mutableStateOf(prefillPetId) }
+    var boundPetId by remember { mutableStateOf(restoredDraft?.boundPetId ?: prefillPetId) }
     var existingPhotoUrl by remember { mutableStateOf<String?>(null) }
     var existingAvatarAssetId by remember { mutableStateOf<String?>(null) }
     var pin by remember {
@@ -543,6 +543,14 @@ fun PublishLostFoundScreen(
         mutableStateOf(restoredDraft?.foundSizeName?.let { runCatching { PetSize.valueOf(it) }.getOrNull() })
     }
     var estimatedAgeYears by remember { mutableStateOf(restoredDraft?.estimatedAgeYears.orEmpty()) }
+    var notes by remember { mutableStateOf(restoredDraft?.notes.orEmpty()) }
+    val initialMoment = restoredDraft?.occurredAtEpochMs ?: System.currentTimeMillis()
+    var occurredDate by remember {
+        mutableStateOf(com.comunidapp.app.domain.lostfound.IncidentMoment.dateText(initialMoment))
+    }
+    var occurredTime by remember {
+        mutableStateOf(com.comunidapp.app.domain.lostfound.IncidentMoment.timeText(initialMoment))
+    }
     val myPets by DataProvider.petRepository.observePets().collectAsState()
     val lostPets = remember(myPets) {
         com.comunidapp.app.domain.pets.LostPetSelector.selectable(myPets)
@@ -567,7 +575,14 @@ fun PublishLostFoundScreen(
         longitude = pin?.longitude,
         foundSexName = foundSex.name,
         foundSizeName = foundSize?.name,
-        estimatedAgeYears = estimatedAgeYears
+        estimatedAgeYears = estimatedAgeYears,
+        boundPetId = boundPetId,
+        occurredAtEpochMs = com.comunidapp.app.domain.lostfound.IncidentMoment.combine(
+            occurredDate,
+            occurredTime,
+            initialMoment
+        ),
+        notes = notes
     )
     LaunchedEffect(imageUri) {
         val raw = imageUri?.toString()
@@ -582,7 +597,7 @@ fun PublishLostFoundScreen(
     }
     LaunchedEffect(
         type, petName, species, location, description, contactInfo, imageUri,
-        pin, foundSex, foundSize, estimatedAgeYears
+        pin, foundSex, foundSize, estimatedAgeYears, boundPetId, notes, occurredDate, occurredTime
     ) {
         draftViewModel.write(currentDraft())
     }
@@ -654,7 +669,7 @@ fun PublishLostFoundScreen(
                 petName,
                 species,
                 location,
-                description,
+                listOf(description, notes).map { it.trim() }.filter { it.isNotEmpty() }.joinToString("\n"),
                 contactInfo,
                 imageUri,
                 petId = boundPetId,
@@ -670,7 +685,12 @@ fun PublishLostFoundScreen(
                     )
                 } else {
                     null
-                }
+                },
+                occurredAtEpochMs = com.comunidapp.app.domain.lostfound.IncidentMoment.combine(
+                    occurredDate,
+                    occurredTime,
+                    initialMoment
+                )
             )
         },
         viewModel = viewModel
@@ -799,6 +819,27 @@ fun PublishLostFoundScreen(
             singleLine = false,
             minLines = 3,
             maxLines = 6,
+            imeAction = ImeAction.Default
+        )
+        V2FormTextField(
+            value = occurredDate,
+            onValueChange = { occurredDate = it },
+            label = "Fecha del hecho",
+            imeAction = ImeAction.Next
+        )
+        V2FormTextField(
+            value = occurredTime,
+            onValueChange = { occurredTime = it },
+            label = "Hora del hecho",
+            imeAction = ImeAction.Next
+        )
+        V2FormTextField(
+            value = notes,
+            onValueChange = { notes = it },
+            label = "Observaciones",
+            singleLine = false,
+            minLines = 2,
+            maxLines = 4,
             imeAction = ImeAction.Default
         )
         V2FormTextField(

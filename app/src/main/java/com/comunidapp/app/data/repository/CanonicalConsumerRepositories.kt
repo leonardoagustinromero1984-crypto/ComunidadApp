@@ -553,6 +553,8 @@ class CanonicalAdoptionRepository(
     override fun observePublishedAdoptions(): Flow<List<AdoptionPost>> =
         posts.state.map { list -> list.filter { it.status == AdoptionStatus.PUBLISHED } }
 
+    override suspend fun refreshPublished(): Result<Unit> = runCatching { refresh() }
+
     override fun observeMyAdoptions(publisherId: String): Flow<List<AdoptionPost>> =
         posts.state.map { list ->
             if (publisherId.isBlank()) list else list.filter { it.publisherId == publisherId }

@@ -227,7 +227,13 @@ class PhysicalQa17B12Test {
             knownPetIds = setOf("old"),
             imageUri = "content://photo",
             latitude = -34.6,
-            longitude = -58.4
+            longitude = -58.4,
+            foundSexName = "FEMALE",
+            foundSizeName = "SMALL",
+            estimatedAgeYears = "3",
+            boundPetId = "pet-luna",
+            occurredAtEpochMs = 1_700_000_000_000,
+            notes = "Collar rojo extra"
         )
         val encoded = LostReportDraftCodec.encode(draft)
         val handle = SavedStateHandle(mapOf(LostReportFormViewModel.KEY to encoded))
@@ -237,6 +243,12 @@ class PhysicalQa17B12Test {
         assertEquals(-34.6, restored.read()?.latitude)
         assertEquals(setOf("old"), restored.read()?.knownPetIds)
         assertEquals("Collar rojo", restored.read()?.description)
+        assertEquals("pet-luna", restored.read()?.boundPetId)
+        assertEquals(1_700_000_000_000, restored.read()?.occurredAtEpochMs)
+        assertEquals("FEMALE", restored.read()?.foundSexName)
+        assertEquals("SMALL", restored.read()?.foundSizeName)
+        assertEquals("3", restored.read()?.estimatedAgeYears)
+        assertEquals("Collar rojo extra", restored.read()?.notes)
         restored.clear()
         assertNull(LostReportFormViewModel(handle).read())
         val again = LostReportFormViewModel(SavedStateHandle())
@@ -245,6 +257,8 @@ class PhysicalQa17B12Test {
             SavedStateHandle(mapOf(LostReportFormViewModel.KEY to again.read().let { LostReportDraftCodec.encode(it!!) }))
         )
         assertEquals(draft.contactInfo, survived.read()?.contactInfo)
+        assertEquals("pet-luna", survived.read()?.boundPetId)
+        assertEquals(1_700_000_000_000, survived.read()?.occurredAtEpochMs)
         survived.clear()
         assertNull(survived.read())
     }

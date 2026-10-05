@@ -87,6 +87,15 @@ class AdoptionsViewModel(
         viewModelScope.launch {
             _loading.value = true
             _loadError.value = null
+            val reloaded = runCatching { adoptionRepository.refreshPublished().getOrThrow() }
+            if (reloaded.isFailure) {
+                published.value = emptyList()
+                _loadError.value = M09AdoptionErrorMapper.userMessage(
+                    M09AdoptionErrorMapper.codeOf(reloaded.exceptionOrNull() ?: IllegalStateException("ADOPTION_REFRESH_FAILED"))
+                )
+                _loading.value = false
+                return@launch
+            }
             try {
                 adoptionRepository.observePublishedAdoptions()
                     .catch { e ->

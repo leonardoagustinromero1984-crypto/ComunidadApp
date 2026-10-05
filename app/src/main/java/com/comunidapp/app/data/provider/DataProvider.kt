@@ -1162,7 +1162,7 @@ object DataProvider {
     private val m17ExtendedStore by lazy { M17ExtendedMemoryStore() }
 
     val m17InKindRepository: M17InKindRepository by lazy {
-        if (useLegacyRemoteModules) {
+        if (useSupabase) {
             SupabaseM17InKindRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1179,7 +1179,7 @@ object DataProvider {
     }
 
     val m17VolunteerRepository: M17VolunteerRepository by lazy {
-        if (useLegacyRemoteModules) {
+        if (useSupabase) {
             SupabaseM17VolunteerRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )
@@ -1213,7 +1213,7 @@ object DataProvider {
     private val m17Authority by lazy { MockM17DonationAuthorityPolicy() }
 
     val m17DonationRepository: M17DonationRepository by lazy {
-        if (useLegacyRemoteModules) {
+        if (useSupabase) {
             SupabaseM17DonationRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
             )

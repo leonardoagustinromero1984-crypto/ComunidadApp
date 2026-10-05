@@ -152,6 +152,13 @@ fun M13SightingCreateScreen(
     var zone by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var mediaRef by remember { mutableStateOf("") }
+    val initialMoment = remember { System.currentTimeMillis() }
+    var observedDate by remember {
+        mutableStateOf(com.comunidapp.app.domain.lostfound.IncidentMoment.dateText(initialMoment))
+    }
+    var observedTime by remember {
+        mutableStateOf(com.comunidapp.app.domain.lostfound.IncidentMoment.timeText(initialMoment))
+    }
     val pickPhoto = rememberLeoVerPhotoSourcePicker(
         sheetTitle = "Foto del avistamiento",
         onSourceSelected = { uri -> mediaRef = uri.toString() }
@@ -197,6 +204,18 @@ fun M13SightingCreateScreen(
                 label = { Text("Descripción") },
                 modifier = Modifier.fillMaxWidth()
             )
+            OutlinedTextField(
+                value = observedDate,
+                onValueChange = { observedDate = it },
+                label = { Text("Fecha del avistamiento") },
+                modifier = Modifier.fillMaxWidth()
+            )
+            OutlinedTextField(
+                value = observedTime,
+                onValueChange = { observedTime = it },
+                label = { Text("Hora del avistamiento") },
+                modifier = Modifier.fillMaxWidth()
+            )
             LeoOutlinedButton(
                 text = if (mediaRef.isBlank()) "Agregar foto" else "Cambiar foto",
                 onClick = pickPhoto
@@ -215,7 +234,12 @@ fun M13SightingCreateScreen(
                         zoneText = zone,
                         description = description,
                         mediaRefs = mediaRef.trim().takeIf { it.isNotEmpty() }?.let { listOf(it) }
-                            .orEmpty()
+                            .orEmpty(),
+                        observedAt = com.comunidapp.app.domain.lostfound.IncidentMoment.combine(
+                            observedDate,
+                            observedTime,
+                            initialMoment
+                        )
                     )
                 },
                 enabled = !busy

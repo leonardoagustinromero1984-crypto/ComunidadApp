@@ -392,7 +392,7 @@ class EditProfileViewModel(
                 }
                 val privacy = userRepository.getPrivacySettings(state.userId).getOrNull()
                     ?: com.comunidapp.app.domain.user.UserPrivacySettings()
-                userRepository.updatePrivacySettings(
+                val privacySave = userRepository.updatePrivacySettings(
                     state.userId,
                     privacy.copy(
                         profileVisibility = if (state.profilePrivate) {
@@ -404,6 +404,16 @@ class EditProfileViewModel(
                         showPhone = state.showPhone
                     )
                 )
+                if (!com.comunidapp.app.domain.user.ProfilePrivacySave.saved(privacySave)) {
+                    _uiState.update {
+                        it.copy(
+                            isSaving = false,
+                            saveSuccess = false,
+                            errorMessage = com.comunidapp.app.domain.user.ProfilePrivacySave.failureMessage(privacySave)
+                        )
+                    }
+                    return@launch
+                }
                 if (state.profilePrivate != baseUser.profilePrivate) {
                     // Re-evaluate social surfaces; authorization is dynamic on read.
                     runCatching { DataProvider.feedRepository.refreshPosts() }

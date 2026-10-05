@@ -42,6 +42,12 @@ interface AdoptionRepository {
 
     /** Drops user-scoped adoption state. Does not refetch. */
     fun clearAccountCache() {}
+
+    /**
+     * Reloads the public adoption list before the screen filters it.
+     * Implementations without a remote list keep the stream they already observe.
+     */
+    suspend fun refreshPublished(): Result<Unit> = Result.success(Unit)
 }
 
 /**

@@ -474,7 +474,8 @@ class PublishViewModel(
         longitude: Double? = null,
         sex: PetSex? = null,
         size: PetSize? = null,
-        estimatedAgeMonths: Int? = null
+        estimatedAgeMonths: Int? = null,
+        occurredAtEpochMs: Long? = null
     ) {
         val missing = buildList {
             if (imageUri == null && !hasExistingPhoto) add("Foto")
@@ -504,7 +505,12 @@ class PublishViewModel(
                         }
                         return@launch
                     }
-                    val date = SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).format(Date())
+                    val moment = occurredAtEpochMs ?: System.currentTimeMillis()
+                    val date = com.comunidapp.app.domain.lostfound.IncidentMoment.stored(moment)
+                    val datedDescription = com.comunidapp.app.domain.lostfound.IncidentMoment.withNote(
+                        description.trim(),
+                        moment
+                    )
                     val seedPhoto = existingMediaAssetId?.trim()?.takeIf {
                         com.comunidapp.app.domain.lostfound.LostFoundCreatePayload.isMediaAssetId(it)
                     }
@@ -516,7 +522,7 @@ class PublishViewModel(
                         petName = com.comunidapp.app.domain.pets.PetDisplayName.persistableName(petName),
                         species = species,
                         location = location.trim(),
-                        description = description.trim(),
+                        description = datedDescription,
                         contactInfo = contactInfo.trim(),
                         date = date,
                         photoUrl = seedPhoto,

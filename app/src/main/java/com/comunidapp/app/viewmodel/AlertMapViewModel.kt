@@ -4,7 +4,6 @@ import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.comunidapp.app.data.model.LostFoundPost
-import com.comunidapp.app.data.model.LostFoundStatus
 import com.comunidapp.app.data.model.LostFoundType
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.provider.DataProvider
@@ -178,7 +177,9 @@ class AlertMapViewModel(
             AlertDateFilter.LAST_30_DAYS -> 30L * 24 * 60 * 60 * 1000
         }
         return all.asSequence()
-            .filter { it.status == LostFoundStatus.ACTIVE }
+            .filter {
+                com.comunidapp.app.domain.lostfound.PublicLostFoundFeed.include(it.status, it.createdAt)
+            }
             .filter {
                 when (state.typeFilter) {
                     AlertMapTypeFilter.ALL -> true

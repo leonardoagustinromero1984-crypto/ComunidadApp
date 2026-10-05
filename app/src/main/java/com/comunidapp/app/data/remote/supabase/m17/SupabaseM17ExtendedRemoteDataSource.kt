@@ -14,7 +14,11 @@ import com.comunidapp.app.data.model.M17VolunteerApplicationStatus
 import com.comunidapp.app.data.model.M17VolunteerOpportunityStatus
 import com.comunidapp.app.data.model.M17VolunteerOpportunityType
 import com.comunidapp.app.data.remote.supabase.supabase
+import com.comunidapp.app.domain.canonical.CanonicalBackend
 import com.comunidapp.app.domain.m17.MyGoodsPledge
+import com.comunidapp.app.domain.organization.CanonicalHelpRow
+import com.comunidapp.app.domain.organization.CanonicalPublicHelp
+import io.github.jan.supabase.postgrest.from
 import com.comunidapp.app.domain.m17.MyVolunteerInterest
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.json.Json
@@ -158,14 +162,16 @@ class SupabaseM17ExtendedRemoteDataSource {
         query: String? = null,
         category: String? = null,
         organizationId: String? = null
-    ): List<JsonObject> = decodeList(
-        "m17_list_public_in_kind_needs",
-        buildJsonObject {
-            put("p_query", query)
-            put("p_category", category)
-            put("p_organization_id", organizationId)
-        }
-    )
+    ): List<JsonObject> = runCatching {
+        decodeList<JsonObject>(
+            "m17_list_public_in_kind_needs",
+            buildJsonObject {
+                put("p_query", query)
+                put("p_category", category)
+                put("p_organization_id", organizationId)
+            }
+        )
+    }.getOrElse { canonicalInKind(organizationId) }
 
     suspend fun getPublicInKindNeed(needId: String): JsonObject = decodeOne(
         "m17_get_public_in_kind_need",
@@ -176,14 +182,70 @@ class SupabaseM17ExtendedRemoteDataSource {
         query: String? = null,
         type: String? = null,
         organizationId: String? = null
-    ): List<JsonObject> = decodeList(
-        "m17_list_public_volunteer_opportunities",
-        buildJsonObject {
-            put("p_query", query)
-            put("p_type", type)
-            put("p_organization_id", organizationId)
+    ): List<JsonObject> = runCatching {
+        decodeList<JsonObject>(
+            "m17_list_public_volunteer_opportunities",
+            buildJsonObject {
+                put("p_query", query)
+                put("p_type", type)
+                put("p_organization_id", organizationId)
+            }
+        )
+    }.getOrElse { canonicalVolunteer(organizationId) }
+
+    private suspend fun canonicalInKind(organizationId: String?): List<JsonObject> {
+        val campaigns = parseJsonObjectList(
+            supabase.postgrest.rpc(function = CanonicalBackend.RPC_LIST_DONATION_CAMPAIGNS).data
+        )
+        val orgByCampaign = campaigns.associate { row ->
+            row.string("id").orEmpty() to row.string("organization_id")
         }
-    )
+        val offers = parseJsonObjectList(supabase.from("in_kind_offers").select().data)
+        val rows = offers.map { offer ->
+            val org = orgByCampaign[offer.string("campaign_id").orEmpty()]
+            buildJsonObject {
+                put("id", offer.string("id").orEmpty())
+                put("title", offer.string("description").orEmpty())
+                put("description", offer.string("description").orEmpty())
+                put("status", "PUBLISHED")
+                put("category", "OTHER")
+                if (!org.isNullOrBlank()) put("organization_id", org)
+            }
+        }
+        return keepOrganization(organizationId, rows)
+    }
+
+    private suspend fun canonicalVolunteer(organizationId: String?): List<JsonObject> {
+        val events = parseJsonObjectList(
+            supabase.postgrest.rpc(function = CanonicalBackend.RPC_LIST_EVENTS).data
+        )
+        val rows = events.map { event ->
+            buildJsonObject {
+                put("id", event.string("id").orEmpty())
+                put("title", event.string("title").orEmpty())
+                put("description", event.string("title").orEmpty())
+                put("status", "PUBLISHED")
+                put("opportunity_type", "EVENTS")
+                event.string("organization_id")?.let { put("organization_id", it) }
+                put("slots_needed", 1)
+                put("slots_filled", 0)
+            }
+        }
+        return keepOrganization(organizationId, rows)
+    }
+
+    private fun keepOrganization(organizationId: String?, rows: List<JsonObject>): List<JsonObject> {
+        val visible = CanonicalPublicHelp.visible(
+            organizationId,
+            rows.map { row ->
+                CanonicalHelpRow(
+                    id = row.string("id").orEmpty(),
+                    organizationId = row.string("organization_id")
+                )
+            }
+        ).map { it.id }.toSet()
+        return rows.filter { it.string("id").orEmpty() in visible }
+    }
 
     suspend fun getPublicVolunteerOpportunity(opportunityId: String): JsonObject = decodeOne(
         "m17_get_public_volunteer_opportunity",

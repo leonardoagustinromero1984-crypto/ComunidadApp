@@ -25,7 +25,7 @@ data class LostFoundFilters(
     val type: LostFoundType? = null,
     val species: PetSpecies? = null,
     val location: String = "",
-    val status: LostFoundStatus? = LostFoundStatus.ACTIVE
+    val status: LostFoundStatus? = null
 )
 
 class LostFoundViewModel(
@@ -48,15 +48,18 @@ class LostFoundViewModel(
         _filters
     ) { allPosts, filters ->
         allPosts.filter { post ->
-            com.comunidapp.app.domain.lostfound.PublicAlertVisibility.visible(
-                active = true,
-                caseCreatedAtEpochMs = post.createdAt,
-                viewerAccountCreatedAtEpochMs = Long.MAX_VALUE
-            ) &&
-            (filters.type == null || post.type == filters.type) &&
+            val listed = when (filters.status) {
+                null, LostFoundStatus.ACTIVE ->
+                    com.comunidapp.app.domain.lostfound.PublicLostFoundFeed.include(
+                        post.status,
+                        post.createdAt
+                    )
+                else -> post.status == filters.status
+            }
+            listed &&
+                (filters.type == null || post.type == filters.type) &&
                 (filters.species == null || post.species == filters.species) &&
-                (filters.location.isBlank() || post.location.contains(filters.location, ignoreCase = true)) &&
-                (filters.status == null || post.status == filters.status)
+                (filters.location.isBlank() || post.location.contains(filters.location, ignoreCase = true))
         }
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 

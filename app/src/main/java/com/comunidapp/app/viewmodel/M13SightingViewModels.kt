@@ -84,7 +84,8 @@ class M13SightingCreateViewModel(
         size: PetSize? = null,
         latitudeApprox: Double? = null,
         longitudeApprox: Double? = null,
-        mediaRefs: List<String> = emptyList()
+        mediaRefs: List<String> = emptyList(),
+        observedAt: Long = System.currentTimeMillis()
     ) {
         if (_busy.value) return
         viewModelScope.launch {
@@ -97,7 +98,7 @@ class M13SightingCreateViewModel(
                     primaryColor = primaryColor,
                     sex = sex,
                     size = size,
-                    observedAt = System.currentTimeMillis(),
+                    observedAt = observedAt,
                     zoneText = zoneText,
                     latitudeApprox = latitudeApprox,
                     longitudeApprox = longitudeApprox,

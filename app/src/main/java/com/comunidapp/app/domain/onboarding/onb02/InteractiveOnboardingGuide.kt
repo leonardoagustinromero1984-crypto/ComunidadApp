@@ -81,6 +81,30 @@ object InteractiveOnboardingGuide {
     }
 }
 
+enum class TeachAddFunctionResult {
+    RETURN_TO_SETTINGS,
+    FINISH_ON_FEED
+}
+
+/**
+ * Back from the add-function step is not completion.
+ * A null finish route means Atrás: return to Settings and restore the spotlight.
+ * Only a real completion leaves the guide and opens the Feed.
+ */
+object TeachAddFunctionExit {
+    fun resolve(step: GuideStep, finishedRoute: String?): TeachAddFunctionResult? {
+        if (step != GuideStep.TEACH_ADD_FUNCTION) return null
+        return if (finishedRoute.isNullOrBlank()) {
+            TeachAddFunctionResult.RETURN_TO_SETTINGS
+        } else {
+            TeachAddFunctionResult.FINISH_ON_FEED
+        }
+    }
+
+    fun snapshotAfterBack(): GuideSnapshot =
+        GuideSnapshot(GuideStep.HIGHLIGHT_ADD_FUNCTION, completed = false)
+}
+
 enum class SecondaryScreenExit {
     POP_TO_ORIGIN,
     CONTINUE

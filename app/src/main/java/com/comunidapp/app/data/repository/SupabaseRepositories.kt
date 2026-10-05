@@ -220,12 +220,8 @@ class SupabaseAdoptionRepository(
         scope.launch { refreshPublished() }
     }
 
-    private suspend fun refreshPublished() {
-        try {
-            _posts.value = m09.listPublished().map { it.toAdoptionPost() }
-        } catch (_: Exception) {
-            // keep last known
-        }
+    override suspend fun refreshPublished(): Result<Unit> = runCatching {
+        _posts.value = m09.listPublished().map { it.toAdoptionPost() }
     }
 
     override fun observePublishedAdoptions(): Flow<List<AdoptionPost>> =

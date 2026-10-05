@@ -177,6 +177,21 @@ fun JsonObject.toM17CampaignFinancialSummary(): M17CampaignFinancialSummary =
         progressPercent = int("progress_percent")
     )
 
+internal fun canonicalCampaignFallback(params: JsonObject, rows: List<JsonObject>): List<JsonObject> {
+    val organizationId = (params["p_organization_id"] as? JsonPrimitive)?.contentOrNull
+        ?.takeIf { it.isNotBlank() && it != "null" }
+    val scoped = com.comunidapp.app.domain.organization.CanonicalPublicHelp.visible(
+        organizationId,
+        rows.map { row ->
+            com.comunidapp.app.domain.organization.CanonicalHelpRow(
+                id = row.string("id").orEmpty(),
+                organizationId = row.string("organization_id")
+            )
+        }
+    ).map { it.id }.toSet()
+    return rows.filter { it.string("id").orEmpty() in scoped }
+}
+
 fun JsonObject.toMyMoneyContribution(): MyMoneyContribution {
     val statusRaw = string("status") ?: "PENDING"
     val status = runCatching { M17ContributionStatus.valueOf(statusRaw) }
@@ -234,7 +249,12 @@ class SupabaseM17RemoteDataSource {
     suspend fun listPublic(params: JsonObject): List<JsonObject> =
         runCatching { decodeList<JsonObject>("m17_list_public_campaigns", params) }
             .getOrElse {
-                parseJsonObjectList(supabase.postgrest.rpc(function = "canon_list_donation_campaigns").data)
+                canonicalCampaignFallback(
+                    params,
+                    parseJsonObjectList(
+                        supabase.postgrest.rpc(function = "canon_list_donation_campaigns").data
+                    )
+                )
             }
 
     suspend fun getPublic(campaignId: String): JsonObject = runCatching {

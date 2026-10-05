@@ -22,7 +22,10 @@ data class LostReportDraft(
     val longitude: Double? = null,
     val foundSexName: String? = null,
     val foundSizeName: String? = null,
-    val estimatedAgeYears: String = ""
+    val estimatedAgeYears: String = "",
+    val boundPetId: String? = null,
+    val occurredAtEpochMs: Long? = null,
+    val notes: String = ""
 )
 
 object LostReportUriGrant {
@@ -45,7 +48,10 @@ object LostReportDraftCodec {
         draft.longitude?.toString().orEmpty(),
         draft.foundSexName.orEmpty(),
         draft.foundSizeName.orEmpty(),
-        draft.estimatedAgeYears
+        draft.estimatedAgeYears,
+        draft.boundPetId.orEmpty(),
+        draft.occurredAtEpochMs?.toString().orEmpty(),
+        draft.notes
     ).joinToString("\n") { URLEncoder.encode(it, utf8) }
 
     fun decode(raw: String?): LostReportDraft? {
@@ -65,7 +71,10 @@ object LostReportDraftCodec {
             longitude = parts[9].toDoubleOrNull(),
             foundSexName = parts[10].ifBlank { null },
             foundSizeName = parts[11].ifBlank { null },
-            estimatedAgeYears = parts[12]
+            estimatedAgeYears = parts[12],
+            boundPetId = parts.getOrNull(13)?.ifBlank { null },
+            occurredAtEpochMs = parts.getOrNull(14)?.toLongOrNull(),
+            notes = parts.getOrNull(15).orEmpty()
         )
     }
 }

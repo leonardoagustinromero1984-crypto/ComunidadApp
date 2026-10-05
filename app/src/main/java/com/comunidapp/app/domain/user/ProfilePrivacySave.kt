@@ -13,4 +13,11 @@ object ProfilePrivacySave {
         } else {
             Result.success(Unit)
         }
+
+    /** A failed privacy write must not be presented as a saved profile. */
+    fun saved(result: Result<Unit>): Boolean = result.isSuccess
+
+    fun failureMessage(result: Result<Unit>): String? =
+        result.exceptionOrNull()?.message?.takeIf { it.isNotBlank() }
+            ?: if (result.isFailure) "No se pudo guardar la privacidad" else null
 }

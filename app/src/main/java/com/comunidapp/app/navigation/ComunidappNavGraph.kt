@@ -889,8 +889,25 @@ private fun NavGraphBuilder.mainAppRoutes(
             kind = kind,
             onFinished = { setupRoute ->
                 val guide = com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.snapshot
+                val teachExit = com.comunidapp.app.domain.onboarding.onb02.TeachAddFunctionExit.resolve(
+                    guide.step,
+                    setupRoute
+                )
                 if (kind == Onb02FlowKind.ADD_FUNCTION_LATER &&
-                    guide.step == com.comunidapp.app.domain.onboarding.onb02.GuideStep.TEACH_ADD_FUNCTION
+                    teachExit == com.comunidapp.app.domain.onboarding.onb02.TeachAddFunctionResult.RETURN_TO_SETTINGS
+                ) {
+                    com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.save(
+                        guideContext,
+                        com.comunidapp.app.domain.onboarding.onb02.TeachAddFunctionExit.snapshotAfterBack()
+                    )
+                    com.comunidapp.app.ui.onboarding.AddFunctionSpotlight.request()
+                    if (!navController.popBackStack()) {
+                        navController.navigate(NavRoutes.SETTINGS) { launchSingleTop = true }
+                    }
+                    return@Onb02HostScreen
+                }
+                if (kind == Onb02FlowKind.ADD_FUNCTION_LATER &&
+                    teachExit == com.comunidapp.app.domain.onboarding.onb02.TeachAddFunctionResult.FINISH_ON_FEED
                 ) {
                     com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.save(
                         guideContext,
