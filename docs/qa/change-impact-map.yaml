@@ -95,6 +95,7 @@ mappings:
       - com.comunidapp.app.domain.lostfound.*
       - com.comunidapp.app.domain.location.*
       - com.comunidapp.app.domain.qa.PhysicalQa17AContractTest
+      - com.comunidapp.app.viewmodel.SightingPhotoContributeTest
     maestro_required: false
 
   - id: NOTIFICATIONS
@@ -190,6 +191,8 @@ mappings:
     paths:
       - infra/supabase-canonical/supabase/migrations/
       - app/src/main/java/com/comunidapp/app/domain/authorization/
+      - scripts/qa/bootstrap-staging-qa.ps1
+      - infra/supabase-canonical/qa/bootstrap_staging_qa_shelters.sql
     modules: [SECURITY]
     suites: [FAST]
     gradle_tests:
@@ -199,6 +202,7 @@ mappings:
       - com.comunidapp.app.domain.qa.CloudBaselineRepair02ContractTest
       - com.comunidapp.app.domain.qa.ProfessionalPrivateHistoryContractTest
       - com.comunidapp.app.domain.qa.CanonicalCommunityHelp17B12Test
+      - com.comunidapp.app.domain.qa.QaActorBootstrapContractTest
     maestro_required: false
 
   - id: UI_CONTRACT

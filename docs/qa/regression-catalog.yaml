@@ -544,6 +544,33 @@ rules:
     maestro_required: false
     reason: GPS real remains physical QA. These contracts cover the app-side order, payload, and recovery.
 
+  - id: REG-QA-BOOTSTRAP
+    module: QA_INFRA
+    rule: El bootstrap de STAGING crea o reutiliza QA01–QA16 y los refugios A/B sin cambiar contraseñas ni tocar personas reales.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/qa/QaActorBootstrapContractTest.kt, layer: contract }
+    suite: FAST
+    actors: [QA01, QA02, QA03, QA04, QA05, QA06, QA07, QA08, QA09, QA10, QA11, QA12, QA13, QA14, QA15, QA16]
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+    reason: Contract on the script and SQL. The bootstrap is not executed from the unit suite.
+
+  - id: REG-LOST-SIGHTING-PHOTO
+    module: LOST_FOUND
+    rule: Aportar información convierte content:// en m05:// o file_asset: antes de canon_contribute_lost_found_info y no publica si la foto no se registró.
+    tests:
+      - { file: app/src/test/java/com/comunidapp/app/domain/lostfound/SightingPhotoPublisherTest.kt, layer: unit }
+      - { file: app/src/test/java/com/comunidapp/app/viewmodel/SightingPhotoContributeTest.kt, layer: viewmodel }
+    suite: FAST
+    actors: []
+    status: COVERED
+    priority: P0
+    manual_required: false
+    maestro_required: false
+    reason: Unit and ViewModel contracts. Camera hardware stays manual.
+
   # ----- MANUAL HARDWARE -----
   - id: REG-HW-001
     module: MANUAL

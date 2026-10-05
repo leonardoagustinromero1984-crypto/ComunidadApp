@@ -1,8 +1,13 @@
 package com.comunidapp.app.viewmodel
 
+import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.createSavedStateHandle
 import androidx.lifecycle.viewModelScope
+import androidx.lifecycle.viewmodel.CreationExtras
+import com.comunidapp.app.core.result.AppResult
+import com.comunidapp.app.data.files.SightingMediaUpload
 import com.comunidapp.app.data.model.M13MatchCandidate
 import com.comunidapp.app.data.model.M13MatchDecisionType
 import com.comunidapp.app.data.model.M13OperationalMetrics
@@ -13,10 +18,12 @@ import com.comunidapp.app.data.model.PetSize
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m13.M13ErrorMapper
+import com.comunidapp.app.data.repository.AuthProvider
 import com.comunidapp.app.data.repository.CreateM13SightingInput
 import com.comunidapp.app.data.repository.M13MatchRepository
 import com.comunidapp.app.data.repository.M13OperationsRepository
 import com.comunidapp.app.data.repository.M13SightingRepository
+import com.comunidapp.app.domain.lostfound.SightingPhotoPublisher
 import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -64,7 +71,10 @@ class M13SightingListViewModel(
 
 class M13SightingCreateViewModel(
     private val sightingRepository: M13SightingRepository = DataProvider.m13SightingRepository,
-    private val matchRepository: M13MatchRepository = DataProvider.m13MatchRepository
+    private val matchRepository: M13MatchRepository = DataProvider.m13MatchRepository,
+    private val handle: SavedStateHandle = SavedStateHandle(),
+    private val photos: SightingPhotoPublisher = SightingPhotoPublisher(SightingMediaUpload()::upload),
+    private val actorUserId: () -> String? = { AuthProvider.repository.getCurrentUser()?.id }
 ) : ViewModel() {
     private val _message = MutableStateFlow<String?>(null)
     val message: StateFlow<String?> = _message.asStateFlow()
@@ -72,6 +82,11 @@ class M13SightingCreateViewModel(
     val createdId: StateFlow<String?> = _createdId.asStateFlow()
     private val _busy = MutableStateFlow(false)
     val busy: StateFlow<Boolean> = _busy.asStateFlow()
+    val selectedPhoto: StateFlow<String> = handle.getStateFlow(PHOTO_KEY, "")
+
+    fun selectPhoto(localUri: String?) {
+        handle[PHOTO_KEY] = localUri?.trim().orEmpty()
+    }
 
     fun create(
         caseId: String?,
@@ -90,6 +105,24 @@ class M13SightingCreateViewModel(
         if (_busy.value) return
         viewModelScope.launch {
             _busy.value = true
+            val pending = handle.get<String>(PHOTO_KEY).orEmpty()
+            val chosen = if (pending.isNotBlank()) listOf(pending) else mediaRefs
+            val resolvedRefs = mutableListOf<String>()
+            for (raw in chosen) {
+                when (val resolved = photos.resolve(raw, actorUserId(), caseId)) {
+                    is AppResult.Failure -> {
+                        _message.value = resolved.error.userMessage
+                        _busy.value = false
+                        return@launch
+                    }
+                    is AppResult.Success -> resolved.data?.let(resolvedRefs::add)
+                }
+            }
+            if (resolvedRefs.any { it.startsWith("content://") || it.startsWith("file://") }) {
+                _message.value = "No pudimos registrar la foto. El aporte no se publicó."
+                _busy.value = false
+                return@launch
+            }
             val result = sightingRepository.createSighting(
                 CreateM13SightingInput(
                     lostFoundCaseId = caseId,
@@ -103,7 +136,7 @@ class M13SightingCreateViewModel(
                     latitudeApprox = latitudeApprox,
                     longitudeApprox = longitudeApprox,
                     description = description,
-                    mediaRefs = mediaRefs
+                    mediaRefs = resolvedRefs
                 )
             )
             result.onSuccess { sighting ->
@@ -122,10 +155,16 @@ class M13SightingCreateViewModel(
     }
 
     companion object {
+        const val PHOTO_KEY = "sighting_local_photo"
+
         fun factory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
                 M13SightingCreateViewModel() as T
+
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>, extras: CreationExtras): T =
+                M13SightingCreateViewModel(handle = extras.createSavedStateHandle()) as T
         }
     }
 }

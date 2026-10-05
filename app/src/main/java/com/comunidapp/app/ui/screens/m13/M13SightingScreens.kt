@@ -151,7 +151,7 @@ fun M13SightingCreateScreen(
     var color by remember { mutableStateOf("") }
     var zone by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
-    var mediaRef by remember { mutableStateOf("") }
+    val selectedPhoto by viewModel.selectedPhoto.collectAsState()
     val initialMoment = remember { System.currentTimeMillis() }
     var observedDate by remember {
         mutableStateOf(com.comunidapp.app.domain.lostfound.IncidentMoment.dateText(initialMoment))
@@ -161,7 +161,7 @@ fun M13SightingCreateScreen(
     }
     val pickPhoto = rememberLeoVerPhotoSourcePicker(
         sheetTitle = "Foto del avistamiento",
-        onSourceSelected = { uri -> mediaRef = uri.toString() }
+        onSourceSelected = { uri -> viewModel.selectPhoto(uri.toString()) }
     )
 
     LaunchedEffect(createdId) {
@@ -217,10 +217,10 @@ fun M13SightingCreateScreen(
                 modifier = Modifier.fillMaxWidth()
             )
             LeoOutlinedButton(
-                text = if (mediaRef.isBlank()) "Agregar foto" else "Cambiar foto",
+                text = if (selectedPhoto.isBlank()) "Agregar foto" else "Cambiar foto",
                 onClick = pickPhoto
             )
-            if (mediaRef.isNotBlank()) {
+            if (selectedPhoto.isNotBlank()) {
                 Text("Foto seleccionada", style = MaterialTheme.typography.bodySmall)
             }
             Spacer(Modifier.height(12.dp))
@@ -233,8 +233,6 @@ fun M13SightingCreateScreen(
                         primaryColor = color,
                         zoneText = zone,
                         description = description,
-                        mediaRefs = mediaRef.trim().takeIf { it.isNotEmpty() }?.let { listOf(it) }
-                            .orEmpty(),
                         observedAt = com.comunidapp.app.domain.lostfound.IncidentMoment.combine(
                             observedDate,
                             observedTime,
