@@ -233,6 +233,7 @@ interface M17InKindRepository {
     suspend fun getPublicNeed(id: String): Result<M17PublicInKindNeed>
     fun observeNeedsForOrganization(orgId: String): Flow<List<M17InKindDonationNeed>>
     suspend fun createPledge(needId: String, quantity: Int, message: String?): Result<M17InKindPledge>
+    suspend fun listPledges(needId: String): Result<List<M17InKindPledge>>
     suspend fun listMyPledges(): Result<List<com.comunidapp.app.domain.m17.MyGoodsPledge>>
     suspend fun canManageNeed(needId: String): Boolean
     suspend fun markDelivered(pledgeId: String): Result<M17InKindPledge>
@@ -243,6 +244,7 @@ interface M17VolunteerRepository {
     suspend fun getPublicOpportunity(id: String): Result<M17PublicVolunteerOpportunity>
     fun observeOpportunitiesForOrganization(orgId: String): Flow<List<M17VolunteerOpportunity>>
     suspend fun submitApplication(opportunityId: String, message: String?): Result<M17VolunteerApplication>
+    suspend fun listApplicants(opportunityId: String): Result<List<M17VolunteerApplication>>
     suspend fun listMyApplications(): Result<List<com.comunidapp.app.domain.m17.MyVolunteerInterest>>
     suspend fun canManageOpportunity(opportunityId: String): Boolean
     suspend fun acceptApplication(applicationId: String): Result<M17VolunteerApplication>
@@ -292,6 +294,10 @@ class MockM17InKindRepository(
 
     override fun observeNeedsForOrganization(orgId: String): Flow<List<M17InKindDonationNeed>> =
         store.needs.map { it.filter { n -> n.organizationId == orgId } }
+
+    override suspend fun listPledges(needId: String): Result<List<M17InKindPledge>> = runCatching {
+        store.pledges.value.filter { it.needId == needId }
+    }
 
     override suspend fun listMyPledges(): Result<List<com.comunidapp.app.domain.m17.MyGoodsPledge>> = runCatching {
         val user = actorUserId() ?: return@runCatching emptyList()
@@ -384,6 +390,11 @@ class MockM17VolunteerRepository(
 
     override fun observeOpportunitiesForOrganization(orgId: String): Flow<List<M17VolunteerOpportunity>> =
         store.opportunities.map { it.filter { o -> o.organizationId == orgId } }
+
+    override suspend fun listApplicants(opportunityId: String): Result<List<M17VolunteerApplication>> =
+        runCatching {
+            store.applications.value.filter { it.opportunityId == opportunityId }
+        }
 
     override suspend fun listMyApplications(): Result<List<com.comunidapp.app.domain.m17.MyVolunteerInterest>> =
         runCatching {

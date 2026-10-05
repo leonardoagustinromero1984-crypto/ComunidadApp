@@ -18,8 +18,8 @@ import com.comunidapp.app.domain.canonical.CanonicalBackend
 import com.comunidapp.app.domain.m17.MyGoodsPledge
 import com.comunidapp.app.domain.organization.CanonicalHelpRow
 import com.comunidapp.app.domain.organization.CanonicalPublicHelp
-import io.github.jan.supabase.postgrest.from
 import com.comunidapp.app.domain.m17.MyVolunteerInterest
+import kotlinx.serialization.json.JsonNull
 import io.github.jan.supabase.postgrest.postgrest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -134,20 +134,21 @@ fun JsonObject.toM17CampaignTransparencyReport(): M17CampaignTransparencyReport 
 fun JsonObject.toM17InKindPledgeFromRpc(needId: String, userId: String): M17InKindPledge =
     M17InKindPledge(
         id = string("id").orEmpty(),
-        needId = needId,
+        needId = string("need_id") ?: needId,
         quantity = int("quantity"),
         status = safeEnum(string("status"), M17InKindPledgeStatus.PLEDGED),
-        userId = userId,
-        createdAt = System.currentTimeMillis()
+        userId = string("pledged_by") ?: userId,
+        createdAt = parseTs(string("created_at"))
     )
 
 fun JsonObject.toM17VolunteerApplicationFromRpc(opportunityId: String, userId: String): M17VolunteerApplication =
     M17VolunteerApplication(
         id = string("id").orEmpty(),
-        opportunityId = opportunityId,
-        userId = userId,
+        opportunityId = string("opportunity_id") ?: opportunityId,
+        userId = string("applicant_user_id") ?: userId,
         status = safeEnum(string("status"), M17VolunteerApplicationStatus.SUBMITTED),
-        createdAt = System.currentTimeMillis()
+        message = string("message"),
+        createdAt = parseTs(string("created_at"))
     )
 
 class SupabaseM17ExtendedRemoteDataSource {
@@ -173,10 +174,17 @@ class SupabaseM17ExtendedRemoteDataSource {
         )
     }.getOrElse { canonicalInKind(organizationId) }
 
-    suspend fun getPublicInKindNeed(needId: String): JsonObject = decodeOne(
-        "m17_get_public_in_kind_need",
-        buildJsonObject { put("p_need_id", needId) }
-    )
+    suspend fun getPublicInKindNeed(needId: String): JsonObject = runCatching {
+        decodeOne<JsonObject>(
+            "m17_get_public_in_kind_need",
+            buildJsonObject { put("p_need_id", needId) }
+        )
+    }.getOrElse {
+        rpcObject(
+            CanonicalBackend.RPC_GET_IN_KIND_NEED,
+            buildJsonObject { put("p_need_id", needId) }
+        )
+    }
 
     suspend fun listPublicVolunteerOpportunities(
         query: String? = null,
@@ -193,45 +201,27 @@ class SupabaseM17ExtendedRemoteDataSource {
         )
     }.getOrElse { canonicalVolunteer(organizationId) }
 
-    private suspend fun canonicalInKind(organizationId: String?): List<JsonObject> {
-        val campaigns = parseJsonObjectList(
-            supabase.postgrest.rpc(function = CanonicalBackend.RPC_LIST_DONATION_CAMPAIGNS).data
+    private suspend fun canonicalInKind(organizationId: String?): List<JsonObject> =
+        keepOrganization(
+            organizationId,
+            rpcObjects(
+                CanonicalBackend.RPC_LIST_IN_KIND_NEEDS,
+                organizationParam(organizationId)
+            )
         )
-        val orgByCampaign = campaigns.associate { row ->
-            row.string("id").orEmpty() to row.string("organization_id")
-        }
-        val offers = parseJsonObjectList(supabase.from("in_kind_offers").select().data)
-        val rows = offers.map { offer ->
-            val org = orgByCampaign[offer.string("campaign_id").orEmpty()]
-            buildJsonObject {
-                put("id", offer.string("id").orEmpty())
-                put("title", offer.string("description").orEmpty())
-                put("description", offer.string("description").orEmpty())
-                put("status", "PUBLISHED")
-                put("category", "OTHER")
-                if (!org.isNullOrBlank()) put("organization_id", org)
-            }
-        }
-        return keepOrganization(organizationId, rows)
-    }
 
-    private suspend fun canonicalVolunteer(organizationId: String?): List<JsonObject> {
-        val events = parseJsonObjectList(
-            supabase.postgrest.rpc(function = CanonicalBackend.RPC_LIST_EVENTS).data
+    private suspend fun canonicalVolunteer(organizationId: String?): List<JsonObject> =
+        keepOrganization(
+            organizationId,
+            rpcObjects(
+                CanonicalBackend.RPC_LIST_VOLUNTEER_OPPORTUNITIES,
+                organizationParam(organizationId)
+            )
         )
-        val rows = events.map { event ->
-            buildJsonObject {
-                put("id", event.string("id").orEmpty())
-                put("title", event.string("title").orEmpty())
-                put("description", event.string("title").orEmpty())
-                put("status", "PUBLISHED")
-                put("opportunity_type", "EVENTS")
-                event.string("organization_id")?.let { put("organization_id", it) }
-                put("slots_needed", 1)
-                put("slots_filled", 0)
-            }
-        }
-        return keepOrganization(organizationId, rows)
+
+    private fun organizationParam(organizationId: String?): JsonObject = buildJsonObject {
+        if (organizationId.isNullOrBlank()) put("p_organization_id", JsonNull)
+        else put("p_organization_id", organizationId)
     }
 
     private fun keepOrganization(organizationId: String?, rows: List<JsonObject>): List<JsonObject> {
@@ -247,66 +237,138 @@ class SupabaseM17ExtendedRemoteDataSource {
         return rows.filter { it.string("id").orEmpty() in visible }
     }
 
-    suspend fun getPublicVolunteerOpportunity(opportunityId: String): JsonObject = decodeOne(
-        "m17_get_public_volunteer_opportunity",
-        buildJsonObject { put("p_opportunity_id", opportunityId) }
-    )
+    suspend fun getPublicVolunteerOpportunity(opportunityId: String): JsonObject = runCatching {
+        decodeOne<JsonObject>(
+            "m17_get_public_volunteer_opportunity",
+            buildJsonObject { put("p_opportunity_id", opportunityId) }
+        )
+    }.getOrElse {
+        rpcObject(
+            CanonicalBackend.RPC_GET_VOLUNTEER_OPPORTUNITY,
+            buildJsonObject { put("p_opportunity_id", opportunityId) }
+        )
+    }
 
     suspend fun getPublicCampaignTransparency(campaignId: String): JsonObject = decodeOne(
         "m17_get_public_campaign_transparency",
         buildJsonObject { put("p_campaign_id", campaignId) }
     )
 
-    suspend fun createInKindPledge(needId: String, quantity: Int, message: String?): JsonObject = decodeOne(
-        "m17_create_in_kind_pledge",
-        buildJsonObject {
-            put("p_need_id", needId)
-            put("p_quantity", quantity)
-            put("p_public_message", message)
-        }
-    )
+    suspend fun createInKindPledge(needId: String, quantity: Int, message: String?): JsonObject = runCatching {
+        decodeOne<JsonObject>(
+            "m17_create_in_kind_pledge",
+            buildJsonObject {
+                put("p_need_id", needId)
+                put("p_quantity", quantity)
+                put("p_public_message", message)
+            }
+        )
+    }.getOrElse {
+        rpcObject(
+            CanonicalBackend.RPC_PLEDGE_IN_KIND_NEED,
+            buildJsonObject {
+                put("p_need_id", needId)
+                put("p_quantity", quantity)
+                put("p_message", message)
+            }
+        )
+    }
 
     suspend fun cancelOwnInKindPledge(pledgeId: String): JsonObject = decodeOne(
         "m17_cancel_own_in_kind_pledge",
         buildJsonObject { put("p_pledge_id", pledgeId) }
     )
 
-    suspend fun markInKindPledgeDelivered(pledgeId: String): JsonObject = decodeOne(
-        "m17_mark_in_kind_pledge_delivered",
-        buildJsonObject { put("p_pledge_id", pledgeId) }
-    )
+    suspend fun markInKindPledgeDelivered(pledgeId: String): JsonObject = runCatching {
+        decodeOne<JsonObject>(
+            "m17_mark_in_kind_pledge_delivered",
+            buildJsonObject { put("p_pledge_id", pledgeId) }
+        )
+    }.getOrElse {
+        rpcObject(
+            CanonicalBackend.RPC_MARK_IN_KIND_PLEDGE_DELIVERED,
+            buildJsonObject { put("p_pledge_id", pledgeId) }
+        )
+    }
 
-    suspend fun submitVolunteerApplication(opportunityId: String, message: String?): JsonObject = decodeOne(
-        "m17_submit_volunteer_application",
-        buildJsonObject {
-            put("p_opportunity_id", opportunityId)
-            put("p_message", message)
-        }
-    )
+    suspend fun submitVolunteerApplication(opportunityId: String, message: String?): JsonObject = runCatching {
+        decodeOne<JsonObject>(
+            "m17_submit_volunteer_application",
+            buildJsonObject {
+                put("p_opportunity_id", opportunityId)
+                put("p_message", message)
+            }
+        )
+    }.getOrElse {
+        rpcObject(
+            CanonicalBackend.RPC_APPLY_VOLUNTEER_OPPORTUNITY,
+            buildJsonObject {
+                put("p_opportunity_id", opportunityId)
+                put("p_message", message)
+            }
+        )
+    }
 
     suspend fun withdrawVolunteerApplication(applicationId: String): JsonObject = decodeOne(
         "m17_withdraw_volunteer_application",
         buildJsonObject { put("p_application_id", applicationId) }
     )
 
-    suspend fun acceptVolunteerApplication(applicationId: String): JsonObject = decodeOne(
-        "m17_accept_volunteer_application",
-        buildJsonObject { put("p_application_id", applicationId) }
+    suspend fun acceptVolunteerApplication(applicationId: String): JsonObject = runCatching {
+        decodeOne<JsonObject>(
+            "m17_accept_volunteer_application",
+            buildJsonObject { put("p_application_id", applicationId) }
+        )
+    }.getOrElse {
+        rpcObject(
+            CanonicalBackend.RPC_ACCEPT_VOLUNTEER_APPLICATION,
+            buildJsonObject { put("p_application_id", applicationId) }
+        )
+    }
+
+    suspend fun listVolunteerApplicants(opportunityId: String): List<JsonObject> = rpcObjects(
+        CanonicalBackend.RPC_LIST_VOLUNTEER_APPLICANTS,
+        buildJsonObject { put("p_opportunity_id", opportunityId) }
     )
 
-    suspend fun listMyInKindPledges(): List<JsonObject> = parseJsonObjectList(
-        supabase.postgrest.rpc(
-            function = "m17_list_my_in_kind_pledges",
-            parameters = buildJsonObject { }
-        ).data
+    suspend fun listInKindPledges(needId: String): List<JsonObject> = rpcObjects(
+        CanonicalBackend.RPC_LIST_IN_KIND_PLEDGES,
+        buildJsonObject { put("p_need_id", needId) }
     )
 
-    suspend fun listMyVolunteerApplications(): List<JsonObject> = parseJsonObjectList(
-        supabase.postgrest.rpc(
-            function = "m17_list_my_volunteer_applications",
-            parameters = buildJsonObject { }
-        ).data
-    )
+    suspend fun listMyInKindPledges(): List<JsonObject> = runCatching {
+        parseJsonObjectList(
+            supabase.postgrest.rpc(
+                function = "m17_list_my_in_kind_pledges",
+                parameters = buildJsonObject { }
+            ).data
+        )
+    }.getOrElse {
+        rpcObjects(CanonicalBackend.RPC_LIST_MY_IN_KIND_PLEDGES, buildJsonObject { })
+    }
+
+    suspend fun listMyVolunteerApplications(): List<JsonObject> = runCatching {
+        parseJsonObjectList(
+            supabase.postgrest.rpc(
+                function = "m17_list_my_volunteer_applications",
+                parameters = buildJsonObject { }
+            ).data
+        )
+    }.getOrElse {
+        rpcObjects(CanonicalBackend.RPC_LIST_MY_VOLUNTEER_APPLICATIONS, buildJsonObject { })
+    }
+
+    private suspend fun rpcObject(function: String, parameters: JsonObject): JsonObject {
+        val element = Json.parseToJsonElement(
+            supabase.postgrest.rpc(function = function, parameters = parameters).data
+        )
+        return element as? JsonObject ?: error("CANON_EMPTY")
+    }
+
+    private suspend fun rpcObjects(function: String, parameters: JsonObject): List<JsonObject> =
+        parseJsonObjectList(
+            supabase.postgrest.rpc(function = function, parameters = parameters).data
+        )
 
     private fun parseJsonObjectList(raw: String): List<JsonObject> =
         when (val el = Json.parseToJsonElement(raw)) {

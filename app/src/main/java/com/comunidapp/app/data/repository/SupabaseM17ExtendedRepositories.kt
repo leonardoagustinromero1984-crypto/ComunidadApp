@@ -50,6 +50,14 @@ class SupabaseM17InKindRepository(
         emit(emptyList())
     }
 
+    override suspend fun listPledges(needId: String): Result<List<M17InKindPledge>> = try {
+        Result.success(
+            remote.listInKindPledges(needId).map { it.toM17InKindPledgeFromRpc(needId, "") }
+        )
+    } catch (t: Throwable) {
+        M17DonationErrorMapper.failure(t)
+    }
+
     override suspend fun listMyPledges(): Result<List<com.comunidapp.app.domain.m17.MyGoodsPledge>> = try {
         Result.success(remote.listMyInKindPledges().map { it.toMyGoodsPledge() })
     } catch (t: Throwable) {
@@ -105,6 +113,15 @@ class SupabaseM17VolunteerRepository(
 
     override fun observeOpportunitiesForOrganization(orgId: String): Flow<List<M17VolunteerOpportunity>> =
         flow { emit(emptyList()) }
+
+    override suspend fun listApplicants(opportunityId: String): Result<List<M17VolunteerApplication>> = try {
+        Result.success(
+            remote.listVolunteerApplicants(opportunityId)
+                .map { it.toM17VolunteerApplicationFromRpc(opportunityId, "") }
+        )
+    } catch (t: Throwable) {
+        M17DonationErrorMapper.failure(t)
+    }
 
     override suspend fun listMyApplications(): Result<List<com.comunidapp.app.domain.m17.MyVolunteerInterest>> = try {
         Result.success(remote.listMyVolunteerApplications().map { it.toMyVolunteerInterest() })

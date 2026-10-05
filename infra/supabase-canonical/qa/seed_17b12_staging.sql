@@ -33,15 +33,21 @@ declare
   v_publication uuid;
   v_campaign_a uuid;
   v_campaign_b uuid;
+  v_need_a uuid;
+  v_opp_a uuid;
+  v_alert uuid;
   required_tables text[] := array[
     'public.organizations',
     'public.persons',
     'public.pets',
     'public.species',
     'public.donation_campaigns',
-    'public.in_kind_offers',
-    'public.community_events',
+    'public.volunteer_opportunities',
+    'public.volunteer_applications',
+    'public.in_kind_needs',
+    'public.in_kind_pledges',
     'public.lost_found_alerts',
+    'public.lost_found_sightings',
     'public.adoption_publications',
     'public.adoption_applications',
     'public.service_providers',
@@ -61,6 +67,14 @@ begin
       raise exception 'QA17B12_ABORT_TABLE_MISSING:%', v_table;
     end if;
   end loop;
+  if not exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public'
+       and table_name = 'lost_found_sightings'
+       and column_name = 'observed_at'
+  ) then
+    raise exception 'QA17B12_ABORT_COLUMN_MISSING:lost_found_sightings.observed_at';
+  end if;
   select id into v_a from public.organizations where slug = 'qa-cc02-shelter-n';
   select id into v_b from public.organizations where slug = 'qa-cc02-shelter-u';
   if v_a is null or v_b is null then
@@ -114,12 +128,33 @@ begin
       or pet_id in (select id from public.pets where name like 'QA17B12 %');
   delete from public.vitacora_update_proposals where payload->>'marker' = 'QA17B12';
   delete from public.leover_verification_requests where evidence->>'marker' = 'QA17B12';
+  delete from public.lost_found_sightings
+   where note like 'QA17B12 %'
+      or alert_id in (
+        select id from public.lost_found_alerts
+         where location_label like 'QA17B12 %' or note like 'QA17B12 %'
+            or pet_id in (select id from public.pets where name like 'QA17B12 %')
+      );
   delete from public.lost_found_alerts
    where location_label like 'QA17B12 %' or note like 'QA17B12 %'
       or pet_id in (select id from public.pets where name like 'QA17B12 %');
-  delete from public.in_kind_offers where description like 'QA17B12 %';
+  delete from public.volunteer_applications
+   where opportunity_id in (
+     select id from public.volunteer_opportunities where title like 'QA17B12 %'
+   );
+  delete from public.volunteer_opportunities where title like 'QA17B12 %';
+  delete from public.in_kind_pledges
+   where need_id in (
+     select id from public.in_kind_needs where title like 'QA17B12 %'
+   );
+  delete from public.in_kind_needs where title like 'QA17B12 %';
+  if to_regclass('public.in_kind_offers') is not null then
+    delete from public.in_kind_offers where description like 'QA17B12 %';
+  end if;
   delete from public.donation_campaigns where title like 'QA17B12 %';
-  delete from public.community_events where title like 'QA17B12 %';
+  if to_regclass('public.community_events') is not null then
+    delete from public.community_events where title like 'QA17B12 %';
+  end if;
   delete from public.pet_responsibility_links
    where pet_id in (select id from public.pets where name like 'QA17B12 %');
   delete from public.pets where name like 'QA17B12 %';
@@ -154,19 +189,38 @@ begin
     v_b, v_owner, 'QA17B12 Aporte Sur', 'OPEN'
   ) returning id into v_campaign_b;
 
-  insert into public.in_kind_offers (campaign_id, offered_by, description, status) values
-    (v_campaign_a, v_owner, 'QA17B12 Alimento Norte', 'OPEN'),
-    (v_campaign_b, v_owner, 'QA17B12 Higiene Sur', 'OPEN');
+  insert into public.in_kind_needs (
+    organization_id, created_by, title, description, category, quantity_needed, status
+  ) values (
+    v_a, v_owner, 'QA17B12 Alimento Norte', 'QA17B12 necesidad A', 'FOOD', 10, 'PUBLISHED'
+  ) returning id into v_need_a;
 
-  insert into public.community_events (
-    organization_id, created_by, title, starts_at, zone_id
+  insert into public.in_kind_needs (
+    organization_id, created_by, title, description, category, quantity_needed, status
+  ) values (
+    v_b, v_owner, 'QA17B12 Higiene Sur', 'QA17B12 necesidad B', 'HYGIENE', 6, 'PUBLISHED'
+  );
+
+  insert into public.in_kind_pledges (need_id, pledged_by, quantity, message, status)
+  values (v_need_a, v_adopter, 2, 'QA17B12 aporte Norte', 'PLEDGED');
+
+  insert into public.volunteer_opportunities (
+    organization_id, created_by, title, description, opportunity_type, slots_needed, status
+  ) values (
+    v_a, v_owner, 'QA17B12 Paseos Norte', 'QA17B12 convocatoria A', 'ANIMAL_CARE', 4, 'PUBLISHED'
+  ) returning id into v_opp_a;
+
+  insert into public.volunteer_opportunities (
+    organization_id, created_by, title, description, opportunity_type, slots_needed, status
   ) values
-    (v_a, v_owner, 'QA17B12 Paseos Norte', timezone('utc', now()) + interval '3 days',
-     'America/Argentina/Buenos_Aires'),
-    (v_a, v_owner, 'QA17B12 Cupo Norte', timezone('utc', now()) + interval '4 days',
-     'America/Argentina/Buenos_Aires'),
-    (v_b, v_owner, 'QA17B12 Voluntariado Sur', timezone('utc', now()) + interval '5 days',
-     'America/Argentina/Buenos_Aires');
+    (v_a, v_owner, 'QA17B12 Cupo Norte', 'QA17B12 convocatoria A cupo', 'TRANSPORT', 2, 'PUBLISHED'),
+    (v_b, v_owner, 'QA17B12 Voluntariado Sur', 'QA17B12 convocatoria B', 'ANIMAL_CARE', 3, 'PUBLISHED');
+
+  insert into public.volunteer_applications (
+    opportunity_id, applicant_user_id, message, status
+  ) values (
+    v_opp_a, v_adopter, 'QA17B12 postulacion Norte', 'SUBMITTED'
+  );
 
   insert into public.lost_found_alerts (
     kind, pet_id, created_by, status, created_at, location_label, note, species_code
@@ -181,6 +235,20 @@ begin
      'QA17B12 Encontrado en cuidado', 'QA17B12 estado visible', 'DOG'),
     ('LOST', v_pet_a, v_qa01, 'RESOLVED', timezone('utc', now()) - interval '2 days',
      'QA17B12 Perdido resuelto', 'QA17B12 estado no visible', 'DOG');
+
+  select id into v_alert
+    from public.lost_found_alerts
+   where location_label = 'QA17B12 Perdido histórico'
+     and pet_id = v_pet_a
+   limit 1;
+
+  insert into public.lost_found_sightings (
+    alert_id, reporter_user_id, note, zone_text, species_code, primary_color,
+    observed_at, media_ref
+  ) values (
+    v_alert, v_qa02, 'QA17B12 vi a la mascota', 'QA17B12 Belgrano', 'DOG', 'negro',
+    timestamptz '2026-04-11 09:30:00+00', 'm05://qa17b12-foto'
+  );
 
   insert into public.adoption_publications (
     pet_id, published_by, organization_id, status, note, title

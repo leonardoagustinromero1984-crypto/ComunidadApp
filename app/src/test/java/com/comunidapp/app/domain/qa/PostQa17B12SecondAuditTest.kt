@@ -256,14 +256,18 @@ class PostQa17B12SecondAuditTest {
         assertTrue(runner.contains("if (-not \$Apply)"))
         listOf(
             "public.donation_campaigns",
-            "public.in_kind_offers",
-            "public.community_events",
+            "public.volunteer_opportunities",
+            "public.in_kind_needs",
+            "public.lost_found_sightings",
+            "observed_at",
             "public.adoption_publications",
             "public.lost_found_alerts",
             "qa01owner",
             "QA17B12 Mascota Norte",
             "QA17B12 Mascota Sur"
         ).forEach { token -> assertTrue(sql.contains(token)) }
+        assertFalse(sql.contains("insert into public.community_events"))
+        assertFalse(sql.contains("insert into public.in_kind_offers"))
         listOf(
             "m17_donation_campaigns",
             "m17_in_kind_needs",

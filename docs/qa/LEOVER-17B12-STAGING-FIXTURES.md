@@ -31,8 +31,9 @@ El seed no usa `m17_donation_campaigns`, `m17_in_kind_needs` ni `m17_volunteer_o
 | Pantalla | Lectura canónica | Dato QA17B12 |
 | --- | --- | --- |
 | Aportar dinero | `canon_list_donation_campaigns` sobre `donation_campaigns` | Campaña A y campaña B |
-| Donar cosas | `in_kind_offers` unido a la campaña de esa organización | Alimento Norte, Higiene Sur |
-| Voluntariado | `canon_list_events` sobre `community_events` | Paseos Norte, Cupo Norte, Voluntariado Sur |
+| Donar cosas | `canon_list_in_kind_needs` sobre `in_kind_needs` | Alimento Norte, Higiene Sur |
+| Voluntariado | `canon_list_volunteer_opportunities` sobre `volunteer_opportunities` | Paseos Norte, Cupo Norte, Voluntariado Sur |
+| Aportar información | `canon_contribute_lost_found_info` sobre `lost_found_sightings.observed_at` | Avistamiento del perdido histórico, 2026-04-11 09:30 UTC |
 | Adopciones | `canon_list_adoptions` sobre `adoption_publications` | Adopción Norte (A) y Adopción Sur (B) |
 | Perdidos y encontrados | `canon_list_lost_found` sobre `lost_found_alerts` | Histórico abierto, reclamado, en cuidado, encontrado y un resuelto que no se lista |
 | Turnos | `service_providers`, `service_offerings`, `bookings` | Consulta de QA10 |
@@ -40,7 +41,7 @@ El seed no usa `m17_donation_campaigns`, `m17_in_kind_needs` ni `m17_volunteer_o
 | Acceso profesional | `leover_verification_requests` | Solo si QA10 no tiene ya un pedido veterinario pendiente |
 | Propuestas VitaCora | `vitacora_update_proposals` | Marcador QA17B12 |
 
-`volunteer_offers` no tiene `organization_id` ni un RPC de listado. El voluntariado público de un refugio usa `community_events`, que sí trae la organización. Un acceso general no envía `organizationId` y conserva el listado completo. Desde A solo aparecen filas de A. Desde B solo aparecen filas de B.
+`volunteer_offers` sigue siendo una oferta de una persona y no se lista como convocatoria. `community_events` sigue en Eventos y no se siembra como voluntariado. `in_kind_offers` sigue siendo un aporte ofrecido por una persona y no se muestra como necesidad. Una necesidad vive en `in_kind_needs` y un compromiso en `in_kind_pledges`. Un acceso general no envía organización y conserva A y B. Desde A solo aparecen filas de A. Desde B solo aparecen filas de B.
 
 Las mascotas son `QA17B12 Mascota Norte` (QA01) y `QA17B12 Mascota Sur` (QA02). El seed no elige una mascota arbitraria de la base.
 

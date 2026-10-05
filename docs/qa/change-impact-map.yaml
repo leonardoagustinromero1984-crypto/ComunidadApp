@@ -198,6 +198,7 @@ mappings:
       - com.comunidapp.app.domain.auth.PersonUsernameLoginContractTest
       - com.comunidapp.app.domain.qa.CloudBaselineRepair02ContractTest
       - com.comunidapp.app.domain.qa.ProfessionalPrivateHistoryContractTest
+      - com.comunidapp.app.domain.qa.CanonicalCommunityHelp17B12Test
     maestro_required: false
 
   - id: UI_CONTRACT

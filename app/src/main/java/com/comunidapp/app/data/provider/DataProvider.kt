@@ -215,6 +215,7 @@ import com.comunidapp.app.data.repository.MockLostFoundRepository
 import com.comunidapp.app.data.repository.CanonicalAdoptionApplicationRepository
 import com.comunidapp.app.data.repository.CanonicalAdoptionCompletionRepository
 import com.comunidapp.app.data.repository.CanonicalAdoptionRepository
+import com.comunidapp.app.data.repository.CanonicalM13SightingRepository
 import com.comunidapp.app.data.repository.CanonicalChatRepository
 import com.comunidapp.app.data.repository.CanonicalFriendRepository
 import com.comunidapp.app.data.repository.CanonicalM28Repository
@@ -913,10 +914,10 @@ object DataProvider {
     }
 
     val m13SightingRepository: M13SightingRepository by lazy {
-        if (useLegacyRemoteModules) {
-            SupabaseM13SightingRepository()
-        } else {
-            MockM13SightingRepository(
+        when {
+            useSupabase && !useLegacyRemoteModules -> CanonicalM13SightingRepository()
+            useLegacyRemoteModules -> SupabaseM13SightingRepository()
+            else -> MockM13SightingRepository(
                 actorUserId = { AuthProvider.repository.getCurrentUser()?.id },
                 store = m13Store
             )
