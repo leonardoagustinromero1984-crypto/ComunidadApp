@@ -85,7 +85,17 @@ class M17ExtendedMemoryStore {
             need("Cumplida — camas", M17InKindCategory.BEDDING, M17InKindNeedStatus.FULFILLED, 15, "camas", now - 100000),
             need("Cancelada — transporte", M17InKindCategory.TRANSPORT_SUPPLIES, M17InKindNeedStatus.CANCELLED, 5, "cajas", now - 200000),
             need("Borrador insumos", M17InKindCategory.OTHER, M17InKindNeedStatus.DRAFT, 8, "items", now),
-            need("Parcial — medicación", M17InKindCategory.MEDICATION, M17InKindNeedStatus.PUBLISHED, 40, "dosis", now)
+            need("Parcial — medicación", M17InKindCategory.MEDICATION, M17InKindNeedStatus.PUBLISHED, 40, "dosis", now),
+            need(
+                "QA17B12 Alimento Sur",
+                M17InKindCategory.FOOD,
+                M17InKindNeedStatus.PUBLISHED,
+                4,
+                "bolsas",
+                now,
+                organizationId = M17MockOrganizations.ORG_SUR,
+                organizationName = "Refugio Comunitario Sur"
+            )
         )
         _needs.value = needs
         val food = needs[0].id
@@ -102,7 +112,17 @@ class M17ExtendedMemoryStore {
             opp("Fotografía institucional", M17VolunteerOpportunityType.PHOTOGRAPHY, M17VolunteerOpportunityStatus.PUBLISHED, 2, 2, now),
             opp("Construcción de corral", M17VolunteerOpportunityType.CONSTRUCTION, M17VolunteerOpportunityStatus.COMPLETED, 5, 5, now - 50000),
             opp("Pausada — administración", M17VolunteerOpportunityType.ADMINISTRATIVE, M17VolunteerOpportunityStatus.PAUSED, 1, 0, now),
-            opp("Sin postulantes", M17VolunteerOpportunityType.FUNDRAISING, M17VolunteerOpportunityStatus.PUBLISHED, 2, 0, now)
+            opp("Sin postulantes", M17VolunteerOpportunityType.FUNDRAISING, M17VolunteerOpportunityStatus.PUBLISHED, 2, 0, now),
+            opp(
+                "QA17B12 Paseos Sur",
+                M17VolunteerOpportunityType.ANIMAL_CARE,
+                M17VolunteerOpportunityStatus.PUBLISHED,
+                3,
+                0,
+                now,
+                organizationId = M17MockOrganizations.ORG_SUR,
+                organizationName = "Refugio Comunitario Sur"
+            )
         )
         val transport = _opportunities.value[1].id
         _applications.value = listOf(
@@ -132,11 +152,13 @@ class M17ExtendedMemoryStore {
         status: M17InKindNeedStatus,
         qty: Int,
         unit: String,
-        now: Long
+        now: Long,
+        organizationId: String = M17MockOrganizations.ORG_NORTE,
+        organizationName: String = "Refugio Comunitario Norte"
     ) = M17InKindDonationNeed(
         id = nextId("m17_need"),
-        organizationId = M17MockOrganizations.ORG_NORTE,
-        organizationDisplayName = "Refugio Comunitario Norte",
+        organizationId = organizationId,
+        organizationDisplayName = organizationName,
         title = title,
         description = "La organización publicó esta necesidad y sigue recibiendo ayuda.",
         category = cat,
@@ -172,11 +194,13 @@ class M17ExtendedMemoryStore {
         status: M17VolunteerOpportunityStatus,
         needed: Int,
         filled: Int,
-        now: Long
+        now: Long,
+        organizationId: String = M17MockOrganizations.ORG_NORTE,
+        organizationName: String = "Refugio Comunitario Norte"
     ) = M17VolunteerOpportunity(
         id = nextId("m17_vol"),
-        organizationId = M17MockOrganizations.ORG_NORTE,
-        organizationDisplayName = "Refugio Comunitario Norte",
+        organizationId = organizationId,
+        organizationDisplayName = organizationName,
         title = title,
         description = "Podés ofrecer tu tiempo. Anotarte no te convierte en integrante de la organización.",
         type = type,

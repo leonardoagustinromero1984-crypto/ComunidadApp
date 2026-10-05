@@ -165,7 +165,10 @@ class NotificationPreferencesViewModel(
                 val policy = NotificationCategoryPolicies.forCategory(pref.category)
                 val candidate = pref.copy(
                     inAppEnabled = if (policy.inAppMandatory) true else pref.inAppEnabled,
-                    emailEnabled = false,
+                    emailEnabled = NotificationPreferenceRules.preserveEmail(
+                        pref.emailEnabled,
+                        com.comunidapp.app.domain.notifications.NotificationPreferenceVisibility.EMAIL_CHANNEL_VISIBLE
+                    ),
                     quietHours = quiet,
                     timezone = zone,
                     marketingConsent = _uiState.value.marketingConsent,

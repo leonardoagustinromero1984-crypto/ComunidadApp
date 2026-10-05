@@ -86,4 +86,13 @@ object NotificationPreferenceRules {
 
     fun marketingAllowed(preference: NotificationPreference): Boolean =
         preference.marketingConsent
+
+    /**
+     * Hiding the email channel in the UI must not flip a stored opt-in.
+     * Marketing stays a separate field.
+     */
+    fun preserveEmail(existingEmailEnabled: Boolean, emailChannelVisible: Boolean): Boolean {
+        if (!emailChannelVisible) return existingEmailEnabled
+        return existingEmailEnabled
+    }
 }

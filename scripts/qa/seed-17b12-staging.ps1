@@ -29,6 +29,13 @@ if (-not $Apply) {
     exit 0
 }
 
-supabase --workdir $Workdir db query --linked -f $Sql
-if ($LASTEXITCODE -ne 0) { throw "QA17B12_APPLY_FAILED" }
+$wrapped = Join-Path $env:TEMP "qa17b12-seed-wrapped.sql"
+$header = "select set_config('leover.qa_target', '$ExpectedRef', false);`r`n"
+Set-Content -Path $wrapped -Value ($header + (Get-Content -Path $Sql -Raw)) -Encoding utf8
+try {
+    supabase --workdir $Workdir db query --linked -f $wrapped
+    if ($LASTEXITCODE -ne 0) { throw "QA17B12_APPLY_FAILED" }
+} finally {
+    Remove-Item -Path $wrapped -ErrorAction SilentlyContinue
+}
 Write-Host "APPLY=PASS"

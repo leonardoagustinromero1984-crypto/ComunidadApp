@@ -39,7 +39,7 @@ data class EditProfileUiState(
     val locationText: String = "",
     val homeLocalityId: String? = null,
     val phone: String = "",
-    val showLocation: Boolean = true,
+    val showLocation: Boolean = false,
     val showPhone: Boolean = false,
     val profilePrivate: Boolean = true,
     val profileImageUrl: String? = null,

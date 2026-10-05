@@ -502,9 +502,12 @@ fun PublishLostFoundScreen(
     initialType: LostFoundType = LostFoundType.LOST,
     prefillPetId: String? = null,
     onCreateMinimalPet: () -> Unit = {},
-    viewModel: PublishViewModel = viewModel()
+    viewModel: PublishViewModel = viewModel(),
+    draftViewModel: com.comunidapp.app.viewmodel.LostReportFormViewModel = viewModel(
+        factory = com.comunidapp.app.viewmodel.LostReportFormViewModel.factory()
+    )
 ) {
-    val restoredDraft = remember { com.comunidapp.app.domain.pets.LostReportDraftStore.peek() }
+    val restoredDraft = remember { draftViewModel.read() }
     var type by remember { mutableStateOf(initialType) }
     var petName by remember { mutableStateOf(restoredDraft?.petName.orEmpty()) }
     var species by remember {
@@ -550,9 +553,43 @@ fun PublishLostFoundScreen(
         sheetTitle = "Agregar foto",
         onSourceSelected = { uri -> imageUri = uri }
     )
+    val knownPetIds = remember { restoredDraft?.knownPetIds }
+    fun currentDraft() = com.comunidapp.app.domain.pets.LostReportDraft(
+        typeName = type.name,
+        petName = petName,
+        speciesName = species.name,
+        location = location,
+        description = description,
+        contactInfo = contactInfo,
+        knownPetIds = knownPetIds ?: lostPets.map { it.id }.toSet(),
+        imageUri = imageUri?.toString(),
+        latitude = pin?.latitude,
+        longitude = pin?.longitude,
+        foundSexName = foundSex.name,
+        foundSizeName = foundSize?.name,
+        estimatedAgeYears = estimatedAgeYears
+    )
+    LaunchedEffect(imageUri) {
+        val raw = imageUri?.toString()
+        if (!com.comunidapp.app.domain.pets.LostReportUriGrant.shouldPersist(raw)) return@LaunchedEffect
+        val granted = imageUri ?: return@LaunchedEffect
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                granted,
+                android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        }
+    }
+    LaunchedEffect(
+        type, petName, species, location, description, contactInfo, imageUri,
+        pin, foundSex, foundSize, estimatedAgeYears
+    ) {
+        draftViewModel.write(currentDraft())
+    }
 
     LaunchedEffect(formState.isSuccess) {
         if (formState.isSuccess) {
+            draftViewModel.clear()
             viewModel.resetFormState()
             onPublishSuccess()
         }
@@ -584,7 +621,7 @@ fun PublishLostFoundScreen(
         }
     }
     LaunchedEffect(lostPets, type) {
-        val known = com.comunidapp.app.domain.pets.LostReportDraftStore.current?.knownPetIds
+        val known = knownPetIds
         if (type == LostFoundType.LOST && known != null) {
             val created = lostPets.firstOrNull { it.id !in known }
             if (created != null) {
@@ -604,7 +641,10 @@ fun PublishLostFoundScreen(
 
     PublishFormScaffold(
         title = if (type == LostFoundType.LOST) "Perdí a mi mascota" else "Encontré un animal",
-        onNavigateBack = onNavigateBack,
+        onNavigateBack = {
+            draftViewModel.clear()
+            onNavigateBack()
+        },
         isLoading = formState.isLoading,
         errorMessage = formState.errorMessage,
         diagnosticText = formState.diagnosticText,
@@ -692,23 +732,7 @@ fun PublishLostFoundScreen(
             LeoOutlinedButton(
                 text = "Cargar mascota perdida",
                 onClick = {
-                    com.comunidapp.app.domain.pets.LostReportDraftStore.capture(
-                        com.comunidapp.app.domain.pets.LostReportDraft(
-                            typeName = type.name,
-                            petName = petName,
-                            speciesName = species.name,
-                            location = location,
-                            description = description,
-                            contactInfo = contactInfo,
-                            knownPetIds = lostPets.map { it.id }.toSet(),
-                            imageUri = imageUri?.toString(),
-                            latitude = pin?.latitude,
-                            longitude = pin?.longitude,
-                            foundSexName = foundSex.name,
-                            foundSizeName = foundSize?.name,
-                            estimatedAgeYears = estimatedAgeYears
-                        )
-                    )
+                    draftViewModel.write(currentDraft())
                     onCreateMinimalPet()
                 }
             )

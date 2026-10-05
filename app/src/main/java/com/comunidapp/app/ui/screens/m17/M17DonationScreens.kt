@@ -82,7 +82,8 @@ fun M17CampaignsListScreen(
     onManage: () -> Unit,
     onCreate: () -> Unit,
     canAdminister: Boolean = false,
-    viewModel: M17CampaignsListViewModel = viewModel(factory = M17CampaignsListViewModel.factory())
+    organizationId: String? = null,
+    viewModel: M17CampaignsListViewModel = viewModel(factory = M17CampaignsListViewModel.factory(organizationId))
 ) {
     val state by viewModel.uiState.collectAsState()
     val filter by viewModel.filter.collectAsState()

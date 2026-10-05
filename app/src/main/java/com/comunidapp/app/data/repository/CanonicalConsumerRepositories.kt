@@ -416,6 +416,13 @@ class CanonicalLostFoundRepository(
     suspend fun refresh() {
         val token = epoch.current()
         val rows = rpcRows<CanonicalLostFoundRow>(CanonicalBackend.RPC_LIST_LOST_FOUND)
+            .filter { row ->
+                com.comunidapp.app.domain.lostfound.CanonLostFoundListRule.include(
+                    status = row.status.orEmpty(),
+                    caseCreatedAtEpochMs = parseEpoch(row.createdAt) ?: 0L,
+                    viewerAccountCreatedAtEpochMs = 0L
+                )
+            }
         val mapped = rows.map { row ->
             LostFoundPost(
                 id = row.id,

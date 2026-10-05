@@ -881,25 +881,57 @@ private fun NavGraphBuilder.mainAppRoutes(
         val kind = runCatching {
             Onb02FlowKind.valueOf(entry.arguments?.getString(NavRoutes.ARG_ONB02_KIND).orEmpty())
         }.getOrDefault(Onb02FlowKind.FULL_ONBOARDING)
+        val guideContext = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.attach(guideContext)
+        }
         Onb02HostScreen(
             kind = kind,
             onFinished = { setupRoute ->
+                val guide = com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.snapshot
+                if (kind == Onb02FlowKind.ADD_FUNCTION_LATER &&
+                    guide.step == com.comunidapp.app.domain.onboarding.onb02.GuideStep.TEACH_ADD_FUNCTION
+                ) {
+                    com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.save(
+                        guideContext,
+                        com.comunidapp.app.domain.onboarding.onb02.InteractiveOnboardingGuide.advance(
+                            guide,
+                            com.comunidapp.app.domain.onboarding.onb02.GuideTarget.CONTINUE
+                        )
+                    )
+                    navController.navigate(NavRoutes.HOME) {
+                        popUpTo(NavRoutes.ONB02) { inclusive = true }
+                        launchSingleTop = true
+                    }
+                    return@Onb02HostScreen
+                }
                 if (kind == Onb02FlowKind.ADD_FUNCTION_LATER &&
                     com.comunidapp.app.domain.onboarding.onb02.ContextualNavigation.exitFromAddFunction() ==
                     com.comunidapp.app.domain.onboarding.onb02.SecondaryScreenExit.POP_TO_ORIGIN
                 ) {
+                    val origin = navController.previousBackStackEntry?.destination?.route
                     if (!navController.popBackStack()) {
-                        navController.navigate(NavRoutes.SETTINGS) { launchSingleTop = true }
+                        com.comunidapp.app.navigation.ScreenOrigin.fallback(origin)?.let { route ->
+                            navController.navigate(route) { launchSingleTop = true }
+                        }
                     }
                     return@Onb02HostScreen
                 }
                 val showAddFunctionGuide = kind == Onb02FlowKind.FULL_ONBOARDING &&
                     com.comunidapp.app.domain.onboarding.onb02.InteractiveOnboardingGuide.shouldStart(
                         com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.current() ==
-                            com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingPhase.READY
+                            com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingPhase.READY ||
+                            com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.snapshot.completed
                     )
                 com.comunidapp.app.domain.onboarding.onb02.InitialOnboardingGate.markReady()
                 if (showAddFunctionGuide) {
+                    com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.save(
+                        guideContext,
+                        com.comunidapp.app.domain.onboarding.onb02.GuideSnapshot(
+                            com.comunidapp.app.domain.onboarding.onb02.GuideStep.HIGHLIGHT_ADD_FUNCTION,
+                            completed = false
+                        )
+                    )
                     com.comunidapp.app.ui.onboarding.AddFunctionSpotlight.request()
                     navController.navigate(NavRoutes.SETTINGS) {
                         popUpTo(NavRoutes.ONB02) { inclusive = true }
@@ -1061,7 +1093,6 @@ private fun NavGraphBuilder.mainAppRoutes(
             onVeterinaryDirectory = { navController.navigate(NavRoutes.VETERINARY_DIRECTORY) },
             onM16Shelters = { navController.navigate(NavRoutes.M16_SHELTERS) },
             onM17Campaigns = {
-                com.comunidapp.app.domain.organization.OrganizationListContext.clear()
                 navController.navigate(NavRoutes.M17_HUB)
             },
             onM18Events = { navController.navigate(NavRoutes.M18_EVENTS) },
@@ -1251,24 +1282,32 @@ private fun NavGraphBuilder.mainAppRoutes(
         )
     }
     composable(NavRoutes.SETTINGS) {
+        val settingsContext = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.runtime.LaunchedEffect(Unit) {
+            com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.attach(settingsContext)
+        }
+        val guide = com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.snapshot
+        val highlightAddFunction = guide.step ==
+            com.comunidapp.app.domain.onboarding.onb02.GuideStep.HIGHLIGHT_ADD_FUNCTION && !guide.completed
         SettingsScreen(
             onNavigateBack = { navController.popBackStack() },
             onEditProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
             onPrivacy = { navController.navigate(NavRoutes.PROFILE_PRIVACY) },
             onLegalPrivacy = { navController.navigate(NavRoutes.LEGAL_PRIVACY) },
             onAccountSecurity = { navController.navigate(NavRoutes.ACCOUNT_SECURITY) },
-            spotlightAddFunction = com.comunidapp.app.ui.onboarding.AddFunctionSpotlight.pending,
+            spotlightAddFunction = highlightAddFunction,
             onAddFunction = {
-                if (com.comunidapp.app.ui.onboarding.AddFunctionSpotlight.pending) {
-                    com.comunidapp.app.ui.onboarding.AddFunctionSpotlight.clear()
-                    navController.navigate(NavRoutes.HOME) {
-                        popUpTo(NavRoutes.SETTINGS) { inclusive = true }
-                        launchSingleTop = true
-                    }
-                } else {
-                    navController.navigate(NavRoutes.onb02(Onb02FlowKind.ADD_FUNCTION_LATER.name)) {
-                        launchSingleTop = true
-                    }
+                if (highlightAddFunction) {
+                    com.comunidapp.app.ui.onboarding.OnboardingGuideRuntime.save(
+                        settingsContext,
+                        com.comunidapp.app.domain.onboarding.onb02.InteractiveOnboardingGuide.advance(
+                            guide,
+                            com.comunidapp.app.domain.onboarding.onb02.GuideTarget.ADD_FUNCTION
+                        )
+                    )
+                }
+                navController.navigate(NavRoutes.onb02(Onb02FlowKind.ADD_FUNCTION_LATER.name)) {
+                    launchSingleTop = true
                 }
             },
             onNotificationPreferences = { navController.navigate(NavRoutes.NOTIFICATION_PREFERENCES) },
@@ -1687,7 +1726,6 @@ private fun NavGraphBuilder.mainAppRoutes(
         AdoptionsScreen(
             onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
             onSearchAdoptions = {
-                com.comunidapp.app.domain.organization.OrganizationListContext.clear()
                 navController.navigate(NavRoutes.ADOPTION_SEARCH)
             },
             onMyApplications = { navController.navigate(NavRoutes.MY_ADOPTION_APPLICATIONS) },
@@ -1710,8 +1748,21 @@ private fun NavGraphBuilder.mainAppRoutes(
             onNavigateBack = { navController.popBackStack() }
         )
     }
-    composable(NavRoutes.ADOPTION_SEARCH) {
+    composable(
+        route = com.comunidapp.app.domain.organization.OrganizationRoute.pattern(NavRoutes.ADOPTION_SEARCH),
+        arguments = listOf(
+            navArgument(com.comunidapp.app.domain.organization.OrganizationRoute.ARG) {
+                type = NavType.StringType
+                nullable = true
+                defaultValue = null
+            }
+        )
+    ) { entry ->
+        val organizationId = com.comunidapp.app.domain.organization.OrganizationRoute.read(
+            entry.arguments?.getString(com.comunidapp.app.domain.organization.OrganizationRoute.ARG)
+        )
         AdoptionSearchScreen(
+            organizationId = organizationId,
             onAdoptionClick = { id -> navController.navigate(NavRoutes.adoptionDetail(id)) },
             onNavigateBack = { navController.popBackStack() }
         )
@@ -2427,12 +2478,12 @@ private fun NavGraphBuilder.mainAppRoutes(
                 onAdoptions = { navController.navigate(NavRoutes.ADOPTIONS) },
                 onCampaigns = {
                     val org = context as? com.comunidapp.app.domain.context.OperationalContext.Organization
-                    if (org != null) {
-                        com.comunidapp.app.domain.organization.OrganizationListContext.open(org.entityId)
-                    } else {
-                        com.comunidapp.app.domain.organization.OrganizationListContext.clear()
-                    }
-                    navController.navigate(NavRoutes.M17_HUB)
+                    navController.navigate(
+                        com.comunidapp.app.domain.organization.OrganizationRoute.append(
+                            NavRoutes.M17_CAMPAIGNS,
+                            org?.entityId
+                        )
+                    )
                 },
                 onEvents = { navController.navigate(NavRoutes.M18_EVENTS) },
                 onManagement = { navController.navigate(NavRoutes.SHELTERS) },
@@ -2449,12 +2500,12 @@ private fun NavGraphBuilder.mainAppRoutes(
                 onRescuerProfile = { navController.navigate(NavRoutes.EDIT_PROFILE) },
                 onVolunteer = {
                     val org = context as? com.comunidapp.app.domain.context.OperationalContext.Organization
-                    if (org != null) {
-                        com.comunidapp.app.domain.organization.OrganizationListContext.open(org.entityId)
-                    } else {
-                        com.comunidapp.app.domain.organization.OrganizationListContext.clear()
-                    }
-                    navController.navigate(NavRoutes.M17_HUB)
+                    navController.navigate(
+                        com.comunidapp.app.domain.organization.OrganizationRoute.append(
+                            NavRoutes.M17_VOLUNTEER,
+                            org?.entityId
+                        )
+                    )
                 }
             )
         )

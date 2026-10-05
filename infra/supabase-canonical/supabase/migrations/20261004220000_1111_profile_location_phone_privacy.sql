@@ -1,10 +1,12 @@
 -- LeoVer Canonical
 -- Logical migration: 1111
 -- Own profile can store a phone and choose whether location and phone are public.
+-- Location is private by default. Existing rows receive false from the column
+-- default. This file does not backfill them to public.
 -- Saving a phone does not publish it. Do not apply this file to production from Desktop.
 
 alter table public.persons
-  add column if not exists show_location boolean not null default true,
+  add column if not exists show_location boolean not null default false,
   add column if not exists phone_public boolean not null default false;
 
 drop function if exists public.canon_update_my_person(text, text);
@@ -66,7 +68,7 @@ begin
   then
     return null;
   end if;
-  v_show_location := v_self or coalesce(v_row.show_location, true);
+  v_show_location := v_self or coalesce(v_row.show_location, false);
   v_show_phone := v_self or coalesce(v_row.phone_public, false);
   return jsonb_build_object(
     'id', v_row.user_id,

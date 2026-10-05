@@ -1,6 +1,10 @@
 package com.comunidapp.app.ui.screens.location
 
 import android.Manifest
+import android.app.Activity
+import android.content.Intent
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.clickable
@@ -30,6 +34,8 @@ import androidx.compose.ui.unit.dp
 import com.comunidapp.app.domain.location.AddressGeocoder
 import com.comunidapp.app.domain.location.AddressSuggestion
 import com.comunidapp.app.domain.location.ForegroundLocation
+import com.comunidapp.app.domain.location.LocationPermissionNext
+import com.comunidapp.app.domain.location.LocationPermissionPolicy
 import com.comunidapp.app.domain.location.SharedLocationCapture
 import com.comunidapp.app.domain.map.LeoVerGeoPoint
 import com.comunidapp.app.domain.map.LeoVerMapCameraState
@@ -69,6 +75,7 @@ fun LocationPinPicker(
     var query by remember { mutableStateOf("") }
     var suggestions by remember { mutableStateOf<List<AddressSuggestion>>(emptyList()) }
     var confirmed by remember { mutableStateOf<AddressSuggestion?>(null) }
+    var requestedLocationPermission by remember { mutableStateOf(false) }
     val permissionLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { result ->
@@ -227,8 +234,17 @@ fun LocationPinPicker(
             onClick = {
                 locating = true
                 locateError = null
-                if (ForegroundLocation.hasForegroundPermission(context)) {
-                    scope.launch {
+                val activity = context as? Activity
+                val next = LocationPermissionPolicy.next(
+                    granted = ForegroundLocation.hasForegroundPermission(context),
+                    shouldShowRationale = activity?.shouldShowRequestPermissionRationale(
+                        Manifest.permission.ACCESS_FINE_LOCATION
+                    ) == true,
+                    hasRequestedBefore = requestedLocationPermission,
+                    locationServicesEnabled = ForegroundLocation.isDeviceLocationEnabled(context)
+                )
+                when (next) {
+                    LocationPermissionNext.ALREADY_GRANTED -> scope.launch {
                         fetchAndApply(context, onSelected, onAddressChange) { point, suggestion, err ->
                             if (point != null && MapCameraPolicy.shouldMoveTo(point)) {
                                 camera = LeoVerMapCameraState(point, zoom = 16f)
@@ -241,8 +257,25 @@ fun LocationPinPicker(
                             locating = false
                         }
                     }
-                } else {
-                    permissionLauncher.launch(ForegroundLocation.permissions)
+                    LocationPermissionNext.REQUEST_RUNTIME,
+                    LocationPermissionNext.EXPLAIN_AND_REQUEST -> {
+                        requestedLocationPermission = true
+                        locating = false
+                        permissionLauncher.launch(ForegroundLocation.permissions)
+                    }
+                    LocationPermissionNext.OPEN_APP_SETTINGS -> {
+                        locating = false
+                        context.startActivity(
+                            Intent(
+                                Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                                Uri.fromParts("package", context.packageName, null)
+                            )
+                        )
+                    }
+                    LocationPermissionNext.OPEN_LOCATION_SOURCE_SETTINGS -> {
+                        locating = false
+                        context.startActivity(Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS))
+                    }
                 }
             },
             enabled = !locating

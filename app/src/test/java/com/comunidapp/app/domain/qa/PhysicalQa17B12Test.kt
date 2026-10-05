@@ -8,21 +8,39 @@ import com.comunidapp.app.domain.foster.FOSTER_APPLICANTS_EMPTY
 import com.comunidapp.app.domain.location.LocationPermissionNext
 import com.comunidapp.app.domain.location.LocationPermissionPolicy
 import com.comunidapp.app.domain.lostfound.LostFoundWhenLabel
-import com.comunidapp.app.domain.lostfound.PublicAlertVisibility
 import com.comunidapp.app.domain.m17.CommunityHelpPresentation
 import com.comunidapp.app.domain.notifications.NotificationCategory
 import com.comunidapp.app.domain.notifications.NotificationPreferenceVisibility
+import com.comunidapp.app.domain.lostfound.CanonLostFoundListRule
+import com.comunidapp.app.domain.lostfound.LostFoundMediaPlan
+import com.comunidapp.app.domain.m13.ContributeSpecies
 import com.comunidapp.app.domain.onboarding.onb02.ContextualNavigation
+import com.comunidapp.app.domain.onboarding.onb02.GuideDestination
+import com.comunidapp.app.domain.onboarding.onb02.GuideSnapshot
 import com.comunidapp.app.domain.onboarding.onb02.GuideStep
+import com.comunidapp.app.domain.onboarding.onb02.GuideStepStore
 import com.comunidapp.app.domain.onboarding.onb02.GuideTarget
 import com.comunidapp.app.domain.onboarding.onb02.InteractiveOnboardingGuide
+import com.comunidapp.app.domain.onboarding.onb02.OnboardingGuideSession
 import com.comunidapp.app.domain.onboarding.onb02.SecondaryScreenExit
-import com.comunidapp.app.domain.organization.OrganizationListContext
 import com.comunidapp.app.domain.organization.OrganizationPublicSearch
+import com.comunidapp.app.domain.organization.OrganizationRoute
 import com.comunidapp.app.domain.organization.OrganizationScope
+import com.comunidapp.app.data.model.M17MockOrganizations
+import com.comunidapp.app.data.model.M17VolunteerSearchFilter
+import com.comunidapp.app.data.model.PetSpecies
+import com.comunidapp.app.data.repository.MockM17DonationRepository
+import com.comunidapp.app.data.repository.MockM17InKindRepository
+import com.comunidapp.app.data.repository.MockM17VolunteerRepository
+import com.comunidapp.app.domain.notifications.NotificationPreferenceRules
 import com.comunidapp.app.domain.pets.LostReportDraft
-import com.comunidapp.app.domain.pets.LostReportDraftStore
+import com.comunidapp.app.domain.pets.LostReportDraftCodec
 import com.comunidapp.app.domain.pets.PetDisplayName
+import com.comunidapp.app.domain.user.ProfilePrivacySave
+import com.comunidapp.app.navigation.ScreenOrigin
+import com.comunidapp.app.viewmodel.LostReportFormViewModel
+import androidx.lifecycle.SavedStateHandle
+import kotlinx.coroutines.runBlocking
 import com.comunidapp.app.domain.user.PersonSearchMatcher
 import com.comunidapp.app.domain.user.ProfileVisibility
 import com.comunidapp.app.domain.user.UserPrivacySettings
@@ -31,6 +49,7 @@ import com.comunidapp.app.domain.user.UserProfileMapper
 import com.comunidapp.app.domain.vitacora.VitaCoraHistoryDuplicates
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -71,6 +90,30 @@ class PhysicalQa17B12Test {
         assertEquals(GuideStep.FEED, step.step)
         assertTrue(step.completed)
         assertEquals(step, InteractiveOnboardingGuide.advance(step, GuideTarget.CONTINUE))
+        val highlightIndex = InteractiveOnboardingGuide.order.indexOf(GuideStep.HIGHLIGHT_ADD_FUNCTION)
+        assertEquals(
+            GuideStep.TEACH_ADD_FUNCTION,
+            InteractiveOnboardingGuide.order[highlightIndex + 1]
+        )
+        val opened = InteractiveOnboardingGuide.advance(
+            GuideSnapshot(GuideStep.HIGHLIGHT_ADD_FUNCTION, completed = false),
+            GuideTarget.ADD_FUNCTION
+        )
+        assertEquals(GuideStep.TEACH_ADD_FUNCTION, opened.step)
+        assertFalse(opened.completed)
+        assertEquals(
+            GuideDestination.ADD_FUNCTION_SELECTOR,
+            InteractiveOnboardingGuide.destination(opened.step)
+        )
+        val finished = InteractiveOnboardingGuide.advance(opened, GuideTarget.CONTINUE)
+        assertEquals(GuideStep.FEED, finished.step)
+        assertTrue(finished.completed)
+        val disk = linkedMapOf<String, String>()
+        val session = OnboardingGuideSession(memoryStore(disk))
+        session.save(opened)
+        val restored = OnboardingGuideSession(memoryStore(disk)).current()
+        assertEquals(GuideStep.TEACH_ADD_FUNCTION, restored.step)
+        assertFalse(InteractiveOnboardingGuide.shouldStart(onboardingAlreadyCompleted = finished.completed))
         assertEquals(SecondaryScreenExit.POP_TO_ORIGIN, ContextualNavigation.exitFromAddFunction())
         val nav = source("app/src/main/java/com/comunidapp/app/navigation/ComunidappNavGraph.kt")
         assertTrue(nav.contains("ADD_FUNCTION_LATER"))
@@ -116,7 +159,12 @@ class PhysicalQa17B12Test {
             "infra/supabase-canonical/supabase/migrations/20261004220000_1111_profile_location_phone_privacy.sql"
         )
         assertTrue(migration.contains("phone_public"))
-        assertTrue(migration.contains("show_location"))
+        assertTrue(migration.contains("show_location boolean not null default false"))
+        assertFalse(migration.contains("show_location boolean not null default true"))
+        assertFalse(migration.contains("set show_location = true"))
+        assertFalse(UserPrivacySettings().showLocation)
+        assertFalse(UserPrivacySettings().showPhone)
+        assertTrue(ProfilePrivacySave.whenExtendedRpcMissing(savingPhoneOrFlags = true).isFailure)
         assertFalse(migration.contains("apply to production"))
     }
 
@@ -169,7 +217,6 @@ class PhysicalQa17B12Test {
 
     @Test
     fun creatingAPetKeepsTheLostReportDraft() {
-        LostReportDraftStore.clear()
         val draft = LostReportDraft(
             typeName = "LOST",
             petName = "Luna",
@@ -182,14 +229,24 @@ class PhysicalQa17B12Test {
             latitude = -34.6,
             longitude = -58.4
         )
-        LostReportDraftStore.capture(draft)
-        assertEquals("+5411", LostReportDraftStore.peek()?.contactInfo)
-        assertEquals("content://photo", LostReportDraftStore.peek()?.imageUri)
-        assertEquals(-34.6, LostReportDraftStore.peek()?.latitude)
-        assertEquals(setOf("old"), LostReportDraftStore.peek()?.knownPetIds)
-        val form = source("app/src/main/java/com/comunidapp/app/ui/screens/publish/PublishForms.kt")
-        assertTrue(form.contains("LostReportDraftStore.capture"))
-        assertFalse(form.contains("LocationPermissionOnboarding"))
+        val encoded = LostReportDraftCodec.encode(draft)
+        val handle = SavedStateHandle(mapOf(LostReportFormViewModel.KEY to encoded))
+        val restored = LostReportFormViewModel(handle)
+        assertEquals("+5411", restored.read()?.contactInfo)
+        assertEquals("content://photo", restored.read()?.imageUri)
+        assertEquals(-34.6, restored.read()?.latitude)
+        assertEquals(setOf("old"), restored.read()?.knownPetIds)
+        assertEquals("Collar rojo", restored.read()?.description)
+        restored.clear()
+        assertNull(LostReportFormViewModel(handle).read())
+        val again = LostReportFormViewModel(SavedStateHandle())
+        again.write(draft)
+        val survived = LostReportFormViewModel(
+            SavedStateHandle(mapOf(LostReportFormViewModel.KEY to again.read().let { LostReportDraftCodec.encode(it!!) }))
+        )
+        assertEquals(draft.contactInfo, survived.read()?.contactInfo)
+        survived.clear()
+        assertNull(survived.read())
     }
 
     @Test
@@ -214,11 +271,15 @@ class PhysicalQa17B12Test {
 
     @Test
     fun anOlderActivePublicCaseStaysVisibleToANewerAccount() {
-        assertTrue(PublicAlertVisibility.visible(true, 1L, Long.MAX_VALUE))
-        assertFalse(PublicAlertVisibility.visible(false, Long.MAX_VALUE, 1L))
-        val list = source("app/src/main/java/com/comunidapp/app/viewmodel/LostFoundViewModel.kt")
-        assertTrue(list.contains("PublicAlertVisibility.visible"))
-        assertFalse(list.contains("accountCreated"))
+        val accountCreated = 5_000L
+        assertTrue(CanonLostFoundListRule.include("OPEN", 1_000L, accountCreated))
+        assertTrue(CanonLostFoundListRule.include("OPEN", 9_000L, accountCreated))
+        assertTrue(CanonLostFoundListRule.include("CLAIMED", 1_000L, accountCreated))
+        assertTrue(CanonLostFoundListRule.include("IN_CARE", 9_000L, accountCreated))
+        assertFalse(CanonLostFoundListRule.include("RESOLVED", 1_000L, accountCreated))
+        assertFalse(CanonLostFoundListRule.include("HIDDEN", 9_000L, accountCreated))
+        assertFalse(CanonLostFoundListRule.include("CANCELLED", 1_000L, accountCreated))
+        assertFalse(CanonLostFoundListRule.usesCursor)
     }
 
     @Test
@@ -227,6 +288,8 @@ class PhysicalQa17B12Test {
         assertEquals("Encontrado", PetDisplayName.of("FOUND_CASE", "Sin nombre"))
         assertEquals("Luna", PetDisplayName.of("FOUND_CASE", "Luna"))
         assertNull(PetDisplayName.persistableName("Encontrado"))
+        assertNull(PetDisplayName.persistableName("  encontrado  "))
+        assertEquals("Luna", PetDisplayName.persistableName("Luna"))
         val profile = source("app/src/main/java/com/comunidapp/app/ui/components/v2/V2Foundation.kt")
         assertTrue(profile.contains("PetDisplayName.of"))
     }
@@ -262,12 +325,48 @@ class PhysicalQa17B12Test {
         val rows = listOf("org-a" to "A", "org-b" to "B")
         assertEquals(listOf("org-a" to "A"), OrganizationScope.keep("org-a", rows) { it.first })
         assertEquals(rows, OrganizationScope.keep(null, rows) { it.first })
-        OrganizationListContext.open("org-a")
-        assertEquals("org-a", OrganizationListContext.organizationId)
-        OrganizationListContext.clear()
-        assertNull(OrganizationListContext.organizationId)
+        assertEquals(
+            "m17/volunteer?organizationId=org-a",
+            OrganizationRoute.append("m17/volunteer", "org-a")
+        )
+        assertEquals("m17/volunteer", OrganizationRoute.append("m17/volunteer", null))
+        assertEquals("m17/volunteer", OrganizationRoute.append("m17/volunteer", "  "))
+        runBlocking {
+            val volunteer = MockM17VolunteerRepository(actorUserId = { "qa" })
+            val fromA = volunteer.searchPublicOpportunities(
+                M17VolunteerSearchFilter(organizationId = M17MockOrganizations.ORG_NORTE)
+            ).getOrThrow().map { it.title }
+            val fromB = volunteer.searchPublicOpportunities(
+                M17VolunteerSearchFilter(organizationId = M17MockOrganizations.ORG_SUR)
+            ).getOrThrow().map { it.title }
+            val general = volunteer.searchPublicOpportunities(M17VolunteerSearchFilter()).getOrThrow()
+            assertTrue(fromA.isNotEmpty())
+            assertTrue(fromB.isNotEmpty())
+            assertTrue(fromA.none { it in fromB })
+            assertTrue(general.size > fromA.size)
+            val goods = MockM17InKindRepository(actorUserId = { "qa" })
+            val goodsA = goods.searchPublicNeeds(
+                com.comunidapp.app.data.model.M17InKindSearchFilter(organizationId = M17MockOrganizations.ORG_NORTE)
+            ).getOrThrow()
+            val goodsB = goods.searchPublicNeeds(
+                com.comunidapp.app.data.model.M17InKindSearchFilter(organizationId = M17MockOrganizations.ORG_SUR)
+            ).getOrThrow()
+            assertTrue(goodsA.isNotEmpty())
+            assertTrue(goodsB.isNotEmpty())
+            assertTrue(goodsA.none { a -> goodsB.any { it.id == a.id } })
+            val money = MockM17DonationRepository(actorUserId = { "qa" })
+            val moneyA = money.searchPublicCampaigns(
+                com.comunidapp.app.data.model.M17CampaignSearchFilter(organizationId = M17MockOrganizations.ORG_NORTE)
+            ).getOrThrow().map { it.title }
+            val moneyB = money.searchPublicCampaigns(
+                com.comunidapp.app.data.model.M17CampaignSearchFilter(organizationId = M17MockOrganizations.ORG_SUR)
+            ).getOrThrow().map { it.title }
+            assertTrue(moneyA.isNotEmpty())
+            assertTrue(moneyB.isNotEmpty())
+            assertTrue(moneyA.none { it in moneyB })
+        }
         val nav = source("app/src/main/java/com/comunidapp/app/navigation/M16NavGraph.kt")
-        assertTrue(nav.contains("OrganizationListContext.open(shelterId)"))
+        assertTrue(nav.contains("OrganizationRoute.append(NavRoutes.ADOPTION_SEARCH, shelterId)"))
         assertTrue(nav.contains("NavRoutes.ADOPTION_SEARCH"))
         assertTrue(nav.contains("NavRoutes.M17_GOODS"))
         assertTrue(nav.contains("NavRoutes.M17_CAMPAIGNS"))
@@ -292,25 +391,64 @@ class PhysicalQa17B12Test {
     }
 
     @Test
-    fun volunteerCopySpeaksInPlacesNotApplicants() {
+    fun volunteerCopySpeaksInPlacesNotApplicants() = runBlocking {
         assertEquals("Convocatoria", CommunityHelpPresentation.volunteerTitle("Sin postulantes"))
         assertEquals("6 lugares disponibles", CommunityHelpPresentation.slotsLine(0, 6))
         assertEquals("Cupo completo", CommunityHelpPresentation.slotsLine(2, 2))
         assertEquals("1 lugar disponible", CommunityHelpPresentation.slotsLine(5, 6))
+        val repo = MockM17VolunteerRepository(actorUserId = { "qa" })
+        val listed = repo.searchPublicOpportunities(M17VolunteerSearchFilter()).getOrThrow()
+        val raw = listed.first { it.title == "Sin postulantes" }
+        val detail = repo.getPublicOpportunity(raw.id).getOrThrow()
+        assertEquals("Sin postulantes", detail.title)
+        assertEquals("Convocatoria", CommunityHelpPresentation.volunteerTitle(detail.title))
+        assertFalse(CommunityHelpPresentation.volunteerTitle(detail.title).contains("Sin postulantes"))
     }
 
     @Test
-    fun theSameLostPhotoIsOneHistoryRowAndTheCareMomentWins() {
-        val photo = "https://cdn.example/lost.jpg"
-        val social = history("social", "SOCIAL", "Publicación en VitaCora", photo)
-        val care = history("care", "PHOTO", "Se guardó un recuerdo", photo)
-        val other = history("note", "NOTE", "Nota", null)
-        val collapsed = VitaCoraHistoryDuplicates.collapse(listOf(social, care, other))
-        assertEquals(listOf("care", "note"), collapsed.map { it.id })
-        val distinct = VitaCoraHistoryDuplicates.collapse(
-            listOf(social, other.copy(mediaDisplayUrl = "https://cdn.example/other.jpg"))
+    fun aLostPhotoReusesTheCaseAssetAndDoesNotCreateASecondMoment() {
+        val plan = LostFoundMediaPlan.reuse("asset-case-photo")
+        assertEquals("asset-case-photo", plan.assetId)
+        assertFalse(plan.uploadAgain)
+        assertFalse(plan.createVitaCoraMoment)
+        assertNotEquals("asset-feed-copy", plan.assetId)
+        val caseRow = history("care", "PHOTO", "Foto del hallazgo", "https://cdn.example/case.jpg")
+        val socialRow = history("social", "SOCIAL", "Publicación en VitaCora", "https://cdn.example/feed-copy.jpg")
+        val shown = VitaCoraHistoryDuplicates.collapse(listOf(caseRow, socialRow))
+        assertEquals(listOf("care", "social"), shown.map { it.id })
+        assertEquals("https://cdn.example/case.jpg", shown[0].mediaDisplayUrl)
+        assertEquals("https://cdn.example/feed-copy.jpg", shown[1].mediaDisplayUrl)
+    }
+
+    @Test
+    fun hiddenEmailChannelDoesNotClearAStoredOptIn() {
+        assertTrue(
+            NotificationPreferenceRules.preserveEmail(
+                existingEmailEnabled = true,
+                emailChannelVisible = false
+            )
         )
-        assertEquals(listOf("social", "note"), distinct.map { it.id })
+        assertFalse(
+            NotificationPreferenceRules.preserveEmail(
+                existingEmailEnabled = false,
+                emailChannelVisible = false
+            )
+        )
+    }
+
+    @Test
+    fun backFallbackFollowsTheScreenThatOpenedTheFlow() {
+        assertEquals("settings", ScreenOrigin.fallback("settings"))
+        assertEquals("use_leover_as", ScreenOrigin.fallback("use_leover_as"))
+        assertNull(ScreenOrigin.fallback("home"))
+        assertNull(ScreenOrigin.fallback(null))
+    }
+
+    @Test
+    fun aSightingKeepsTheCaseSpecies() {
+        assertEquals(PetSpecies.CAT, ContributeSpecies.fromCase(PetSpecies.CAT))
+        assertEquals(PetSpecies.OTHER, ContributeSpecies.fromCase(null))
+        assertFalse(ContributeSpecies.fromCase(null) == PetSpecies.DOG)
     }
 
     private fun history(id: String, event: String, reason: String, media: String?) = M14PassportHistory(
@@ -324,6 +462,13 @@ class PhysicalQa17B12Test {
         metadataEvent = event,
         mediaDisplayUrl = media
     )
+
+    private fun memoryStore(disk: MutableMap<String, String>) = object : GuideStepStore {
+        override fun read(): String? = disk["snapshot"]
+        override fun write(encoded: String) {
+            disk["snapshot"] = encoded
+        }
+    }
 
     private fun source(path: String): String {
         val file = listOf(

@@ -19,23 +19,45 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import com.comunidapp.app.domain.RolePermissions
 import com.comunidapp.app.domain.context.OperationalContextProvider
+import com.comunidapp.app.domain.organization.OrganizationRoute
 import java.nio.charset.StandardCharsets
+
+private fun organizationArgument() = navArgument(OrganizationRoute.ARG) {
+    type = NavType.StringType
+    nullable = true
+    defaultValue = null
+}
 
 /** M17 ayuda comunitaria: descubrir y actividad personal. */
 fun NavGraphBuilder.m17DonationRoutes(navController: NavHostController) {
-    composable(NavRoutes.M17_HUB) {
+    composable(
+        route = OrganizationRoute.pattern(NavRoutes.M17_HUB),
+        arguments = listOf(organizationArgument())
+    ) { entry ->
+        val organizationId = OrganizationRoute.read(entry.arguments?.getString(OrganizationRoute.ARG))
         M17HubScreen(
             onNavigateBack = { navController.popBackStack() },
-            onCampaigns = { navController.navigate(NavRoutes.M17_CAMPAIGNS) },
-            onGoods = { navController.navigate(NavRoutes.M17_GOODS) },
-            onVolunteer = { navController.navigate(NavRoutes.M17_VOLUNTEER) }
+            onCampaigns = {
+                navController.navigate(OrganizationRoute.append(NavRoutes.M17_CAMPAIGNS, organizationId))
+            },
+            onGoods = {
+                navController.navigate(OrganizationRoute.append(NavRoutes.M17_GOODS, organizationId))
+            },
+            onVolunteer = {
+                navController.navigate(OrganizationRoute.append(NavRoutes.M17_VOLUNTEER, organizationId))
+            }
         )
     }
     composable(NavRoutes.M17_MY_HELP) {
         M17MyHelpScreen(onNavigateBack = { navController.popBackStack() })
     }
-    composable(NavRoutes.M17_GOODS) {
+    composable(
+        route = OrganizationRoute.pattern(NavRoutes.M17_GOODS),
+        arguments = listOf(organizationArgument())
+    ) { entry ->
+        val organizationId = OrganizationRoute.read(entry.arguments?.getString(OrganizationRoute.ARG))
         M17GoodsListScreen(
+            organizationId = organizationId,
             onNavigateBack = { navController.popBackStack() },
             onNeedClick = { id -> navController.navigate(NavRoutes.m17GoodDetail(id)) }
         )
@@ -53,8 +75,13 @@ fun NavGraphBuilder.m17DonationRoutes(navController: NavHostController) {
             onNavigateBack = { navController.popBackStack() }
         )
     }
-    composable(NavRoutes.M17_VOLUNTEER) {
+    composable(
+        route = OrganizationRoute.pattern(NavRoutes.M17_VOLUNTEER),
+        arguments = listOf(organizationArgument())
+    ) { entry ->
+        val organizationId = OrganizationRoute.read(entry.arguments?.getString(OrganizationRoute.ARG))
         M17VolunteerListScreen(
+            organizationId = organizationId,
             onNavigateBack = { navController.popBackStack() },
             onOpportunityClick = { id -> navController.navigate(NavRoutes.m17VolunteerDetail(id)) }
         )
@@ -72,9 +99,14 @@ fun NavGraphBuilder.m17DonationRoutes(navController: NavHostController) {
             onNavigateBack = { navController.popBackStack() }
         )
     }
-    composable(NavRoutes.M17_CAMPAIGNS) {
+    composable(
+        route = OrganizationRoute.pattern(NavRoutes.M17_CAMPAIGNS),
+        arguments = listOf(organizationArgument())
+    ) { entry ->
+        val organizationId = OrganizationRoute.read(entry.arguments?.getString(OrganizationRoute.ARG))
         val context by OperationalContextProvider.active.collectAsState()
         M17CampaignsListScreen(
+            organizationId = organizationId,
             onNavigateBack = { navController.popBackStack() },
             onCampaignClick = { id -> navController.navigate(NavRoutes.m17CampaignDetail(id)) },
             onManage = { navController.navigate(NavRoutes.M17_CAMPAIGNS_MANAGE) },

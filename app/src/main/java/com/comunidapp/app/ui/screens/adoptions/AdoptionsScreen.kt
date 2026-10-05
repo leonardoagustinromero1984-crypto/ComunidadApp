@@ -106,12 +106,13 @@ fun AdoptionsScreen(
 fun AdoptionSearchScreen(
     onAdoptionClick: (String) -> Unit,
     onNavigateBack: () -> Unit,
+    organizationId: String? = null,
     viewModel: AdoptionsViewModel = viewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val filters by viewModel.filters.collectAsState()
-    LaunchedEffect(Unit) {
-        viewModel.setOrganization(com.comunidapp.app.domain.organization.OrganizationListContext.organizationId)
+    LaunchedEffect(organizationId) {
+        viewModel.setOrganization(organizationId)
     }
     var filtersOpen by remember { mutableStateOf(false) }
     var draftLocation by remember { mutableStateOf("") }

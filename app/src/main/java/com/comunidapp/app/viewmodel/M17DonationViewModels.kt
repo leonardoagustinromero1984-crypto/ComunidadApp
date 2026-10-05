@@ -103,12 +103,10 @@ class M17CampaignsListViewModel(
     }
 
     companion object {
-        fun factory(): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
+        fun factory(organizationId: String? = null): ViewModelProvider.Factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                M17CampaignsListViewModel(
-                    organizationId = com.comunidapp.app.domain.organization.OrganizationListContext.organizationId
-                ) as T
+                M17CampaignsListViewModel(organizationId = organizationId) as T
         }
     }
 }

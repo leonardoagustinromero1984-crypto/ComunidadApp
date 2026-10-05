@@ -50,12 +50,10 @@ class M17InKindListViewModel(
     }
 
     companion object {
-        fun factory() = object : ViewModelProvider.Factory {
+        fun factory(organizationId: String? = null) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                M17InKindListViewModel(
-                    organizationId = com.comunidapp.app.domain.organization.OrganizationListContext.organizationId
-                ) as T
+                M17InKindListViewModel(organizationId = organizationId) as T
         }
     }
 }
@@ -95,12 +93,10 @@ class M17VolunteerListViewModel(
     }
 
     companion object {
-        fun factory() = object : ViewModelProvider.Factory {
+        fun factory(organizationId: String? = null) = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                M17VolunteerListViewModel(
-                    organizationId = com.comunidapp.app.domain.organization.OrganizationListContext.organizationId
-                ) as T
+                M17VolunteerListViewModel(organizationId = organizationId) as T
         }
     }
 }

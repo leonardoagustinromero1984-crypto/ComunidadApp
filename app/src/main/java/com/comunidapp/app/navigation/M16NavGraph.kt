@@ -10,6 +10,7 @@ import androidx.navigation.navArgument
 import com.comunidapp.app.domain.capability.CapabilityFacts
 import com.comunidapp.app.domain.capability.CapabilityGate
 import com.comunidapp.app.domain.context.OperationalContextProvider
+import com.comunidapp.app.domain.organization.OrganizationRoute
 import com.comunidapp.app.ui.screens.m16.M16ShelterDetailScreen
 import com.comunidapp.app.ui.screens.m16.M16ShelterManageScreen
 import com.comunidapp.app.ui.screens.m16.M16SheltersListScreen
@@ -43,20 +44,16 @@ fun NavGraphBuilder.m16ShelterRoutes(navController: NavHostController) {
             shelterId = shelterId,
             onNavigateBack = { navController.popBackStack() },
             onAdoptions = {
-                com.comunidapp.app.domain.organization.OrganizationListContext.open(shelterId)
-                navController.navigate(NavRoutes.ADOPTION_SEARCH)
+                navController.navigate(OrganizationRoute.append(NavRoutes.ADOPTION_SEARCH, shelterId))
             },
             onVolunteer = {
-                com.comunidapp.app.domain.organization.OrganizationListContext.open(shelterId)
-                navController.navigate(NavRoutes.M17_HUB)
+                navController.navigate(OrganizationRoute.append(NavRoutes.M17_VOLUNTEER, shelterId))
             },
             onDonateGoods = {
-                com.comunidapp.app.domain.organization.OrganizationListContext.open(shelterId)
-                navController.navigate(NavRoutes.M17_GOODS)
+                navController.navigate(OrganizationRoute.append(NavRoutes.M17_GOODS, shelterId))
             },
             onDonateMoney = {
-                com.comunidapp.app.domain.organization.OrganizationListContext.open(shelterId)
-                navController.navigate(NavRoutes.M17_CAMPAIGNS)
+                navController.navigate(OrganizationRoute.append(NavRoutes.M17_CAMPAIGNS, shelterId))
             },
             onManage = { navController.navigate(NavRoutes.M16_SHELTERS_MANAGE) }
         )

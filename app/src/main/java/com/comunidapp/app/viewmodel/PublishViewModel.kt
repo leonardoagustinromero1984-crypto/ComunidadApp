@@ -513,7 +513,7 @@ class PublishViewModel(
                         authorId = author.id,
                         authorName = author.name,
                         type = type,
-                        petName = petName.trim().ifBlank { null },
+                        petName = com.comunidapp.app.domain.pets.PetDisplayName.persistableName(petName),
                         species = species,
                         location = location.trim(),
                         description = description.trim(),
@@ -534,6 +534,7 @@ class PublishViewModel(
                                     lostPost.copy(id = lostId, photoUrl = seedPhoto)
                                 )
                             }
+                            var caseAssetId = seedPhoto
                             if (imageUri != null) {
                                 when (val upload = uploadMedia(
                                     imageUri,
@@ -542,9 +543,12 @@ class PublishViewModel(
                                     lostId,
                                     FileResourceType.LOST_FOUND_CASE
                                 )) {
-                                    is AppResult.Success -> lostFoundRepository.updateLostFoundPost(
-                                        lostPost.copy(id = lostId, photoUrl = upload.data.assetId)
-                                    )
+                                    is AppResult.Success -> {
+                                        caseAssetId = upload.data.assetId
+                                        lostFoundRepository.updateLostFoundPost(
+                                            lostPost.copy(id = lostId, photoUrl = upload.data.assetId)
+                                        )
+                                    }
                                     is AppResult.Failure -> {
                                         _formState.update {
                                             PublishFormState(
@@ -555,6 +559,7 @@ class PublishViewModel(
                                     }
                                 }
                             }
+                            val reuse = com.comunidapp.app.domain.lostfound.LostFoundMediaPlan.reuse(caseAssetId)
                             publishFeedPost(
                                 author = author,
                                 type = PostType.LOST_FOUND,
@@ -567,11 +572,12 @@ class PublishViewModel(
                                     }
                                 },
                                 locationText = location.trim(),
-                                imageUri = imageUri,
-                                existingMediaAssetId = existingMediaAssetId,
+                                imageUri = if (reuse.uploadAgain) imageUri else null,
+                                existingMediaAssetId = reuse.assetId ?: existingMediaAssetId,
                                 petId = petId,
                                 alertKind = type.name,
-                                lostFoundCaseId = lostId
+                                lostFoundCaseId = lostId,
+                                createVitaCoraMoment = reuse.createVitaCoraMoment
                             )
                         }
                         .onFailure { error ->
@@ -646,7 +652,8 @@ class PublishViewModel(
         petIds: List<String> = emptyList(),
         saveToVitaCora: Boolean = false,
         alertKind: String? = null,
-        lostFoundCaseId: String? = null
+        lostFoundCaseId: String? = null,
+        createVitaCoraMoment: Boolean = true
     ) {
         val imageUris = (listOfNotNull(imageUri) + extraImageUris)
             .distinct()
@@ -782,7 +789,7 @@ class PublishViewModel(
 
         feedRepository.addFeedPost(post)
             .onSuccess { contentId ->
-                if (resolvedPetIds.isNotEmpty()) {
+                if (createVitaCoraMoment && lostFoundCaseId == null && resolvedPetIds.isNotEmpty()) {
                     val assetIds = listOfNotNull(mediaAssetId) + extraAssetIds
                     if (assetIds.isNotEmpty()) {
                         com.comunidapp.app.domain.vitacora.VitaCoraSocialSave.saveApprovedPost(

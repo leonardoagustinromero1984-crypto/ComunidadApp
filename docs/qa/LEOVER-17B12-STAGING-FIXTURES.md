@@ -32,13 +32,19 @@ El contenido nuevo lleva el prefijo `QA17B12` y queda atado a una sola de esas o
 
 ## Qué agrega el seed
 
-- Campañas monetarias A y B.
-- Necesidades materiales A y B.
-- Voluntariado: lugares disponibles, cupo completo, y una convocatoria sin postulantes, repartidas entre A y B.
-- Casos públicos LOST (anterior) y FOUND (reciente) del usuario QA07, para el feed histórico.
-- Tres prestadores con nombre `QA17B12` (veterinaria, peluquería, paseador).
+Depende de `seed-community-care-actors.ps1` y de `seed_community_care_02.sql`. Si faltan los refugios, los actores o una mascota previa, el SQL aborta.
 
-Adopciones, postulaciones, turnos y accesos VitaCora siguen apoyados en QA14, QA15, QA10, QA11 y QA12. El seed no duplica esas cuentas.
+Inserta filas `QA17B12` en las tablas que leen los RPC de la app:
+
+- `m17_donation_campaigns`, `m17_in_kind_needs`, `m17_volunteer_opportunities` (A y B).
+- `adoption_publications` y `adoption_applications`.
+- `lost_found_alerts`: un perdido histórico abierto, un encontrado reciente y un resuelto que el listado público no muestra.
+- `service_providers`, `service_offerings` y `bookings`.
+- `foster_care_requests` y `foster_care_applications`.
+- `leover_verification_requests` solo si QA10 no tiene ya un pedido veterinario pendiente.
+- `vitacora_update_proposals`.
+
+No cambia contraseñas.
 
 ## Cómo sembrarlo
 
@@ -56,17 +62,10 @@ Adopciones, postulaciones, turnos y accesos VitaCora siguen apoyados en QA14, QA
 .\scripts\qa\seed-17b12-staging.ps1 -Apply
 ```
 
-El script aborta si el proyecto vinculado no es `tobqbddfcyitwgbkthhy`.
+El script aborta si el proyecto vinculado no es `tobqbddfcyitwgbkthhy`. El SQL también aborta si la sesión no tiene `leover.qa_target` igual a ese ref, así que ejecutar el archivo solo no alcanza.
 
 ## Cómo limpiarlo
 
 Borrar únicamente filas con el prefijo, en STAGING:
 
-```sql
-delete from public.m17_volunteer_opportunities where title like 'QA17B12 %';
-delete from public.m17_in_kind_needs where title like 'QA17B12 %';
-delete from public.m17_donation_campaigns where title like 'QA17B12 %';
-delete from public.service_providers where display_name like 'QA17B12 %';
-```
-
-No borra personas, organizaciones ni los casos históricos si ya se usaron en QA físico. Esos casos se identifican por `created_by` de `qa07shelter`.
+Volver a correr el seed borra primero las filas `QA17B12` (campañas, cosas, voluntariado, perdidos/encontrados por `location_label` o `note`, adopciones, tránsito, turnos, prestadores, propuestas y verificaciones marcadas) y las vuelve a insertar. No borra personas ni organizaciones.

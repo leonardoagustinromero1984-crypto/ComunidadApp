@@ -53,7 +53,7 @@ data class PublicProfileRpcRow(
 data class PrivacySettingsRow(
     @SerialName("user_id") val userId: String,
     @SerialName("profile_visibility") val profileVisibility: String = "PRIVATE",
-    @SerialName("show_location") val showLocation: Boolean = true,
+    @SerialName("show_location") val showLocation: Boolean = false,
     @SerialName("show_phone") val showPhone: Boolean = false,
     @SerialName("allow_friend_requests") val allowFriendRequests: Boolean = true
 )
@@ -69,7 +69,7 @@ data class PrivacySettingsUpdateRow(
 
 @Serializable
 private data class PersonPrivacyFlagRow(
-    @SerialName("show_location") val showLocation: Boolean = true,
+    @SerialName("show_location") val showLocation: Boolean = false,
     @SerialName("phone_public") val phonePublic: Boolean = false
 )
 
@@ -243,6 +243,11 @@ class UserSupabaseDataSource {
                 )
             } catch (rpc: Exception) {
                 if (!isMissingExtendedPersonRpc(rpc)) throw rpc
+                if (command.phone != null) {
+                    return Result.failure(
+                        IllegalStateException(com.comunidapp.app.domain.user.ProfilePrivacySave.UNAVAILABLE)
+                    )
+                }
                 supabase.postgrest.rpc(
                     function = com.comunidapp.app.domain.canonical.CanonicalBackend.RPC_UPDATE_MY_PERSON,
                     parameters = base
@@ -377,7 +382,7 @@ class UserSupabaseDataSource {
         return Result.success(
             UserPrivacySettings(
                 profileVisibility = visibility,
-                showLocation = columns?.showLocation ?: true,
+                showLocation = columns?.showLocation ?: false,
                 showPhone = columns?.phonePublic ?: false
             )
         )
@@ -402,6 +407,9 @@ class UserSupabaseDataSource {
                 )
             } catch (rpc: Exception) {
                 if (!isMissingExtendedPersonRpc(rpc)) throw rpc
+                return com.comunidapp.app.domain.user.ProfilePrivacySave.whenExtendedRpcMissing(
+                    savingPhoneOrFlags = true
+                )
             }
             supabase.from(SupabaseTables.PERSONS).update(
                 PrivacyStatePatch(privacyState = state)

@@ -26,7 +26,7 @@ object UserProfileMapper {
         }
         val privacySettings = privacy ?: UserPrivacySettings(
             profileVisibility = visibility,
-            showLocation = true,
+            showLocation = false,
             showPhone = user.phonePublic,
             allowFriendRequests = true
         )

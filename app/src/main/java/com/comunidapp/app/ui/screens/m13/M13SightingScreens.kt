@@ -35,7 +35,6 @@ import com.comunidapp.app.data.model.M13MatchNextStep
 import com.comunidapp.app.data.model.M13MatchReason
 import com.comunidapp.app.data.model.M13MatchStatus
 import com.comunidapp.app.data.model.nextStep
-import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.ui.components.leo.LeoTopAppBar
 import com.comunidapp.app.ui.components.v2.V2LocationStringPicker
 import com.comunidapp.app.ui.components.state.EmptyState
@@ -54,7 +53,11 @@ import com.comunidapp.app.viewmodel.M13SightingListViewModel
 import com.comunidapp.app.ui.components.leo.LeoHairline
 import com.comunidapp.app.ui.components.leo.LeoListRow
 import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
+import com.comunidapp.app.ui.components.leo.LeoOutlinedButton
 import com.comunidapp.app.ui.components.leo.LeoPrimaryButton
+import com.comunidapp.app.data.provider.DataProvider
+import com.comunidapp.app.domain.m13.ContributeSpecies
+import com.comunidapp.app.ui.media.rememberLeoVerPhotoSourcePicker
 import com.comunidapp.app.ui.theme.LeoDimens
 
 @Composable
@@ -140,10 +143,19 @@ fun M13SightingCreateScreen(
     val message by viewModel.message.collectAsState()
     val createdId by viewModel.createdId.collectAsState()
     val busy by viewModel.busy.collectAsState()
+    val cases by DataProvider.lostFoundRepository.observeLostFoundPosts().collectAsState()
+    val caseSpecies = cases.firstOrNull { it.id == caseId }?.species
+    var species by remember(caseId, caseSpecies) {
+        mutableStateOf(ContributeSpecies.fromCase(caseSpecies))
+    }
     var color by remember { mutableStateOf("") }
     var zone by remember { mutableStateOf("") }
     var description by remember { mutableStateOf("") }
     var mediaRef by remember { mutableStateOf("") }
+    val pickPhoto = rememberLeoVerPhotoSourcePicker(
+        sheetTitle = "Foto del avistamiento",
+        onSourceSelected = { uri -> mediaRef = uri.toString() }
+    )
 
     LaunchedEffect(createdId) {
         createdId?.let(onCreated)
@@ -185,19 +197,20 @@ fun M13SightingCreateScreen(
                 label = { Text("Descripción") },
                 modifier = Modifier.fillMaxWidth()
             )
-            OutlinedTextField(
-                value = mediaRef,
-                onValueChange = { mediaRef = it },
-                label = { Text("Foto o evidencia (opcional)") },
-                modifier = Modifier.fillMaxWidth()
+            LeoOutlinedButton(
+                text = if (mediaRef.isBlank()) "Agregar foto" else "Cambiar foto",
+                onClick = pickPhoto
             )
+            if (mediaRef.isNotBlank()) {
+                Text("Foto seleccionada", style = MaterialTheme.typography.bodySmall)
+            }
             Spacer(Modifier.height(12.dp))
             LeoPrimaryButton(
                 text = if (busy) "Guardando…" else "Publicar avistamiento",
                 onClick = {
                     viewModel.create(
                         caseId = caseId,
-                        species = PetSpecies.DOG,
+                        species = species,
                         primaryColor = color,
                         zoneText = zone,
                         description = description,

@@ -337,7 +337,7 @@ private fun JsonObject.toPreference(): NotificationPreference? {
         category = category,
         inAppEnabled = boolean("in_app_enabled") ?: true,
         pushEnabled = boolean("push_enabled") ?: true,
-        emailEnabled = false,
+        emailEnabled = boolean("email_enabled") ?: false,
         quietHours = quietHours,
         timezone = timezone,
         marketingConsent = boolean("marketing_consent") ?: false,

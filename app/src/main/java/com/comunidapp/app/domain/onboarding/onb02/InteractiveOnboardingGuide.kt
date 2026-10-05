@@ -12,6 +12,13 @@ enum class GuideStep {
     USE_LEOVER_AS,
     OPEN_SETTINGS,
     HIGHLIGHT_ADD_FUNCTION,
+    TEACH_ADD_FUNCTION,
+    FEED
+}
+
+enum class GuideDestination {
+    STAY,
+    ADD_FUNCTION_SELECTOR,
     FEED
 }
 
@@ -36,8 +43,15 @@ object InteractiveOnboardingGuide {
         GuideStep.USE_LEOVER_AS,
         GuideStep.OPEN_SETTINGS,
         GuideStep.HIGHLIGHT_ADD_FUNCTION,
+        GuideStep.TEACH_ADD_FUNCTION,
         GuideStep.FEED
     )
+
+    fun destination(step: GuideStep): GuideDestination = when (step) {
+        GuideStep.TEACH_ADD_FUNCTION -> GuideDestination.ADD_FUNCTION_SELECTOR
+        GuideStep.FEED -> GuideDestination.FEED
+        else -> GuideDestination.STAY
+    }
 
     fun shouldStart(onboardingAlreadyCompleted: Boolean): Boolean = !onboardingAlreadyCompleted
 
@@ -51,6 +65,7 @@ object InteractiveOnboardingGuide {
         GuideStep.CHOOSE_FUNCTION -> target == GuideTarget.FUNCTION_CHOICE
         GuideStep.USE_LEOVER_AS -> target == GuideTarget.USE_AS_CHOICE
         GuideStep.HIGHLIGHT_ADD_FUNCTION -> target == GuideTarget.ADD_FUNCTION
+        GuideStep.TEACH_ADD_FUNCTION -> target == GuideTarget.CONTINUE
         GuideStep.FEED -> false
     }
 
@@ -73,4 +88,29 @@ enum class SecondaryScreenExit {
 
 object ContextualNavigation {
     fun exitFromAddFunction(): SecondaryScreenExit = SecondaryScreenExit.POP_TO_ORIGIN
+}
+
+object GuideSnapshotCodec {
+    fun encode(snapshot: GuideSnapshot): String = "${snapshot.step.name}|${snapshot.completed}"
+
+    fun decode(raw: String?): GuideSnapshot? {
+        if (raw.isNullOrBlank()) return null
+        val parts = raw.split("|")
+        val step = runCatching { GuideStep.valueOf(parts[0]) }.getOrNull() ?: return null
+        return GuideSnapshot(step, completed = parts.getOrNull(1) == "true")
+    }
+}
+
+interface GuideStepStore {
+    fun read(): String?
+    fun write(encoded: String)
+}
+
+class OnboardingGuideSession(private val store: GuideStepStore) {
+    fun current(): GuideSnapshot =
+        GuideSnapshotCodec.decode(store.read()) ?: InteractiveOnboardingGuide.start()
+
+    fun save(snapshot: GuideSnapshot) {
+        store.write(GuideSnapshotCodec.encode(snapshot))
+    }
 }

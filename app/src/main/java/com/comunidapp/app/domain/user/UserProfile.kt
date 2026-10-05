@@ -70,7 +70,7 @@ enum class ProfileVisibility {
 
 data class UserPrivacySettings(
     val profileVisibility: ProfileVisibility = ProfileVisibility.PRIVATE,
-    val showLocation: Boolean = true,
+    val showLocation: Boolean = false,
     val showPhone: Boolean = false,
     val allowFriendRequests: Boolean = true
 ) {

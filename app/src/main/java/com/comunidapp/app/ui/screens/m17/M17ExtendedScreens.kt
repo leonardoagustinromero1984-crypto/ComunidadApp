@@ -125,7 +125,8 @@ private fun HelpChoice(title: String, subtitle: String, onClick: () -> Unit) {
 fun M17GoodsListScreen(
     onNavigateBack: () -> Unit,
     onNeedClick: (String) -> Unit,
-    viewModel: M17InKindListViewModel = viewModel(factory = M17InKindListViewModel.factory())
+    organizationId: String? = null,
+    viewModel: M17InKindListViewModel = viewModel(factory = M17InKindListViewModel.factory(organizationId))
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
@@ -258,7 +259,8 @@ fun M17GoodsDetailScreen(
 fun M17VolunteerListScreen(
     onNavigateBack: () -> Unit,
     onOpportunityClick: (String) -> Unit,
-    viewModel: M17VolunteerListViewModel = viewModel(factory = M17VolunteerListViewModel.factory())
+    organizationId: String? = null,
+    viewModel: M17VolunteerListViewModel = viewModel(factory = M17VolunteerListViewModel.factory(organizationId))
 ) {
     val state by viewModel.uiState.collectAsState()
     Scaffold(
@@ -361,7 +363,11 @@ fun M17VolunteerDetailScreen(
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(opp.organizationDisplayName, style = MaterialTheme.typography.bodyMedium)
-                    Text(opp.title, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+                    Text(
+                        CommunityHelpPresentation.volunteerTitle(opp.title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.Bold
+                    )
                     Text(CommunityHelpPresentation.volunteerType(opp.type), style = MaterialTheme.typography.labelMedium)
                     if (opp.description.isNotBlank()) Text(opp.description)
                     opp.publicLocationText?.takeIf { it.isNotBlank() }?.let { Text(it) }

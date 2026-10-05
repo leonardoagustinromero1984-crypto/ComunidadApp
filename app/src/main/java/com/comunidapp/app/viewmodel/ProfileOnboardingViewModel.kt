@@ -53,7 +53,7 @@ data class ProfileOnboardingUiState(
     val countryCode: String = "",
     val homeLocalityId: String? = null,
     val profileVisibility: ProfileVisibility = ProfileVisibility.PRIVATE,
-    val showLocation: Boolean = true,
+    val showLocation: Boolean = false,
     val showPhone: Boolean = false,
     val allowFriendRequests: Boolean = true,
     val bio: String = "",
