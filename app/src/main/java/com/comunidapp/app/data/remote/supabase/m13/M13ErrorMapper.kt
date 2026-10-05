@@ -14,6 +14,7 @@ object M13ErrorMapper {
         "NOT_AUTHENTICATED" -> "Debés iniciar sesión."
         "SIGHTING_NOT_FOUND" -> "No encontramos ese avistamiento."
         "SIGHTING_INVALID" -> "Revisá los datos del avistamiento."
+        "OBSERVED_AT_IN_FUTURE" -> "La fecha del avistamiento no puede ser futura."
         "SIGHTING_FORBIDDEN" -> "No tenés permiso sobre este avistamiento."
         "SIGHTING_NOT_ACTIVE" -> "El avistamiento ya no está activo."
         "SIGHTING_INVALID_TRANSITION" -> "Esa transición de estado no está permitida."

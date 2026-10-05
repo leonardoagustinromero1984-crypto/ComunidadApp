@@ -288,14 +288,17 @@ class MockM17InKindRepository(
 
     override suspend fun getPublicNeed(id: String): Result<M17PublicInKindNeed> = runCatching {
         val need = store.needs.value.firstOrNull { it.id == id } ?: fail("M17_NEED_NOT_FOUND")
-        if (!need.status.isPublic || need.status == M17InKindNeedStatus.DRAFT) fail("M17_NEED_NOT_PUBLIC")
+        if (!need.status.isPublic && !canManage(need.organizationId)) fail("M17_NEED_NOT_PUBLIC")
         M17ExtendedPrivacySanitizer.toPublicNeed(need, pledgedQty(id), deliveredQty(id))
+            .copy(canManage = canManage(need.organizationId))
     }
 
     override fun observeNeedsForOrganization(orgId: String): Flow<List<M17InKindDonationNeed>> =
         store.needs.map { it.filter { n -> n.organizationId == orgId } }
 
     override suspend fun listPledges(needId: String): Result<List<M17InKindPledge>> = runCatching {
+        val need = store.needs.value.firstOrNull { it.id == needId } ?: fail("M17_NEED_NOT_FOUND")
+        if (!canManage(need.organizationId)) fail("FORBIDDEN")
         store.pledges.value.filter { it.needId == needId }
     }
 
@@ -330,6 +333,17 @@ class MockM17InKindRepository(
                 M17ExtendedValidators.validateQuantity(quantity)?.let { fail(it) }
                 val need = store.needs.value.firstOrNull { it.id == needId } ?: fail("M17_NEED_NOT_FOUND")
                 if (need.status != M17InKindNeedStatus.PUBLISHED) fail("M17_NEED_NOT_PUBLIC")
+                val existing = store.pledges.value.firstOrNull {
+                    it.needId == needId && it.userId == user &&
+                        it.status != M17InKindPledgeStatus.CANCELLED &&
+                        it.status != M17InKindPledgeStatus.REJECTED
+                }
+                if (existing != null) {
+                    if (existing.status == M17InKindPledgeStatus.DELIVERED) fail("PLEDGE_ALREADY_DELIVERED")
+                    val updated = existing.copy(quantity = quantity, message = message, status = M17InKindPledgeStatus.PLEDGED)
+                    store.upsertPledge(updated)
+                    return@runCatching updated
+                }
                 val pledge = M17InKindPledge(
                     id = store.nextId("m17_pledge"),
                     needId = needId,
@@ -347,6 +361,8 @@ class MockM17InKindRepository(
     override suspend fun markDelivered(pledgeId: String): Result<M17InKindPledge> = store.withLock {
         runCatching {
             val pledge = store.pledges.value.firstOrNull { it.id == pledgeId } ?: fail("M17_PLEDGE_NOT_FOUND")
+            val actor = actorUserId()
+            if (actor != null && actor == pledge.userId) fail("FORBIDDEN")
             val need = store.needs.value.firstOrNull { it.id == pledge.needId } ?: fail("M17_NEED_NOT_FOUND")
             if (!canManage(need.organizationId)) fail("M17_PERMISSION_DENIED")
             if (pledge.status == M17InKindPledgeStatus.DELIVERED) return@runCatching pledge
@@ -384,8 +400,8 @@ class MockM17VolunteerRepository(
 
     override suspend fun getPublicOpportunity(id: String): Result<M17PublicVolunteerOpportunity> = runCatching {
         val opp = store.opportunities.value.firstOrNull { it.id == id } ?: fail("M17_OPPORTUNITY_NOT_FOUND")
-        if (opp.status == M17VolunteerOpportunityStatus.DRAFT) fail("M17_OPPORTUNITY_NOT_PUBLIC")
-        M17ExtendedPrivacySanitizer.toPublicOpportunity(opp)
+        if (!opp.status.isPublic && !canManage(opp.organizationId)) fail("M17_OPPORTUNITY_NOT_PUBLIC")
+        M17ExtendedPrivacySanitizer.toPublicOpportunity(opp).copy(canManage = canManage(opp.organizationId))
     }
 
     override fun observeOpportunitiesForOrganization(orgId: String): Flow<List<M17VolunteerOpportunity>> =
@@ -393,6 +409,9 @@ class MockM17VolunteerRepository(
 
     override suspend fun listApplicants(opportunityId: String): Result<List<M17VolunteerApplication>> =
         runCatching {
+            val opp = store.opportunities.value.firstOrNull { it.id == opportunityId }
+                ?: fail("M17_OPPORTUNITY_NOT_FOUND")
+            if (!canManage(opp.organizationId)) fail("FORBIDDEN")
             store.applications.value.filter { it.opportunityId == opportunityId }
         }
 
@@ -458,12 +477,19 @@ class MockM17VolunteerRepository(
                 val opp = store.opportunities.value.firstOrNull { it.id == app.opportunityId }
                     ?: fail("M17_OPPORTUNITY_NOT_FOUND")
                 if (!canManage(opp.organizationId)) fail("M17_PERMISSION_DENIED")
-                if (opp.status.isTerminal) fail("M17_OPPORTUNITY_TERMINAL")
+                if (opp.status != M17VolunteerOpportunityStatus.PUBLISHED) fail("OPPORTUNITY_CLOSED")
+                if (app.userId == actorUserId()) fail("FORBIDDEN")
+                if (app.status == M17VolunteerApplicationStatus.ACCEPTED) return@runCatching app
+                if (app.status != M17VolunteerApplicationStatus.SUBMITTED) fail("M17_INVALID_STATE_TRANSITION")
+                val accepted = store.applications.value.count {
+                    it.opportunityId == opp.id && it.status == M17VolunteerApplicationStatus.ACCEPTED
+                }
+                if (accepted >= opp.slotsNeeded) fail("SLOTS_FULL")
                 val updated = app.copy(status = M17VolunteerApplicationStatus.ACCEPTED)
                 store.upsertApplication(updated)
                 store.updateOpportunity(
                     opp.copy(
-                        slotsFilled = (opp.slotsFilled + 1).coerceAtMost(opp.slotsNeeded),
+                        slotsFilled = accepted + 1,
                         updatedAt = System.currentTimeMillis()
                     )
                 )

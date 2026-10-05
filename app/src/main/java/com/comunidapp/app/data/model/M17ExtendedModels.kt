@@ -7,9 +7,9 @@ enum class M17InKindCategory {
 }
 
 enum class M17InKindNeedStatus {
-    DRAFT, PUBLISHED, FULFILLED, CANCELLED;
+    DRAFT, PUBLISHED, FULFILLED, CLOSED, CANCELLED;
 
-    val isTerminal: Boolean get() = this == FULFILLED || this == CANCELLED
+    val isTerminal: Boolean get() = this == FULFILLED || this == CLOSED || this == CANCELLED
     val isPublic: Boolean get() = this == PUBLISHED || this == FULFILLED
 }
 
@@ -23,9 +23,9 @@ enum class M17VolunteerOpportunityType {
 }
 
 enum class M17VolunteerOpportunityStatus {
-    DRAFT, PUBLISHED, PAUSED, FILLED, COMPLETED, CANCELLED;
+    DRAFT, PUBLISHED, PAUSED, FILLED, COMPLETED, CLOSED, CANCELLED;
 
-    val isTerminal: Boolean get() = this == FILLED || this == COMPLETED || this == CANCELLED
+    val isTerminal: Boolean get() = this == FILLED || this == COMPLETED || this == CLOSED || this == CANCELLED
     val isPublic: Boolean get() = this == PUBLISHED || this == PAUSED || this == FILLED || this == COMPLETED
 }
 
@@ -64,7 +64,8 @@ data class M17PublicInKindNeed(
     val quantityUnit: String,
     val coveragePercent: Int,
     val publicLocationText: String? = null,
-    val shelterPublicName: String? = null
+    val shelterPublicName: String? = null,
+    val canManage: Boolean = false
 )
 
 data class M17InKindPledge(
@@ -112,7 +113,8 @@ data class M17PublicVolunteerOpportunity(
     val slotsNeeded: Int,
     val slotsFilled: Int,
     val publicLocationText: String? = null,
-    val scheduleHint: String? = null
+    val scheduleHint: String? = null,
+    val canManage: Boolean = false
 )
 
 data class M17VolunteerApplication(
@@ -178,7 +180,8 @@ object M17ExtendedPrivacySanitizer {
         delivered: Int
     ): M17PublicInKindNeed {
         val requested = need.quantityRequested.coerceAtLeast(1)
-        val coverage = ((delivered.coerceAtLeast(pledged) * 100) / requested).coerceIn(0, 999)
+        // Over-offer is allowed. The bar never goes past 100 percent.
+        val coverage = ((delivered.coerceAtLeast(pledged) * 100) / requested).coerceIn(0, 100)
         return M17PublicInKindNeed(
             id = need.id,
             title = scrub(need.title),
@@ -191,7 +194,8 @@ object M17ExtendedPrivacySanitizer {
             quantityDelivered = delivered,
             quantityUnit = need.quantityUnit,
             coveragePercent = coverage,
-            publicLocationText = need.publicLocationText?.let { scrub(it) }
+            publicLocationText = need.publicLocationText?.let { scrub(it) },
+            canManage = false
         )
     }
 
@@ -206,7 +210,8 @@ object M17ExtendedPrivacySanitizer {
             slotsNeeded = opp.slotsNeeded,
             slotsFilled = opp.slotsFilled,
             publicLocationText = opp.publicLocationText?.let { scrub(it) },
-            scheduleHint = opp.scheduleHint?.let { scrub(it) }
+            scheduleHint = opp.scheduleHint?.let { scrub(it) },
+            canManage = false
         )
 
     fun sanitizeReceipt(ref: M17PublicReceiptRef): M17PublicReceiptRef =
@@ -216,6 +221,6 @@ object M17ExtendedPrivacySanitizer {
 object M17ExtendedCalculator {
     fun inKindCoverage(requested: Int, delivered: Int): Int {
         val base = requested.coerceAtLeast(1)
-        return ((delivered.coerceAtLeast(0) * 100) / base).coerceIn(0, 999)
+        return ((delivered.coerceAtLeast(0) * 100) / base).coerceIn(0, 100)
     }
 }

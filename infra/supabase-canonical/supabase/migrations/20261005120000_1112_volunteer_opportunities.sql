@@ -103,13 +103,20 @@ $$;
 
 revoke all on function public._canon_volunteer_opportunity_json(uuid) from public, anon, authenticated;
 
-create or replace function public.canon_list_volunteer_opportunities(p_organization_id uuid default null)
+create or replace function public.canon_list_volunteer_opportunities(
+  p_organization_id uuid default null,
+  p_query text default null,
+  p_type text default null
+)
 returns jsonb
 language plpgsql
 stable
 security definer
 set search_path = public
 as $$
+declare
+  v_query text := nullif(replace(replace(btrim(coalesce(p_query, '')), '%', ''), '_', ''), '');
+  v_type text := nullif(btrim(coalesce(p_type, '')), '');
 begin
   if auth.uid() is null then
     raise exception 'NOT_AUTHENTICATED';
@@ -119,6 +126,12 @@ begin
       from public.volunteer_opportunities o
      where o.status = 'PUBLISHED'
        and (p_organization_id is null or o.organization_id = p_organization_id)
+       and (
+         v_query is null
+         or o.title ilike '%' || v_query || '%'
+         or o.description ilike '%' || v_query || '%'
+       )
+       and (v_type is null or o.opportunity_type = v_type)
   ), '[]'::jsonb);
 end;
 $$;
@@ -267,31 +280,70 @@ security definer
 set search_path = public
 as $$
 declare
+  v_opportunity_id uuid;
+  v_org uuid;
+  v_status text;
+  v_slots integer;
+  v_accepted integer;
   v public.volunteer_applications%rowtype;
 begin
   if auth.uid() is null then
     raise exception 'NOT_AUTHENTICATED';
   end if;
-  select * into v
-    from public.volunteer_applications
-   where id = p_application_id;
-  if v.id is null then
+  select a.opportunity_id into v_opportunity_id
+    from public.volunteer_applications a
+   where a.id = p_application_id;
+  if v_opportunity_id is null then
     raise exception 'APPLICATION_NOT_FOUND';
   end if;
-  if not public._canon_volunteer_is_manager(v.opportunity_id) then
+  select o.organization_id into v_org
+    from public.volunteer_opportunities o
+   where o.id = v_opportunity_id;
+  if v_org is null then
+    raise exception 'OPPORTUNITY_NOT_FOUND';
+  end if;
+  if not public._acl_org_permission(auth.uid(), v_org, 'org.edit') then
     raise exception 'FORBIDDEN';
   end if;
+  select o.status, o.slots_needed into v_status, v_slots
+    from public.volunteer_opportunities o
+   where o.id = v_opportunity_id
+   for update;
+  if v_status is distinct from 'PUBLISHED' then
+    raise exception 'OPPORTUNITY_CLOSED';
+  end if;
+  select * into v
+    from public.volunteer_applications
+   where id = p_application_id
+   for update;
   if v.applicant_user_id = auth.uid() then
     raise exception 'FORBIDDEN';
   end if;
-  if v.status = 'SUBMITTED' then
-    update public.volunteer_applications
-       set status = 'ACCEPTED',
-           updated_at = timezone('utc', now())
-     where id = v.id
-       and status = 'SUBMITTED';
-    v.status := 'ACCEPTED';
+  if v.status = 'ACCEPTED' then
+    return jsonb_build_object(
+      'id', v.id,
+      'opportunity_id', v.opportunity_id,
+      'applicant_user_id', v.applicant_user_id,
+      'status', v.status,
+      'message', v.message
+    );
   end if;
+  if v.status is distinct from 'SUBMITTED' then
+    raise exception 'APPLICATION_NOT_PENDING';
+  end if;
+  select count(*)::int into v_accepted
+    from public.volunteer_applications
+   where opportunity_id = v_opportunity_id
+     and status = 'ACCEPTED';
+  if v_accepted >= v_slots then
+    raise exception 'SLOTS_FULL';
+  end if;
+  update public.volunteer_applications
+     set status = 'ACCEPTED',
+         updated_at = timezone('utc', now())
+   where id = v.id
+     and status = 'SUBMITTED';
+  v.status := 'ACCEPTED';
   return jsonb_build_object(
     'id', v.id,
     'opportunity_id', v.opportunity_id,
@@ -302,14 +354,14 @@ begin
 end;
 $$;
 
-revoke all on function public.canon_list_volunteer_opportunities(uuid) from public, anon;
+revoke all on function public.canon_list_volunteer_opportunities(uuid, text, text) from public, anon;
 revoke all on function public.canon_get_volunteer_opportunity(uuid) from public, anon;
 revoke all on function public.canon_apply_volunteer_opportunity(uuid, text) from public, anon;
 revoke all on function public.canon_list_volunteer_applicants(uuid) from public, anon;
 revoke all on function public.canon_list_my_volunteer_applications() from public, anon;
 revoke all on function public.canon_accept_volunteer_application(uuid) from public, anon;
 
-grant execute on function public.canon_list_volunteer_opportunities(uuid) to authenticated;
+grant execute on function public.canon_list_volunteer_opportunities(uuid, text, text) to authenticated;
 grant execute on function public.canon_get_volunteer_opportunity(uuid) to authenticated;
 grant execute on function public.canon_apply_volunteer_opportunity(uuid, text) to authenticated;
 grant execute on function public.canon_list_volunteer_applicants(uuid) to authenticated;

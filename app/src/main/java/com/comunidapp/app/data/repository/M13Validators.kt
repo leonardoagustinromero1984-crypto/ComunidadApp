@@ -6,7 +6,8 @@ import com.comunidapp.app.data.remote.supabase.m13.M13ErrorMapper
 import com.comunidapp.app.data.remote.supabase.m13.M13Exception
 
 object M13Validators {
-    private val safeMediaRef = Regex("^(m05://|file_asset:).{1,200}$")
+    private val safeMediaRef = Regex("^(m05://|file_asset:).{1,8000}$")
+    const val FUTURE_TOLERANCE_MS = 5L * 60L * 1000L
 
     fun validateCreate(
         description: String,
@@ -15,8 +16,13 @@ object M13Validators {
         mediaRefs: List<String>,
         latitudeApprox: Double?,
         longitudeApprox: Double?,
-        accuracyMeters: Double?
+        accuracyMeters: Double?,
+        observedAt: Long? = null,
+        nowEpochMs: Long = System.currentTimeMillis()
     ): String? {
+        if (observedAt != null && observedAt > nowEpochMs + FUTURE_TOLERANCE_MS) {
+            return "OBSERVED_AT_IN_FUTURE"
+        }
         if (description.trim().length < 8) return "SIGHTING_INVALID"
         if (description.trim().length > 2000) return "SIGHTING_INVALID"
         if (zoneText.trim().length < 2) return "SIGHTING_INVALID"

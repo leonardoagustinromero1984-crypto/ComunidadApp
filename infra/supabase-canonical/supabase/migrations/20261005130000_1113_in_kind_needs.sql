@@ -186,6 +186,9 @@ begin
   ) then
     raise exception 'NEED_NOT_FOUND';
   end if;
+  -- Over-offer is allowed. Several people may pledge more than quantity_needed
+  -- because a commitment may never be delivered. Coverage shown to the public
+  -- stays capped at 100 percent and this function does not reject the surplus.
   insert into public.in_kind_pledges (
     need_id, pledged_by, quantity, message, status
   ) values (
@@ -196,13 +199,17 @@ begin
         message = excluded.message,
         status = 'PLEDGED',
         updated_at = timezone('utc', now())
-    where public.in_kind_pledges.status = 'CANCELLED'
+    where public.in_kind_pledges.status in ('PLEDGED', 'CANCELLED')
   returning id, status, quantity into v_id, v_status, v_quantity;
   if v_id is null then
-    select p.id, p.status, p.quantity into v_id, v_status, v_quantity
+    select p.status into v_status
       from public.in_kind_pledges p
      where p.need_id = p_need_id
        and p.pledged_by = auth.uid();
+    if v_status = 'DELIVERED' then
+      raise exception 'PLEDGE_ALREADY_DELIVERED';
+    end if;
+    raise exception 'PLEDGE_NOT_UPDATED';
   end if;
   return jsonb_build_object(
     'id', v_id,

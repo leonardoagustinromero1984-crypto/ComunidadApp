@@ -75,6 +75,18 @@ begin
   ) then
     raise exception 'QA17B12_ABORT_COLUMN_MISSING:lost_found_sightings.observed_at';
   end if;
+  if not exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'persons' and column_name = 'show_location'
+  ) then
+    raise exception 'QA17B12_ABORT_COLUMN_MISSING:persons.show_location';
+  end if;
+  if not exists (
+    select 1 from information_schema.columns
+     where table_schema = 'public' and table_name = 'persons' and column_name = 'phone_public'
+  ) then
+    raise exception 'QA17B12_ABORT_COLUMN_MISSING:persons.phone_public';
+  end if;
   select id into v_a from public.organizations where slug = 'qa-cc02-shelter-n';
   select id into v_b from public.organizations where slug = 'qa-cc02-shelter-u';
   if v_a is null or v_b is null then

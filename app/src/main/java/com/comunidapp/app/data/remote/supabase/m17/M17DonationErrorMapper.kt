@@ -32,6 +32,9 @@ object M17DonationErrorMapper {
         "M17_OPPORTUNITY_NOT_FOUND",
         "M17_OPPORTUNITY_NOT_PUBLIC",
         "M17_OPPORTUNITY_TERMINAL",
+        "OPPORTUNITY_CLOSED",
+        "SLOTS_FULL",
+        "PLEDGE_ALREADY_DELIVERED",
         "M17_DUPLICATE_APPLICATION",
         "M17_PLEDGE_NOT_FOUND",
         "M17_APPLICATION_NOT_FOUND",
@@ -68,7 +71,10 @@ object M17DonationErrorMapper {
         "M17_NEED_TERMINAL" -> "Esta necesidad ya está cerrada."
         "M17_OPPORTUNITY_NOT_FOUND" -> "No encontramos esa oportunidad."
         "M17_OPPORTUNITY_NOT_PUBLIC" -> "Esta oportunidad no está publicada."
-        "M17_OPPORTUNITY_TERMINAL" -> "Esta oportunidad ya está cerrada."
+        "M17_OPPORTUNITY_TERMINAL",
+        "OPPORTUNITY_CLOSED" -> "Esta convocatoria está cerrada."
+        "SLOTS_FULL" -> "Esa convocatoria ya no tiene cupo."
+        "PLEDGE_ALREADY_DELIVERED" -> "Ese aporte ya figura como entregado."
         "M17_DUPLICATE_APPLICATION" -> "Ya te postulaste a esta oportunidad."
         "M17_PLEDGE_NOT_FOUND" -> "No encontramos ese compromiso."
         "M17_APPLICATION_NOT_FOUND" -> "No encontramos esa postulación."

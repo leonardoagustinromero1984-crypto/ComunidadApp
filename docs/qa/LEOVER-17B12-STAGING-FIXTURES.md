@@ -53,7 +53,7 @@ No está ejecutado. Para revisarlo sin escribir:
 .\scripts\qa\seed-17b12-staging.ps1
 ```
 
-Sin `-Apply` no hay escrituras. Con `-Apply` el script solo sigue si el proyecto vinculado es `tobqbddfcyitwgbkthhy`. El SQL aborta si `leover.qa_target` no es ese ref.
+Sin `-Apply` no hay escrituras. Con `-Apply` el script solo sigue si el proyecto vinculado es `tobqbddfcyitwgbkthhy`. El SQL aborta si `leover.qa_target` no es ese ref, o si faltan las columnas de 1111 `persons.show_location` y `persons.phone_public`, o las tablas de 1112–1114.
 
 ## Cómo limpiarlo
 

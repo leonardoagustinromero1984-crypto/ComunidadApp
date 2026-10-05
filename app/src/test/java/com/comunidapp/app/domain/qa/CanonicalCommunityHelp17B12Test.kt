@@ -1,19 +1,29 @@
 package com.comunidapp.app.domain.qa
 
+import com.comunidapp.app.data.model.M17InKindPledgeStatus
 import com.comunidapp.app.data.model.M17InKindSearchFilter
 import com.comunidapp.app.data.model.M17MockOrganizations
+import com.comunidapp.app.data.model.M17VolunteerApplicationStatus
+import com.comunidapp.app.data.model.M17VolunteerOpportunityStatus
+import com.comunidapp.app.data.model.M17VolunteerOpportunityType
 import com.comunidapp.app.data.model.M17VolunteerSearchFilter
 import com.comunidapp.app.data.model.PetSpecies
 import com.comunidapp.app.data.remote.supabase.m13.CanonSightingRecord
+import com.comunidapp.app.data.remote.supabase.m17.CanonicalVolunteerList
+import com.comunidapp.app.data.remote.supabase.m17.M17Exception
 import com.comunidapp.app.data.remote.supabase.m17.toM17InKindPledgeFromRpc
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicInKindNeed
 import com.comunidapp.app.data.remote.supabase.m17.toM17PublicVolunteerOpportunity
 import com.comunidapp.app.data.remote.supabase.m17.toM17VolunteerApplicationFromRpc
 import com.comunidapp.app.data.repository.CreateM13SightingInput
+import com.comunidapp.app.data.repository.M13Validators
 import com.comunidapp.app.data.repository.M17ExtendedMemoryStore
 import com.comunidapp.app.data.repository.MockM17InKindRepository
 import com.comunidapp.app.data.repository.MockM17VolunteerRepository
 import com.comunidapp.app.domain.lostfound.IncidentMoment
+import com.comunidapp.app.domain.m17.CommunityHelpPresentation
+import com.comunidapp.app.domain.m17.M17HelpBackend
+import com.comunidapp.app.domain.m17.M17HelpRouting
 import java.io.File
 import java.time.Instant
 import kotlinx.coroutines.runBlocking
@@ -49,9 +59,15 @@ class CanonicalCommunityHelp17B12Test {
         assertEquals(listed.id, detail.id)
         val application = visitor.submitApplication(detail.id, "Puedo pasear").getOrThrow()
         assertEquals(detail.id, application.opportunityId)
-        val applicants = visitor.listApplicants(detail.id).getOrThrow()
+        val manager = MockM17VolunteerRepository(
+            actorUserId = { "qa07" },
+            store = store,
+            canManage = { it == M17MockOrganizations.ORG_SUR }
+        )
+        val applicants = manager.listApplicants(detail.id).getOrThrow()
         assertEquals(detail.id, applicants.single().opportunityId)
         assertEquals("qa14", applicants.single().userId)
+        assertTrue(visitor.listApplicants(detail.id).isFailure)
     }
 
     @Test
@@ -73,8 +89,14 @@ class CanonicalCommunityHelp17B12Test {
         assertEquals(listed.id, detail.id)
         val pledge = visitor.createPledge(detail.id, 2, "Llevo bolsas").getOrThrow()
         assertEquals(detail.id, pledge.needId)
-        val managed = visitor.listPledges(detail.id).getOrThrow()
+        val manager = MockM17InKindRepository(
+            actorUserId = { "qa07" },
+            store = store,
+            canManage = { it == M17MockOrganizations.ORG_SUR }
+        )
+        val managed = manager.listPledges(detail.id).getOrThrow()
         assertTrue(managed.any { it.id == pledge.id && it.needId == detail.id })
+        assertTrue(visitor.listPledges(detail.id).isFailure)
     }
 
     @Test
@@ -171,7 +193,8 @@ class CanonicalCommunityHelp17B12Test {
         assertEquals("Lo vi en la esquina", stored.description)
         assertEquals("Belgrano", stored.zoneText)
         assertEquals(listOf("m05://qa17b12-foto"), stored.mediaRefs)
-        assertEquals(-34.56, stored.latitudeApprox)
+        assertEquals(-34.56, stored.latitudeApprox ?: 0.0, 0.0001)
+        assertEquals(-58.45, stored.longitudeApprox ?: 0.0, 0.0001)
         assertEquals(PetSpecies.CAT, stored.species)
     }
 
@@ -180,7 +203,8 @@ class CanonicalCommunityHelp17B12Test {
         val volunteer = text("infra/supabase-canonical/supabase/migrations/20261005120000_1112_volunteer_opportunities.sql")
         val needs = text("infra/supabase-canonical/supabase/migrations/20261005130000_1113_in_kind_needs.sql")
         val sighting = text("infra/supabase-canonical/supabase/migrations/20261005140000_1114_lost_found_sighting_observed_at.sql")
-        val client = text("app/src/main/java/com/comunidapp/app/data/remote/supabase/m17/SupabaseM17ExtendedRemoteDataSource.kt")
+        val client = text("app/src/main/java/com/comunidapp/app/data/remote/supabase/m17/CanonicalM17RemoteDataSource.kt")
+        val legacy = text("app/src/main/java/com/comunidapp/app/data/remote/supabase/m17/SupabaseM17ExtendedRemoteDataSource.kt")
         val sightingClient = text("app/src/main/java/com/comunidapp/app/data/repository/CanonicalM13SightingRepository.kt")
         val names = text("app/src/main/java/com/comunidapp/app/domain/canonical/CanonicalBackend.kt")
         val provider = text("app/src/main/java/com/comunidapp/app/data/provider/DataProvider.kt")
@@ -224,6 +248,11 @@ class CanonicalCommunityHelp17B12Test {
         assertFalse(client.contains("in_kind_offers"))
         assertFalse(client.contains("community_events"))
         assertFalse(client.contains("\"EVENTS\""))
+        assertFalse(client.contains("m17_"))
+        assertTrue(legacy.contains("m17_list_public_volunteer_opportunities"))
+        assertTrue(legacy.contains("m17_create_in_kind_pledge"))
+        assertFalse(legacy.contains("canon_list_volunteer_opportunities"))
+        assertFalse(legacy.contains("canon_pledge_in_kind_need"))
 
         assertTrue(sightingClient.contains("CanonSightingRecord"))
         assertFalse(sightingClient.contains("m13_create_sighting"))
@@ -239,6 +268,236 @@ class CanonicalCommunityHelp17B12Test {
         assertTrue(runner.contains("tobqbddfcyitwgbkthhy"))
         assertTrue(runner.contains("if (-not \$Apply)"))
         assertTrue(runner.contains("ExpectedRef = \"tobqbddfcyitwgbkthhy\""))
+    }
+
+    @Test
+    fun oneSlotAcceptsTheFirstApplicantAndRejectsTheSecond() = runBlocking {
+        val store = M17ExtendedMemoryStore()
+        store.seedDefaults()
+        val target = store.opportunities.value.first { it.title == "Sin postulantes" }
+        store.updateOpportunity(target.copy(slotsNeeded = 1, slotsFilled = 0))
+        val visitorA = MockM17VolunteerRepository(actorUserId = { "qa14" }, store = store)
+        val visitorB = MockM17VolunteerRepository(actorUserId = { "qa02" }, store = store)
+        val manager = MockM17VolunteerRepository(
+            actorUserId = { "qa07" },
+            store = store,
+            canManage = { it == M17MockOrganizations.ORG_NORTE }
+        )
+        val first = visitorA.submitApplication(target.id, "Primera").getOrThrow()
+        val second = visitorB.submitApplication(target.id, "Segunda").getOrThrow()
+        val accepted = manager.acceptApplication(first.id).getOrThrow()
+        assertEquals(M17VolunteerApplicationStatus.ACCEPTED, accepted.status)
+        val rejected = manager.acceptApplication(second.id)
+        assertEquals("SLOTS_FULL", (rejected.exceptionOrNull() as M17Exception).code)
+        val stillSubmitted = manager.listApplicants(target.id).getOrThrow()
+            .single { it.id == second.id }
+        assertEquals(M17VolunteerApplicationStatus.SUBMITTED, stillSubmitted.status)
+        assertEquals(1, manager.listApplicants(target.id).getOrThrow().count {
+            it.status == M17VolunteerApplicationStatus.ACCEPTED
+        })
+        val refreshed = manager.getPublicOpportunity(target.id).getOrThrow()
+        assertEquals(1, refreshed.slotsFilled)
+        assertTrue(manager.canManageOpportunity(target.id))
+        assertFalse(visitorA.canManageOpportunity(target.id))
+    }
+
+    @Test
+    fun shelterADoesNotManageShelterBAndClosedRejectsAccept() = runBlocking {
+        val store = M17ExtendedMemoryStore()
+        store.seedDefaults()
+        val south = store.opportunities.value.first { it.title == "QA17B12 Paseos Sur" }
+        val north = store.opportunities.value.first { it.organizationId == M17MockOrganizations.ORG_NORTE }
+        val managerA = MockM17VolunteerRepository(
+            actorUserId = { "qa07" },
+            store = store,
+            canManage = { it == M17MockOrganizations.ORG_NORTE }
+        )
+        val visitor = MockM17VolunteerRepository(actorUserId = { "qa14" }, store = store)
+        val application = visitor.submitApplication(south.id, "Quiero ayudar").getOrThrow()
+        assertTrue(managerA.listApplicants(south.id).isFailure)
+        assertTrue(managerA.acceptApplication(application.id).isFailure)
+        assertTrue(managerA.canManageOpportunity(north.id))
+        assertFalse(managerA.canManageOpportunity(south.id))
+        store.updateOpportunity(north.copy(status = M17VolunteerOpportunityStatus.CLOSED))
+        val pending = visitor.submitApplication(north.id, "Tarde")
+        assertTrue(pending.isFailure)
+        val closed = managerA.getPublicOpportunity(north.id).getOrThrow()
+        assertEquals(M17VolunteerOpportunityStatus.CLOSED, closed.status)
+        assertEquals("Cerrada", CommunityHelpPresentation.opportunityStatus(closed.status))
+    }
+
+    @Test
+    fun closedMapsToClosedAndSearchKeepsOrganizationQueryAndType() = runBlocking {
+        val mapped = buildJsonObject {
+            put("id", "opp-closed")
+            put("title", "Cerrada")
+            put("description", "ya no recibe postulaciones")
+            put("organization_id", "org-a")
+            put("organization_display_name", "Refugio A")
+            put("opportunity_type", "TRANSPORT")
+            put("status", "CLOSED")
+            put("slots_needed", 1)
+            put("slots_filled", 1)
+            put("can_manage", true)
+        }.toM17PublicVolunteerOpportunity()
+        assertEquals(M17VolunteerOpportunityStatus.CLOSED, mapped.status)
+        assertTrue(mapped.canManage)
+        assertEquals("Cerrada", CommunityHelpPresentation.opportunityStatus(mapped.status))
+
+        val params = CanonicalVolunteerList.params("org-b", "paseos", "ANIMAL_CARE")
+        assertEquals("org-b", params.string("p_organization_id"))
+        assertEquals("paseos", params.string("p_query"))
+        assertEquals("ANIMAL_CARE", params.string("p_type"))
+
+        val store = M17ExtendedMemoryStore()
+        val visitor = MockM17VolunteerRepository(actorUserId = { "qa14" }, store = store)
+        val found = visitor.searchPublicOpportunities(
+            M17VolunteerSearchFilter(
+                query = "Paseos",
+                type = M17VolunteerOpportunityType.ANIMAL_CARE,
+                organizationId = M17MockOrganizations.ORG_SUR
+            )
+        ).getOrThrow()
+        assertEquals(listOf("QA17B12 Paseos Sur"), found.map { it.title })
+        val otherType = visitor.searchPublicOpportunities(
+            M17VolunteerSearchFilter(
+                query = "Paseos",
+                type = M17VolunteerOpportunityType.TRANSPORT,
+                organizationId = M17MockOrganizations.ORG_SUR
+            )
+        ).getOrThrow()
+        assertTrue(otherType.isEmpty())
+    }
+
+    @Test
+    fun canonicalStagingDoesNotSelectTheLegacyHelpRemote() {
+        assertEquals(
+            M17HelpBackend.CANONICAL,
+            M17HelpRouting.select(useSupabase = true, legacyRemoteModules = false)
+        )
+        assertEquals(
+            M17HelpBackend.LEGACY_M17,
+            M17HelpRouting.select(useSupabase = true, legacyRemoteModules = true)
+        )
+        assertEquals(
+            M17HelpBackend.LOCAL,
+            M17HelpRouting.select(useSupabase = false, legacyRemoteModules = false)
+        )
+        val provider = text("app/src/main/java/com/comunidapp/app/data/provider/DataProvider.kt")
+        val canon = text("app/src/main/java/com/comunidapp/app/data/remote/supabase/m17/CanonicalM17RemoteDataSource.kt")
+        assertTrue(provider.contains("M17HelpBackend.CANONICAL ->"))
+        assertTrue(provider.contains("CanonicalM17RemoteDataSource()"))
+        assertFalse(canon.contains("m17_"))
+        assertTrue(canon.contains("canon_list_volunteer_opportunities") || canon.contains("RPC_LIST_VOLUNTEER_OPPORTUNITIES"))
+        assertTrue(canon.contains("RPC_ACCEPT_VOLUNTEER_APPLICATION"))
+        assertTrue(canon.contains("RPC_LIST_IN_KIND_PLEDGES"))
+        assertTrue(canon.contains("RPC_MARK_IN_KIND_PLEDGE_DELIVERED"))
+    }
+
+    @Test
+    fun repeatedPledgeUpdatesQuantityAndOverOfferStaysVisibleAtOneHundred() = runBlocking {
+        val store = M17ExtendedMemoryStore()
+        store.seedDefaults()
+        val need = store.needs.value.first { it.title == "QA17B12 Alimento Sur" }
+        val visitor = MockM17InKindRepository(actorUserId = { "qa14" }, store = store)
+        val manager = MockM17InKindRepository(
+            actorUserId = { "qa07" },
+            store = store,
+            canManage = { it == M17MockOrganizations.ORG_SUR }
+        )
+        val otherOrg = MockM17InKindRepository(
+            actorUserId = { "qa16" },
+            store = store,
+            canManage = { it == M17MockOrganizations.ORG_NORTE }
+        )
+        val first = visitor.createPledge(need.id, 2, "dos").getOrThrow()
+        val second = visitor.createPledge(need.id, 12, "doce").getOrThrow()
+        assertEquals(first.id, second.id)
+        assertEquals(12, second.quantity)
+        assertTrue(need.quantityRequested < 12)
+        val listed = manager.listPledges(need.id).getOrThrow().single { it.id == first.id }
+        assertEquals(12, listed.quantity)
+        assertTrue(otherOrg.listPledges(need.id).isFailure)
+        assertEquals("FORBIDDEN", (visitor.markDelivered(first.id).exceptionOrNull() as M17Exception).code)
+        val delivered = manager.markDelivered(first.id).getOrThrow()
+        assertEquals(M17InKindPledgeStatus.DELIVERED, delivered.status)
+        val again = visitor.createPledge(need.id, 3, "otra vez")
+        assertEquals("PLEDGE_ALREADY_DELIVERED", (again.exceptionOrNull() as M17Exception).code)
+        val publicNeed = visitor.getPublicNeed(need.id).getOrThrow()
+        assertTrue(publicNeed.coveragePercent <= 100)
+        assertTrue(manager.canManageNeed(need.id))
+        assertFalse(visitor.canManageNeed(need.id))
+        val sql = text("infra/supabase-canonical/supabase/migrations/20261005130000_1113_in_kind_needs.sql")
+        assertTrue(sql.contains("Over-offer is allowed"))
+        assertTrue(sql.contains("least(100,"))
+        assertFalse(sql.contains("raise exception 'NEED_FULFILLED'"))
+    }
+
+    @Test
+    fun volunteerAcceptLocksTheOpportunityAndSearchIsCanonical() {
+        val sql = text("infra/supabase-canonical/supabase/migrations/20261005120000_1112_volunteer_opportunities.sql")
+        val lock = sql.indexOf("for update")
+        val slotsFull = sql.indexOf("SLOTS_FULL")
+        val acceptedCount = sql.indexOf("select count(*)::int into v_accepted")
+        assertTrue(lock in 0 until slotsFull)
+        assertTrue(acceptedCount in lock until slotsFull)
+        assertTrue(sql.contains("canon_list_volunteer_opportunities(uuid, text, text)"))
+        assertTrue(sql.contains("p_query"))
+        assertTrue(sql.contains("p_type"))
+        assertTrue(sql.contains("OPPORTUNITY_CLOSED"))
+    }
+
+    @Test
+    fun sightingRoundTripRejectsAFutureDateAndKeepsALongMediaRef() {
+        val now = 1_700_000_000_000L
+        val historical = M13Validators.validateCreate(
+            description = "Lo vi en la esquina",
+            zoneText = "Belgrano",
+            primaryColor = "negro",
+            mediaRefs = listOf("m05://" + "a".repeat(300)),
+            latitudeApprox = -34.56,
+            longitudeApprox = -58.45,
+            accuracyMeters = 20.0,
+            observedAt = now - 86_400_000L,
+            nowEpochMs = now
+        )
+        assertEquals(null, historical)
+        val nearNow = M13Validators.validateCreate(
+            description = "Lo vi en la esquina",
+            zoneText = "Belgrano",
+            primaryColor = "negro",
+            mediaRefs = emptyList(),
+            latitudeApprox = null,
+            longitudeApprox = null,
+            accuracyMeters = null,
+            observedAt = now + 60_000L,
+            nowEpochMs = now
+        )
+        assertEquals(null, nearNow)
+        val future = M13Validators.validateCreate(
+            description = "Lo vi en la esquina",
+            zoneText = "Belgrano",
+            primaryColor = "negro",
+            mediaRefs = emptyList(),
+            latitudeApprox = null,
+            longitudeApprox = null,
+            accuracyMeters = null,
+            observedAt = now + M13Validators.FUTURE_TOLERANCE_MS + 60_000L,
+            nowEpochMs = now
+        )
+        assertEquals("OBSERVED_AT_IN_FUTURE", future)
+        val sql = text("infra/supabase-canonical/supabase/migrations/20261005140000_1114_lost_found_sighting_observed_at.sql")
+        assertTrue(sql.contains("extensions.ST_Y"))
+        assertTrue(sql.contains("extensions.ST_X"))
+        assertTrue(sql.contains("OBSERVED_AT_IN_FUTURE"))
+        assertTrue(sql.contains("interval '5 minutes'"))
+        assertTrue(sql.contains("media_ref text"))
+        assertTrue(sql.contains("drop constraint if exists lost_found_sightings_media_ref_len"))
+        assertFalse(sql.contains("char_length(media_ref)"))
+        val fixture = text("infra/supabase-canonical/qa/seed_17b12_staging.sql")
+        assertTrue(fixture.contains("persons.show_location"))
+        assertTrue(fixture.contains("persons.phone_public"))
+        assertTrue(fixture.contains("QA17B12_ABORT_COLUMN_MISSING:persons.show_location"))
     }
 
     private fun JsonObject.string(key: String): String = this[key]!!.jsonPrimitive.content

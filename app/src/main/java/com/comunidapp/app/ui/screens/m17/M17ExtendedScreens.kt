@@ -31,8 +31,10 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.comunidapp.app.data.model.M17InKindNeedStatus
+import com.comunidapp.app.data.model.M17InKindPledgeStatus
 import com.comunidapp.app.data.model.M17PublicInKindNeed
 import com.comunidapp.app.data.model.M17PublicVolunteerOpportunity
+import com.comunidapp.app.data.model.M17VolunteerApplicationStatus
 import com.comunidapp.app.data.model.M17VolunteerOpportunityStatus
 import com.comunidapp.app.domain.m17.CommunityHelpPresentation
 import com.comunidapp.app.domain.m17.MoneyPresentation
@@ -248,6 +250,23 @@ fun M17GoodsDetailScreen(
                             enabled = !submitting && (quantity.toIntOrNull() ?: 0) > 0
                         )
                     }
+                    if (need.canManage) {
+                        LeoHairline()
+                        Text("Aportes", style = MaterialTheme.typography.titleMedium)
+                        if (s.pledges.isEmpty()) {
+                            Text("Todavía no hay aportes.", color = MutedText)
+                        }
+                        s.pledges.forEach { pledge ->
+                            Text("${pledge.quantity} · ${CommunityHelpPresentation.pledgeStatus(pledge.status)}")
+                            if (pledge.status == M17InKindPledgeStatus.PLEDGED) {
+                                LeoPrimaryButton(
+                                    text = "Marcar entregado",
+                                    onClick = { viewModel.confirmDelivery(pledge.id) },
+                                    enabled = !submitting
+                                )
+                            }
+                        }
+                    }
                     message?.let { Text(it, color = MaterialTheme.colorScheme.primary) }
                 }
             }
@@ -263,6 +282,7 @@ fun M17VolunteerListScreen(
     viewModel: M17VolunteerListViewModel = viewModel(factory = M17VolunteerListViewModel.factory(organizationId))
 ) {
     val state by viewModel.uiState.collectAsState()
+    var query by remember { mutableStateOf("") }
     Scaffold(
         containerColor = BrandBackground,
         topBar = {
@@ -278,6 +298,15 @@ fun M17VolunteerListScreen(
                 CommunityHelpPresentation.TIME_HINT,
                 modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
                 style = MaterialTheme.typography.bodySmall
+            )
+            LeoTextField(
+                value = query,
+                onValueChange = {
+                    query = it
+                    viewModel.search(it)
+                },
+                label = "Buscar convocatoria",
+                modifier = Modifier.padding(horizontal = 16.dp)
             )
             when (val s = state) {
                 M17VolunteerListUiState.Loading -> LoadingState(Modifier.fillMaxSize())
@@ -374,7 +403,24 @@ fun M17VolunteerDetailScreen(
                     opp.scheduleHint?.takeIf { it.isNotBlank() }?.let { Text(it) }
                     slots?.let { Text(it) }
                     Text("Estado: ${CommunityHelpPresentation.opportunityStatus(opp.status)}")
-                    if (opp.status == M17VolunteerOpportunityStatus.PUBLISHED) {
+                    if (opp.canManage) {
+                        LeoHairline()
+                        Text("Postulantes", style = MaterialTheme.typography.titleMedium)
+                        if (s.applicants.isEmpty()) {
+                            Text("Todavía no hay postulantes.", color = MutedText)
+                        }
+                        s.applicants.forEach { applicant ->
+                            Text(CommunityHelpPresentation.applicationStatus(applicant.status))
+                            if (applicant.status == M17VolunteerApplicationStatus.SUBMITTED) {
+                                LeoPrimaryButton(
+                                    text = "Aceptar",
+                                    onClick = { viewModel.accept(applicant.id) },
+                                    enabled = !submitting && opp.status == M17VolunteerOpportunityStatus.PUBLISHED
+                                )
+                            }
+                        }
+                    }
+                    if (opp.status == M17VolunteerOpportunityStatus.PUBLISHED && !opp.canManage) {
                         LeoHairline()
                         Text(
                             "Anotarte no te convierte en integrante de la organización.",

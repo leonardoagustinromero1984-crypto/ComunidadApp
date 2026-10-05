@@ -3,9 +3,12 @@ package com.comunidapp.app.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.comunidapp.app.data.model.M17InKindPledge
 import com.comunidapp.app.data.model.M17InKindSearchFilter
 import com.comunidapp.app.data.model.M17PublicInKindNeed
 import com.comunidapp.app.data.model.M17PublicVolunteerOpportunity
+import com.comunidapp.app.data.model.M17VolunteerApplication
+import com.comunidapp.app.data.model.M17VolunteerOpportunityType
 import com.comunidapp.app.data.model.M17VolunteerSearchFilter
 import com.comunidapp.app.data.provider.DataProvider
 import com.comunidapp.app.data.remote.supabase.m17.M17DonationErrorMapper
@@ -67,18 +70,29 @@ sealed class M17VolunteerListUiState {
 
 class M17VolunteerListViewModel(
     private val repository: M17VolunteerRepository = DataProvider.m17VolunteerRepository,
-    private val organizationId: String? = null
+    private val organizationId: String? = null,
+    private val type: M17VolunteerOpportunityType? = null
 ) : ViewModel() {
     private val _uiState = MutableStateFlow<M17VolunteerListUiState>(M17VolunteerListUiState.Loading)
     val uiState: StateFlow<M17VolunteerListUiState> = _uiState.asStateFlow()
+    private var query: String = ""
 
     init { load() }
+
+    fun search(text: String) {
+        query = text
+        load()
+    }
 
     fun load() {
         viewModelScope.launch {
             _uiState.value = M17VolunteerListUiState.Loading
             repository.searchPublicOpportunities(
-                M17VolunteerSearchFilter(organizationId = organizationId)
+                M17VolunteerSearchFilter(
+                    query = query,
+                    type = type,
+                    organizationId = organizationId
+                )
             )
                 .onSuccess { list ->
                     _uiState.value = if (list.isEmpty()) M17VolunteerListUiState.Empty
@@ -105,7 +119,10 @@ class M17HubViewModel : ViewModel()
 
 sealed class M17GoodsDetailUiState {
     data object Loading : M17GoodsDetailUiState()
-    data class Content(val need: M17PublicInKindNeed) : M17GoodsDetailUiState()
+    data class Content(
+        val need: M17PublicInKindNeed,
+        val pledges: List<M17InKindPledge> = emptyList()
+    ) : M17GoodsDetailUiState()
     data class Error(val message: String) : M17GoodsDetailUiState()
 }
 
@@ -125,12 +142,34 @@ class M17GoodsDetailViewModel(
     fun load() {
         viewModelScope.launch {
             repository.getPublicNeed(needId)
-                .onSuccess { _uiState.value = M17GoodsDetailUiState.Content(it) }
+                .onSuccess { need ->
+                    val pledges = if (need.canManage) {
+                        repository.listPledges(needId).getOrDefault(emptyList())
+                    } else {
+                        emptyList()
+                    }
+                    _uiState.value = M17GoodsDetailUiState.Content(need, pledges)
+                }
                 .onFailure {
                     _uiState.value = M17GoodsDetailUiState.Error(
                         M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
                     )
                 }
+        }
+    }
+
+    fun confirmDelivery(pledgeId: String) {
+        viewModelScope.launch {
+            _submitting.value = true
+            repository.markDelivered(pledgeId)
+                .onSuccess {
+                    _message.value = "Aporte marcado como entregado."
+                    load()
+                }
+                .onFailure {
+                    _message.value = M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
+                }
+            _submitting.value = false
         }
     }
 
@@ -165,7 +204,10 @@ class M17GoodsDetailViewModel(
 
 sealed class M17VolunteerDetailUiState {
     data object Loading : M17VolunteerDetailUiState()
-    data class Content(val opportunity: M17PublicVolunteerOpportunity) : M17VolunteerDetailUiState()
+    data class Content(
+        val opportunity: M17PublicVolunteerOpportunity,
+        val applicants: List<M17VolunteerApplication> = emptyList()
+    ) : M17VolunteerDetailUiState()
     data class Error(val message: String) : M17VolunteerDetailUiState()
 }
 
@@ -185,12 +227,34 @@ class M17VolunteerDetailViewModel(
     fun load() {
         viewModelScope.launch {
             repository.getPublicOpportunity(opportunityId)
-                .onSuccess { _uiState.value = M17VolunteerDetailUiState.Content(it) }
+                .onSuccess { opportunity ->
+                    val applicants = if (opportunity.canManage) {
+                        repository.listApplicants(opportunityId).getOrDefault(emptyList())
+                    } else {
+                        emptyList()
+                    }
+                    _uiState.value = M17VolunteerDetailUiState.Content(opportunity, applicants)
+                }
                 .onFailure {
                     _uiState.value = M17VolunteerDetailUiState.Error(
                         M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
                     )
                 }
+        }
+    }
+
+    fun accept(applicationId: String) {
+        viewModelScope.launch {
+            _submitting.value = true
+            repository.acceptApplication(applicationId)
+                .onSuccess {
+                    _message.value = "Postulación aceptada."
+                    load()
+                }
+                .onFailure {
+                    _message.value = M17DonationErrorMapper.userMessage(M17DonationErrorMapper.codeOf(it))
+                }
+            _submitting.value = false
         }
     }
 

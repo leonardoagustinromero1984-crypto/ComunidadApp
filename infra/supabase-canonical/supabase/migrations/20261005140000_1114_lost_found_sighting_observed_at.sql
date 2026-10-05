@@ -13,16 +13,8 @@ alter table public.lost_found_sightings
   add column if not exists primary_color text,
   add column if not exists media_ref text;
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint where conname = 'lost_found_sightings_media_ref_len'
-  ) then
-    alter table public.lost_found_sightings
-      add constraint lost_found_sightings_media_ref_len
-      check (media_ref is null or char_length(media_ref) between 1 and 200);
-  end if;
-end $$;
+alter table public.lost_found_sightings
+  drop constraint if exists lost_found_sightings_media_ref_len;
 
 create index if not exists lost_found_sightings_alert_observed_idx
   on public.lost_found_sightings (alert_id, observed_at desc);
@@ -81,6 +73,14 @@ as $$
     'species', s.species_code,
     'primary_color', s.primary_color,
     'media_ref', s.media_ref,
+    'latitude', case
+      when s.precise_location is null then null
+      else extensions.ST_Y(s.precise_location::extensions.geometry)
+    end,
+    'longitude', case
+      when s.precise_location is null then null
+      else extensions.ST_X(s.precise_location::extensions.geometry)
+    end,
     'created_at', s.created_at,
     'status', 'ACTIVE'
   )
@@ -116,6 +116,9 @@ begin
   end if;
   if p_observed_at is null then
     raise exception 'OBSERVED_AT_REQUIRED';
+  end if;
+  if p_observed_at > timezone('utc', now()) + interval '5 minutes' then
+    raise exception 'OBSERVED_AT_IN_FUTURE';
   end if;
   if p_alert_id is null then
     raise exception 'CASE_NOT_FOUND';

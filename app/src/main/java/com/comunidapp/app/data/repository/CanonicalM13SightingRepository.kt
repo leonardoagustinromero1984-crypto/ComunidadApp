@@ -45,7 +45,8 @@ class CanonicalM13SightingRepository : M13SightingRepository {
             mediaRefs = input.mediaRefs,
             latitudeApprox = input.latitudeApprox,
             longitudeApprox = input.longitudeApprox,
-            accuracyMeters = input.accuracyMeters
+            accuracyMeters = input.accuracyMeters,
+            observedAt = input.observedAt
         )?.let { return resultFailM13(it) }
         if (input.lostFoundCaseId.isNullOrBlank()) return resultFailM13("CASE_NOT_FOUND")
         return runCatching {

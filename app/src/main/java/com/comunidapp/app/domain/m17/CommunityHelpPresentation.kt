@@ -98,6 +98,7 @@ object CommunityHelpPresentation {
         M17InKindNeedStatus.DRAFT -> "Borrador"
         M17InKindNeedStatus.PUBLISHED -> "Vigente"
         M17InKindNeedStatus.FULFILLED -> "Cubierta"
+        M17InKindNeedStatus.CLOSED -> "Cerrada"
         M17InKindNeedStatus.CANCELLED -> "Cancelada"
     }
 
@@ -128,6 +129,7 @@ object CommunityHelpPresentation {
         M17VolunteerOpportunityStatus.PAUSED -> "Pausada"
         M17VolunteerOpportunityStatus.FILLED -> "Cupos completos"
         M17VolunteerOpportunityStatus.COMPLETED -> "Finalizada"
+        M17VolunteerOpportunityStatus.CLOSED -> "Cerrada"
         M17VolunteerOpportunityStatus.CANCELLED -> "Cancelada"
     }
 

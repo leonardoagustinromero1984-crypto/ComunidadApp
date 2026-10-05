@@ -10,6 +10,7 @@ import com.comunidapp.app.data.model.M17VolunteerApplication
 import com.comunidapp.app.data.model.M17VolunteerOpportunity
 import com.comunidapp.app.data.model.M17VolunteerSearchFilter
 import com.comunidapp.app.data.remote.supabase.m17.M17DonationErrorMapper
+import com.comunidapp.app.data.remote.supabase.m17.M17HelpRemote
 import com.comunidapp.app.data.remote.supabase.m17.SupabaseM17ExtendedRemoteDataSource
 import com.comunidapp.app.data.remote.supabase.m17.toM17CampaignTransparencyReport
 import com.comunidapp.app.data.remote.supabase.m17.toM17InKindPledgeFromRpc
@@ -22,7 +23,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 
 class SupabaseM17InKindRepository(
-    private val remote: SupabaseM17ExtendedRemoteDataSource = SupabaseM17ExtendedRemoteDataSource(),
+    private val remote: M17HelpRemote = SupabaseM17ExtendedRemoteDataSource(),
     private val actorUserId: () -> String? = { null }
 ) : M17InKindRepository {
 
@@ -64,7 +65,8 @@ class SupabaseM17InKindRepository(
         M17DonationErrorMapper.failure(t)
     }
 
-    override suspend fun canManageNeed(needId: String): Boolean = false
+    override suspend fun canManageNeed(needId: String): Boolean =
+        getPublicNeed(needId).getOrNull()?.canManage == true
 
     override suspend fun createPledge(needId: String, quantity: Int, message: String?): Result<M17InKindPledge> =
         try {
@@ -86,7 +88,7 @@ class SupabaseM17InKindRepository(
 }
 
 class SupabaseM17VolunteerRepository(
-    private val remote: SupabaseM17ExtendedRemoteDataSource = SupabaseM17ExtendedRemoteDataSource(),
+    private val remote: M17HelpRemote = SupabaseM17ExtendedRemoteDataSource(),
     private val actorUserId: () -> String? = { null }
 ) : M17VolunteerRepository {
 
@@ -129,7 +131,8 @@ class SupabaseM17VolunteerRepository(
         M17DonationErrorMapper.failure(t)
     }
 
-    override suspend fun canManageOpportunity(opportunityId: String): Boolean = false
+    override suspend fun canManageOpportunity(opportunityId: String): Boolean =
+        getPublicOpportunity(opportunityId).getOrNull()?.canManage == true
 
     override suspend fun submitApplication(opportunityId: String, message: String?): Result<M17VolunteerApplication> =
         try {

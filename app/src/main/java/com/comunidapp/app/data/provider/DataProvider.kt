@@ -1163,36 +1163,50 @@ object DataProvider {
     private val m17ExtendedStore by lazy { M17ExtendedMemoryStore() }
 
     val m17InKindRepository: M17InKindRepository by lazy {
-        if (useSupabase) {
-            SupabaseM17InKindRepository(
-                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
-            )
-        } else {
-            MockM17InKindRepository(
-                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
-                store = m17ExtendedStore,
-                canManage = { orgId ->
-                    val actor = AuthProvider.repository.getCurrentUser()?.id
-                    actor != null && m17Store.organizationManagers.value[orgId]?.contains(actor) == true
-                }
-            )
+        when (com.comunidapp.app.domain.m17.M17HelpRouting.select(useSupabase, useLegacyRemoteModules)) {
+            com.comunidapp.app.domain.m17.M17HelpBackend.CANONICAL ->
+                SupabaseM17InKindRepository(
+                    remote = com.comunidapp.app.data.remote.supabase.m17.CanonicalM17RemoteDataSource(),
+                    actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+                )
+            com.comunidapp.app.domain.m17.M17HelpBackend.LEGACY_M17 ->
+                SupabaseM17InKindRepository(
+                    remote = com.comunidapp.app.data.remote.supabase.m17.SupabaseM17ExtendedRemoteDataSource(),
+                    actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+                )
+            com.comunidapp.app.domain.m17.M17HelpBackend.LOCAL ->
+                MockM17InKindRepository(
+                    actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+                    store = m17ExtendedStore,
+                    canManage = { orgId ->
+                        val actor = AuthProvider.repository.getCurrentUser()?.id
+                        actor != null && m17Store.organizationManagers.value[orgId]?.contains(actor) == true
+                    }
+                )
         }
     }
 
     val m17VolunteerRepository: M17VolunteerRepository by lazy {
-        if (useSupabase) {
-            SupabaseM17VolunteerRepository(
-                actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
-            )
-        } else {
-            MockM17VolunteerRepository(
-                actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
-                store = m17ExtendedStore,
-                canManage = { orgId ->
-                    val actor = AuthProvider.repository.getCurrentUser()?.id
-                    actor != null && m17Store.organizationManagers.value[orgId]?.contains(actor) == true
-                }
-            )
+        when (com.comunidapp.app.domain.m17.M17HelpRouting.select(useSupabase, useLegacyRemoteModules)) {
+            com.comunidapp.app.domain.m17.M17HelpBackend.CANONICAL ->
+                SupabaseM17VolunteerRepository(
+                    remote = com.comunidapp.app.data.remote.supabase.m17.CanonicalM17RemoteDataSource(),
+                    actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+                )
+            com.comunidapp.app.domain.m17.M17HelpBackend.LEGACY_M17 ->
+                SupabaseM17VolunteerRepository(
+                    remote = com.comunidapp.app.data.remote.supabase.m17.SupabaseM17ExtendedRemoteDataSource(),
+                    actorUserId = { AuthProvider.repository.getCurrentUser()?.id }
+                )
+            com.comunidapp.app.domain.m17.M17HelpBackend.LOCAL ->
+                MockM17VolunteerRepository(
+                    actorUserId = { AuthProvider.repository.getCurrentUser()?.id ?: "mock_user_admin" },
+                    store = m17ExtendedStore,
+                    canManage = { orgId ->
+                        val actor = AuthProvider.repository.getCurrentUser()?.id
+                        actor != null && m17Store.organizationManagers.value[orgId]?.contains(actor) == true
+                    }
+                )
         }
     }
 

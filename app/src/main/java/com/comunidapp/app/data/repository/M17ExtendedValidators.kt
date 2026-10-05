@@ -13,7 +13,7 @@ object M17ExtendedValidators {
         return when (target) {
             M17InKindNeedStatus.DRAFT -> null
             M17InKindNeedStatus.PUBLISHED -> if (current == M17InKindNeedStatus.DRAFT) null else "M17_INVALID_STATE"
-            M17InKindNeedStatus.FULFILLED, M17InKindNeedStatus.CANCELLED ->
+            M17InKindNeedStatus.FULFILLED, M17InKindNeedStatus.CLOSED, M17InKindNeedStatus.CANCELLED ->
                 if (current == M17InKindNeedStatus.PUBLISHED) null else "M17_INVALID_STATE"
         }
     }
@@ -34,6 +34,7 @@ object M17ExtendedValidators {
                 if (current == M17VolunteerOpportunityStatus.PUBLISHED) null else "M17_INVALID_STATE"
             M17VolunteerOpportunityStatus.FILLED,
             M17VolunteerOpportunityStatus.COMPLETED,
+            M17VolunteerOpportunityStatus.CLOSED,
             M17VolunteerOpportunityStatus.CANCELLED ->
                 if (current == M17VolunteerOpportunityStatus.PUBLISHED ||
                     current == M17VolunteerOpportunityStatus.PAUSED
